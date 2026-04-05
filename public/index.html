@@ -1,0 +1,82 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Inventario de Productos</h1>
+    <button id="btn-nuevo" onclick="abrirModal()">+ Nuevo producto</button>
+  </header>
+
+  <main>
+    <!-- Buscador -->
+    <div class="controles">
+      <input type="text" id="buscar" placeholder="Buscar producto...">
+      <select id="filtro-categoria">
+        <option value="">Todas las categorías</option>
+      </select>
+    </div>
+
+    <!-- Tabla -->
+    <div class="tabla-wrapper">
+      <table id="tabla-productos">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p id="sin-resultados" style="display:none">No hay productos.</p>
+  </main>
+
+  <!-- Modal crear/editar -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <h2 id="modal-titulo">Nuevo producto</h2>
+      <form id="form-producto">
+        <input type="hidden" id="producto-id">
+        <div class="campo">
+          <label>Nombre *</label>
+          <input type="text" id="nombre" required>
+        </div>
+        <div class="campo">
+          <label>Descripción</label>
+          <textarea id="descripcion" rows="2"></textarea>
+        </div>
+        <div class="fila-dos">
+          <div class="campo">
+            <label>Precio *</label>
+            <input type="number" id="precio" min="0" required>
+          </div>
+          <div class="campo">
+            <label>Stock</label>
+            <input type="number" id="stock" min="0" value="0">
+          </div>
+        </div>
+        <div class="campo">
+          <label>Categoría</label>
+          <input type="text" id="categoria">
+        </div>
+        <div class="modal-acciones">
+          <button type="button" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
