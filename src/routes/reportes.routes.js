@@ -1,0 +1,11 @@
+﻿const router = require("express").Router();
+const ctrl   = require("../controllers/reportes.controller");
+router.get("/panel",     ctrl.getPanelDiario);
+router.get("/cartera",   ctrl.getCarteraConsolidada);
+router.get("/cartera-hoy", ctrl.getCarteraHoy);
+router.get("/alertas",   ctrl.getAlertasJuridicas);
+router.get("/recaudo",   ctrl.getRecaudoHistorico);
+router.get("/comisiones",ctrl.getComisionesResumen);
+router.get("/juridico",  ctrl.getCarteraJuridica);
+router.get("/auditoria", ctrl.getAuditoria);
+module.exports = router;
