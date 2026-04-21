@@ -1,4 +1,4 @@
-﻿import { esperarAuthListo } from './auth.js';
+﻿import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
   dashboard:     { fn: "dashboardView",     title: "Dashboard" },
@@ -6,7 +6,7 @@ const VIEWS = {
   lotes:         { fn: "lotesView",         title: "Lotes" },
   compradores:   { fn: "compradoresView",   title: "Compradores" },
   ventas:        { fn: "ventasView",        title: "Ventas" },
-  cuotas:        { fn: "cuotasView",        title: "Cuotas Vencidas" },
+  cuotas:        { fn: "cuotasView",        title: "Cuotas" },
   pagos:         { fn: "pagosView",         title: "Pagos" },
   comisionistas: { fn: "comisionistasView", title: "Comisionistas" },
   facturas:      { fn: "facturasView",      title: "Facturas" },
@@ -17,67 +17,173 @@ const VIEWS = {
   usuarios:      { fn: "usuariosView",      title: "Gestión de Usuarios" },
 };
 
-// Qué vistas puede ver cada rol — modifica aquí para cambiar permisos de menú
 const VISTAS_POR_ROL = {
   admin: [
-    "dashboard","proyectos","lotes","compradores","ventas",
-    "cuotas","pagos","comisionistas","facturas","recibos",
-    "reportes","alertas","auditoria","usuarios"
+    "dashboard", "proyectos", "lotes", "compradores", "ventas",
+    "cuotas", "pagos", "comisionistas", "facturas", "recibos",
+    "reportes", "alertas", "auditoria", "usuarios"
   ],
   operador: [
-    "dashboard","proyectos","lotes","compradores","ventas",
-    "cuotas","pagos","comisionistas","facturas","recibos","reportes"
+    "dashboard", "proyectos", "lotes", "compradores", "ventas",
+    "cuotas", "pagos", "comisionistas", "facturas", "recibos", "reportes"
   ],
   juridico: [
-    "dashboard","proyectos","lotes","compradores","ventas",
-    "cuotas","reportes","alertas","auditoria"
+    "dashboard", "proyectos", "lotes", "compradores", "ventas",
+    "cuotas", "reportes", "alertas", "auditoria"
   ],
-  comprador:    ["dashboard"],
+  comprador: ["dashboard"],
   comisionista: ["dashboard", "reportes"],
 };
 
 window.currentUser = null;
 
-// ─────────────────────────────────────────────
-// Navegación
-// ─────────────────────────────────────────────
-function navigate(viewKey) {
+function capitalize(text = "") {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function setTodayDate() {
+  const todayDate = document.getElementById("todayDate");
+  if (!todayDate) return;
+
+  const formattedDate = new Date().toLocaleDateString("es-CO", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  todayDate.textContent = capitalize(formattedDate);
+}
+
+function setActiveNav(viewKey) {
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.view === viewKey);
+  });
+}
+
+function setViewTitle(title) {
+  const viewTitle = document.getElementById("viewTitle");
+  if (viewTitle) {
+    viewTitle.textContent = title;
+  }
+}
+
+function renderMissingView(viewKey, triedNames = []) {
+  const names = triedNames.length ? triedNames.join(", ") : "ninguno";
+
+  return `
+    <section class="table-wrap" style="padding: 24px;">
+      <div class="table-header">
+        <h3>Vista no disponible</h3>
+      </div>
+      <div style="padding: 20px; color: var(--text-muted); line-height: 1.6;">
+        <p>No se encontró una función válida para la vista <strong style="color: var(--text);">${viewKey}</strong>.</p>
+        <p>Se intentó buscar: <strong style="color: var(--text);">${names}</strong>.</p>
+        <p>Asegúrate de que el archivo JS de la vista esté cargado y exponga la función en <code>window</code>.</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderViewError(title) {
+  return `
+    <section class="table-wrap" style="padding: 24px;">
+      <div class="table-header">
+        <h3>Error al cargar la vista</h3>
+      </div>
+      <div style="padding: 20px; color: var(--danger); line-height: 1.6;">
+        Ocurrió un error cargando <strong>${title}</strong>. Revisa la consola para más detalles.
+      </div>
+    </section>
+  `;
+}
+
+function renderAccessDenied() {
+  return `
+    <div style="text-align:center; margin-top:4rem; color:#888;">
+      <h2>⛔ Sin acceso</h2>
+      <p>No tienes permiso para ver esta sección.</p>
+    </div>
+  `;
+}
+
+function resolveViewFunction(viewKey, view) {
+  const normalizedKey = capitalize(viewKey);
+  const candidates = [
+    view.fn,
+    `${viewKey}View`,
+    `render${normalizedKey}`,
+    viewKey,
+  ];
+
+  for (const name of candidates) {
+    if (typeof window[name] === "function") {
+      return { fn: window[name], candidates };
+    }
+  }
+
+  return { fn: null, candidates };
+}
+
+function navigate(viewKey, updateHash = true) {
   const view = VIEWS[viewKey];
+  const viewContainer = document.getElementById("viewContainer");
+
   if (!view) return;
 
   const permitidas = VISTAS_POR_ROL[window.currentUser?.rol] ?? [];
   if (!permitidas.includes(viewKey)) {
-    document.getElementById("viewContainer")?.insertAdjacentHTML('afterbegin', `
-      <div style="text-align:center;margin-top:4rem;color:#888;">
-        <h2>⛔ Sin acceso</h2>
-        <p>No tienes permiso para ver esta sección.</p>
-      </div>`);
+    setActiveNav(viewKey);
+    setViewTitle(view.title);
+    if (viewContainer) viewContainer.innerHTML = renderAccessDenied();
     return;
   }
 
-  document.querySelectorAll(".nav-item").forEach(n =>
-    n.classList.toggle("active", n.dataset.view === viewKey)
-  );
-  document.getElementById("viewTitle").textContent = view.title;
-  window[view.fn]?.();
+  setActiveNav(viewKey);
+  setViewTitle(view.title);
+
+  const { fn: viewFn, candidates } = resolveViewFunction(viewKey, view);
+
+  if (!viewFn) {
+    if (viewContainer) viewContainer.innerHTML = renderMissingView(viewKey, candidates);
+    return;
+  }
+
+  try {
+    if (viewContainer) viewContainer.innerHTML = "";
+
+    const result = viewFn(viewContainer);
+
+    if (viewContainer) {
+      if (typeof result === "string") {
+        viewContainer.innerHTML = result;
+      } else if (result instanceof Node) {
+        viewContainer.replaceChildren(result);
+      } else if (Array.isArray(result) && result.every((item) => item instanceof Node)) {
+        viewContainer.replaceChildren(...result);
+      }
+    }
+  } catch (error) {
+    console.error(`Error al cargar la vista "${viewKey}":`, error);
+    if (viewContainer) viewContainer.innerHTML = renderViewError(view.title);
+  }
+
+  if (updateHash && window.location.hash !== `#${viewKey}`) {
+    window.location.hash = viewKey;
+  }
 }
 
-// ─────────────────────────────────────────────
-// Menú según rol
-// ─────────────────────────────────────────────
 function aplicarMenuPorRol(rol) {
   const permitidas = VISTAS_POR_ROL[rol] ?? [];
-  document.querySelectorAll(".nav-item").forEach(btn => {
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.style.display = permitidas.includes(btn.dataset.view) ? "" : "none";
   });
 }
 
-// ─────────────────────────────────────────────
-// Header de usuario
-// ─────────────────────────────────────────────
 function renderUsuarioHeader(perfil) {
   const el = document.getElementById("usuarioInfo");
   if (!el) return;
+
   el.innerHTML = `
     <span class="badge badge-${perfil.rol}" style="
       padding:.25rem .65rem;border-radius:999px;font-size:.75rem;
@@ -91,8 +197,8 @@ function renderUsuarioHeader(perfil) {
       Cerrar sesión
     </button>
   `;
+
   document.getElementById("btn-logout")?.addEventListener("click", async () => {
-    // Llama logout desde el auth global expuesto por auth.js
     const auth = window._firebaseAuth;
     if (auth) {
       const { signOut } = await import(
@@ -100,90 +206,79 @@ function renderUsuarioHeader(perfil) {
       );
       await signOut(auth);
     }
-    localStorage.removeItem('fb_token');
-    window.location.href = '/login.html';
+    localStorage.removeItem("fb_token");
+    window.location.href = "/login.html";
   });
 }
 
-// ─────────────────────────────────────────────
-// Inicio: espera a Firebase, luego arranca
-// ─────────────────────────────────────────────
-async function iniciarApp() {  
+function getInitialView() {
+  const hash = window.location.hash.replace("#", "").trim();
+  return VIEWS[hash] ? hash : "dashboard";
+}
 
-  // Espera a que auth.js (módulo) haya creado window._authReady
-  await new Promise(resolve => {
-    if (window._authReady) return resolve();
-    const interval = setInterval(() => {
-      if (window._authReady) {
-        clearInterval(interval);
-        resolve();
-      }
-    }, 50);
-    // Timeout de seguridad: 5 segundos
-    setTimeout(() => { clearInterval(interval); resolve(); }, 5000);
+function bindNavigation() {
+  document.querySelectorAll(".nav-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const viewKey = btn.dataset.view;
+      if (viewKey) navigate(viewKey);
+    });
   });
+}
 
+function redirigirConDelay(url, segundos = 4) {
+  console.log(`[REDIRECT] Redirigiendo a ${url} en ${segundos} segundos...`);
+  setTimeout(() => {
+    window.location.href = url;
+  }, segundos * 1000);
+}
 
+async function iniciarApp() {
   let firebaseUser = null;
+
   try {
     firebaseUser = await Promise.race([
-      window._authReady,
+      esperarAuthListo(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firebase tardó demasiado')), 5000)
-      )
+        setTimeout(() => reject(new Error("Firebase tardó demasiado")), 5000)
+      ),
     ]);
   } catch (e) {
-    redirigirConDelay('/login.html');
-    return;
-  } 
-
-  // 2. Si Firebase dice que no hay sesión → login
-  if (!firebaseUser) {
-    window.location.href = '/login.html';
+    redirigirConDelay("/login.html");
     return;
   }
 
-  // 3. Obtiene token fresco (refresca si expiró)
+  if (!firebaseUser) {
+    window.location.href = "/login.html";
+    return;
+  }
+
   try {
     const token = await firebaseUser.getIdToken(true);
-    localStorage.setItem('fb_token', token);
+    localStorage.setItem("fb_token", token);
   } catch (e) {
     console.error("No se pudo refrescar el token:", e.message);
-    window.location.href = '/login.html';
+    window.location.href = "/login.html";
     return;
   }
 
-  // 4. Carga el perfil desde el backend
-
-  function redirigirConDelay(url, segundos = 4) {
-    console.log(`[REDIRECT] Redirigiendo a ${url} en ${segundos} segundos...`);
-    setTimeout(() => {
-      window.location.href = url; 
-    }, segundos * 2000); 
-  }
-
   try {
-    const perfil = await API.get('/auth/perfil');
+    const perfil = await API.get("/auth/perfil");
     window.currentUser = perfil;
 
     aplicarMenuPorRol(perfil.rol);
     renderUsuarioHeader(perfil);
+    setTodayDate();
+    bindNavigation();
 
-    document.getElementById("todayDate").textContent =
-      new Date().toLocaleDateString("es-CO", {
-        weekday: "long", year: "numeric",
-        month: "long",   day: "numeric"
-      });
-
-    document.querySelectorAll(".nav-item").forEach(btn => {
-      btn.addEventListener("click", () => navigate(btn.dataset.view));
+    window.addEventListener("hashchange", () => {
+      navigate(getInitialView(), false);
     });
 
-    navigate("dashboard");
-
+    navigate(getInitialView(), false);
   } catch (err) {
     console.error("Error cargando perfil:", err.message);
-    localStorage.removeItem('fb_token');
+    localStorage.removeItem("fb_token");
+
     try {
       const auth = window._firebaseAuth;
       if (auth?.currentUser) {
@@ -192,11 +287,11 @@ async function iniciarApp() {
         );
         await signOut(auth);
       }
-    } catch(e) { /* silencioso */ }
+    } catch (e) {}
 
-    redirigirConDelay('/login.html');
-    return;
+    redirigirConDelay("/login.html");
   }
 }
 
 iniciarApp();
+window.navigate = navigate;
