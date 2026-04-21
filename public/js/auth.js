@@ -8,15 +8,8 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCYMIbgzICX9N0WiwTg0QObJ4GiY814oPc",
-  authDomain: "elcondorsgi.firebaseapp.com",
-  projectId: "elcondorsgi",
-  storageBucket: "elcondorsgi.firebasestorage.app",
-  messagingSenderId: "865181580750",
-  appId: "1:865181580750:web:410707f4b0368492303f9f",
-  measurementId: "G-7D0BG65BCG"
-};
+const res = await fetch('/api/firebase-config');
+const firebaseConfig = await res.json();
 
 const app      = initializeApp(firebaseConfig);
 const auth     = getAuth(app);
