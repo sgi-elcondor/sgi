@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — El Cóndor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #181c27;
+      --surface2: #1e2335;
+      --border:   #2a2f45;
+      --accent:   #4f6ef7;
+      --accent2:  #7c93ff;
+      --text:     #e8eaf2;
+      --text-sub: #8892b0;
+      --danger:   #e05c6a;
+      --success:  #3ecf8e;
+      --shadow:   0 8px 40px rgba(0,0,0,.45);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      color: var(--text);      
+    }
+
+    .cracked-earth {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #191919;
+      filter: url(#cracks);
+      opacity: .07;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.75rem 2.25rem 2.25rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--shadow);
+      animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .brand-icon { width: 2.2rem; height: 2.2rem; display: grid; place-items: center; }
+    .brand-icon img { width: 100%; filter: brightness(0) invert(1); }
+
+    .brand-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.35rem;
+      color: var(--text);
+      letter-spacing: -.01em;
+    }
+
+    .brand-sub {
+      font-size: .75rem;
+      color: var(--text-sub);
+      margin-top: -.1rem;
+      letter-spacing: .02em;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      margin-bottom: 1.75rem;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: .25rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: .5rem;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-sub);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+
+    /* Paneles */
+    .panel { display: none; animation: fadeUp .3s cubic-bezier(.16,1,.3,1) both; }
+    .panel.active { display: block; }
+
+    /* Campos */
+    .field { margin-bottom: 1rem; }
+
+    label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--text-sub);
+      margin-bottom: .4rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    input {
+      width: 100%;
+      padding: .65rem .9rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      font-weight: 300;
+      color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+
+    input::placeholder { color: #4a5170; }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,110,247,.15);
+    }
+
+    /* Botones */
+    .btn {
+      width: 100%;
+      padding: .7rem 1rem;
+      border: none;
+      border-radius: 9px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .18s, transform .12s, box-shadow .18s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .55rem;
+    }
+
+    .btn:active   { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 16px rgba(79,110,247,.3);
+      margin-bottom: .85rem;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      opacity: .88;
+      box-shadow: 0 4px 24px rgba(79,110,247,.4);
+    }
+
+    .divider-text {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin: .25rem 0 .85rem;
+      color: var(--text-sub);
+      font-size: .75rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .divider-text::before,
+    .divider-text::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .btn-google {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-google:hover:not(:disabled) { background: #232840; border-color: #3a4060; }
+    .btn-google svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+    /* Mensajes */
+    .error-box, .success-box {
+      border-radius: 8px;
+      font-size: .83rem;
+      padding: .6rem .9rem;
+      margin-top: .85rem;
+      display: none;
+      animation: fadeUp .2s ease both;
+    }
+
+    .error-box {
+      background: rgba(224,92,106,.1);
+      border: 1px solid rgba(224,92,106,.3);
+      color: #f08090;
+    }
+
+    .success-box {
+      background: rgba(62,207,142,.1);
+      border: 1px solid rgba(62,207,142,.3);
+      color: #5ddba8;
+    }
+
+    /* Requisitos contraseña */
+    .pwd-rules { margin-top: .5rem; display: flex; flex-direction: column; gap: .2rem; }
+
+    .pwd-rule {
+      font-size: .75rem;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      transition: color .2s;
+    }
+
+    .pwd-rule.ok { color: var(--success); }
+    .pwd-rule::before    { content: 'o'; font-size: .6rem; }
+    .pwd-rule.ok::before { content: 'x'; }
+
+    /* Link sutil */
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--accent2);
+      font-family: 'DM Sans', sans-serif;
+      font-size: .83rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color .15s;
+    }
+
+    .link-btn:hover { color: var(--accent); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .55s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .spinner-dark {
+      border-color: rgba(232,234,242,.2);
+      border-top-color: var(--text-sub);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .card-footer {
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: .75rem;
+      color: #3d4460;
+      letter-spacing: .02em;
+    }
+  </style>
+</head>
+<body>
+
+<div class="cracked-earth"></div>
+
+<svg width="0" height="0" style="position:absolute;">
+  <filter id="cracks">
+    <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="5" seed="10" result="noise"></feTurbulence>
+    <feColorMatrix type="luminanceToAlpha" in="noise" result="alphaNoise"></feColorMatrix>
+    <feComponentTransfer in="alphaNoise" result="plates">
+      <feFuncA type="discrete" tableValues="0 1"></feFuncA>
+    </feComponentTransfer>
+    <feConvolveMatrix order="3 3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" in="plates" result="edges"></feConvolveMatrix>
+    <feComponentTransfer in="edges" result="invertedEdges">
+      <feFuncR type="table" tableValues="1 0"></feFuncR>
+      <feFuncG type="table" tableValues="1 0"></feFuncG>
+      <feFuncB type="table" tableValues="1 0"></feFuncB>
+    </feComponentTransfer>
+    <feFlood flood-color="#000" result="bgColor"></feFlood>
+    <feComposite operator="in" in="bgColor" in2="invertedEdges"></feComposite>
+  </filter>
+</svg>
+
+<div class="card">
+
+  <div class="brand">
+    <span class="brand-icon">
+      <img src="/src/img/favicon_white.svg" alt="El Condor" />
+    </span>
+    <div>
+      <div class="brand-name">El Condor</div>
+      <div class="brand-sub">Sistema de Gestion Inmobiliaria</div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs-principales">
+    <button class="tab-btn active" id="tab-login"    onclick="mostrarPanel('login')">Ingresar</button>
+    <button class="tab-btn"        id="tab-registro" onclick="mostrarPanel('registro')">Crear cuenta</button>
+  </div>
+
+  <!-- PANEL LOGIN -->
+  <div class="panel active" id="panel-login">
+    <div class="field">
+      <label for="l-email">Correo electronico</label>
+      <input type="email" id="l-email" placeholder="usuario@ejemplo.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="l-password">Contrasena</label>
+      <input type="password" id="l-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" />
+    </div>
+    <div style="text-align:right; margin-top:-.4rem; margin-bottom:.9rem;">
+      <button class="link-btn" onclick="mostrarPanel('recuperar')">Olvidaste tu contrasena?</button>
+    </div>
+    <button class="btn btn-primary" id="btn-login">Ingresar</button>
+    <div class="divider-text">o continua con</div>
+    <button class="btn btn-google" id="btn-google-login">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.08-6.08C34.49 3.1 29.5 1 24 1 14.82 1 7.07 6.48 3.64 14.18l7.08 5.5C12.4 13.67 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.67c-.55 2.97-2.2 5.48-4.67 7.17l7.18 5.57C43.46 37.32 46.5 31.36 46.5 24.5z"/>
+        <path fill="#FBBC05" d="M10.72 28.32A14.54 14.54 0 0 1 9.5 24c0-1.5.26-2.95.72-4.32l-7.08-5.5A23.93 23.93 0 0 0 .5 24c0 3.87.92 7.53 2.54 10.77l7.68-6.45z"/>
+        <path fill="#34A853" d="M24 46.5c5.5 0 10.12-1.82 13.5-4.95l-7.18-5.57c-1.78 1.2-4.07 1.9-6.32 1.9-6.26 0-11.6-4.17-13.28-9.81l-7.68 6.45C7.07 41.52 14.82 46.5 24 46.5z"/>
+      </svg>
+      Continuar con Google
+    </button>
+    <div class="error-box" id="l-error"></div>
+  </div>
+
+  <!-- PANEL REGISTRO -->
+  <div class="panel" id="panel-registro">
+    <div class="field">
+      <label for="r-email">Correo electronico</label>
+      <input type="email" id="r-email" placeholder="usuario@ejemplo.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="r-password">Contrasena</label>
+      <input type="password" id="r-password" placeholder="Minimo 8 caracteres"
+             autocomplete="new-password" oninput="validarPassword(this.value)" />
+      <div class="pwd-rules">
+        <span class="pwd-rule" id="rule-len">Minimo 8 caracteres</span>
+        <span class="pwd-rule" id="rule-upper">Una letra mayuscula</span>
+        <span class="pwd-rule" id="rule-num">Un numero</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="r-confirm">Confirmar contrasena</label>
+      <input type="password" id="r-confirm" placeholder="Repite la contrasena" autocomplete="new-password" />
+    </div>
+    <button class="btn btn-primary" id="btn-registro" style="margin-top:.25rem;">Crear cuenta</button>
+    <div class="divider-text">o continua con</div>
+    <button class="btn btn-google" id="btn-google-registro">
+      <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.08-6.08C34.49 3.1 29.5 1 24 1 14.82 1 7.07 6.48 3.64 14.18l7.08 5.5C12.4 13.67 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.67c-.55 2.97-2.2 5.48-4.67 7.17l7.18 5.57C43.46 37.32 46.5 31.36 46.5 24.5z"/>
+        <path fill="#FBBC05" d="M10.72 28.32A14.54 14.54 0 0 1 9.5 24c0-1.5.26-2.95.72-4.32l-7.08-5.5A23.93 23.93 0 0 0 .5 24c0 3.87.92 7.53 2.54 10.77l7.68-6.45z"/>
+        <path fill="#34A853" d="M24 46.5c5.5 0 10.12-1.82 13.5-4.95l-7.18-5.57c-1.78 1.2-4.07 1.9-6.32 1.9-6.26 0-11.6-4.17-13.28-9.81l-7.68 6.45C7.07 41.52 14.82 46.5 24 46.5z"/>
+      </svg>
+      Continuar con Google
+    </button>
+    <div class="error-box"   id="r-error"></div>
+    <div class="success-box" id="r-success"></div>
+  </div>
+
+  <!-- PANEL RECUPERAR -->
+  <div class="panel" id="panel-recuperar">
+    <div style="margin-bottom:1.25rem;">
+      <p style="font-size:.875rem; color:var(--text-sub); line-height:1.55;">
+        Ingresa tu correo y te enviaremos un enlace para restablecer tu contrasena.
+      </p>
+    </div>
+    <div class="field">
+      <label for="rec-email">Correo electronico</label>
+      <input type="email" id="rec-email" placeholder="usuario@ejemplo.com" autocomplete="email" />
+    </div>
+    <button class="btn btn-primary" id="btn-recuperar">Enviar enlace</button>
+    <div style="text-align:center; margin-top:.85rem;">
+      <button class="link-btn" onclick="mostrarPanel('login')">&larr; Volver al inicio de sesion</button>
+    </div>
+    <div class="error-box"   id="rec-error"></div>
+    <div class="success-box" id="rec-success"></div>
+  </div>
+
+  <div class="card-footer">SGI v1.0 &middot; El Condor</div>
+</div>
+
+<script type="module">
+  import {
+    loginEmail, loginGoogle,
+    esperarAuthListo,
+    registerEmail,
+    resetPassword
+  } from '/js/auth.js';
+
+  esperarAuthListo().then(user => {
+    if (user) window.location.href = '/index.html';
+  });
+
+  const ERROR_MSG = {
+    'auth/invalid-email':           'El correo no tiene un formato valido.',
+    'auth/user-not-found':          'No existe una cuenta con ese correo.',
+    'auth/wrong-password':          'Contrasena incorrecta.',
+    'auth/invalid-credential':      'Correo o contrasena incorrectos.',
+    'auth/too-many-requests':       'Demasiados intentos. Intenta mas tarde.',
+    'auth/user-disabled':           'Esta cuenta fue deshabilitada.',
+    'auth/email-already-in-use':    'Ya existe una cuenta con ese correo.',
+    'auth/weak-password':           'La contrasena es demasiado debil.',
+    'auth/popup-closed-by-user':    null,
+    'auth/cancelled-popup-request': null,
+    'auth/popup-blocked':           'El navegador bloqueo la ventana. Permite popups para este sitio.',
+    'auth/network-request-failed':  'Sin conexion. Verifica tu red.',
+  };
+
+  function mensajeError(err) {
+    return ERROR_MSG[err.code] ?? ('Error: ' + err.message);
+  }
+
+  function showError(id, err) {
+    if (err.code in ERROR_MSG && ERROR_MSG[err.code] === null) return;
+    const el = document.getElementById(id);
+    el.textContent = mensajeError(err);
+    el.style.display = 'block';
+  }
+
+  function showSuccess(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideMessages(...ids) {
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  }
+
+  function setLoading(btn, loading, esGoogle) {
+    btn.disabled = loading;
+    if (loading) {
+      btn.dataset.original = btn.innerHTML;
+      const cls = esGoogle ? 'spinner spinner-dark' : 'spinner';
+      btn.innerHTML = '<span class="' + cls + '"></span> Cargando...';
+    } else {
+      btn.innerHTML = btn.dataset.original || btn.innerHTML;
+    }
+  }
+
+  // Navegacion entre paneles
+  window.mostrarPanel = function(panel) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + panel).classList.add('active');
+    const tabs = document.getElementById('tabs-principales');
+    if (panel === 'recuperar') {
+      tabs.style.display = 'none';
+    } else {
+      tabs.style.display = 'flex';
+      document.getElementById('tab-login').classList.toggle('active',    panel === 'login');
+      document.getElementById('tab-registro').classList.toggle('active', panel === 'registro');
+    }
+  };
+
+  // Validacion contrasena en tiempo real
+  window.validarPassword = function(val) {
+    document.getElementById('rule-len').classList.toggle('ok',   val.length >= 8);
+    document.getElementById('rule-upper').classList.toggle('ok', /[A-Z]/.test(val));
+    document.getElementById('rule-num').classList.toggle('ok',   /[0-9]/.test(val));
+  };
+
+  // LOGIN
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    hideMessages('l-error');
+    const email = document.getElementById('l-email').value.trim();
+    const pwd   = document.getElementById('l-password').value;
+    if (!email || !pwd) {
+      const el = document.getElementById('l-error');
+      el.textContent = 'Completa todos los campos.';
+      el.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('btn-login');
+    setLoading(btn, true);
+    try {
+      await loginEmail(email, pwd);
+      window.location.href = '/index.html';
+    } catch (err) { showError('l-error', err); }
+    finally       { setLoading(btn, false); }
+  });
+
+  document.getElementById('l-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-login').click();
+  });
+
+  document.getElementById('btn-google-login').addEventListener('click', async () => {
+    hideMessages('l-error');
+    const btn = document.getElementById('btn-google-login');
+    setLoading(btn, true, true);
+    try {
+      await loginGoogle();
+      window.location.href = '/index.html';
+    } catch (err) { showError('l-error', err); }
+    finally       { setLoading(btn, false, true); }
+  });
+
+  // REGISTRO
+  document.getElementById('btn-registro').addEventListener('click', async () => {
+    hideMessages('r-error', 'r-success');
+    const email   = document.getElementById('r-email').value.trim();
+    const pwd     = document.getElementById('r-password').value;
+    const confirm = document.getElementById('r-confirm').value;
+
+    if (!email || !pwd || !confirm) {
+      const el = document.getElementById('r-error');
+      el.textContent = 'Completa todos los campos.';
+      el.style.display = 'block';
+      return;
+    }
+    if (pwd.length < 8 || !/[A-Z]/.test(pwd) || !/[0-9]/.test(pwd)) {
+      const el = document.getElementById('r-error');
+      el.textContent = 'La contrasena no cumple los requisitos.';
+      el.style.display = 'block';
+      return;
+    }
+    if (pwd !== confirm) {
+      const el = document.getElementById('r-error');
+      el.textContent = 'Las contrasenas no coinciden.';
+      el.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('btn-registro');
+    setLoading(btn, true);
+    try {
+      await registerEmail(email, pwd);
+      // auth.middleware.js registra automaticamente en Supabase con rol comprador
+      window.location.href = '/index.html';
+    } catch (err) { showError('r-error', err); }
+    finally       { setLoading(btn, false); }
+  });
+
+  document.getElementById('btn-google-registro').addEventListener('click', async () => {
+    hideMessages('r-error', 'r-success');
+    const btn = document.getElementById('btn-google-registro');
+    setLoading(btn, true, true);
+    try {
+      await loginGoogle();
+      window.location.href = '/index.html';
+    } catch (err) { showError('r-error', err); }
+    finally       { setLoading(btn, false, true); }
+  });
+
+  // RECUPERAR
+  document.getElementById('btn-recuperar').addEventListener('click', async () => {
+    hideMessages('rec-error', 'rec-success');
+    const email = document.getElementById('rec-email').value.trim();
+    if (!email) {
+      const el = document.getElementById('rec-error');
+      el.textContent = 'Ingresa tu correo electronico.';
+      el.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('btn-recuperar');
+    setLoading(btn, true);
+    try {
+      await resetPassword(email);
+      showSuccess('rec-success', 'Enlace enviado. Revisa tu bandeja de entrada (y la carpeta de spam).');
+      document.getElementById('rec-email').value = '';
+    } catch (err) { showError('rec-error', err); }
+    finally       { setLoading(btn, false); }
+  });
+
+  document.getElementById('rec-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-recuperar').click();
+  });
+</script>
+
+</body>
+</html>

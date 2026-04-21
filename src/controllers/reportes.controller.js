@@ -1,4 +1,4 @@
-﻿const { supabase } = require("../config/supabase");
+const supabase = require("../config/supabase"); // ? sin llaves {}
 const SCHEMA   = "condor";
 
 exports.getPanelDiario = async (req, res) => {

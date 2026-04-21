@@ -1,4 +1,4 @@
-﻿const { supabase } = require("../config/supabase");
+const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
 exports.getAll = async (req, res) => {

@@ -3,3 +3,5 @@ node_modules/
 desktop.ini
 Thumbs.db
 dist/
+src/config/firebase-service-account.json
+estructura_listada.txt
