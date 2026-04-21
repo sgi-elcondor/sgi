@@ -27,5 +27,6 @@
     setTimeout(() => t.remove(), 3000);
   }
 };
+
 document.getElementById("modalClose").addEventListener("click", UI.closeModal);
 document.getElementById("modalOverlay").addEventListener("click", e => { if (e.target.id === "modalOverlay") UI.closeModal(); });
