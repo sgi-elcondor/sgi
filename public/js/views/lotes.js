@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   function sgiNormalizeText(text = "") {
     return String(text)
       .normalize("NFD")

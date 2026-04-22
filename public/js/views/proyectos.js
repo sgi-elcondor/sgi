@@ -3,20 +3,56 @@
   vc.innerHTML = UI.loader();
   const data = await API.get("/proyectos").catch(e => { vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`; return null; });
   if (!data) return;
+
+  const esAsesor = window.currentUser?.rol === "asesor_comercial";
+
   vc.innerHTML = `
     <div class="table-wrap">
-      <div class="table-header">
+      <div class="table-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;">
         <h3>Proyectos</h3>
-        <button class="btn btn-primary btn-sm" onclick="proyectoForm()">+ Nuevo</button>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+          <input id="filtro-proyecto-nombre" type="text" placeholder="Buscar por nombre o ubicación…"
+            style="padding:.4rem .8rem;border:1px solid var(--border);border-radius:8px;
+                   font-size:.875rem;background:var(--surface);color:var(--text);width:220px;"
+            oninput="filtrarProyectos()" />
+          <select id="filtro-proyecto-estado" onchange="filtrarProyectos()"
+            style="padding:.4rem .8rem;border:1px solid var(--border);border-radius:8px;
+                   font-size:.875rem;background:var(--surface);color:var(--text);">
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="finalizado">Finalizado</option>
+          </select>
+          ${esAsesor ? "" : `<button class="btn btn-primary btn-sm" onclick="proyectoForm()">+ Nuevo</button>`}
+        </div>
       </div>
       <table>
         <thead><tr><th>#</th><th>Nombre</th><th>Ubicación</th><th>Estado</th><th>Creado</th></tr></thead>
-        <tbody>${data.map(p=>`<tr>
-          <td>${p.id_proyecto}</td><td>${p.nombre}</td><td>${p.ubicacion||"—"}</td>
-          <td>${UI.badge(p.estado)}</td><td>${UI.date(p.fecha_creacion)}</td>
-        </tr>`).join("")}</tbody>
+        <tbody id="body-proyectos"></tbody>
       </table>
     </div>`;
+
+  window._proyectosData = data;
+  filtrarProyectos();
+};
+
+window.filtrarProyectos = function() {
+  const texto  = document.getElementById("filtro-proyecto-nombre")?.value.toLowerCase() ?? "";
+  const estado = document.getElementById("filtro-proyecto-estado")?.value ?? "";
+  const tbody  = document.getElementById("body-proyectos");
+  if (!tbody) return;
+
+  const filtrados = (window._proyectosData || []).filter(p => {
+    const coincideTexto  = !texto  || p.nombre?.toLowerCase().includes(texto) || p.ubicacion?.toLowerCase().includes(texto);
+    const coincideEstado = !estado || p.estado === estado;
+    return coincideTexto && coincideEstado;
+  });
+
+  tbody.innerHTML = filtrados.length
+    ? filtrados.map(p => `<tr>
+        <td>${p.id_proyecto}</td><td>${p.nombre}</td><td>${p.ubicacion||"—"}</td>
+        <td>${UI.badge(p.estado)}</td><td>${UI.date(p.fecha_creacion)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">Sin resultados</td></tr>`;
 };
 window.proyectoForm = function(p={}) {
   UI.openModal(p.id_proyecto?"Editar Proyecto":"Nuevo Proyecto",`

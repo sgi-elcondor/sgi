@@ -33,6 +33,9 @@ const VISTAS_POR_ROL = {
   ],
   comprador: ["dashboard"],
   comisionista: ["dashboard", "reportes"],
+  asesor_comercial: [
+    "dashboard", "proyectos", "lotes", "compradores", "ventas"
+  ],
 };
 
 window.currentUser = null;
