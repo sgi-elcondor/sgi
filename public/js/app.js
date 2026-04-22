@@ -196,7 +196,7 @@ function renderUsuarioHeader(perfil) {
     <span style="font-size:.85rem;color:#555;">${perfil.email}</span>
     <button id="btn-logout" style="
       padding:.3rem .8rem;border:1px solid #ddd;border-radius:6px;
-      background:#fff;cursor:pointer;font-size:.8rem;">
+      background:#fff;cursor:pointer;font-size:.8rem;color: #222222">
       Cerrar sesión
     </button>
   `;
