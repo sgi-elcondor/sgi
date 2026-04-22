@@ -45,6 +45,8 @@ const ROUTE_PERMISSIONS = {
   'GET /api/reportes/dir':    { recurso: 'reportes_dir',  accion: 'leer' },
   'GET /api/reportes/jur':    { recurso: 'alertas_jur',   accion: 'leer' },
 
+  'POST /api/ventas/solicitud': { recurso: 'ventas', accion: 'solicitar' },
+
   'GET /api/mi-cuenta':       { recurso: 'mi_cuenta',     accion: 'leer' },
 };
 

@@ -3,23 +3,61 @@
   vc.innerHTML = UI.loader();
   const data = await API.get("/lotes").catch(e => { vc.innerHTML=`<p style="color:var(--danger)">${e.message}</p>`; return null; });
   if (!data) return;
+
+  const esAsesor = window.currentUser?.rol === "asesor_comercial";
+
   vc.innerHTML = `
     <div class="table-wrap">
-      <div class="table-header">
+      <div class="table-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem;">
         <h3>Lotes</h3>
-        <button class="btn btn-primary btn-sm" onclick="loteForm()">+ Nuevo</button>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+          <input id="filtro-lote-texto" type="text" placeholder="Buscar por código o proyecto…"
+            style="padding:.4rem .8rem;border:1px solid var(--border);border-radius:8px;
+                   font-size:.875rem;background:var(--surface);color:var(--text);width:220px;"
+            oninput="filtrarLotes()" />
+          <select id="filtro-lote-estado" onchange="filtrarLotes()"
+            style="padding:.4rem .8rem;border:1px solid var(--border);border-radius:8px;
+                   font-size:.875rem;background:var(--surface);color:var(--text);">
+            ${esAsesor
+              ? `<option value="disponible">Disponible</option><option value="vendido">Vendido</option><option value="">Todos</option>`
+              : `<option value="">Todos los estados</option><option value="disponible">Disponible</option><option value="vendido">Vendido</option><option value="reservado">Reservado</option>`
+            }
+          </select>
+          ${esAsesor ? "" : `<button class="btn btn-primary btn-sm" onclick="loteForm()">+ Nuevo</button>`}
+        </div>
       </div>
       <table>
         <thead><tr><th>Código</th><th>Proyecto</th><th>Manzana</th><th>Nro.</th><th>Área m²</th><th>Precio Base</th><th>Estado</th></tr></thead>
-        <tbody>${data.map(l=>`<tr>
-          <td>${l.codigo_lote}</td><td>${l.proyecto?.nombre||"—"}</td>
-          <td>${l.manzana}</td><td>${l.numero_lote}</td>
-          <td>${l.area_m2||"—"}</td><td>${UI.fmt(l.precio_base)}</td>
-          <td>${UI.badge(l.estado)}</td>
-        </tr>`).join("")}</tbody>
+        <tbody id="body-lotes"></tbody>
       </table>
     </div>`;
+
+  window._lotesData = data;
+  filtrarLotes();
 };
+
+window.filtrarLotes = function() {
+  const texto  = document.getElementById("filtro-lote-texto")?.value.toLowerCase() ?? "";
+  const estado = document.getElementById("filtro-lote-estado")?.value ?? "";
+  const tbody  = document.getElementById("body-lotes");
+  if (!tbody) return;
+
+  const filtrados = (window._lotesData || []).filter(l => {
+    const coincideTexto  = !texto  || l.codigo_lote?.toLowerCase().includes(texto) || l.proyecto?.nombre?.toLowerCase().includes(texto);
+    const coincideEstado = !estado || l.estado === estado;
+    return coincideTexto && coincideEstado;
+  });
+
+  tbody.innerHTML = filtrados.length
+    ? filtrados.map(l => `<tr>
+        <td>${l.codigo_lote}</td><td>${l.proyecto?.nombre||"—"}</td>
+        <td>${l.manzana}</td><td>${l.numero_lote}</td>
+        <td>${l.area_m2||"—"}</td><td>${UI.fmt(l.precio_base)}</td>
+        <td>${UI.badge(l.estado)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">Sin resultados</td></tr>`;
+};
+
 window.loteForm = async function() {
   const proyectos = await API.get("/proyectos");
   UI.openModal("Nuevo Lote", `
