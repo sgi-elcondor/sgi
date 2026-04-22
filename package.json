@@ -18,5 +18,15 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sgi-elcondor/sgi.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sgi-elcondor/sgi/issues"
+  },
+  "homepage": "https://github.com/sgi-elcondor/sgi#readme"
 }
