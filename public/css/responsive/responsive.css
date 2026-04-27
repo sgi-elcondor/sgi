@@ -1,0 +1,131 @@
+@media (max-width: 1200px) {
+  .stats-grid-primary,
+  .stats-grid-secondary,
+  .summary-strip,
+  .dashboard-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-two-col,
+  .page-header-main {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header-main {
+    flex-direction: column;
+  }
+
+  .page-header-side {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 920px) {
+  .sidebar {
+    width: var(--sidebar-collapsed-w);
+  }
+
+  .brand-name,
+  .sidebar-footer,
+  .nav-group-title,
+  .nav-item span:not(.nav-icon) {
+    display: none;
+  }
+
+  .sidebar-brand,
+  .nav-item {
+    justify-content: center;
+  }
+
+  .nav-item {
+    padding: 12px;
+  }
+
+  .topbar,
+  .view-container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-title {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 13px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .usuario-info {
+    width: 100%;
+  }
+
+  .stats-grid,
+  .stats-grid-primary,
+  .stats-grid-secondary,
+  .summary-strip,
+  .dashboard-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .view-title {
+    font-size: 22px;
+  }
+
+  .page-title {
+    font-size: 28px;
+  }
+
+  .page-actions {
+    width: 100%;
+  }
+
+  .page-actions .btn,
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .task-item,
+  .activity-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .activity-time {
+    white-space: normal;
+  }
+
+  .toast-root {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+  }
+
+  .toast {
+    min-width: 100%;
+    max-width: 100%;
+  }
+}
