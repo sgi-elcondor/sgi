@@ -1,0 +1,28 @@
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.alert-item.alto { border-left: 3px solid var(--danger); }
+.alert-item.medio { border-left: 3px solid var(--warning); }
+.alert-item.bajo { border-left: 3px solid var(--info); }
+
+.alert-tag {
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.alert-desc {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
