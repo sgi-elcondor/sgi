@@ -38,10 +38,34 @@ const VISTAS_POR_ROL = {
   ],
 };
 
+const TOPBAR_SUBTITLES = {
+  dashboard: "Centro de operación inmobiliaria",
+  proyectos: "Gestión de proyectos",
+  lotes: "Inventario y comercialización de lotes",
+  compradores: "Administración de compradores",
+  ventas: "Seguimiento del proceso comercial",
+  cuotas: "Control de obligaciones y vencimientos",
+  pagos: "Registro y aplicación de pagos",
+  comisionistas: "Seguimiento de comisiones",
+  facturas: "Emisión y control de facturas",
+  recibos: "Consulta de recibos",
+  reportes: "Indicadores y reportes consolidados",
+  alertas: "Seguimiento jurídico y alertas",
+  auditoria: "Trazabilidad y control interno",
+  usuarios: "Administración de accesos y roles",
+};
+
 window.currentUser = null;
 
 function capitalize(text = "") {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function humanizeRole(role = "") {
+  return String(role)
+    .split("_")
+    .map((part) => capitalize(part))
+    .join(" ");
 }
 
 function setTodayDate() {
@@ -64,10 +88,17 @@ function setActiveNav(viewKey) {
   });
 }
 
-function setViewTitle(title) {
+function setViewTitle(title, viewKey = "dashboard") {
   const viewTitle = document.getElementById("viewTitle");
+  const topbarSubtitle = document.getElementById("topbarSubtitle");
+
   if (viewTitle) {
     viewTitle.textContent = title;
+  }
+
+  if (topbarSubtitle) {
+    topbarSubtitle.textContent =
+      TOPBAR_SUBTITLES[viewKey] || "Centro de operación inmobiliaria";
   }
 }
 
@@ -103,10 +134,14 @@ function renderViewError(title) {
 
 function renderAccessDenied() {
   return `
-    <div style="text-align:center; margin-top:4rem; color:#888;">
-      <h2>⛔ Sin acceso</h2>
-      <p>No tienes permiso para ver esta sección.</p>
-    </div>
+    <section class="table-wrap" style="padding: 24px;">
+      <div class="table-header">
+        <h3>Acceso restringido</h3>
+      </div>
+      <div style="padding: 20px; color: var(--text-muted); line-height: 1.6;">
+        <p>No tienes permiso para ver esta sección.</p>
+      </div>
+    </section>
   `;
 }
 
@@ -137,18 +172,20 @@ function navigate(viewKey, updateHash = true) {
   const permitidas = VISTAS_POR_ROL[window.currentUser?.rol] ?? [];
   if (!permitidas.includes(viewKey)) {
     setActiveNav(viewKey);
-    setViewTitle(view.title);
+    setViewTitle(view.title, viewKey);
     if (viewContainer) viewContainer.innerHTML = renderAccessDenied();
+    window.SGIUI?.hydrate();
     return;
   }
 
   setActiveNav(viewKey);
-  setViewTitle(view.title);
+  setViewTitle(view.title, viewKey);
 
   const { fn: viewFn, candidates } = resolveViewFunction(viewKey, view);
 
   if (!viewFn) {
     if (viewContainer) viewContainer.innerHTML = renderMissingView(viewKey, candidates);
+    window.SGIUI?.hydrate();
     return;
   }
 
@@ -171,6 +208,8 @@ function navigate(viewKey, updateHash = true) {
     if (viewContainer) viewContainer.innerHTML = renderViewError(view.title);
   }
 
+  window.SGIUI?.hydrate();
+
   if (updateHash && window.location.hash !== `#${viewKey}`) {
     window.location.hash = viewKey;
   }
@@ -188,17 +227,9 @@ function renderUsuarioHeader(perfil) {
   if (!el) return;
 
   el.innerHTML = `
-    <span class="badge badge-${perfil.rol}" style="
-      padding:.25rem .65rem;border-radius:999px;font-size:.75rem;
-      background:#e8edff;color:#3d5af1;font-weight:600;">
-      ${perfil.rol}
-    </span>
-    <span style="font-size:.85rem;color:#555;">${perfil.email}</span>
-    <button id="btn-logout" style="
-      padding:.3rem .8rem;border:1px solid #ddd;border-radius:6px;
-      background:#fff;cursor:pointer;font-size:.8rem;color: #222222">
-      Cerrar sesión
-    </button>
+    <span class="user-role-badge">${humanizeRole(perfil.rol)}</span>
+    <span class="user-email">${perfil.email}</span>
+    <button id="btn-logout" class="btn btn-sm user-logout-btn">Cerrar sesión</button>
   `;
 
   document.getElementById("btn-logout")?.addEventListener("click", async () => {
@@ -225,6 +256,37 @@ function bindNavigation() {
       const viewKey = btn.dataset.view;
       if (viewKey) navigate(viewKey);
     });
+  });
+}
+
+function applySidebarState(collapsed) {
+  document.body.classList.toggle("sidebar-collapsed", collapsed);
+
+  const toggle = document.getElementById("sidebarToggle");
+  if (toggle) {
+    toggle.setAttribute("aria-pressed", String(collapsed));
+    toggle.title = collapsed ? "Expandir barra lateral" : "Colapsar barra lateral";
+    toggle.innerHTML = collapsed
+      ? '<i data-lucide="panel-left-open"></i>'
+      : '<i data-lucide="panel-left-close"></i>';
+
+    window.SGIUI?.hydrate();
+  }
+}
+
+function initSidebarToggle() {
+  const toggle = document.getElementById("sidebarToggle");
+  if (!toggle) return;
+
+  const STORAGE_KEY = "sgi_sidebar_collapsed";
+  const savedState = localStorage.getItem(STORAGE_KEY) === "1";
+
+  applySidebarState(savedState);
+
+  toggle.addEventListener("click", () => {
+    const collapsed = !document.body.classList.contains("sidebar-collapsed");
+    applySidebarState(collapsed);
+    localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   });
 }
 
@@ -270,6 +332,8 @@ async function iniciarApp() {
 
     aplicarMenuPorRol(perfil.rol);
     renderUsuarioHeader(perfil);
+    window.SGIUI?.hydrate();
+    initSidebarToggle();
     setTodayDate();
     bindNavigation();
 
