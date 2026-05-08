@@ -17,7 +17,7 @@ exports.getById = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { id_lote, valor_total, cuota_inicial, estado, observaciones, compradores, id_comisionista, porcentaje_comision } = req.body; 
+  const { id_lote, valor_total, cuota_inicial, estado, observaciones, compradores, id_comisionista, valor_comision } = req.body; 
 
   const { data: venta, error: eventa } = await supabase.schema(SCHEMA).from("venta")
     .insert([{ id_lote, valor_total, cuota_inicial, estado: estado || "activa", observaciones }]).select().single();
@@ -31,7 +31,7 @@ exports.create = async (req, res) => {
   
   if (id_comisionista) {
     const { error: eco } = await supabase.schema(SCHEMA).from("venta_comisionista")
-      .insert([{ id_venta: venta.id_venta, id_comisionista, porcentaje_comision: porcentaje_comision || 5 }]);
+      .insert([{ id_venta: venta.id_venta, id_comisionista, valor_comision: valor_comision || 0 }]);
     if (eco) return res.status(400).json({ error: eco.message });
   }
   res.status(201).json(venta);

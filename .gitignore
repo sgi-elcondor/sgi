@@ -3,5 +3,6 @@ node_modules/
 desktop.ini
 Thumbs.db
 dist/
+git-workflow.md
 src/config/firebase-service-account.json
 estructura_listada.txt

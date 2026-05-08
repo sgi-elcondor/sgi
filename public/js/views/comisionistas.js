@@ -11,9 +11,9 @@
     </div>
     <div class="table-wrap">
       <div class="table-header"><h3>Comisiones</h3></div>
-      <table><thead><tr><th>Venta</th><th>Comisionista</th><th>% Comisión</th><th>Total Pagado</th><th>% Pagado</th><th>Estado Calc.</th><th>Estado Reg.</th></tr></thead>
+      <table><thead><tr><th>Venta</th><th>Comisionista</th><th>Valor Comisión</th><th>Total Pagado</th><th>% Pagado</th><th>Estado Calc.</th><th>Estado Reg.</th></tr></thead>
         <tbody>${comisiones.map(c=>`<tr>
-          <td>#${c.id_venta}</td><td>${c.comisionista}</td><td>${c.porcentaje_comision}%</td>
+          <td>#${c.id_venta}</td><td>${c.comisionista}</td><td>${UI.fmt(c.valor_comision)}</td>
           <td>${UI.fmt(c.total_pagado_venta)}</td><td>${c.porcentaje_pagado_venta}%</td>
           <td>${UI.badge(c.estado_comision_calculado)}</td><td>${UI.badge(c.estado_comision_registrado)}</td>
         </tr>`).join("")}</tbody>

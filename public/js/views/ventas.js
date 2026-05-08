@@ -44,7 +44,7 @@ window.verVenta = async function(id) {
     <hr style="border-color:var(--border);margin:16px 0">
     <p><b>Compradores:</b></p>
     ${(v.venta_comprador||[]).map(c=>`<p style="padding-left:12px">· ${c.comprador?.nombres} ${c.comprador?.apellidos||""} — ${c.porcentaje}%</p>`).join("")||"<p style='color:var(--text-muted)'>Sin compradores</p>"}
-    <p style="margin-top:12px"><b>Comisionista:</b> ${v.venta_comisionista?`${v.venta_comisionista.comisionista?.nombres} (${v.venta_comisionista.porcentaje_comision}%)`:"—"}</p>`);
+    <p style="margin-top:12px"><b>Comisionista:</b> ${v.venta_comisionista?`${v.venta_comisionista.comisionista?.nombres} (${UI.fmt(v.venta_comisionista.valor_comision)})`:"—"}</p>`);
 };
 
 // ─── Formulario estándar (admin / operador) ───
@@ -65,7 +65,7 @@ window.ventaForm = async function() {
       <div class="form-group"><label>Comisionista</label>
         <select id="f_comi"><option value="">— Ninguno —</option>${comisionistas.map(c=>`<option value="${c.id_comisionista}">${c.nombres}</option>`).join("")}</select>
       </div>
-      <div class="form-group"><label>% Comisión</label><input id="f_pcom" type="number" value="5"/></div>
+      <div class="form-group"><label>Valor Comisión</label><input id="f_pcom" type="number" value="0"/></div>
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label><textarea id="f_obs" rows="2"></textarea></div>
     </div>
     <div class="form-actions">
@@ -82,7 +82,7 @@ window.guardarVenta = async function() {
     observaciones: document.getElementById("f_obs").value,
     compradores: [{ id_comprador: +document.getElementById("f_comp").value, porcentaje: 100 }],
     id_comisionista: idComi ? +idComi : null,
-    porcentaje_comision: +document.getElementById("f_pcom").value
+    valor_comision: +document.getElementById("f_pcom").value
   };
   try { await API.post("/ventas", body); UI.closeModal(); UI.toast("Venta creada","ok"); ventasView(); }
   catch(e) { UI.toast(e.message,"error"); }
@@ -126,7 +126,7 @@ window.guardarSolicitudVenta = async function() {
     observaciones: document.getElementById("f_obs").value,
     compradores: [{ id_comprador: +document.getElementById("f_comp").value, porcentaje: 100 }],
     id_comisionista: idComi ? +idComi : null,
-    porcentaje_comision: +document.getElementById("f_pcom").value
+    valor_comision: +document.getElementById("f_pcom").value
   };
   try {
     await API.post("/ventas/solicitud", body);
