@@ -1,0 +1,261 @@
+.ventas-page .page-header-card {
+  background: linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
+}
+
+.ventas-header-main {
+  align-items: center;
+}
+
+.ventas-header-side {
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+}
+
+.ventas-header-side .page-meta,
+.ventas-header-side .page-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.btn-ventas-main {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.ventas-info-card {
+  padding: 14px 18px;
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  border-radius: 16px;
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ventas-summary-grid .stat-card {
+  min-width: 0;
+}
+
+.ventas-money-value {
+  font-size: clamp(20px, 2.2vw, 30px);
+  word-break: break-word;
+}
+
+.venta-form-intro {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fffaf4;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.venta-readonly-value {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fbf8f3;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.venta-compradores-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.venta-comprador-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.venta-comprador-percent {
+  min-width: 120px;
+}
+
+.venta-comprador-remove {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 2px;
+}
+
+.venta-plan-preview {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.venta-plan-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: #fffaf4;
+}
+
+.venta-plan-preview-head h4 {
+  margin: 3px 0 0;
+  color: var(--text);
+  font: 18px var(--font-serif);
+}
+
+.venta-plan-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.venta-preview-empty {
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.venta-preview-table-wrap {
+  max-height: 300px;
+  overflow: auto;
+}
+
+.venta-preview-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.venta-preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 11px 14px;
+  background: #fbf8f3;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+}
+
+.venta-preview-table td {
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 13px;
+  border-bottom: 1px solid #f3ece3;
+}
+
+.venta-preview-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.venta-detail {
+  color: var(--text);
+}
+
+.venta-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.venta-detail-grid > div {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.venta-detail-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.venta-detail-line {
+  padding-left: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.form-error {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(220, 77, 77, 0.2);
+  border-radius: 12px;
+  background: rgba(220, 77, 77, 0.08);
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#btnGuardarVenta:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .ventas-header-main {
+    align-items: flex-start;
+  }
+
+  .ventas-header-side {
+    width: 100%;
+    min-width: 100%;
+    align-items: flex-start;
+  }
+
+  .ventas-header-side .page-meta,
+  .ventas-header-side .page-actions {
+    justify-content: flex-start;
+  }
+
+  .btn-ventas-main {
+    width: 100%;
+  }
+
+  .venta-comprador-row {
+    grid-template-columns: 1fr;
+  }
+
+  .venta-comprador-remove {
+    justify-content: flex-start;
+  }
+
+  .venta-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .venta-plan-preview-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
