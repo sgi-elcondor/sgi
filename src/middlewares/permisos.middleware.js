@@ -1,8 +1,9 @@
 const ROUTE_PERMISSIONS = require('../config/permissions');
 
 function verificarPermiso(req, res, next) {
-  // El rol administrador tiene acceso total — no necesita permisos explícitos
-  if (req.usuario?.rol === 'admin') return next();
+  // Roles con acceso total — no necesitan permisos explícitos
+  const ROLES_TOTALES = ['admin', 'auxiliar_contable'];
+  if (ROLES_TOTALES.includes(req.usuario?.rol)) return next();
 
   // req.path dentro de middleware montado en /api viene sin ese prefijo (/ventas, no /api/ventas)
   // req.originalUrl siempre contiene la ruta completa con /api incluido
