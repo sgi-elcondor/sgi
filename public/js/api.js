@@ -21,6 +21,9 @@ async function apiFetch(endpoint, options = {}) {
 
   if (response.status === 401) {
     try {
+      // Espera a que Firebase resuelva el estado de auth antes de decidir
+      if (window._authReady) await window._authReady;
+
       const auth = window._firebaseAuth;
       const user = auth?.currentUser;
 
@@ -30,12 +33,17 @@ async function apiFetch(endpoint, options = {}) {
         config.headers.Authorization = `Bearer ${newToken}`;
         response = await fetch(endpoint, config);
       } else {
+        // Solo redirige si Firebase confirma que no hay sesión activa
+        localStorage.removeItem("fb_token");
         window.location.href = "/login.html";
         return;
       }
     } catch {
-      window.location.href = "/login.html";
-      return;
+      // Error al refrescar token — redirige solo si no hay sesión
+      if (!window._firebaseAuth?.currentUser) {
+        window.location.href = "/login.html";
+        return;
+      }
     }
   }
 
