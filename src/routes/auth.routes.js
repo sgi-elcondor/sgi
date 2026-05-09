@@ -8,3 +8,8 @@ router.get('/perfil',   verificarToken, miPerfil);
 router.post('/usuarios', verificarToken, verificarPermiso, registrarUsuario);
 
 module.exports = router;
+
+function def() {+
+    
+    a
+}

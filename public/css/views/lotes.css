@@ -1,0 +1,108 @@
+.lotes-page .page-header-card {
+  background: linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
+}
+
+.summary-strip {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.summary-tile {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+}
+
+.summary-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.summary-tile strong {
+  color: var(--text);
+  font: 30px var(--font-serif);
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding: 16px 20px 20px;
+}
+
+.filter-field {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.table-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-caption {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.empty-state-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.empty-state-title {
+  color: var(--text);
+  font: 22px var(--font-serif);
+}
+
+.empty-state-text {
+  max-width: 56ch;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* ===== LOTES: CABECERA Y BOTONES ===== */
+
+.page-header-card .page-actions,
+.lotes-actions,
+.lotes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-header-card .btn-primary {
+  min-width: 140px;
+}
+
+.table-header .btn,
+.section-head .btn {
+  min-width: auto;
+}

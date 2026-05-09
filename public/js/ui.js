@@ -28,5 +28,122 @@
   }
 };
 
+(() => {
+  function icon(name, className = "") {
+    return `<i data-lucide="${name}" class="sgi-icon ${className}"></i>`;
+  }
+
+  function pageHeader({
+    kicker = "",
+    title = "",
+    subtitle = "",
+    actions = "",
+    meta = ""
+  }) {
+    return `
+      <section class="page-header-card">
+        <div class="page-header-main">
+          <div class="page-header-copy">
+            ${kicker ? `<span class="page-kicker">${kicker}</span>` : ""}
+            <h2 class="page-title">${title}</h2>
+            ${subtitle ? `<p class="page-subtitle">${subtitle}</p>` : ""}
+          </div>
+
+          ${(actions || meta) ? `
+            <div class="page-header-side">
+              ${meta ? `<div class="page-meta">${meta}</div>` : ""}
+              ${actions ? `<div class="page-actions">${actions}</div>` : ""}
+            </div>
+          ` : ""}
+        </div>
+      </section>
+    `;
+  }
+
+  function sectionHeader({ kicker = "", title = "", actions = "" }) {
+    return `
+      <div class="section-head">
+        <div>
+          ${kicker ? `<span class="section-kicker">${kicker}</span>` : ""}
+          <h3 class="section-title">${title}</h3>
+        </div>
+        ${actions ? `<div class="section-actions">${actions}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function emptyState({
+    title = "Sin resultados",
+    text = "No hay información para mostrar.",
+    actionLabel = "",
+    actionId = ""
+  }) {
+    return `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          ${icon("inbox")}
+        </div>
+        <div class="empty-state-title">${title}</div>
+        <div class="empty-state-text">${text}</div>
+        ${actionLabel && actionId ? `
+          <div>
+            <button class="btn btn-primary" id="${actionId}">
+              ${actionLabel}
+            </button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  function toast(message, type = "success", title = "Éxito") {
+    let root = document.getElementById("toastRoot");
+
+    if (!root) {
+      root = document.createElement("div");
+      root.id = "toastRoot";
+      root.className = "toast-root";
+      document.body.appendChild(root);
+    }
+
+    const toastEl = document.createElement("div");
+    toastEl.className = `toast toast-${type}`;
+    toastEl.innerHTML = `
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    `;
+
+    root.appendChild(toastEl);
+
+    requestAnimationFrame(() => {
+      toastEl.classList.add("show");
+    });
+
+    setTimeout(() => {
+      toastEl.classList.remove("show");
+      setTimeout(() => toastEl.remove(), 220);
+    }, 2600);
+  }
+
+  function hydrate() {
+    if (window.lucide?.createIcons) {
+      window.lucide.createIcons({
+        attrs: {
+          "stroke-width": 1.8
+        }
+      });
+    }
+  }
+
+  window.SGIUI = {
+    icon,
+    pageHeader,
+    sectionHeader,
+    emptyState,
+    toast,
+    hydrate
+  };
+})();
+
 document.getElementById("modalClose").addEventListener("click", UI.closeModal);
 document.getElementById("modalOverlay").addEventListener("click", e => { if (e.target.id === "modalOverlay") UI.closeModal(); });
