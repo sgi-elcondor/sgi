@@ -344,19 +344,28 @@ async function iniciarApp() {
     navigate(getInitialView(), false);
   } catch (err) {
     console.error("Error cargando perfil:", err.message);
-    localStorage.removeItem("fb_token");
 
-    try {
-      const auth = window._firebaseAuth;
-      if (auth?.currentUser) {
-        const { signOut } = await import(
-          "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
-        );
-        await signOut(auth);
-      }
-    } catch (e) {}
+    // Solo hace signOut si Firebase confirma que no hay sesión activa.
+    // Un error de red o Supabase lento no debe cerrar la sesión.
+    const firebaseUser = window._firebaseAuth?.currentUser;
+    if (!firebaseUser) {
+      localStorage.removeItem("fb_token");
+      redirigirConDelay("/login.html");
+      return;
+    }
 
-    redirigirConDelay("/login.html");
+    // Hay sesión Firebase activa — muestra error sin cerrar sesión
+    const vc = document.getElementById("viewContainer");
+    if (vc) {
+      vc.innerHTML = `
+        <section class="table-wrap" style="padding:24px">
+          <div class="table-header"><h3>Error al cargar el perfil</h3></div>
+          <div style="padding:20px;color:var(--danger);line-height:1.6">
+            ${err.message}<br><br>
+            <button class="btn btn-primary" onclick="location.reload()">Reintentar</button>
+          </div>
+        </section>`;
+    }
   }
 }
 
