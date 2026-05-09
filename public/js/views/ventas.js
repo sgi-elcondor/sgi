@@ -201,13 +201,25 @@ window.verVenta = async function(id) {
       ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
     `)}
 
-    ${S("Valores financieros", `
-      ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
-      ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
-      ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
-      ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
-      ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
-    `)}
+    ${(() => {
+      const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
+      const vfBody = `
+        ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
+        ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
+        ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
+        ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+        ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
+      `;
+      return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="padding:7px 14px;background:var(--surface-2,#f0f4f8);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Valores financieros</span>
+          ${puedeEditar ? `<button type="button" class="btn btn-ghost btn-sm"
+            style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:600;letter-spacing:0"
+            onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">Editar valores</button>` : ""}
+        </div>
+        <div id="sgi_vf_body" style="padding:12px 14px">${vfBody}</div>
+      </div>`;
+    })()}
 
     ${S("Compradores", `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
       <thead><tr style="border-bottom:2px solid var(--border)">
@@ -270,6 +282,49 @@ window.verVenta = async function(id) {
     `)}`;
 
   UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
+};
+
+window._editarFinanciero = function(id, vtActual, ciActual) {
+  const body = document.getElementById("sgi_vf_body");
+  if (!body) return;
+  body.innerHTML = `
+    <div class="form-grid" style="gap:10px">
+      <div class="form-group">
+        <label style="font-size:.8rem">Valor total *</label>
+        <input id="ef_vt" type="text" inputmode="numeric" value="${_fmtMiles(vtActual)}"
+               oninput="_onMoneyInput(this)" style="padding:5px 8px"/>
+      </div>
+      <div class="form-group">
+        <label style="font-size:.8rem">Cuota inicial</label>
+        <input id="ef_ci" type="text" inputmode="numeric" value="${_fmtMiles(ciActual)}"
+               oninput="_onMoneyInput(this)" style="padding:5px 8px"/>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label style="font-size:.8rem">Motivo del cambio *
+          <span style="color:var(--text-muted);font-weight:400">(se registra en auditoría)</span>
+        </label>
+        <textarea id="ef_obs" rows="2" style="font-size:.85rem"
+                  placeholder="Ej: corrección de precio por addendum al contrato"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-primary btn-sm" onclick="_guardarFinanciero(${id})">Guardar</button>
+      <button class="btn btn-ghost btn-sm"   onclick="verVenta(${id})">Cancelar</button>
+    </div>`;
+};
+
+window._guardarFinanciero = async function(id) {
+  const vt  = _parseMiles(document.getElementById("ef_vt")?.value  || "0");
+  const ci  = _parseMiles(document.getElementById("ef_ci")?.value  || "0");
+  const obs = (document.getElementById("ef_obs")?.value || "").trim();
+  if (!vt || vt <= 0) return UI.toast("El valor total debe ser mayor a cero", "error");
+  if (ci > vt)        return UI.toast("La cuota inicial no puede superar el valor total", "error");
+  if (!obs)           return UI.toast("El motivo del cambio es requerido para la auditoría", "error");
+  try {
+    await API.patch(`/ventas/${id}/financiero`, { valor_total: vt, cuota_inicial: ci, observaciones: obs });
+    UI.toast("Valores actualizados", "ok");
+    verVenta(id);
+  } catch(e) { UI.toast(e.message, "error"); }
 };
 
 // ─── Formato de miles (separador punto) ───

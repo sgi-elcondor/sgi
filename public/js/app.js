@@ -33,6 +33,11 @@ const VISTAS_POR_ROL = {
   ],
   comprador: ["dashboard"],
   comisionista: ["dashboard", "reportes"],
+  auxiliar_contable: [
+    "dashboard", "proyectos", "lotes", "compradores", "ventas",
+    "cuotas", "pagos", "comisionistas", "facturas", "recibos",
+    "reportes", "alertas", "auditoria", "usuarios"
+  ],
   asesor_comercial: [
     "dashboard", "proyectos", "lotes", "compradores", "ventas"
   ],

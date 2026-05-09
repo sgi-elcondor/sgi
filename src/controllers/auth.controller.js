@@ -5,8 +5,8 @@ const supabase = require('../config/supabase');
 async function registrarUsuario(req, res) {
   const { firebase_uid, email, id_rol, id_comprador, id_comisionista } = req.body;
 
-  // Solo admins pueden registrar usuarios
-  if (req.usuario.rol !== 'admin') {
+  const ROLES_CON_ACCESO = ['admin', 'auxiliar_contable'];
+  if (!ROLES_CON_ACCESO.includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Solo un administrador puede registrar usuarios' });
   }
 
