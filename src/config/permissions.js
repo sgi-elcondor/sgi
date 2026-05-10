@@ -23,8 +23,10 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/ventas/financiero':   { recurso: 'ventas',        accion: 'editar_financiero' },
 
   'GET /api/cuotas':                { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/pendientes':     { recurso: 'cuotas',        accion: 'leer' },
   'POST /api/cuotas':               { recurso: 'cuotas',        accion: 'crear' },
   'PUT /api/cuotas':                { recurso: 'cuotas',        accion: 'actualizar' },
+  'PATCH /api/cuotas/valores':      { recurso: 'cuotas',        accion: 'editar_valores' },
 
   'GET /api/pagos':                 { recurso: 'pagos',         accion: 'leer' },
   'POST /api/pagos':                { recurso: 'pagos',         accion: 'crear' },
