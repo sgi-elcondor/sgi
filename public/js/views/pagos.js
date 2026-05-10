@@ -1,4 +1,38 @@
-window.pagosView = async function() {
+function _pagosTabla(data) {
+  if (!data.length) {
+    return `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin pagos registrados</td></tr>`;
+  }
+  return data.map(p => `<tr>
+    <td>${p.id_pago}</td>
+    <td>${UI.date(p.fecha_pago)}</td>
+    <td>${UI.fmt(p.valor_pago)}</td>
+    <td>${p.metodo_pago}</td>
+    <td>${p.referencia || "—"}</td>
+    <td>${p.tipo_excedente ? UI.badge(p.tipo_excedente) : "—"}</td>
+  </tr>`).join("");
+}
+
+window.pagosReadView = async function() {
+  const vc = document.getElementById("viewContainer");
+  vc.innerHTML = UI.loader();
+  const data = await API.get("/pagos").catch(e => {
+    vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
+    return null;
+  });
+  if (!data) return;
+  vc.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header"><h3>Pagos</h3></div>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+        </tr></thead>
+        <tbody>${_pagosTabla(data)}</tbody>
+      </table>
+    </div>`;
+};
+
+window.pagosEditView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
   const data = await API.get("/pagos").catch(e => {
@@ -13,16 +47,25 @@ window.pagosView = async function() {
         <button class="btn btn-primary btn-sm" onclick="pagoForm()">+ Registrar Pago</button>
       </div>
       <table>
-        <thead><tr><th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th></tr></thead>
-        <tbody>${data.map(p => `<tr>
-          <td>${p.id_pago}</td>
-          <td>${UI.date(p.fecha_pago)}</td>
-          <td>${UI.fmt(p.valor_pago)}</td>
-          <td>${p.metodo_pago}</td>
-          <td>${p.referencia || "—"}</td>
-          <td>${UI.badge(p.tipo_excedente)}</td>
-        </tr>`).join("")}</tbody>
+        <thead><tr>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+        </tr></thead>
+        <tbody>${_pagosTabla(data)}</tbody>
       </table>
+    </div>`;
+};
+
+window.pagosUploadView = function() {
+  const vc = document.getElementById("viewContainer");
+  vc.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header"><h3>Registrar Pago</h3></div>
+      <div style="padding:24px 0">
+        <p style="color:var(--text-muted);margin-bottom:16px">
+          Selecciona las cuotas que deseas cubrir y registra tu pago.
+        </p>
+        <button class="btn btn-primary" onclick="pagoForm()">+ Registrar Pago</button>
+      </div>
     </div>`;
 };
 
@@ -125,7 +168,7 @@ window.guardarPago = async function() {
     await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, cuotas });
     UI.closeModal();
     window.SGIUI?.toast("Pago registrado. Recibo generado automáticamente.", "success", "Éxito");
-    pagosView();
+    window.navigate(window.currentViewKey, false);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
     window.SGIUI?.toast(e.message || "Error al registrar el pago.", "error", "Error");
