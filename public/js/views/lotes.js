@@ -12,20 +12,23 @@
       style: "currency",
       currency: "COP",
       maximumFractionDigits: 0
-    }).format(value);
+    }).format(Number(value || 0));
   }
 
   function sgiLoteFormatDate(value) {
     if (!value) return "—";
 
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
     return new Intl.DateTimeFormat("es-CO", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
-    }).format(new Date(value));
+    }).format(date);
   }
 
-  function sgiLoteGetStatusBadge(estado) {
+  function sgiLoteGetStatusBadge(estado = "Disponible") {
     const normalized = sgiNormalizeText(estado);
 
     const classMap = {
@@ -35,6 +38,119 @@
     };
 
     return `<span class="${classMap[normalized] || "badge badge-muted"}">${estado}</span>`;
+  }
+
+  function sgiExtraerArray(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.lotes)) return data.lotes;
+    if (Array.isArray(data?.proyectos)) return data.proyectos;
+    return [];
+  }
+
+  function sgiGetProyectoId(proyecto = {}) {
+    const id =
+      proyecto.id_proyecto ??
+      proyecto.idProyecto ??
+      proyecto.proyecto_id ??
+      proyecto.proyectoId ??
+      proyecto.id;
+
+    const parsed = Number(id);
+
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function sgiNormalizarProyecto(proyecto = {}) {
+    return {
+      ...proyecto,
+      id: sgiGetProyectoId(proyecto),
+      nombre:
+        proyecto.nombre ||
+        proyecto.nombre_proyecto ||
+        proyecto.proyecto ||
+        proyecto.descripcion ||
+        "Proyecto"
+    };
+  }
+
+  function sgiNormalizarLote(lote = {}) {
+  const proyectoObj = typeof lote.proyecto === "object" ? lote.proyecto : null;
+
+  const proyectoId =
+    lote.id_proyecto ??
+    lote.proyectoId ??
+    proyectoObj?.id_proyecto ??
+    proyectoObj?.id ??
+    "";
+
+  const proyecto =
+    proyectoObj?.nombre ||
+    lote.proyecto ||
+    lote.nombre_proyecto ||
+    "Proyecto";
+
+  const codigo =
+    lote.codigo_lote ||
+    lote.codigo ||
+    [
+      lote.manzana ? `Mz${lote.manzana}` : "",
+      lote.numero_lote ? `Lt${lote.numero_lote}` : ""
+    ].filter(Boolean).join(" ") ||
+    "—";
+
+  const area =
+    lote.area_m2 ??
+    lote.area ??
+    lote.area_total ??
+    0;
+
+  return {
+    ...lote,
+    id: lote.id_lote ?? lote.id,
+    id_lote: lote.id_lote ?? lote.id,
+    codigo,
+    codigo_lote: codigo,
+    proyectoId,
+    proyecto,
+    area,
+    dimensiones: lote.dimensiones || `${area} m²`,
+    precio: lote.precio_base ?? lote.precio_lista ?? lote.precio ?? lote.valor ?? 0,
+    estado: lote.estado || "Disponible",
+    fechaCreacion:
+      lote.fecha_creacion ||
+      lote.fechaCreacion ||
+      lote.createdAt ||
+      lote.created_at ||
+      lote.fecha_registro ||
+      null
+  };
+}
+
+  function sgiParseCodigoLote(codigo) {
+    const value = String(codigo || "").trim().toUpperCase();
+
+    if (!value) {
+      return {
+        manzana: "",
+        numero_lote: ""
+      };
+    }
+
+    const parts = value.split(/[-\s]+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return {
+        manzana: parts[0],
+        numero_lote: parts.slice(1).join("-")
+      };
+    }
+
+    return {
+      manzana: "",
+      numero_lote: value
+    };
   }
 
   function sgiLoteBuildSummary(lotes) {
@@ -63,11 +179,7 @@
       const matchesProject =
         !state.proyecto || String(lote.proyectoId) === String(state.proyecto);
 
-      const haystack = [
-        lote.codigo,
-        lote.proyecto,
-        lote.estado
-      ]
+      const haystack = [lote.codigo, lote.proyecto, lote.estado]
         .map(sgiNormalizeText)
         .join(" ");
 
@@ -97,19 +209,25 @@
 
       case "fecha_desc":
         return cloned.sort(
-          (a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
+          (a, b) =>
+            new Date(b.fechaCreacion || 0).getTime() -
+            new Date(a.fechaCreacion || 0).getTime()
         );
 
       case "fecha_asc":
         return cloned.sort(
-          (a, b) => new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime()
+          (a, b) =>
+            new Date(a.fechaCreacion || 0).getTime() -
+            new Date(b.fechaCreacion || 0).getTime()
         );
 
       default:
         return cloned.sort((a, b) => {
-          const proyectoCompare = String(a.proyecto).localeCompare(String(b.proyecto), "es", {
-            sensitivity: "base"
-          });
+          const proyectoCompare = String(a.proyecto).localeCompare(
+            String(b.proyecto),
+            "es",
+            { sensitivity: "base" }
+          );
 
           if (proyectoCompare !== 0) return proyectoCompare;
 
@@ -132,25 +250,29 @@
       `;
     }
 
-    return lotes.map((lote) => `
-      <tr>
-        <td><strong>${lote.codigo}</strong></td>
-        <td>${lote.proyecto}</td>
-        <td>${lote.area} m²</td>
-        <td>${sgiLoteFormatCurrency(lote.precio)}</td>
-        <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
-        <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
-        <td>
-          <button
-            class="btn btn-sm btn-ghost"
-            disabled
-            title="El estado del lote no se modifica manualmente"
-          >
-            Solo lectura
-          </button>
-        </td>
-      </tr>
-    `).join("");
+    return lotes
+      .map(
+        (lote) => `
+          <tr>
+            <td><strong>${lote.codigo}</strong></td>
+            <td>${lote.proyecto}</td>
+            <td>${Number(lote.area || 0)} m²</td>
+            <td>${sgiLoteFormatCurrency(lote.precio)}</td>
+            <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
+            <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
+            <td>
+              <button
+                class="btn btn-sm btn-ghost"
+                disabled
+                title="El estado del lote no se modifica manualmente"
+              >
+                Solo lectura
+              </button>
+            </td>
+          </tr>
+        `
+      )
+      .join("");
   }
 
   function sgiEnsureToastRoot() {
@@ -167,6 +289,11 @@
   }
 
   function sgiShowToast(message, type = "success") {
+    if (window.UI?.toast) {
+      UI.toast(message, type === "success" ? "ok" : "error");
+      return;
+    }
+
     const root = sgiEnsureToastRoot();
     const toast = document.createElement("div");
 
@@ -201,6 +328,65 @@
     body.innerHTML = "";
   }
 
+  async function sgiCargarLotesBackend() {
+    const data = await API.get("/lotes");
+    return sgiExtraerArray(data).map(sgiNormalizarLote);
+  }
+
+  async function sgiCargarProyectosBackend() {
+    const data = await API.get("/proyectos");
+
+    return sgiExtraerArray(data)
+      .map(sgiNormalizarProyecto)
+      .filter((proyecto) => proyecto.id);
+  }
+
+ async function sgiCrearLoteBackend(payload) {
+  const codigo = String(payload.codigo || "").trim().toUpperCase();
+  const proyectoId = Number(payload.proyectoId);
+  const area = Number(payload.area);
+  const precio = Number(payload.precio);
+  const codigoPartes = sgiParseCodigoLote(codigo);
+
+  if (!codigo) {
+    throw new Error("El código del lote es obligatorio.");
+  }
+
+  if (!Number.isInteger(proyectoId) || proyectoId <= 0) {
+    throw new Error(
+      "Debes seleccionar un proyecto válido antes de crear el lote."
+    );
+  }
+
+  if (!Number.isFinite(area) || area <= 0) {
+    throw new Error("El área debe ser mayor a cero.");
+  }
+
+  if (!Number.isFinite(precio) || precio <= 0) {
+    throw new Error("El precio debe ser mayor a cero.");
+  }
+
+  const dimensiones = `${area} m²`;
+
+  const body = {
+    id_proyecto: proyectoId,
+
+    codigo_lote: codigo,
+    manzana: codigoPartes.manzana || codigo,
+    numero_lote: codigoPartes.numero_lote || codigo,
+
+    area_m2: area,
+    dimensiones,
+
+    precio_base: precio,
+    precio_lista: precio,
+
+    estado: "disponible"
+  };
+
+  return API.post("/lotes", body);
+}
+
   function sgiOpenCreateLoteModal(proyectos, onCreated) {
     const overlay = document.getElementById("modalOverlay");
     const title = document.getElementById("modalTitle");
@@ -229,9 +415,19 @@
             <label for="loteProyecto">Proyecto</label>
             <select id="loteProyecto" name="proyectoId" required>
               <option value="">Selecciona un proyecto</option>
-              ${proyectos.map((proyecto) => `
-                <option value="${proyecto.id}">${proyecto.nombre}</option>
-              `).join("")}
+              ${
+                proyectos.length
+                  ? proyectos
+                      .map(
+                        (proyecto) => `
+                          <option value="${proyecto.id}">
+                            ${proyecto.nombre}
+                          </option>
+                        `
+                      )
+                      .join("")
+                  : `<option value="" disabled>No hay proyectos disponibles</option>`
+              }
             </select>
           </div>
 
@@ -274,7 +470,7 @@
 
         <div class="form-note">
           El lote se creará asociado a un proyecto existente y con estado inicial
-          <strong>Disponible</strong>.
+          <strong>Disponible</strong> para futuras ventas.
         </div>
 
         <div id="sgiLoteFormError" class="form-error" style="display:none;"></div>
@@ -283,7 +479,7 @@
           <button type="button" class="btn btn-ghost" id="sgiCancelCreateLote">
             Cancelar
           </button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-primary" id="sgiSubmitCreateLote">
             Guardar lote
           </button>
         </div>
@@ -295,6 +491,7 @@
 
     const form = document.getElementById("sgiCreateLoteForm");
     const cancelBtn = document.getElementById("sgiCancelCreateLote");
+    const submitBtn = document.getElementById("sgiSubmitCreateLote");
     const errorBox = document.getElementById("sgiLoteFormError");
 
     const closeHandler = () => sgiCloseLoteModal();
@@ -318,19 +515,32 @@
 
       const payload = {
         codigo: formData.get("codigo"),
-        proyectoId: formData.get("proyectoId"),
+        proyectoId: Number(formData.get("proyectoId")),
         area: formData.get("area"),
         precio: formData.get("precio")
       };
 
       try {
-        const nuevoLote = await window.api.createLote(payload);
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Guardando...";
+
+        const nuevoLote = await sgiCrearLoteBackend(payload);
+
         sgiCloseLoteModal();
-        sgiShowToast(`Lote ${nuevoLote.codigo} creado correctamente.`, "success");
+
+        const codigoLote =
+          nuevoLote?.codigo_lote ||
+          nuevoLote?.codigo ||
+          payload.codigo;
+
+        sgiShowToast(`Lote ${codigoLote} creado correctamente.`, "success");
         onCreated?.();
       } catch (error) {
         errorBox.textContent = error.message || "No fue posible crear el lote.";
         errorBox.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Guardar lote";
       }
     };
   }
@@ -346,9 +556,11 @@
 
     async function renderLotesScreen() {
       try {
+        container.innerHTML = window.UI?.loader ? UI.loader() : "";
+
         const [allLotes, proyectos] = await Promise.all([
-          window.api.getLotes(),
-          window.api.getProyectos()
+          sgiCargarLotesBackend(),
+          sgiCargarProyectosBackend()
         ]);
 
         const filteredLotes = sgiLoteSortList(
@@ -541,6 +753,8 @@
         btnEmptyCreateLote?.addEventListener("click", () => {
           sgiOpenCreateLoteModal(proyectos, renderLotesScreen);
         });
+
+        window.SGIUI?.hydrate?.();
       } catch (error) {
         console.error("Error cargando lotes:", error);
 
@@ -550,7 +764,7 @@
               <h3>Error al cargar la vista</h3>
             </div>
             <div style="padding: 20px; color: var(--danger); line-height: 1.6;">
-              Ocurrió un error cargando la gestión de lotes. Revisa la consola para más detalles.
+              ${error.message || "Ocurrió un error cargando la gestión de lotes. Revisa la consola para más detalles."}
             </div>
           </section>
         `;
@@ -560,5 +774,126 @@
     renderLotesScreen();
   }
 
-  window.lotesView = lotesView;
+  
+function lotesReadView(container) {
+    if (!container) return "";
+
+    const state = { proyecto: "", search: "", sortBy: "proyecto_codigo" };
+
+    async function renderLotesScreen() {
+      try {
+        container.innerHTML = window.UI?.loader ? UI.loader() : "";
+
+        const [allLotes, proyectos] = await Promise.all([
+          sgiCargarLotesBackend(),
+          sgiCargarProyectosBackend()
+        ]);
+
+        const filteredLotes = sgiLoteSortList(sgiLoteApplyFilters(allLotes, state), state.sortBy);
+        const summary = sgiLoteBuildSummary(filteredLotes);
+
+        container.innerHTML = `
+          <section class="dashboard-shell">
+            <section class="table-wrap lotes-intro">
+              <div class="lotes-intro-body">
+                <div>
+                  <span class="section-kicker">Inventario</span>
+                  <h3 class="section-title">Lotes disponibles</h3>
+                  <p class="lotes-intro-text">Consulta el inventario de lotes por proyecto.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="dashboard-block">
+              <div class="section-head">
+                <div>
+                  <span class="section-kicker">Resumen</span>
+                  <h3 class="section-title">Estado del inventario</h3>
+                </div>
+              </div>
+              <div class="stats-grid lotes-summary-grid">
+                <article class="stat-card">
+                  <div class="stat-label">Total lotes</div>
+                  <div class="stat-value">${summary.total}</div>
+                  <div class="stat-sub">Resultado actual</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Disponibles</div>
+                  <div class="stat-value">${summary.disponibles}</div>
+                  <div class="stat-sub">Listos para comercializacion</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Vendidos</div>
+                  <div class="stat-value">${summary.vendidos}</div>
+                  <div class="stat-sub">Con venta registrada</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Entregados</div>
+                  <div class="stat-value">${summary.entregados}</div>
+                  <div class="stat-sub">Proceso finalizado</div>
+                </article>
+              </div>
+            </section>
+
+            <section class="table-wrap">
+              <div class="table-header"><h3>Filtros y busqueda</h3></div>
+              <div class="filter-bar">
+                <div class="form-group filter-field">
+                  <label for="filtroProyectoR">Proyecto</label>
+                  <select id="filtroProyectoR">
+                    <option value="">Todos</option>
+                    ${proyectos.map((p) => `<option value="${p.id}" ${String(state.proyecto) === String(p.id) ? "selected" : ""}>${p.nombre}</option>`).join("")}
+                  </select>
+                </div>
+                <div class="form-group filter-field">
+                  <label for="buscarLoteR">Buscar</label>
+                  <input id="buscarLoteR" type="text" placeholder="Buscar por codigo, proyecto o estado" value="${state.search}" />
+                </div>
+              </div>
+            </section>
+
+            <section class="table-wrap">
+              <div class="table-header"><h3>Listado de lotes</h3></div>
+              ${filteredLotes.length ? `
+                <table>
+                  <thead>
+                    <tr><th>Codigo</th><th>Proyecto</th><th>Area</th><th>Precio</th><th>Estado</th></tr>
+                  </thead>
+                  <tbody>
+                    ${filteredLotes.map((lote) => `
+                      <tr>
+                        <td><strong>${lote.codigo}</strong></td>
+                        <td>${lote.proyecto}</td>
+                        <td>${Number(lote.area || 0)} m&sup2;</td>
+                        <td>${sgiLoteFormatCurrency(lote.precio)}</td>
+                        <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              ` : `<div class="empty-state"><div class="empty-state-title">No hay resultados</div></div>`}
+            </section>
+          </section>
+        `;
+
+        document.getElementById("filtroProyectoR")?.addEventListener("change", (e) => { state.proyecto = e.target.value; renderLotesScreen(); });
+        document.getElementById("buscarLoteR")?.addEventListener("input", (e) => { state.search = e.target.value; renderLotesScreen(); });
+        window.SGIUI?.hydrate?.();
+
+      } catch (error) {
+        console.error("Error cargando lotes:", error);
+        container.innerHTML = `<section class="table-wrap" style="padding:24px"><div class="table-header"><h3>Error</h3></div><div style="padding:20px;color:var(--danger)">${error.message}</div></section>`;
+      }
+    }
+
+    renderLotesScreen();
+  }
+
+  function lotesEditView(container) {
+    window.lotesView(container);
+  }
+
+  window.lotesView     = lotesView;
+  window.lotesReadView = lotesReadView;
+  window.lotesEditView = lotesEditView;
 })();

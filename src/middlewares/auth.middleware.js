@@ -1,4 +1,4 @@
-const admin    = require('../config/firebase');
+﻿const admin    = require('../config/firebase');
 const supabase = require('../config/supabase');
 
 async function verificarToken(req, res, next) {
@@ -12,7 +12,6 @@ async function verificarToken(req, res, next) {
   try {
     const decoded = await admin.auth().verifyIdToken(token);
 
-    // PASO 1 — obtener usuario simple
     let { data: usuario, error } = await supabase
       .schema('condor')
       .from('usuarios')
@@ -20,14 +19,32 @@ async function verificarToken(req, res, next) {
       .eq('firebase_uid', decoded.uid)
       .single();
 
-    // ── Usuario no existe: auto-registro con rol por defecto ──
     if (error?.code === 'PGRST116' || !usuario) {
+      const { data: byEmail } = await supabase
+        .schema('condor')
+        .from('usuarios')
+        .select('id_usuario, email, activo, id_rol, id_comprador, id_comisionista')
+        .eq('email', decoded.email)
+        .single();
+
+      if (byEmail) {
+        await supabase
+          .schema('condor')
+          .from('usuarios')
+          .update({ firebase_uid: decoded.uid })
+          .eq('id_usuario', byEmail.id_usuario);
+        usuario = byEmail;
+      }
+    }
+
+    if (!usuario) {
       const { data: rolDefault, error: rolError } = await supabase
         .schema('condor')
         .from('roles')
         .select('id_rol')
         .eq('nombre', 'comprador')
         .single();
+
       if (rolError || !rolDefault) {
         return res.status(403).json({ error: 'No se pudo asignar rol por defecto' });
       }
@@ -58,7 +75,6 @@ async function verificarToken(req, res, next) {
       return res.status(403).json({ error: 'Usuario sin rol asignado. Contacta al administrador.' });
     }
 
-    // PASO 2 — obtener rol y permisos por separado
     const { data: rolData, error: rolError } = await supabase
       .schema('condor')
       .from('roles')
@@ -75,7 +91,6 @@ async function verificarToken(req, res, next) {
       return res.status(403).json({ error: 'No se pudo cargar el rol del usuario.' });
     }
 
-    // PASO 3 — construir permisos
     const permisos = new Set(
       (rolData.rol_permiso ?? []).map(rp =>
         `${rp.permisos.recurso}:${rp.permisos.accion}`
@@ -95,7 +110,7 @@ async function verificarToken(req, res, next) {
 
   } catch (err) {
     console.error('[middleware] Error verificando token:', err.message);
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+    return res.status(401).json({ error: 'Token invalido o expirado' });
   }
 }
 
