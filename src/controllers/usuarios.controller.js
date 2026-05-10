@@ -1,6 +1,5 @@
-const supabase = require('../config/supabase');
+﻿const supabase = require('../config/supabase');
 
-// Listar todos los usuarios con su rol
 async function listarUsuarios(req, res) {
   const { data, error } = await supabase
     .schema('condor')
@@ -17,7 +16,6 @@ async function listarUsuarios(req, res) {
   return res.json(data);
 }
 
-// Listar roles disponibles
 async function listarRoles(req, res) {
   const { data, error } = await supabase
     .schema('condor')
@@ -29,49 +27,161 @@ async function listarRoles(req, res) {
   return res.json(data);
 }
 
-// Crear usuario (el admin ya creó la cuenta en Firebase, aquí la vincula)
 async function crearUsuario(req, res) {
-  const { firebase_uid, email, id_rol, id_comprador, id_comisionista } = req.body;
+  const { email, id_rol, nombres, apellidos, documento, telefono } = req.body;
 
-  if (!firebase_uid || !email || !id_rol) {
-    return res.status(400).json({ error: 'firebase_uid, email e id_rol son obligatorios' });
+  if (!email || !id_rol) {
+    return res.status(400).json({ error: 'email e id_rol son obligatorios' });
   }
 
-  const { data, error } = await supabase
+  const { data: rolData, error: rolError } = await supabase
     .schema('condor')
-    .from('usuarios')
-    .insert([{ firebase_uid, email, id_rol, id_comprador, id_comisionista }])
-    .select()
+    .from('roles')
+    .select('nombre')
+    .eq('id_rol', id_rol)
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
-  return res.status(201).json(data);
+  if (rolError || !rolData) {
+    return res.status(400).json({ error: 'Rol no encontrado' });
+  }
+
+  const rolNombre = rolData.nombre;
+  const esCompradorOComisionista = rolNombre === 'comprador' || rolNombre === 'comisionista';
+
+  if (esCompradorOComisionista && (!nombres || !apellidos || !documento)) {
+    return res.status(400).json({ error: 'Para compradores y comisionistas: nombres, apellidos y documento son obligatorios' });
+  }
+
+  try {
+    let id_comprador = null;
+    let id_comisionista = null;
+
+    if (rolNombre === 'comprador') {
+      const { data: existente } = await supabase
+        .schema('condor')
+        .from('comprador')
+        .select('id_comprador')
+        .eq('documento', documento)
+        .single();
+
+      if (existente) {
+        return res.status(409).json({ error: 'Ya existe un comprador con ese documento' });
+      }
+
+      const { data: comp, error: errC } = await supabase
+        .schema('condor')
+        .from('comprador')
+        .insert([{ tipo_persona: 'natural', documento, nombres, apellidos, telefono: telefono || null, mail: email, estado: 'activo' }])
+        .select('id_comprador')
+        .single();
+
+      if (errC) return res.status(400).json({ error: errC.message });
+      id_comprador = comp.id_comprador;
+    }
+
+    if (rolNombre === 'comisionista') {
+      const { data: existente } = await supabase
+        .schema('condor')
+        .from('comisionista')
+        .select('id_comisionista')
+        .eq('documento', documento)
+        .single();
+
+      if (existente) {
+        return res.status(409).json({ error: 'Ya existe un comisionista con ese documento' });
+      }
+
+      const { data: comis, error: errCo } = await supabase
+        .schema('condor')
+        .from('comisionista')
+        .insert([{ documento, nombres, apellidos, telefono: telefono || null, mail: email }])
+        .select('id_comisionista')
+        .single();
+
+      if (errCo) return res.status(400).json({ error: errCo.message });
+      id_comisionista = comis.id_comisionista;
+    }
+
+    const { data, error } = await supabase
+      .schema('condor')
+      .from('usuarios')
+      .insert([{ email, id_rol, id_comprador, id_comisionista }])
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    return res.status(201).json(data);
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }
 
-// Actualizar rol o estado de un usuario
 async function actualizarUsuario(req, res) {
   const { id } = req.params;
-  const { id_rol, activo, id_comprador, id_comisionista } = req.body;
+  const { id_rol, activo, id_comprador, id_comisionista, nombres, apellidos, documento, telefono } = req.body;
 
   const updates = {};
-  if (id_rol        !== undefined) updates.id_rol        = id_rol;
-  if (activo        !== undefined) updates.activo        = activo;
-  if (id_comprador  !== undefined) updates.id_comprador  = id_comprador;
+  if (id_rol          !== undefined) updates.id_rol          = id_rol;
+  if (activo          !== undefined) updates.activo          = activo;
+  if (id_comprador    !== undefined) updates.id_comprador    = id_comprador;
   if (id_comisionista !== undefined) updates.id_comisionista = id_comisionista;
 
-  const { data, error } = await supabase
-    .schema('condor')
-    .from('usuarios')
-    .update(updates)
-    .eq('id_usuario', id)
-    .select()
-    .single();
+  try {
+    if (id_rol && nombres && apellidos && documento) {
+      const { data: rolData } = await supabase
+        .schema('condor')
+        .from('roles')
+        .select('nombre')
+        .eq('id_rol', id_rol)
+        .single();
 
-  if (error) return res.status(400).json({ error: error.message });
-  return res.json(data);
+      const { data: usuarioActual } = await supabase
+        .schema('condor')
+        .from('usuarios')
+        .select('email, id_comprador, id_comisionista')
+        .eq('id_usuario', id)
+        .single();
+
+      if (rolData?.nombre === 'comprador' && !usuarioActual?.id_comprador) {
+        const { data: comp, error: errC } = await supabase
+          .schema('condor')
+          .from('comprador')
+          .insert([{ tipo_persona: 'natural', documento, nombres, apellidos, telefono: telefono || null, mail: usuarioActual.email, estado: 'activo' }])
+          .select('id_comprador')
+          .single();
+        if (errC) return res.status(400).json({ error: errC.message });
+        updates.id_comprador = comp.id_comprador;
+      }
+
+      if (rolData?.nombre === 'comisionista' && !usuarioActual?.id_comisionista) {
+        const { data: comis, error: errCo } = await supabase
+          .schema('condor')
+          .from('comisionista')
+          .insert([{ documento, nombres, apellidos, telefono: telefono || null, mail: usuarioActual.email }])
+          .select('id_comisionista')
+          .single();
+        if (errCo) return res.status(400).json({ error: errCo.message });
+        updates.id_comisionista = comis.id_comisionista;
+      }
+    }
+
+    const { data, error } = await supabase
+      .schema('condor')
+      .from('usuarios')
+      .update(updates)
+      .eq('id_usuario', id)
+      .select()
+      .single();
+
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json(data);
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }
 
-// Desactivar usuario (nunca se borra)
 async function desactivarUsuario(req, res) {
   const { id } = req.params;
 

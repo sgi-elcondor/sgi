@@ -51,6 +51,10 @@ const ROUTE_PERMISSIONS = {
   'GET /api/reportes/jur':          { recurso: 'alertas_jur',   accion: 'leer' },
 
   'GET /api/mi-cuenta':             { recurso: 'mi_cuenta',     accion: 'leer' },
+
+  'GET /api/roles':          { recurso: 'roles', accion: 'leer' },
+  'GET /api/roles/permisos': { recurso: 'roles', accion: 'leer' },
+  'PUT /api/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
 };
 
 module.exports = ROUTE_PERMISSIONS;

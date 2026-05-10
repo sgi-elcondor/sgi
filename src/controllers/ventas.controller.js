@@ -226,6 +226,9 @@ async function crearVenta(req, res, estadoFijo) {
   res.status(201).json(venta);
 }
 
+exports.create = (req, res) => crearVenta(req, res, null);
+
+exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
 exports.updateFinanciero = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });

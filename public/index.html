@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -19,119 +19,33 @@
 </head>
 <body>
   <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
-    <div class="sidebar-brand">
-      <span class="brand-icon">
-        <img src="/src/img/favicon_white.svg" alt="Logo El Cóndor" class="brand-logo" />
-      </span>
-      <span class="brand-name">El Cóndor</span>
+    <div class="sidebar-brand">      
+      <div class="brand-brand">
+        <span class="brand-icon">
+          <img src="/src/img/favicon_white.svg" alt="Logo El Cóndor" class="brand-logo" />
+        </span>
+        <span class="brand-name">El Cóndor</span>
+      </div>
+      <button
+        type="button"
+        class="sidebar-toggle"
+        id="sidebarToggle"
+        aria-label="Colapsar barra lateral"
+        aria-pressed="false"
+        title="Colapsar barra lateral"
+      >
+        <i data-lucide="panel-left-close"></i>
+      </button> 
     </div>
-<nav class="sidebar-nav">
-  <div class="nav-group">
-    <span class="nav-group-title">General</span>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
 
-    <button type="button" class="nav-item active" data-view="dashboard">
-      <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
-      <span>Dashboard</span>
-    </button>
-  </div>
-
-  <div class="nav-group">
-    <span class="nav-group-title">Operación</span>
-
-    <button type="button" class="nav-item" data-view="proyectos">
-      <span class="nav-icon"><i data-lucide="building-2"></i></span>
-      <span>Proyectos</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="lotes">
-      <span class="nav-icon"><i data-lucide="map"></i></span>
-      <span>Lotes</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="compradores">
-      <span class="nav-icon"><i data-lucide="users"></i></span>
-      <span>Compradores</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="ventas">
-      <span class="nav-icon"><i data-lucide="briefcase"></i></span>
-      <span>Ventas</span>
-    </button>
-  </div>
-
-  <div class="nav-group">
-    <span class="nav-group-title">Finanzas</span>
-
-    <button type="button" class="nav-item" data-view="cuotas">
-      <span class="nav-icon"><i data-lucide="calendar"></i></span>
-      <span>Cuotas</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="pagos">
-      <span class="nav-icon"><i data-lucide="wallet"></i></span>
-      <span>Pagos</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="comisionistas">
-      <span class="nav-icon"><i data-lucide="percent"></i></span>
-      <span>Comisionistas</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="facturas">
-      <span class="nav-icon"><i data-lucide="receipt"></i></span>
-      <span>Facturas</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="recibos">
-      <span class="nav-icon"><i data-lucide="file-text"></i></span>
-      <span>Recibos</span>
-    </button>
-  </div>
-
-  <div class="nav-divider"></div>
-
-  <div class="nav-group">
-    <span class="nav-group-title">Control</span>
-
-    <button type="button" class="nav-item" data-view="reportes">
-      <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span>
-      <span>Reportes</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="alertas">
-      <span class="nav-icon"><i data-lucide="triangle-alert"></i></span>
-      <span>Alertas</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="auditoria">
-      <span class="nav-icon"><i data-lucide="shield-check"></i></span>
-      <span>Auditoría</span>
-    </button>
-
-    <button type="button" class="nav-item" data-view="usuarios">
-      <span class="nav-icon"><i data-lucide="settings"></i></span>
-      <span>Usuarios</span>
-    </button>
-  </div>
-</nav>
-
-    <div class="sidebar-footer">SGI v1.0</div>
+    <div class="sidebar-footer">SGI v0.6</div>
   </aside>
+
 
   <main class="main-content">
     <header class="topbar">
       <div class="topbar-left">
-        <button
-          type="button"
-          class="sidebar-toggle"
-          id="sidebarToggle"
-          aria-label="Colapsar barra lateral"
-          aria-pressed="false"
-          title="Colapsar barra lateral"
-        >
-          <i data-lucide="panel-left-close"></i>
-        </button>
-
         <div class="topbar-heading">
           <h1 class="view-title" id="viewTitle">Dashboard</h1>
           <span class="topbar-subtitle" id="topbarSubtitle">
@@ -141,8 +55,19 @@
       </div>
 
       <div class="topbar-actions">
-        <div id="usuarioInfo" class="usuario-info" aria-live="polite"></div>
-        <span class="today-date" id="todayDate"></span>
+        <div class="user-menu" id="userMenu">
+          <button
+            type="button"
+            class="user-menu-btn"
+            id="userMenuBtn"
+            aria-label="Menu de usuario"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            <i data-lucide="user"></i>
+          </button>
+          <div class="user-menu-panel" id="userMenuPanel" aria-hidden="true"></div>
+        </div>
       </div>
     </header>
 
@@ -194,6 +119,7 @@
   <script src="/js/views/reportes.js"></script>
   <script src="/js/views/alertas.js"></script>
   <script src="/js/views/usuarios.js"></script>
+  <script src="/js/views/roles.js"></script>
 
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
