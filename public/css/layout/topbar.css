@@ -38,32 +38,7 @@
   font: 1.75rem var(--font-serif);
 }
 
-.sidebar-toggle {
-  width: 2.625rem;
-  height: 2.625rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  transition:
-    background var(--transition),
-    border-color var(--transition),
-    transform 0.1s ease,
-    box-shadow var(--transition);
-}
-
-.sidebar-toggle:hover {
-  background: var(--surface-2);
-  border-color: rgba(var(--accent-rgb), 0.25);
-  box-shadow: var(--shadow-soft);
-}
-
-.sidebar-toggle:active {
-  transform: scale(0.97);
-}
+/* ── User menu ── */
 
 .user-menu {
   position: relative;

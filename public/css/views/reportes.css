@@ -1,45 +1,43 @@
-.reportes-grid {
+﻿.reportes-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 1.125rem;
 }
 
 .chart-card {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 1.125rem;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
 .chart-card-header {
-  padding: 18px 20px;
+  padding: 1.125rem 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 
 .chart-card-title {
   color: var(--text);
-  font: 18px var(--font-serif);
+  font: 1.125rem var(--font-serif);
 }
 
 .chart-card-subtitle {
-  margin-top: 4px;
+  margin-top: 0.25rem;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .chart-card-body {
-  padding: 18px 20px 22px;
-  min-height: 320px;
+  padding: 1.125rem 1.25rem 1.375rem;
+  min-height: 20rem;
 }
 
 .chart-card canvas {
   width: 100% !important;
-  height: 280px !important;
+  height: 17.5rem !important;
 }
 
-@media (max-width: 980px) {
-  .reportes-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 61.25rem) {
+  .reportes-grid { grid-template-columns: 1fr; }
 }

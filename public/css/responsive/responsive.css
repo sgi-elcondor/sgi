@@ -1,4 +1,4 @@
-@media (max-width: 1200px) {
+﻿@media (max-width: 75rem) {
   .stats-grid-primary,
   .stats-grid-secondary,
   .summary-strip,
@@ -11,9 +11,7 @@
     grid-template-columns: 1fr;
   }
 
-  .page-header-main {
-    flex-direction: column;
-  }
+  .page-header-main { flex-direction: column; }
 
   .page-header-side {
     width: 100%;
@@ -22,11 +20,10 @@
   }
 }
 
-@media (max-width: 920px) {
-  .sidebar {
-    width: var(--sidebar-collapsed-w);
-  }
+@media (max-width: 57.5rem) {
+  .sidebar { width: var(--sidebar-collapsed-w); }
 
+  .brand-icon,
   .brand-name,
   .sidebar-footer,
   .nav-group-title,
@@ -35,48 +32,33 @@
   }
 
   .sidebar-brand,
-  .nav-item {
-    justify-content: center;
-  }
+  .nav-item { justify-content: center; }
 
-  .nav-item {
-    padding: 12px;
-  }
+  .nav-item { padding: 0.75rem; }
 
   .topbar,
   .view-container {
-    padding-left: 18px;
-    padding-right: 18px;
+    padding-left: 1.125rem;
+    padding-right: 1.125rem;
   }
 
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .page-title {
-    font-size: 32px;
-  }
+  .form-grid { grid-template-columns: 1fr; }
+  .page-title { font-size: 2rem; }
 }
 
-@media (max-width: 640px) {
-  body {
-    font-size: 13px;
-  }
+@media (max-width: 40rem) {
+  body { font-size: 0.8125rem; }
 
   .topbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 0.5rem;
   }
 
   .topbar-actions {
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
-  }
-
-  .usuario-info {
-    width: 100%;
   }
 
   .stats-grid,
@@ -87,26 +69,13 @@
     grid-template-columns: 1fr;
   }
 
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  .view-title {
-    font-size: 22px;
-  }
-
-  .page-title {
-    font-size: 28px;
-  }
-
-  .page-actions {
-    width: 100%;
-  }
+  .table-wrap { overflow-x: auto; }
+  .view-title { font-size: 1.375rem; }
+  .page-title { font-size: 1.75rem; }
+  .page-actions { width: 100%; }
 
   .page-actions .btn,
-  .hero-actions .btn {
-    width: 100%;
-  }
+  .hero-actions .btn { width: 100%; }
 
   .task-item,
   .activity-item {
@@ -114,14 +83,12 @@
     align-items: flex-start;
   }
 
-  .activity-time {
-    white-space: normal;
-  }
+  .activity-time { white-space: normal; }
 
   .toast-root {
-    top: 12px;
-    right: 12px;
-    left: 12px;
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
   }
 
   .toast {

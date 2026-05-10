@@ -1,7 +1,7 @@
-import { esperarAuthListo } from "./auth.js";
+﻿import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
-  dashboard:     { fn: "dashboardView",     title: "Dashboard" },
+  dashboard:     { fn: "dashboardView",     title: "Panel de control" },
   proyectos:     { fn: "proyectosView",     title: "Proyectos" },
   lotes:         { fn: "lotesView",         title: "Lotes" },
   compradores:   { fn: "compradoresView",   title: "Compradores" },
@@ -570,6 +570,7 @@ function initSidebarToggle() {
     localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   });
 }
+
 
 function redirigirConDelay(url, segundos = 4) {
   setTimeout(() => { window.location.href = url; }, segundos * 1000);

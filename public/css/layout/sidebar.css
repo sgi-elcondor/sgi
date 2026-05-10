@@ -14,15 +14,55 @@
 
 .sidebar-brand {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 1.25rem 1.25rem;
+  align-items: center;  
+  padding: 1rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  justify-content: space-between;
+}
+
+.sidebar-brand .sidebar-toggle {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--sidebar-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    transform 0.1s ease;
+}
+
+.sidebar-brand .sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--sidebar-text);
+}
+
+.sidebar-brand .sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+.sidebar-brand .sidebar-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.brand-brand {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
 }
 
 .brand-logo {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   object-fit: contain;
 }
 
@@ -102,8 +142,7 @@
   justify-content: center;
 }
 
-.nav-icon svg,
-.sidebar-toggle svg {
+.nav-icon svg {
   width: 1.125rem;
   height: 1.125rem;
 }
@@ -126,6 +165,7 @@ body.sidebar-collapsed .sidebar {
   min-width: var(--sidebar-collapsed-w);
 }
 
+body.sidebar-collapsed .sidebar-brand .brand-icon,
 body.sidebar-collapsed .brand-name,
 body.sidebar-collapsed .sidebar-footer,
 body.sidebar-collapsed .nav-group-title,
@@ -133,7 +173,11 @@ body.sidebar-collapsed .nav-item span:not(.nav-icon) {
   display: none;
 }
 
-body.sidebar-collapsed .sidebar-brand,
+body.sidebar-collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 1rem 0.5rem;
+}
+
 body.sidebar-collapsed .nav-item {
   justify-content: center;
 }

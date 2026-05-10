@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -19,21 +19,36 @@
 </head>
 <body>
   <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
-    <div class="sidebar-brand">
-      <span class="brand-icon">
-        <img src="/src/img/favicon_white.svg" alt="Logo El Cóndor" class="brand-logo" />
-      </span>
-      <span class="brand-name">El Cóndor</span>
+    <div class="sidebar-brand">      
+      <div class="brand-brand">
+        <span class="brand-icon">
+          <img src="/src/img/favicon_white.svg" alt="Logo El Cóndor" class="brand-logo" />
+        </span>
+        <span class="brand-name">El Cóndor</span>
+      </div>
+      <button
+        type="button"
+        class="sidebar-toggle"
+        id="sidebarToggle"
+        aria-label="Colapsar barra lateral"
+        aria-pressed="false"
+        title="Colapsar barra lateral"
+      >
+        <i data-lucide="panel-left-close"></i>
+      </button> 
     </div>
-<nav class="sidebar-nav">
+  <nav class="sidebar-nav">
+
   <div class="nav-group">
     <span class="nav-group-title">General</span>
 
     <button type="button" class="nav-item active" data-view="dashboard">
       <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
-      <span>Dashboard</span>
+      <span>Panel</span>
     </button>
-  </div>
+  </div>  
+
+  <div class="nav-divider"></div> 
 
   <div class="nav-group">
     <span class="nav-group-title">Operación</span>
@@ -58,6 +73,8 @@
       <span>Ventas</span>
     </button>
   </div>
+
+  <div class="nav-divider"></div>
 
   <div class="nav-group">
     <span class="nav-group-title">Finanzas</span>
@@ -115,23 +132,13 @@
   </div>
 </nav>
 
-    <div class="sidebar-footer">SGI v1.0</div>
+    <div class="sidebar-footer">SGI v0.6</div>
   </aside>
+
 
   <main class="main-content">
     <header class="topbar">
       <div class="topbar-left">
-        <button
-          type="button"
-          class="sidebar-toggle"
-          id="sidebarToggle"
-          aria-label="Colapsar barra lateral"
-          aria-pressed="false"
-          title="Colapsar barra lateral"
-        >
-          <i data-lucide="panel-left-close"></i>
-        </button>
-
         <div class="topbar-heading">
           <h1 class="view-title" id="viewTitle">Dashboard</h1>
           <span class="topbar-subtitle" id="topbarSubtitle">
@@ -203,7 +210,7 @@
   <script src="/js/views/facturas.js"></script>
   <script src="/js/views/recibos.js"></script>
   <script src="/js/views/reportes.js"></script>
-  <script src="/js/views/alertas.js"></script>
+  <!-- <script src="/js/views/alertas.js"></script> ¿Que paso aca? --> 
   <script src="/js/views/usuarios.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
