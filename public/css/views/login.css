@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-﻿*,
-=======
 *,
->>>>>>> origin/develop
 *::before,
 *::after {
   box-sizing: border-box;
@@ -17,26 +13,19 @@
   --surface: rgba(255, 255, 255, 0.92);
   --surface-2: #fffaf4;
   --surface-3: #f5ede2;
-<<<<<<< HEAD
   --surface-focus: #fffdf9;
-=======
->>>>>>> origin/develop
 
   --border: #e7ddd1;
   --border-strong: #dccdbb;
 
   --accent: #f97316;
   --accent-hover: #ea580c;
-<<<<<<< HEAD
   --accent-deep: #d94f08;
-=======
->>>>>>> origin/develop
   --accent-rgb: 249, 115, 22;
 
   --text: #1d1d1d;
   --text-muted: #72675d;
   --text-soft: #8f8377;
-<<<<<<< HEAD
   --text-on-accent: #ffffff;
   --placeholder: #aa9f93;
 
@@ -44,12 +33,6 @@
   --danger-rgb: 220, 77, 77;
   --success: #2fa56d;
   --success-rgb: 47, 165, 109;
-=======
-  --placeholder: #aa9f93;
-
-  --danger: #dc4d4d;
-  --success: #2fa56d;
->>>>>>> origin/develop
 
   --font-serif: "DM Serif Display", Georgia, serif;
   --font-sans: "DM Sans", system-ui, sans-serif;
@@ -60,24 +43,13 @@
   --transition: 0.22s ease;
 }
 
-<<<<<<< HEAD
 html, body { min-height: 100%; }
-=======
-html,
-body {
-  min-height: 100%;
-}
->>>>>>> origin/develop
 
 body {
   min-height: 100vh;
   display: grid;
   place-items: center;
-<<<<<<< HEAD
   padding: 2rem 1.125rem;
-=======
-  padding: 32px 18px;
->>>>>>> origin/develop
   background:
     radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.07), transparent 18%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
@@ -91,31 +63,19 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-<<<<<<< HEAD
   background: url("/src/img/favicon_white.svg") no-repeat left -5rem center / min(42vw, 32.5rem);
-=======
-  background:
-    url("/src/img/favicon_white.svg") no-repeat left -80px center / min(42vw, 520px);
->>>>>>> origin/develop
   opacity: 0.08;
   pointer-events: none;
   filter: grayscale(1) contrast(0.9);
 }
 
 .cracked-earth,
-<<<<<<< HEAD
 svg[style*="position:absolute"] { display: none; }
-=======
-svg[style*="position:absolute"] {
-  display: none;
-}
->>>>>>> origin/develop
 
 .card {
   position: relative;
   z-index: 1;
   width: 100%;
-<<<<<<< HEAD
   max-width: 29.375rem;
   padding: 2rem 2rem 1.5rem;
   border: 1px solid var(--border);
@@ -129,34 +89,11 @@ svg[style*="position:absolute"] {
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(1.125rem); }
   to   { opacity: 1; transform: translateY(0); }
-=======
-  max-width: 470px;
-  padding: 32px 32px 24px;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,250,244,0.94) 100%);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  animation: fadeUp 0.45s cubic-bezier(.16,1,.3,1) both;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
->>>>>>> origin/develop
 }
 
 .brand {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.875rem;
   margin-bottom: 1.5rem;
 }
@@ -167,31 +104,14 @@ svg[style*="position:absolute"] {
   display: grid;
   place-items: center;
   border-radius: 1rem;
-=======
-  gap: 14px;
-  margin-bottom: 24px;
-}
-
-.brand-icon {
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
->>>>>>> origin/develop
   background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
   box-shadow: var(--shadow-soft);
   flex-shrink: 0;
 }
 
 .brand-icon img {
-<<<<<<< HEAD
   width: 2.125rem;
   height: 2.125rem;
-=======
-  width: 34px;
-  height: 34px;
->>>>>>> origin/develop
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
@@ -205,38 +125,23 @@ svg[style*="position:absolute"] {
 }
 
 .brand-sub {
-<<<<<<< HEAD
   margin-top: 0.25rem;
   font-size: 0.9375rem;
-=======
-  margin-top: 4px;
-  font-size: 0.92rem;
->>>>>>> origin/develop
   color: var(--text-muted);
 }
 
 .tabs {
   display: flex;
-<<<<<<< HEAD
   gap: 0.375rem;
   margin-bottom: 1.5rem;
   padding: 0.375rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--surface-2);
-=======
-  gap: 6px;
-  margin-bottom: 24px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #f7f1e8;
->>>>>>> origin/develop
 }
 
 .tab-btn {
   flex: 1;
-<<<<<<< HEAD
   min-height: 2.875rem;
   border: 0;
   border-radius: 0.75rem;
@@ -244,15 +149,6 @@ svg[style*="position:absolute"] {
   color: var(--text-muted);
   font-family: var(--font-sans);
   font-size: 0.9375rem;
-=======
-  min-height: 46px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
-  font-size: 0.94rem;
->>>>>>> origin/develop
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -262,7 +158,6 @@ svg[style*="position:absolute"] {
     box-shadow var(--transition);
 }
 
-<<<<<<< HEAD
 .tab-btn:hover { color: var(--text); }
 
 .tab-btn.active {
@@ -279,34 +174,6 @@ svg[style*="position:absolute"] {
 label {
   display: block;
   margin-bottom: 0.4375rem;
-=======
-.tab-btn:hover {
-  color: var(--text);
-}
-
-.tab-btn.active {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-  color: #ffffff;
-  box-shadow: 0 10px 20px rgba(var(--accent-rgb), 0.22);
-}
-
-.panel {
-  display: none;
-  animation: fadeUp 0.28s cubic-bezier(.16,1,.3,1) both;
-}
-
-.panel.active {
-  display: block;
-}
-
-.field {
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
-  margin-bottom: 7px;
->>>>>>> origin/develop
   color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 700;
@@ -316,7 +183,6 @@ label {
 
 input {
   width: 100%;
-<<<<<<< HEAD
   min-height: 3.25rem;
   padding: 0 1rem;
   border: 1px solid var(--border);
@@ -325,16 +191,6 @@ input {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 0.9375rem;
-=======
-  min-height: 52px;
-  padding: 0 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #ffffff;
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
->>>>>>> origin/develop
   font-weight: 500;
   outline: none;
   transition:
@@ -343,37 +199,20 @@ input {
     background var(--transition);
 }
 
-<<<<<<< HEAD
 input::placeholder { color: var(--placeholder); }
-=======
-input::placeholder {
-  color: var(--placeholder);
-}
->>>>>>> origin/develop
 
 input:focus {
   border-color: rgba(var(--accent-rgb), 0.42);
   box-shadow: var(--ring);
-<<<<<<< HEAD
   background: var(--surface-focus);
-=======
-  background: #fffdf9;
->>>>>>> origin/develop
 }
 
 .btn {
   width: 100%;
-<<<<<<< HEAD
   min-height: 3.125rem;
   padding: 0 1rem;
   border: 1px solid transparent;
   border-radius: 0.875rem;
-=======
-  min-height: 50px;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: 14px;
->>>>>>> origin/develop
   font-family: var(--font-sans);
   font-size: 0.96rem;
   font-weight: 700;
@@ -387,7 +226,6 @@ input:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-<<<<<<< HEAD
   gap: 0.625rem;
 }
 
@@ -397,23 +235,6 @@ input:focus {
 .btn-primary {
   margin-bottom: 0.875rem;
   color: var(--text-on-accent);
-=======
-  gap: 10px;
-}
-
-.btn:active {
-  transform: scale(0.985);
-}
-
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  margin-bottom: 14px;
-  color: #ffffff;
->>>>>>> origin/develop
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   box-shadow: 0 14px 28px rgba(var(--accent-rgb), 0.22);
 }
@@ -426,13 +247,8 @@ input:focus {
 .divider-text {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.75rem;
   margin: 0.625rem 0 0.875rem;
-=======
-  gap: 12px;
-  margin: 10px 0 14px;
->>>>>>> origin/develop
   color: var(--text-muted);
   font-size: 0.76rem;
   font-weight: 700;
@@ -449,88 +265,51 @@ input:focus {
 }
 
 .btn-google {
-<<<<<<< HEAD
   background: var(--surface);
-=======
-  background: #ffffff;
->>>>>>> origin/develop
   color: var(--text);
   border-color: var(--border);
 }
 
 .btn-google:hover:not(:disabled) {
-<<<<<<< HEAD
   background: var(--surface-2);
-=======
-  background: #fff8f1;
->>>>>>> origin/develop
   border-color: rgba(var(--accent-rgb), 0.28);
   box-shadow: 0 10px 22px rgba(17, 17, 17, 0.06);
 }
 
 .btn-google svg {
-<<<<<<< HEAD
   width: 1.125rem;
   height: 1.125rem;
-=======
-  width: 18px;
-  height: 18px;
->>>>>>> origin/develop
   flex-shrink: 0;
 }
 
 .error-box,
 .success-box {
   display: none;
-<<<<<<< HEAD
   margin-top: 0.875rem;
   padding: 0.75rem 0.875rem;
   border-radius: 0.75rem;
   font-size: 0.875rem;
-=======
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  font-size: 0.88rem;
->>>>>>> origin/develop
   line-height: 1.45;
   animation: fadeUp 0.22s ease both;
 }
 
 .error-box {
-<<<<<<< HEAD
   background: rgba(var(--danger-rgb), 0.08);
   border: 1px solid rgba(var(--danger-rgb), 0.18);
-=======
-  background: rgba(220, 77, 77, 0.08);
-  border: 1px solid rgba(220, 77, 77, 0.18);
->>>>>>> origin/develop
   color: var(--danger);
 }
 
 .success-box {
-<<<<<<< HEAD
   background: rgba(var(--success-rgb), 0.1);
   border: 1px solid rgba(var(--success-rgb), 0.2);
-=======
-  background: rgba(47, 165, 109, 0.1);
-  border: 1px solid rgba(47, 165, 109, 0.2);
->>>>>>> origin/develop
   color: var(--success);
 }
 
 .pwd-rules {
-<<<<<<< HEAD
   margin-top: 0.625rem;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-=======
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
->>>>>>> origin/develop
 }
 
 .pwd-rule {
@@ -538,7 +317,6 @@ input:focus {
   color: var(--text-muted);
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.5rem;
   transition: color var(--transition);
 }
@@ -546,38 +324,13 @@ input:focus {
 .pwd-rule::before { content: "•"; font-size: 1rem; line-height: 1; }
 .pwd-rule.ok { color: var(--success); }
 .pwd-rule.ok::before { content: "✓"; font-size: 0.85rem; font-weight: 700; }
-=======
-  gap: 8px;
-  transition: color var(--transition);
-}
-
-.pwd-rule::before {
-  content: "•";
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.pwd-rule.ok {
-  color: var(--success);
-}
-
-.pwd-rule.ok::before {
-  content: "✓";
-  font-size: 0.85rem;
-  font-weight: 700;
-}
->>>>>>> origin/develop
 
 .link-btn {
   background: none;
   border: none;
   color: var(--accent);
   font-family: var(--font-sans);
-<<<<<<< HEAD
   font-size: 0.875rem;
-=======
-  font-size: 0.86rem;
->>>>>>> origin/develop
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -585,7 +338,6 @@ input:focus {
   transition: color var(--transition), opacity var(--transition);
 }
 
-<<<<<<< HEAD
 .link-btn:hover { color: var(--accent-hover); opacity: 0.9; }
 
 .spinner {
@@ -594,26 +346,12 @@ input:focus {
   height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.28);
   border-top-color: var(--text-on-accent);
-=======
-.link-btn:hover {
-  color: var(--accent-hover);
-  opacity: 0.9;
-}
-
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.28);
-  border-top-color: #ffffff;
->>>>>>> origin/develop
   border-radius: 50%;
   animation: spin 0.55s linear infinite;
   flex-shrink: 0;
 }
 
 .spinner-dark {
-<<<<<<< HEAD
   border-color: rgba(29, 29, 29, 0.15);
   border-top-color: var(--text);
 }
@@ -623,21 +361,6 @@ input:focus {
 .card-footer {
   margin-top: 1.5rem;
   padding-top: 1.125rem;
-=======
-  border-color: rgba(29,29,29,0.15);
-  border-top-color: var(--text);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.card-footer {
-  margin-top: 24px;
-  padding-top: 18px;
->>>>>>> origin/develop
   border-top: 1px solid var(--border);
   text-align: center;
   font-size: 0.78rem;
@@ -645,15 +368,8 @@ input:focus {
   letter-spacing: 0.02em;
 }
 
-<<<<<<< HEAD
 @media (max-width: 35rem) {
   body { padding: 1.125rem 0.875rem; }
-=======
-@media (max-width: 560px) {
-  body {
-    padding: 18px 14px;
-  }
->>>>>>> origin/develop
 
   body::before {
     background-position: center top;
@@ -662,7 +378,6 @@ input:focus {
   }
 
   .card {
-<<<<<<< HEAD
     padding: 1.5rem 1.25rem 1.25rem;
     border-radius: 1.25rem;
   }
@@ -672,25 +387,3 @@ input:focus {
   .tabs { margin-bottom: 1.25rem; }
   .tab-btn { font-size: 0.875rem; }
 }
-=======
-    padding: 24px 20px 20px;
-    border-radius: 20px;
-  }
-
-  .brand-name {
-    font-size: 1.7rem;
-  }
-
-  .brand-sub {
-    font-size: 0.84rem;
-  }
-
-  .tabs {
-    margin-bottom: 20px;
-  }
-
-  .tab-btn {
-    font-size: 0.88rem;
-  }
-}
->>>>>>> origin/develop

@@ -48,6 +48,7 @@ app.use('/api/facturas',       require('./routes/facturas.routes'));
 app.use('/api/recibos',        require('./routes/recibos.routes'));
 app.use('/api/reportes',       require('./routes/reportes.routes'));
 app.use('/api/usuarios',       require('./routes/usuarios.routes'));
+app.use('/api/roles',          require('./routes/roles.routes'));
 
 // ── Protege ruta wildcard y sirve index.html para frontend con token válido —------
 app.use(verificarToken);

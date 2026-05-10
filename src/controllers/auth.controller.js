@@ -1,4 +1,4 @@
-﻿const supabase = require('../config/supabase');
+const supabase = require('../config/supabase');
 
 async function registrarUsuario(req, res) {
   const { firebase_uid, email, id_rol, id_comprador, id_comisionista } = req.body;
@@ -21,6 +21,9 @@ async function registrarUsuario(req, res) {
 
 async function miPerfil(req, res) {
   const { email, rol, id_comprador, id_comisionista, permisos } = req.usuario;
+  const vistas = [...permisos]
+    .filter(p => p.startsWith('vista:'))
+    .map(p => p.replace('vista:', ''));
   let profileData = {};
 
   try {
@@ -39,7 +42,7 @@ async function miPerfil(req, res) {
     }
   } catch (_) {}
 
-  return res.json({ email, rol, id_comprador, id_comisionista, permisos: [...permisos], ...profileData });
+  return res.json({ email, rol, id_comprador, id_comisionista, vistas, ...profileData });
 }
 
 async function completarPerfil(req, res) {
