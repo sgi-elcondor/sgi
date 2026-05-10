@@ -1,15 +1,12 @@
-const express  = require('express');
+﻿const express  = require('express');
 const router   = express.Router();
-const { registrarUsuario, miPerfil } = require('../controllers/auth.controller');
-const { verificarToken }  = require('../middlewares/auth.middleware');
+const { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil } = require('../controllers/auth.controller');
+const { verificarToken }   = require('../middlewares/auth.middleware');
 const { verificarPermiso } = require('../middlewares/permisos.middleware');
 
-router.get('/perfil',   verificarToken, miPerfil);
-router.post('/usuarios', verificarToken, verificarPermiso, registrarUsuario);
+router.get('/perfil',            verificarToken, miPerfil);
+router.put('/perfil',            verificarToken, actualizarMiPerfil);
+router.post('/completar-perfil', verificarToken, completarPerfil);
+router.post('/usuarios',         verificarToken, verificarPermiso, registrarUsuario);
 
 module.exports = router;
-
-function def() {+
-    
-    a
-}

@@ -31,7 +31,7 @@ app.get('/api/firebase-config', (req, res) => {
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId:             process.env.FIREBASE_APP_ID,
     measurementId:     process.env.FIREBASE_MEASUREMENT_ID,
-  });v 
+  });
 });
 
 // ── Todas las demás rutas requieren token y permisos ─────

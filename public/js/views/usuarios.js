@@ -1,11 +1,9 @@
-window.usuariosView = async function () {
+﻿window.usuariosView = async function () {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
-
   await Promise.all([cargarRolesCache(), cargarUsuariosTabla()]);
 };
 
-// ─── Cache global ───
 let _rolesCache    = [];
 let _todosUsuarios = [];
 
@@ -31,7 +29,7 @@ async function cargarUsuariosTabla() {
       <div class="table-wrap">
         <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem;">
           <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
-            <input id="filtro-email" type="text" placeholder="Buscar por email…"
+            <input id="filtro-email" type="text" placeholder="Buscar por email..."
               style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
                      font-size:.875rem; background:var(--surface); color:var(--text); width:200px;"
               oninput="filtrarUsuarios()" />
@@ -72,7 +70,6 @@ async function cargarUsuariosTabla() {
       </div>
     `;
 
-    // Ahora que el DOM tiene los selects, llena roles en filtro
     await cargarRolesCache();
     renderTablaUsuarios(_todosUsuarios);
     mostrarAlertaPendientes(_todosUsuarios);
@@ -82,22 +79,20 @@ async function cargarUsuariosTabla() {
   }
 }
 
-// ─── Alerta de pendientes ───
 function mostrarAlertaPendientes(usuarios) {
-  const pendientes = usuarios.filter(u => u.roles?.nombre === 'comprador' && u.activo);
+  const pendientes = usuarios.filter(u => u.roles?.nombre === 'comprador' && u.activo && !u.comprador);
   const alerta = document.getElementById('alerta-pendientes');
   if (!alerta) return;
   if (pendientes.length === 0) { alerta.style.display = 'none'; return; }
   alerta.style.display = 'block';
-  alerta.innerHTML = `⚠️ <strong>${pendientes.length} usuario${pendientes.length > 1 ? 's' : ''}</strong>
-    con rol por defecto (<em>comprador</em>) pendiente${pendientes.length > 1 ? 's' : ''} de asignación.
+  alerta.innerHTML = `<strong>${pendientes.length} usuario${pendientes.length > 1 ? 's' : ''}</strong>
+    con rol comprador sin perfil completo.
     <a href="#" style="color:#b8860b; font-weight:600; margin-left:.5rem;"
       onclick="document.getElementById('filtro-rol').value='comprador'; filtrarUsuarios(); return false;">
-      Ver →
+      Ver &rarr;
     </a>`;
 }
 
-// ─── Render tabla ───
 function renderTablaUsuarios(usuarios) {
   const tbody = document.getElementById('body-usuarios');
   if (!tbody) return;
@@ -109,10 +104,10 @@ function renderTablaUsuarios(usuarios) {
 
   tbody.innerHTML = usuarios.map(u => {
     const vinculo = u.comprador
-      ? `👤 ${u.comprador.nombres} ${u.comprador.apellidos}`
+      ? `${u.comprador.nombres} ${u.comprador.apellidos}`
       : u.comisionista
-      ? `🤝 ${u.comisionista.nombres} ${u.comisionista.apellidos}`
-      : '<span style="color:var(--text-muted)">—</span>';
+      ? `${u.comisionista.nombres} ${u.comisionista.apellidos}`
+      : '<span style="color:var(--text-muted)">-</span>';
 
     const opcionesRol = _rolesCache.map(r =>
       `<option value="${r.id_rol}" ${u.roles?.id_rol === r.id_rol ? 'selected' : ''}>${r.nombre}</option>`
@@ -143,29 +138,35 @@ function renderTablaUsuarios(usuarios) {
   }).join('');
 }
 
-// ─── Cambio de rol inline ───
 async function cambiarRolInline(sel) {
   const idUsuario  = sel.dataset.id;
   const nuevoIdRol = parseInt(sel.value);
   const rolNombre  = sel.options[sel.selectedIndex].text;
+  const u = _todosUsuarios.find(x => x.id_usuario == idUsuario);
+  const yaVinculado = !!(u?.comprador || u?.comisionista);
+
+  if (rolRequiereIdentidad(nuevoIdRol) && !yaVinculado) {
+    // Revert dropdown visually and open full edit modal instead
+    const rolActual = _rolesCache.find(r => r.nombre === u?.roles?.nombre);
+    if (rolActual) sel.value = rolActual.id_rol;
+    await abrirModalEditarUsuario(parseInt(idUsuario));
+    return;
+  }
 
   sel.disabled = true;
   try {
     await API.put(`/usuarios/${idUsuario}`, { id_rol: nuevoIdRol });
     UI.toast(`Rol cambiado a "${rolNombre}"`, 'ok');
-    // Actualiza cache local sin re-pedir toda la tabla
-    const u = _todosUsuarios.find(x => x.id_usuario == idUsuario);
     if (u) u.roles = { id_rol: nuevoIdRol, nombre: rolNombre };
     mostrarAlertaPendientes(_todosUsuarios);
   } catch (err) {
     UI.toast('No se pudo cambiar el rol: ' + err.message, 'error');
-    await cargarUsuariosTabla(); // revierte
+    await cargarUsuariosTabla();
   } finally {
     sel.disabled = false;
   }
 }
 
-// ─── Filtros ───
 function filtrarUsuarios() {
   const email  = (document.getElementById('filtro-email')?.value  ?? '').toLowerCase();
   const rol    = document.getElementById('filtro-rol')?.value    ?? '';
@@ -182,54 +183,65 @@ function filtrarUsuarios() {
   renderTablaUsuarios(filtrados);
 }
 
-// ─── Modal nuevo usuario ───
+// --- New user modal ---
+
 let _usuarioEditandoId = null;
+
+const ROLES_CON_IDENTIDAD = ['comprador', 'comisionista'];
+
+function rolRequiereIdentidad(idRol) {
+  const rol = _rolesCache.find(r => r.id_rol == idRol);
+  return rol ? ROLES_CON_IDENTIDAD.includes(rol.nombre) : false;
+}
+
+function renderCamposIdentidad(visible) {
+  const bloque = document.getElementById('campos-identidad');
+  if (!bloque) return;
+  bloque.style.display = visible ? '' : 'none';
+  bloque.querySelectorAll('input').forEach(inp => {
+    if (inp.dataset.opcional) return;
+    inp.required = visible;
+  });
+}
 
 async function abrirModalNuevoUsuario() {
   _usuarioEditandoId = null;
-  const [compradores, comisionistas] = await Promise.all([
-    API.get('/compradores'),
-    API.get('/comisionistas'),
-  ]);
-  const rolDefaultId = _rolesCache.find(r => r.nombre === 'comprador')?.id_rol ?? '';
 
   UI.openModal('Nuevo Usuario', `
     <div class="form-grid">
       <div class="form-group" style="grid-column:1/-1">
-        <label>Firebase UID *</label>
-        <input id="u-uid" type="text" placeholder="Obtenlo desde Firebase Console" />
-      </div>
-      <div class="form-group" style="grid-column:1/-1">
-        <label>Email *</label>
-        <input id="u-email" type="email" placeholder="usuario@ejemplo.com" />
-      </div>
-      <div class="form-group">
         <label>Rol *</label>
-        <select id="u-rol">
+        <select id="u-rol" onchange="onRolChange(this)">
           ${_rolesCache.map(r =>
-            `<option value="${r.id_rol}" ${r.id_rol == rolDefaultId ? 'selected' : ''}>
-              ${r.nombre}${r.descripcion ? ' — ' + r.descripcion : ''}
-            </option>`
+            `<option value="${r.id_rol}">${r.nombre}${r.descripcion ? ' - ' + r.descripcion : ''}</option>`
           ).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label>Vincular a Comprador <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
-        <select id="u-comprador">
-          <option value="">— Ninguno —</option>
-          ${compradores.map(c =>
-            `<option value="${c.id_comprador}">${c.nombres} ${c.apellidos} (${c.documento})</option>`
-          ).join('')}
-        </select>
+
+      <div id="campos-identidad" style="display:none; grid-column:1/-1;">
+        <div class="form-grid" style="margin-top:.5rem;">
+          <div class="form-group">
+            <label>Nombres *</label>
+            <input id="u-nombres" type="text" placeholder="Nombres completos" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos *</label>
+            <input id="u-apellidos" type="text" placeholder="Apellidos completos" />
+          </div>
+          <div class="form-group">
+            <label>Documento de identidad *</label>
+            <input id="u-documento" type="text" placeholder="Cedula de ciudadania" />
+          </div>
+          <div class="form-group">
+            <label>Telefono <span style="color:var(--text-muted); font-weight:400;">(opcional)</span></label>
+            <input id="u-telefono" type="tel" placeholder="Ej: 3001234567" data-opcional="1" />
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Vincular a Comisionista <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
-        <select id="u-comisionista">
-          <option value="">— Ninguno —</option>
-          ${comisionistas.map(c =>
-            `<option value="${c.id_comisionista}">${c.nombres} ${c.apellidos}</option>`
-          ).join('')}
-        </select>
+
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Correo electronico *</label>
+        <input id="u-email" type="email" placeholder="usuario@ejemplo.com" />
       </div>
     </div>
     <div class="form-actions">
@@ -237,18 +249,22 @@ async function abrirModalNuevoUsuario() {
       <button class="btn btn-primary" onclick="guardarNuevoUsuario()">Guardar</button>
     </div>
   `);
+
+  // Trigger initial state
+  const rolSel = document.getElementById('u-rol');
+  if (rolSel) renderCamposIdentidad(rolRequiereIdentidad(rolSel.value));
 }
 
-// ─── Modal editar usuario ───
+window.onRolChange = function(sel) {
+  renderCamposIdentidad(rolRequiereIdentidad(sel.value));
+};
+
 async function abrirModalEditarUsuario(idUsuario) {
   _usuarioEditandoId = idUsuario;
   const u = _todosUsuarios.find(x => x.id_usuario === idUsuario);
   if (!u) return;
 
-  const [compradores, comisionistas] = await Promise.all([
-    API.get('/compradores'),
-    API.get('/comisionistas'),
-  ]);
+  const yaVinculado = !!(u.comprador || u.comisionista);
 
   UI.openModal('Editar Usuario', `
     <div class="form-grid">
@@ -257,39 +273,36 @@ async function abrirModalEditarUsuario(idUsuario) {
         <input type="text" value="${u.email}" disabled
           style="background:var(--surface2); color:var(--text-muted);" />
       </div>
-      <div class="form-group">
+      <div class="form-group" style="grid-column:1/-1">
         <label>Rol *</label>
-        <select id="u-rol">
+        <select id="u-rol" onchange="onRolChange(this)">
           ${_rolesCache.map(r =>
             `<option value="${r.id_rol}" ${u.roles?.id_rol === r.id_rol ? 'selected' : ''}>
-              ${r.nombre}${r.descripcion ? ' — ' + r.descripcion : ''}
+              ${r.nombre}${r.descripcion ? ' - ' + r.descripcion : ''}
             </option>`
           ).join('')}
         </select>
       </div>
-      <div class="form-group">
-        <label>Vincular a Comprador <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
-        <select id="u-comprador">
-          <option value="">— Ninguno —</option>
-          ${compradores.map(c =>
-            `<option value="${c.id_comprador}"
-              ${u.id_comprador === c.id_comprador ? 'selected' : ''}>
-              ${c.nombres} ${c.apellidos} (${c.documento})
-            </option>`
-          ).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Vincular a Comisionista <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
-        <select id="u-comisionista">
-          <option value="">— Ninguno —</option>
-          ${comisionistas.map(c =>
-            `<option value="${c.id_comisionista}"
-              ${u.id_comisionista === c.id_comisionista ? 'selected' : ''}>
-              ${c.nombres} ${c.apellidos}
-            </option>`
-          ).join('')}
-        </select>
+
+      <div id="campos-identidad" style="display:none; grid-column:1/-1;">
+        <div class="form-grid" style="margin-top:.5rem;">
+          <div class="form-group">
+            <label>Nombres *</label>
+            <input id="u-nombres" type="text" placeholder="Nombres completos" />
+          </div>
+          <div class="form-group">
+            <label>Apellidos *</label>
+            <input id="u-apellidos" type="text" placeholder="Apellidos completos" />
+          </div>
+          <div class="form-group">
+            <label>Documento de identidad *</label>
+            <input id="u-documento" type="text" placeholder="Cedula de ciudadania" />
+          </div>
+          <div class="form-group">
+            <label>Telefono <span style="color:var(--text-muted); font-weight:400;">(opcional)</span></label>
+            <input id="u-telefono" type="tel" placeholder="Ej: 3001234567" data-opcional="1" />
+          </div>
+        </div>
       </div>
     </div>
     <div class="form-actions">
@@ -297,26 +310,38 @@ async function abrirModalEditarUsuario(idUsuario) {
       <button class="btn btn-primary" onclick="guardarEdicionUsuario()">Guardar</button>
     </div>
   `);
+
+  const rolSel = document.getElementById('u-rol');
+  if (rolSel) renderCamposIdentidad(rolRequiereIdentidad(rolSel.value) && !yaVinculado);
 }
 
-// ─── Guardar nuevo ───
 async function guardarNuevoUsuario() {
-  const uid   = document.getElementById('u-uid')?.value.trim();
-  const email = document.getElementById('u-email')?.value.trim();
-  const idRol = parseInt(document.getElementById('u-rol')?.value);
+  const email   = document.getElementById('u-email')?.value.trim();
+  const idRol   = parseInt(document.getElementById('u-rol')?.value);
+  const nombres   = document.getElementById('u-nombres')?.value.trim();
+  const apellidos = document.getElementById('u-apellidos')?.value.trim();
+  const documento = document.getElementById('u-documento')?.value.trim();
+  const telefono  = document.getElementById('u-telefono')?.value.trim();
 
-  if (!uid || !email || !idRol) {
-    UI.toast('UID, email y rol son obligatorios.', 'error');
+  if (!email || !idRol) {
+    UI.toast('Email y rol son obligatorios.', 'error');
     return;
   }
+
+  if (rolRequiereIdentidad(idRol) && (!nombres || !apellidos || !documento)) {
+    UI.toast('Para este rol: nombres, apellidos y documento son obligatorios.', 'error');
+    return;
+  }
+
   try {
-    await API.post('/usuarios', {
-      firebase_uid:    uid,
-      email,
-      id_rol:          idRol,
-      id_comprador:    document.getElementById('u-comprador')?.value    || null,
-      id_comisionista: document.getElementById('u-comisionista')?.value || null,
-    });
+    const payload = { email, id_rol: idRol };
+    if (rolRequiereIdentidad(idRol)) {
+      payload.nombres   = nombres;
+      payload.apellidos = apellidos;
+      payload.documento = documento;
+      if (telefono) payload.telefono = telefono;
+    }
+    await API.post('/usuarios', payload);
     UI.closeModal();
     UI.toast('Usuario creado', 'ok');
     await cargarUsuariosTabla();
@@ -325,14 +350,30 @@ async function guardarNuevoUsuario() {
   }
 }
 
-// ─── Guardar edición ───
 async function guardarEdicionUsuario() {
+  const idRol     = parseInt(document.getElementById('u-rol')?.value);
+  const nombres   = document.getElementById('u-nombres')?.value.trim();
+  const apellidos = document.getElementById('u-apellidos')?.value.trim();
+  const documento = document.getElementById('u-documento')?.value.trim();
+  const telefono  = document.getElementById('u-telefono')?.value.trim();
+
+  const u = _todosUsuarios.find(x => x.id_usuario === _usuarioEditandoId);
+  const yaVinculado = !!(u?.comprador || u?.comisionista);
+
+  if (rolRequiereIdentidad(idRol) && !yaVinculado && (!nombres || !apellidos || !documento)) {
+    UI.toast('Para este rol: nombres, apellidos y documento son obligatorios.', 'error');
+    return;
+  }
+
   try {
-    await API.put(`/usuarios/${_usuarioEditandoId}`, {
-      id_rol:          parseInt(document.getElementById('u-rol')?.value),
-      id_comprador:    document.getElementById('u-comprador')?.value    || null,
-      id_comisionista: document.getElementById('u-comisionista')?.value || null,
-    });
+    const payload = { id_rol: idRol };
+    if (rolRequiereIdentidad(idRol) && !yaVinculado && nombres && apellidos && documento) {
+      payload.nombres   = nombres;
+      payload.apellidos = apellidos;
+      payload.documento = documento;
+      if (telefono) payload.telefono = telefono;
+    }
+    await API.put(`/usuarios/${_usuarioEditandoId}`, payload);
     UI.closeModal();
     UI.toast('Usuario actualizado', 'ok');
     await cargarUsuariosTabla();
@@ -341,9 +382,8 @@ async function guardarEdicionUsuario() {
   }
 }
 
-// ─── Desactivar / reactivar ───
 async function confirmarDesactivar(id, email) {
-  if (!confirm(`¿Desactivar a ${email}?\nPodrás reactivarlo después.`)) return;
+  if (!confirm(`Desactivar a ${email}?\nPodras reactivarlo despues.`)) return;
   try {
     await API.patch(`/usuarios/${id}/desactivar`);
     UI.toast('Usuario desactivado', 'ok');
@@ -362,3 +402,4 @@ async function reactivarUsuario(id) {
     UI.toast('Error al reactivar: ' + err.message, 'error');
   }
 }
+

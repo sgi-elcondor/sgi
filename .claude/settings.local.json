@@ -1,10 +1,8 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
-      "Bash(Get-ChildItem -Recurse -Force)",
-      "Bash(Select-Object FullName)",
-      "Bash(Sort-Object FullName)",
-      "Bash(node *)"
+      "Bash(*)"
     ]
   }
 }

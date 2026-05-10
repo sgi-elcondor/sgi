@@ -1,4 +1,4 @@
-html,
+﻿html,
 body {
   width: 100%;
   min-height: 100%;
@@ -13,7 +13,7 @@ body {
     radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.06), transparent 18%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
   color: var(--text);
-  font: 14px/1.5 var(--font-sans);
+  font: 0.875rem/1.5 var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -30,8 +30,8 @@ img {
 }
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 0.4375rem;
+  height: 0.4375rem;
 }
 
 ::-webkit-scrollbar-track {
@@ -39,10 +39,10 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cfc4b7;
-  border-radius: 99px;
+  background: var(--scrollbar-thumb);
+  border-radius: 6.1875rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #baae9f;
+  background: var(--scrollbar-thumb-hover);
 }

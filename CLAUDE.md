@@ -2,6 +2,8 @@
 
 > Contexto de proyecto para Claude Code. Lee este archivo antes de cualquier tarea.
 
+Antes de hacer algun cambio si cres que hay una forma mejor de hacerlo sugieremela.
+
 ## ¿Como escribir codigo?
 
 Siempre en ingles, si una clase, atributo o objeto no esta en ingles, busca todos los archivos implicados y pasalo a ingles.

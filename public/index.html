@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -141,8 +141,19 @@
       </div>
 
       <div class="topbar-actions">
-        <div id="usuarioInfo" class="usuario-info" aria-live="polite"></div>
-        <span class="today-date" id="todayDate"></span>
+        <div class="user-menu" id="userMenu">
+          <button
+            type="button"
+            class="user-menu-btn"
+            id="userMenuBtn"
+            aria-label="Menu de usuario"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            <i data-lucide="user"></i>
+          </button>
+          <div class="user-menu-panel" id="userMenuPanel" aria-hidden="true"></div>
+        </div>
       </div>
     </header>
 
@@ -194,8 +205,6 @@
   <script src="/js/views/reportes.js"></script>
   <script src="/js/views/alertas.js"></script>
   <script src="/js/views/usuarios.js"></script>
-
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script type="module" src="/js/app.js"></script>
