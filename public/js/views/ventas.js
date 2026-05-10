@@ -201,6 +201,13 @@ window.verVenta = async function(id) {
       ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
     `)}
 
+    ${S("Valores financieros", `
+      ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
+      ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
+      ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
+      ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+      ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
+    `)}
     ${(() => {
       const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
       const vfBody = `

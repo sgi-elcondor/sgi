@@ -18,6 +18,10 @@
 @import url("./views/dashboard.css");
 @import url("./views/lotes.css");
 @import url("./views/reportes.css");
+@import url("./views/profile.css");
+
+
+@import url("./responsive/responsive.css");
 @import url("./views/ventas.css");
 
 @import url("./responsive/responsive.css");
