@@ -1,4 +1,4 @@
-﻿@media (max-width: 75rem) {
+@media (max-width: 75rem) {
   .stats-grid-primary,
   .stats-grid-secondary,
   .summary-strip,
@@ -59,6 +59,10 @@
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
+  }
+
+  .usuario-info {
+    width: 100%;
   }
 
   .stats-grid,

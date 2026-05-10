@@ -229,6 +229,71 @@ async function crearVenta(req, res, estadoFijo) {
 exports.create = (req, res) => crearVenta(req, res, null);
 
 exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
+exports.updateFinanciero = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });
+
+  const { valor_total, cuota_inicial, observaciones } = req.body;
+
+  if (valor_total  !== undefined && (isNaN(Number(valor_total))  || Number(valor_total) <= 0))
+    return res.status(422).json({ error: "El valor total debe ser mayor a cero" });
+  if (cuota_inicial !== undefined && cuota_inicial !== null && Number(cuota_inicial) < 0)
+    return res.status(422).json({ error: "La cuota inicial no puede ser negativa" });
+
+  const { data: actual, error: eRead } = await supabase.schema(SCHEMA).from("venta")
+    .select("valor_total, cuota_inicial, observaciones")
+    .eq("id_venta", id).single();
+  if (eRead || !actual) return res.status(404).json({ error: "Venta no encontrada" });
+
+  const vtFinal = valor_total  !== undefined ? Number(valor_total)  : Number(actual.valor_total);
+  const ciFinal = cuota_inicial !== undefined ? Number(cuota_inicial) : Number(actual.cuota_inicial);
+  if (ciFinal > vtFinal)
+    return res.status(422).json({ error: "La cuota inicial no puede superar el valor total" });
+
+  const updates    = {};
+  const auditRows  = [];
+  const CAMPOS = [
+    ["valor_total",   valor_total,   actual.valor_total],
+    ["cuota_inicial", cuota_inicial, actual.cuota_inicial],
+    ["observaciones", observaciones, actual.observaciones],
+  ];
+
+  for (const [campo, nuevo, anterior] of CAMPOS) {
+    if (nuevo === undefined) continue;
+    const ant = anterior != null ? String(anterior) : null;
+    const nvo = nuevo    != null ? String(nuevo)    : null;
+    if (ant !== nvo) {
+      updates[campo] = nuevo;
+      auditRows.push({
+        tabla_afectada: "venta",
+        id_registro:    id,
+        campo,
+        valor_anterior: ant,
+        valor_nuevo:    nvo,
+        usuario_db:     req.usuario.email,
+        motivo:         observaciones || null,
+      });
+    }
+  }
+
+  if (Object.keys(updates).length === 0)
+    return res.status(200).json({ message: "Sin cambios" });
+
+  if (auditRows.length > 0) {
+    const { error: eAudit } = await supabase.schema(SCHEMA).from("auditoria").insert(auditRows);
+    if (eAudit) return res.status(500).json({ error: "Error al registrar auditoría: " + eAudit.message });
+  }
+
+  const { data, error: eUpd } = await supabase.schema(SCHEMA).from("venta")
+    .update(updates).eq("id_venta", id).select().single();
+  if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+  res.json(data);
+};
+
+exports.create = (req, res) => crearVenta(req, res, null);
+
+exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
 
 exports.getEstadoFinanciero = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("v_aux_ventas_estado_financiero").select("*");

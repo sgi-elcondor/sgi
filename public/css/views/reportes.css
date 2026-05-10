@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿.reportes-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -8,17 +9,34 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1.125rem;
+=======
+.reportes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.chart-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+>>>>>>> origin/develop
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
 .chart-card-header {
+<<<<<<< HEAD
   padding: 1.125rem 1.25rem;
+=======
+  padding: 18px 20px;
+>>>>>>> origin/develop
   border-bottom: 1px solid var(--border);
 }
 
 .chart-card-title {
   color: var(--text);
+<<<<<<< HEAD
   font: 1.125rem var(--font-serif);
 }
 
@@ -31,13 +49,38 @@
 .chart-card-body {
   padding: 1.125rem 1.25rem 1.375rem;
   min-height: 20rem;
+=======
+  font: 18px var(--font-serif);
+}
+
+.chart-card-subtitle {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.chart-card-body {
+  padding: 18px 20px 22px;
+  min-height: 320px;
+>>>>>>> origin/develop
 }
 
 .chart-card canvas {
   width: 100% !important;
+<<<<<<< HEAD
   height: 17.5rem !important;
 }
 
 @media (max-width: 61.25rem) {
   .reportes-grid { grid-template-columns: 1fr; }
 }
+=======
+  height: 280px !important;
+}
+
+@media (max-width: 980px) {
+  .reportes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+>>>>>>> origin/develop

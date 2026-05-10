@@ -33,6 +33,11 @@ const VISTAS_POR_ROL = {
   ],
   comprador: ["dashboard"],
   comisionista: ["dashboard", "reportes"],
+  auxiliar_contable: [
+    "dashboard", "proyectos", "lotes", "compradores", "ventas",
+    "cuotas", "pagos", "comisionistas", "facturas", "recibos",
+    "reportes", "alertas", "auditoria", "usuarios"
+  ],
   asesor_comercial: [
     "dashboard", "proyectos", "lotes", "compradores", "ventas"
   ],
@@ -65,7 +70,24 @@ function capitalize(text = "") {
 }
 
 function humanizeRole(role = "") {
-  return String(role).split("_").map(capitalize).join(" ");
+  return String(role)
+    .split("_")
+    .map((part) => capitalize(part))
+    .join(" ");
+}
+
+function setTodayDate() {
+  const todayDate = document.getElementById("todayDate");
+  if (!todayDate) return;
+
+  const formattedDate = new Date().toLocaleDateString("es-CO", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  todayDate.textContent = capitalize(formattedDate);
 }
 
 // ── Theme ────────────────────────────────────────────────────────────────────
@@ -100,10 +122,17 @@ function setActiveNav(viewKey) {
 }
 
 function setViewTitle(title, viewKey = "dashboard") {
-  const viewTitle     = document.getElementById("viewTitle");
+  const viewTitle = document.getElementById("viewTitle");
   const topbarSubtitle = document.getElementById("topbarSubtitle");
-  if (viewTitle)      viewTitle.textContent      = title;
-  if (topbarSubtitle) topbarSubtitle.textContent = TOPBAR_SUBTITLES[viewKey] || "Centro de operacion inmobiliaria";
+
+  if (viewTitle) {
+    viewTitle.textContent = title;
+  }
+
+  if (topbarSubtitle) {
+    topbarSubtitle.textContent =
+      TOPBAR_SUBTITLES[viewKey] || "Centro de operación inmobiliaria";
+  }
 }
 
 function renderMissingView(viewKey, triedNames = []) {
@@ -547,6 +576,7 @@ function renderEditProfileView(perfil) {
 
 function applySidebarState(collapsed) {
   document.body.classList.toggle("sidebar-collapsed", collapsed);
+
   const toggle = document.getElementById("sidebarToggle");
   if (toggle) {
     toggle.setAttribute("aria-pressed", String(collapsed));
@@ -554,6 +584,7 @@ function applySidebarState(collapsed) {
     toggle.innerHTML = collapsed
       ? '<i data-lucide="panel-left-open"></i>'
       : '<i data-lucide="panel-left-close"></i>';
+
     window.SGIUI?.hydrate();
   }
 }
@@ -561,19 +592,17 @@ function applySidebarState(collapsed) {
 function initSidebarToggle() {
   const toggle = document.getElementById("sidebarToggle");
   if (!toggle) return;
+
   const STORAGE_KEY = "sgi_sidebar_collapsed";
-  const savedState  = localStorage.getItem(STORAGE_KEY) === "1";
+  const savedState = localStorage.getItem(STORAGE_KEY) === "1";
+
   applySidebarState(savedState);
+
   toggle.addEventListener("click", () => {
     const collapsed = !document.body.classList.contains("sidebar-collapsed");
     applySidebarState(collapsed);
     localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   });
-}
-
-
-function redirigirConDelay(url, segundos = 4) {
-  setTimeout(() => { window.location.href = url; }, segundos * 1000);
 }
 
 // ── Onboarding modal (comprador / comisionista) ───────────────────────────────
@@ -713,6 +742,14 @@ function bindNavigation() {
   });
 }
 
+
+function redirigirConDelay(url, segundos = 4) {
+  console.log(`[REDIRECT] Redirigiendo a ${url} en ${segundos} segundos...`);
+  setTimeout(() => {
+    window.location.href = url;
+  }, segundos * 1000);
+}
+
 async function iniciarApp() {
   initTheme();
 
@@ -763,8 +800,10 @@ async function iniciarApp() {
 
     aplicarMenuPorRol(perfil.rol);
     initUserMenu(perfil);
-    window.SGIUI?.hydrate();
     initSidebarToggle();
+    // renderUsuarioHeader(perfil);
+    window.SGIUI?.hydrate();
+    setTodayDate();
     bindNavigation();
 
     window.addEventListener("hashchange", () => {
@@ -775,13 +814,16 @@ async function iniciarApp() {
   } catch (err) {
     console.error("Error cargando perfil:", err.message);
 
-    const fbUser = window._firebaseAuth?.currentUser;
-    if (!fbUser) {
+    // Solo hace signOut si Firebase confirma que no hay sesión activa.
+    // Un error de red o Supabase lento no debe cerrar la sesión.
+    const firebaseUser = window._firebaseAuth?.currentUser;
+    if (!firebaseUser) {
       localStorage.removeItem("fb_token");
       redirigirConDelay("/login.html");
       return;
     }
 
+    // Hay sesión Firebase activa — muestra error sin cerrar sesión
     const vc = document.getElementById("viewContainer");
     if (vc) {
       vc.innerHTML = `

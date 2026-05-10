@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿.dashboard-hero {
   display: grid;
   gap: 1.125rem;
@@ -10,19 +11,40 @@
     linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
   box-shadow: var(--shadow-soft);
   align-items: stretch;
+=======
+.dashboard-hero {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  grid-template-columns: 1.5fr 0.9fr;
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.12), transparent 24%),
+    linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
+  box-shadow: var(--shadow-soft);
+>>>>>>> origin/develop
 }
 
 .dashboard-hero-copy {
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
   gap: 0.5rem;
+=======
+  gap: 8px;
+>>>>>>> origin/develop
   justify-content: center;
 }
 
 .hero-eyebrow,
 .hero-role-label {
   color: var(--text-muted);
+<<<<<<< HEAD
   font-size: 0.6875rem;
+=======
+  font-size: 11px;
+>>>>>>> origin/develop
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -30,19 +52,28 @@
 
 .hero-title {
   color: var(--text);
+<<<<<<< HEAD
   font: 2.625rem var(--font-serif);
+=======
+  font: 42px var(--font-serif);
+>>>>>>> origin/develop
   line-height: 1.04;
 }
 
 .hero-text {
   max-width: 62ch;
   color: var(--text-soft);
+<<<<<<< HEAD
   font-size: 0.9375rem;
+=======
+  font-size: 15px;
+>>>>>>> origin/develop
 }
 
 .dashboard-hero-panel {
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
   justify-content: center;
   align-items: flex-end;
   gap: 0.875rem;
@@ -50,21 +81,34 @@
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--surface-glass);
+=======
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #f0e3d4;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+>>>>>>> origin/develop
 }
 
 .hero-role {
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
   gap: 0.375rem;
   padding: 1rem 1.125rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--surface-glass);
   box-shadow: var(--shadow-soft);
+=======
+  gap: 4px;
+>>>>>>> origin/develop
 }
 
 .hero-role strong {
   color: var(--text);
+<<<<<<< HEAD
   font-size: 1.125rem;
   font-weight: 700;
 }
@@ -86,15 +130,35 @@
 
 .hero-actions .btn { min-width: 9.375rem; }
 
+=======
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+>>>>>>> origin/develop
 .kpi-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+<<<<<<< HEAD
   min-height: 9.25rem;
   padding: 1.125rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--surface);
+=======
+  min-height: 148px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #ffffff;
+>>>>>>> origin/develop
   box-shadow: var(--shadow-soft);
   transition:
     transform 0.16s ease,
@@ -108,32 +172,53 @@
   box-shadow: var(--shadow);
 }
 
+<<<<<<< HEAD
 .kpi-card.primary { min-height: 9.75rem; }
+=======
+.kpi-card.primary {
+  min-height: 156px;
+}
+>>>>>>> origin/develop
 
 .kpi-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+<<<<<<< HEAD
   gap: 0.625rem;
+=======
+  gap: 10px;
+>>>>>>> origin/develop
 }
 
 .kpi-label {
   color: var(--text-muted);
+<<<<<<< HEAD
   font-size: 0.6875rem;
+=======
+  font-size: 11px;
+>>>>>>> origin/develop
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .kpi-indicator {
+<<<<<<< HEAD
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 6.1875rem;
+=======
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+>>>>>>> origin/develop
   box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.02);
 }
 
 .kpi-indicator.success { background: var(--success); }
 .kpi-indicator.warning { background: var(--warning); }
+<<<<<<< HEAD
 .kpi-indicator.danger  { background: var(--danger); }
 .kpi-indicator.info    { background: var(--accent); }
 
@@ -150,19 +235,50 @@
   margin-top: 0.625rem;
   color: var(--text-muted);
   font-size: 0.75rem;
+=======
+.kpi-indicator.danger { background: var(--danger); }
+.kpi-indicator.info { background: var(--accent); }
+
+.kpi-value {
+  margin-top: 12px;
+  color: var(--text);
+  font: 34px var(--font-serif);
+  line-height: 1;
+}
+
+.kpi-card.secondary .kpi-value {
+  font-size: 30px;
+}
+
+.kpi-meta {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+>>>>>>> origin/develop
 }
 
 .dashboard-two-col {
   display: grid;
+<<<<<<< HEAD
   gap: 1.125rem;
+=======
+  gap: 18px;
+>>>>>>> origin/develop
   grid-template-columns: 1.05fr 0.95fr;
 }
 
 .panel-card {
+<<<<<<< HEAD
   padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: 1.125rem;
   background: var(--surface);
+=======
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #ffffff;
+>>>>>>> origin/develop
   box-shadow: var(--shadow-soft);
 }
 
@@ -170,19 +286,32 @@
 .activity-list {
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
   gap: 0.75rem;
   margin-top: 0.375rem;
+=======
+  gap: 12px;
+  margin-top: 6px;
+>>>>>>> origin/develop
 }
 
 .task-item,
 .activity-item {
   display: flex;
   justify-content: space-between;
+<<<<<<< HEAD
   gap: 0.875rem;
   padding: 0.875rem;
   border: 1px solid var(--border);
   border-radius: 0.875rem;
   background: var(--surface-2);
+=======
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #f0e8dc;
+  border-radius: 14px;
+  background: #fcfaf7;
+>>>>>>> origin/develop
   transition:
     border-color var(--transition),
     background var(--transition);
@@ -190,7 +319,11 @@
 
 .task-item:hover,
 .activity-item:hover {
+<<<<<<< HEAD
   background: var(--surface-3);
+=======
+  background: #fff7f0;
+>>>>>>> origin/develop
   border-color: rgba(var(--accent-rgb), 0.22);
 }
 
@@ -198,19 +331,28 @@
 .activity-main {
   display: flex;
   flex-direction: column;
+<<<<<<< HEAD
   gap: 0.25rem;
+=======
+  gap: 4px;
+>>>>>>> origin/develop
 }
 
 .task-title,
 .activity-title {
   color: var(--text);
+<<<<<<< HEAD
   font-size: 0.875rem;
+=======
+  font-size: 14px;
+>>>>>>> origin/develop
   font-weight: 700;
 }
 
 .task-desc,
 .activity-desc {
   color: var(--text-muted);
+<<<<<<< HEAD
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -223,29 +365,121 @@
   flex-shrink: 0;
   margin-top: 0.125rem;
   border-radius: 6.1875rem;
+=======
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.activity-item {
+  align-items: center;
+}
+
+.activity-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border-radius: 999px;
+>>>>>>> origin/develop
   background: var(--accent);
 }
 
 .activity-time {
   color: var(--text-muted);
+<<<<<<< HEAD
   font-size: 0.6875rem;
+=======
+  font-size: 11px;
+>>>>>>> origin/develop
   white-space: nowrap;
 }
 
 .dashboard-table {
   overflow: hidden;
+<<<<<<< HEAD
   border-radius: 1.125rem;
 }
 
 .dashboard-table .table-header { padding: 1.125rem 1.25rem; }
+=======
+  border-radius: 18px;
+}
+
+.dashboard-table .table-header {
+  padding: 18px 20px;
+}
+>>>>>>> origin/develop
 
 .dashboard-table tbody td strong {
   color: var(--text);
   font-weight: 700;
 }
 
+<<<<<<< HEAD
 @media (max-width: 56.25rem) {
   .dashboard-hero { grid-template-columns: 1fr; }
   .dashboard-hero-panel { align-items: flex-start; }
   .hero-actions { justify-content: flex-start; }
 }
+=======
+/* ===== HERO DASHBOARD ===== */
+
+.dashboard-hero {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.dashboard-hero-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.hero-actions .btn {
+  min-width: 150px;
+}
+
+.hero-role {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-role-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .dashboard-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-hero-panel {
+    align-items: flex-start;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+}
+>>>>>>> origin/develop
