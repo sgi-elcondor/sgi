@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.875rem;
-  padding: 1.125rem 1.5rem;
+  padding: 0.89rem 1.2rem;
   background: var(--surface-glass);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);

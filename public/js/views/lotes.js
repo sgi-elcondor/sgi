@@ -774,5 +774,126 @@
     renderLotesScreen();
   }
 
-  window.lotesView = lotesView;
+  
+function lotesReadView(container) {
+    if (!container) return "";
+
+    const state = { proyecto: "", search: "", sortBy: "proyecto_codigo" };
+
+    async function renderLotesScreen() {
+      try {
+        container.innerHTML = window.UI?.loader ? UI.loader() : "";
+
+        const [allLotes, proyectos] = await Promise.all([
+          sgiCargarLotesBackend(),
+          sgiCargarProyectosBackend()
+        ]);
+
+        const filteredLotes = sgiLoteSortList(sgiLoteApplyFilters(allLotes, state), state.sortBy);
+        const summary = sgiLoteBuildSummary(filteredLotes);
+
+        container.innerHTML = `
+          <section class="dashboard-shell">
+            <section class="table-wrap lotes-intro">
+              <div class="lotes-intro-body">
+                <div>
+                  <span class="section-kicker">Inventario</span>
+                  <h3 class="section-title">Lotes disponibles</h3>
+                  <p class="lotes-intro-text">Consulta el inventario de lotes por proyecto.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="dashboard-block">
+              <div class="section-head">
+                <div>
+                  <span class="section-kicker">Resumen</span>
+                  <h3 class="section-title">Estado del inventario</h3>
+                </div>
+              </div>
+              <div class="stats-grid lotes-summary-grid">
+                <article class="stat-card">
+                  <div class="stat-label">Total lotes</div>
+                  <div class="stat-value">${summary.total}</div>
+                  <div class="stat-sub">Resultado actual</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Disponibles</div>
+                  <div class="stat-value">${summary.disponibles}</div>
+                  <div class="stat-sub">Listos para comercializacion</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Vendidos</div>
+                  <div class="stat-value">${summary.vendidos}</div>
+                  <div class="stat-sub">Con venta registrada</div>
+                </article>
+                <article class="stat-card">
+                  <div class="stat-label">Entregados</div>
+                  <div class="stat-value">${summary.entregados}</div>
+                  <div class="stat-sub">Proceso finalizado</div>
+                </article>
+              </div>
+            </section>
+
+            <section class="table-wrap">
+              <div class="table-header"><h3>Filtros y busqueda</h3></div>
+              <div class="filter-bar">
+                <div class="form-group filter-field">
+                  <label for="filtroProyectoR">Proyecto</label>
+                  <select id="filtroProyectoR">
+                    <option value="">Todos</option>
+                    ${proyectos.map((p) => `<option value="${p.id}" ${String(state.proyecto) === String(p.id) ? "selected" : ""}>${p.nombre}</option>`).join("")}
+                  </select>
+                </div>
+                <div class="form-group filter-field">
+                  <label for="buscarLoteR">Buscar</label>
+                  <input id="buscarLoteR" type="text" placeholder="Buscar por codigo, proyecto o estado" value="${state.search}" />
+                </div>
+              </div>
+            </section>
+
+            <section class="table-wrap">
+              <div class="table-header"><h3>Listado de lotes</h3></div>
+              ${filteredLotes.length ? `
+                <table>
+                  <thead>
+                    <tr><th>Codigo</th><th>Proyecto</th><th>Area</th><th>Precio</th><th>Estado</th></tr>
+                  </thead>
+                  <tbody>
+                    ${filteredLotes.map((lote) => `
+                      <tr>
+                        <td><strong>${lote.codigo}</strong></td>
+                        <td>${lote.proyecto}</td>
+                        <td>${Number(lote.area || 0)} m&sup2;</td>
+                        <td>${sgiLoteFormatCurrency(lote.precio)}</td>
+                        <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              ` : `<div class="empty-state"><div class="empty-state-title">No hay resultados</div></div>`}
+            </section>
+          </section>
+        `;
+
+        document.getElementById("filtroProyectoR")?.addEventListener("change", (e) => { state.proyecto = e.target.value; renderLotesScreen(); });
+        document.getElementById("buscarLoteR")?.addEventListener("input", (e) => { state.search = e.target.value; renderLotesScreen(); });
+        window.SGIUI?.hydrate?.();
+
+      } catch (error) {
+        console.error("Error cargando lotes:", error);
+        container.innerHTML = `<section class="table-wrap" style="padding:24px"><div class="table-header"><h3>Error</h3></div><div style="padding:20px;color:var(--danger)">${error.message}</div></section>`;
+      }
+    }
+
+    renderLotesScreen();
+  }
+
+  function lotesEditView(container) {
+    window.lotesView(container);
+  }
+
+  window.lotesView     = lotesView;
+  window.lotesReadView = lotesReadView;
+  window.lotesEditView = lotesEditView;
 })();
