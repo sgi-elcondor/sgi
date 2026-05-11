@@ -1,7 +1,9 @@
 ﻿const router = require("express").Router();
 const ctrl   = require("../controllers/cuotas.controller");
+router.get("/pendientes",        ctrl.getPendientes);
 router.get("/vencidas",          ctrl.getVencidas);
 router.get("/venta/:idVenta",    ctrl.getByVenta);
 router.post("/",                 ctrl.create);
 router.patch("/:id/estado",      ctrl.updateEstado);
+router.patch("/:id/valores",     ctrl.updateValores);
 module.exports = router;
