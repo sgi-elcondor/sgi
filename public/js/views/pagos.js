@@ -1,4 +1,4 @@
-function _pagosTabla(data) {
+﻿function _pagosTabla(data) {
   if (!data.length) {
     return `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin pagos registrados</td></tr>`;
   }
@@ -7,8 +7,8 @@ function _pagosTabla(data) {
     <td>${UI.date(p.fecha_pago)}</td>
     <td>${UI.fmt(p.valor_pago)}</td>
     <td>${p.metodo_pago}</td>
-    <td>${p.referencia || "—"}</td>
-    <td>${p.tipo_excedente ? UI.badge(p.tipo_excedente) : "—"}</td>
+    <td>${p.referencia || "â€”"}</td>
+    <td>${p.tipo_excedente ? UI.badge(p.tipo_excedente) : "â€”"}</td>
   </tr>`).join("");
 }
 
@@ -25,7 +25,7 @@ window.pagosReadView = async function() {
       <div class="table-header"><h3>Pagos</h3></div>
       <table>
         <thead><tr>
-          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>MÃ©todo</th><th>Referencia</th><th>Excedente</th>
         </tr></thead>
         <tbody>${_pagosTabla(data)}</tbody>
       </table>
@@ -48,7 +48,7 @@ window.pagosEditView = async function() {
       </div>
       <table>
         <thead><tr>
-          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>MÃ©todo</th><th>Referencia</th><th>Excedente</th>
         </tr></thead>
         <tbody>${_pagosTabla(data)}</tbody>
       </table>
@@ -100,7 +100,7 @@ window.pagoForm = async function() {
         <input id="f_fp" type="date" value="${new Date().toISOString().split("T")[0]}">
       </div>
       <div class="form-group">
-        <label>Método de pago *</label>
+        <label>MÃ©todo de pago *</label>
         <select id="f_mp">
           <option value="transferencia">Transferencia</option>
           <option value="efectivo">Efectivo</option>
@@ -108,7 +108,7 @@ window.pagoForm = async function() {
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label>Referencia</label>
-        <input id="f_ref" placeholder="Nro. comprobante o transacción">
+        <input id="f_ref" placeholder="Nro. comprobante o transacciÃ³n">
       </div>
     </div>
 
@@ -167,10 +167,11 @@ window.guardarPago = async function() {
   try {
     await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, cuotas });
     UI.closeModal();
-    window.SGIUI?.toast("Pago registrado. Recibo generado automáticamente.", "success", "Éxito");
+    window.SGIUI?.toast("Pago registrado. Recibo generado automÃ¡ticamente.", "success", "Ã‰xito");
     window.navigate(window.currentViewKey, false);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
     window.SGIUI?.toast(e.message || "Error al registrar el pago.", "error", "Error");
   }
 };
+

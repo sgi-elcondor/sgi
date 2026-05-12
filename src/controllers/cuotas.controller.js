@@ -157,3 +157,67 @@ exports.getVencidas = async (req, res) => {
     };
   }));
 };
+
+
+exports.getMisCuotas = async (req, res) => {
+  const id_comprador = req.usuario.id_comprador;
+  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+
+  const { data: vcData, error: vcErr } = await supabase.schema(SCHEMA)
+    .from("venta_comprador")
+    .select("id_venta")
+    .eq("id_comprador", id_comprador);
+
+  if (vcErr) return res.status(500).json({ error: vcErr.message });
+  const ventaIds = (vcData || []).map(vc => vc.id_venta);
+  if (!ventaIds.length) return res.json([]);
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("cuota")
+    .select(`
+      id_cuota, id_venta, numero_cuota, tipo,
+      fecha_vencimiento, valor_cuota, estado, es_extraordinaria,
+      cuota_pago (
+        valor_aplicado,
+        pago:id_pago ( id_pago, estado, fecha_pago, metodo_pago )
+      ),
+      venta:id_venta (
+        lote:id_lote (
+          codigo_lote,
+          proyecto:id_proyecto (nombre)
+        )
+      )
+    `)
+    .in("id_venta", ventaIds)
+    .order("numero_cuota");
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const hoy = new Date();
+
+  res.json((data || []).map(c => {
+    const pagadoAceptado = (c.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const enRevision = (c.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "pendiente_revision")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const dias = Math.floor((new Date(c.fecha_vencimiento + "T12:00:00") - hoy) / 86_400_000);
+    return {
+      id_cuota:          c.id_cuota,
+      id_venta:          c.id_venta,
+      numero_cuota:      c.numero_cuota,
+      tipo:              c.tipo,
+      fecha_vencimiento: c.fecha_vencimiento,
+      valor_cuota:       Number(c.valor_cuota),
+      estado:            c.estado,
+      es_extraordinaria: c.es_extraordinaria,
+      valor_pagado:      pagadoAceptado,
+      valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
+      valor_en_revision: enRevision,
+      dias_restantes:    dias,
+      lote:              c.venta?.lote?.codigo_lote   || "—",
+      proyecto:          c.venta?.lote?.proyecto?.nombre || "—",
+    };
+  }));
+};
