@@ -18,6 +18,8 @@ const VIEWS = {
   reportes:           { fn: "reportesView",         title: "Reportes" },
   alertas:            { fn: "alertasView",          title: "Alertas Juridicas" },
   auditoria:          { fn: "auditoriaView",        title: "Auditoria" },
+  juridico:           { fn: "juridicoView",         title: "Seguimiento Juridico" },
+  personal:           { fn: "personalView",         title: "Personal" },
   usuarios:           { fn: "usuariosView",         title: "Gestion de Usuarios" },
   roles:              { fn: "rolesView",            title: "Roles y Permisos" },
   "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
@@ -57,8 +59,12 @@ const SIDEBAR_GROUPS = [
     { view: "reportes",       icon: "bar-chart-3",   label: "Reportes" },
     { view: "alertas",        icon: "triangle-alert",label: "Alertas" },
     { view: "auditoria",      icon: "shield-check",  label: "Auditoria" },
+    { view: "personal",       icon: "users",         label: "Personal" },
     { view: "usuarios",       icon: "settings",      label: "Usuarios" },
     { view: "roles",          icon: "lock",          label: "Roles" },
+  ]},
+  { label: "Juridico", items: [
+    { view: "juridico",       icon: "scale",         label: "Seguimiento Juridico" },
   ]},
 ];
 
@@ -80,12 +86,14 @@ const TOPBAR_SUBTITLES = {
   reportes:           "Indicadores y reportes consolidados",
   alertas:            "Seguimiento juridico y alertas",
   auditoria:          "Trazabilidad y control interno",
+  personal:           "Distribucion de usuarios activos por rol en la plataforma",
   usuarios:           "Administracion de accesos y roles",
   roles:              "Configuracion de roles y permisos",
   "mis-cuotas":        "Consulta y pago de tus cuotas",
   "mis-recibos":       "Estado de tus pagos y recibos emitidos",
   "bank-transactions": "Registro de movimientos bancarios",
   "payment-validation":"Contraste y aprobacion de pagos",
+  juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
 };
 
 window.currentUser    = null;
@@ -213,16 +221,24 @@ function navigate(viewKey, updateHash) {
 
 // â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function renderSidebar(vistas) {
+const SIDEBAR_ALLOWLIST_BY_ROLE = {
+  gerencia: new Set(['dashboard', 'reportes', 'alertas', 'auditoria', 'personal']),
+};
+
+function renderSidebar(vistas, rol) {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
-  const allowed = new Set(vistas || []);
+  const allowlist = SIDEBAR_ALLOWLIST_BY_ROLE[rol] || null;
+  const allowed   = new Set(vistas || []);
   let html = "";
   let firstGroup = true;
 
   SIDEBAR_GROUPS.forEach(function(group) {
-    const visible = group.items.filter(function(item) { return allowed.has(item.view); });
+    const visible = group.items.filter(function(item) {
+      if (!allowed.has(item.view)) return false;
+      return allowlist ? allowlist.has(item.view) : true;
+    });
     if (!visible.length) return;
 
     if (!firstGroup) html += '<div class="nav-divider"></div>';
@@ -581,7 +597,7 @@ async function iniciarApp() {
       (perfil.rol === "comisionista" && !perfil.id_comisionista);
 
     if (necesitaOnboarding) {
-      renderSidebar(perfil.vistas);
+      renderSidebar(perfil.vistas, perfil.rol);
       initUserMenu(perfil);
       window.SGIUI?.hydrate();
       initSidebarToggle();
@@ -589,7 +605,7 @@ async function iniciarApp() {
       return;
     }
 
-    renderSidebar(perfil.vistas);
+    renderSidebar(perfil.vistas, perfil.rol);
     initUserMenu(perfil);
     initSidebarToggle();
     window.SGIUI?.hydrate();

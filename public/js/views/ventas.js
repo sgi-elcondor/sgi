@@ -68,7 +68,7 @@ window.ventasView = async function() {
         ${botonNueva}
       </div>
       ${esAsesor ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
-        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que un operador o administrador las apruebe.
+        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que gerencia o un administrador las apruebe.
       </p>` : ""}
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-end">
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
@@ -1195,7 +1195,7 @@ function _iniciarFormularioDinamico() {
   _actualizarCalculos();
 }
 
-// ─── Formulario estándar (admin / operador) ───
+// ─── Formulario estándar (admin / auxiliar_contable) ───
 window.ventaForm = async function() {
   let lotes, compradores, comisionistas;
   try {
@@ -1300,7 +1300,7 @@ window.ventaFormSolicitud = async function() {
   UI.openModal("Solicitar Venta (pendiente de autorización)",
     `<div id="venta_form_wrap">
       <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem;">
-        Esta solicitud quedará en estado <b>pendiente</b> y deberá ser aprobada por un administrador u operador antes de activarse.
+        Esta solicitud quedará en estado <b>pendiente</b> y deberá ser aprobada por un administrador o auxiliar contable antes de activarse.
       </p>
       ` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">

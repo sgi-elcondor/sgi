@@ -1,376 +1,653 @@
-let reportesChartFacturacion = null;
-let reportesChartCartera = null;
+let _repChartRecaudo  = null;
+let _repChartCartera  = null;
+let _repChartVentas   = null;
+let _repChartVenc     = null;
 
-function destruirGraficasReportes() {
-  if (reportesChartFacturacion) {
-    reportesChartFacturacion.destroy();
-    reportesChartFacturacion = null;
-  }
-
-  if (reportesChartCartera) {
-    reportesChartCartera.destroy();
-    reportesChartCartera = null;
-  }
-}
-
-function normalizarEstadoFinanciero(estado) {
-  const raw = String(estado || "").trim().toLowerCase();
-
-  if (!raw || raw === "undefined" || raw === "null") return "Sin estado";
-  if (raw.includes("saludable")) return "Saludable";
-  if (raw.includes("riesgo")) return "En riesgo";
-  if (raw.includes("critico")) return "Crítico";
-
-  return estado;
-}
-
-function colorEstadoFinanciero(estado) {
-  const normalized = normalizarEstadoFinanciero(estado).toLowerCase();
-
-  if (normalized.includes("saludable")) return "var(--success)";
-  if (normalized.includes("riesgo")) return "var(--warning)";
-  if (normalized.includes("critico")) return "var(--danger)";
-  return "var(--text-muted)";
-}
-
-function formatearPeriodo(periodo) {
-  if (!periodo) return "—";
-  const value = String(periodo);
-
-  if (value.length >= 7) {
-    return value.slice(0, 7);
-  }
-
-  return value;
-}
-
-function renderGraficasReportes(cartera, recaudo) {
-  if (typeof Chart === "undefined") return;
-
-  const canvasFacturacion = document.getElementById("chartFacturacionVsRecaudo");
-  const canvasCartera = document.getElementById("chartCapitalPendiente");
-
-  if (!canvasFacturacion || !canvasCartera) return;
-
-  destruirGraficasReportes();
-
-  const periodos = recaudo.map(r => formatearPeriodo(r.periodo));
-  const facturado = recaudo.map(r => Number(r.total_facturado || 0));
-  const recaudado = recaudo.map(r => Number(r.total_recaudado || 0));
-
-  reportesChartFacturacion = new Chart(canvasFacturacion, {
-    type: "bar",
-    data: {
-      labels: periodos,
-      datasets: [
-        {
-          label: "Facturado",
-          data: facturado,
-          backgroundColor: "rgba(249, 115, 22, 0.78)",
-          borderColor: "rgba(249, 115, 22, 1)",
-          borderWidth: 1,
-          borderRadius: 8
-        },
-        {
-          label: "Recaudado",
-          data: recaudado,
-          backgroundColor: "rgba(29, 29, 29, 0.72)",
-          borderColor: "rgba(29, 29, 29, 1)",
-          borderWidth: 1,
-          borderRadius: 8
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          labels: {
-            color: "#72675d",
-            font: {
-              family: "DM Sans",
-              size: 12
-            }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label(context) {
-              const label = context.dataset.label || "";
-              const value = context.raw || 0;
-              return `${label}: ${new Intl.NumberFormat("es-CO", {
-                style: "currency",
-                currency: "COP",
-                maximumFractionDigits: 0
-              }).format(value)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#72675d",
-            font: {
-              family: "DM Sans"
-            }
-          },
-          grid: {
-            color: "rgba(0,0,0,0.04)"
-          }
-        },
-        y: {
-          ticks: {
-            color: "#72675d",
-            font: {
-              family: "DM Sans"
-            },
-            callback(value) {
-              return new Intl.NumberFormat("es-CO", {
-                notation: "compact",
-                compactDisplay: "short"
-              }).format(value);
-            }
-          },
-          grid: {
-            color: "rgba(0,0,0,0.05)"
-          }
-        }
-      }
-    }
-  });
-
-  const proyectos = cartera.map(c => c.proyecto);
-  const capitalPendiente = cartera.map(c => Number(c.capital_pendiente || 0));
-
-  reportesChartCartera = new Chart(canvasCartera, {
-    type: "bar",
-    data: {
-      labels: proyectos,
-      datasets: [
-        {
-          label: "Capital pendiente",
-          data: capitalPendiente,
-          backgroundColor: "rgba(249, 115, 22, 0.82)",
-          borderColor: "rgba(249, 115, 22, 1)",
-          borderWidth: 1,
-          borderRadius: 8
-        }
-      ]
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label(context) {
-              const value = context.raw || 0;
-              return new Intl.NumberFormat("es-CO", {
-                style: "currency",
-                currency: "COP",
-                maximumFractionDigits: 0
-              }).format(value);
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: "#72675d",
-            font: {
-              family: "DM Sans"
-            },
-            callback(value) {
-              return new Intl.NumberFormat("es-CO", {
-                notation: "compact",
-                compactDisplay: "short"
-              }).format(value);
-            }
-          },
-          grid: {
-            color: "rgba(0,0,0,0.05)"
-          }
-        },
-        y: {
-          ticks: {
-            color: "#72675d",
-            font: {
-              family: "DM Sans"
-            }
-          },
-          grid: {
-            display: false
-          }
-        }
-      }
-    }
-  });
+function _destroyRepCharts() {
+  if (_repChartRecaudo) { _repChartRecaudo.destroy();  _repChartRecaudo  = null; }
+  if (_repChartCartera) { _repChartCartera.destroy();  _repChartCartera  = null; }
+  if (_repChartVentas)  { _repChartVentas.destroy();   _repChartVentas   = null; }
+  if (_repChartVenc)    { _repChartVenc.destroy();     _repChartVenc     = null; }
 }
 
 window.reportesView = async function () {
+  _destroyRepCharts();
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
 
   try {
-    const [cartera, recaudo] = await Promise.all([
-      API.get("/reportes/cartera"),
-      API.get("/reportes/recaudo")
+    const mesActual = new Date().toISOString().slice(0, 7);
+
+    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesDetalle] = await Promise.all([
+      API.get("/cuotas/vencidas").catch(() => []),
+      API.get("/cuotas/pendientes").catch(() => []),
+      API.get("/pagos").catch(() => []),
+      API.get("/ventas").catch(() => []),
+      API.get("/reportes/cartera").catch(() => []),
+      API.get("/reportes/recaudo").catch(() => []),
+      API.get("/lotes").catch(() => []),
+      API.get("/reportes/comisiones").catch(() => null),
+      API.get("/comisionistas/comisiones").catch(() => []),
     ]);
 
-    const totalCapitalPendiente = cartera.reduce(
-      (acc, item) => acc + Number(item.capital_pendiente || 0),
-      0
-    );
+    const ventasActivas = todasVentas.filter(v => v.estado === "activa").length;
+    const casosMora     = todasVentas.filter(v => ["mora", "pre_mora", "devolucion"].includes(v.estado)).length;
 
-    const totalVentasActivas = cartera.reduce(
-      (acc, item) => acc + Number(item.ventas_activas || 0),
-      0
-    );
+    const pagosDeEsteMes  = pagos.filter(p => p.estado === "aceptado" && String(p.fecha_pago || "").slice(0, 7) === mesActual);
+    const totalRecaudado  = pagosDeEsteMes.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
 
-    const totalCuotasVencidas = cartera.reduce(
-      (acc, item) => acc + Number(item.total_cuotas_vencidas || 0),
-      0
-    );
+    const capitalPendiente = cuotasPend.reduce((s, c) => s + Number(c.valor_pendiente || c.valor_cuota || 0), 0);
 
-    const promedioCumplimiento = recaudo.length
-      ? recaudo.reduce((acc, item) => acc + Number(item.indice_cumplimiento || 0), 0) / recaudo.length
-      : 0;
+    const cuotasVencidas = cuotasVenc.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+    const numCuotasVenc  = cuotasVenc.length;
+
+    const vencMes      = cuotasVenc.filter(c => String(c.fecha_vencimiento || "").slice(0, 7) === mesActual);
+    const totalVencMes = vencMes.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+    const base         = totalRecaudado + totalVencMes;
+    const cumplimiento = base > 0 ? (totalRecaudado / base) * 100 : 0;
+
+    const TONES = {
+      success: { color: "var(--success)",    bg: "rgba(34,197,94,.08)"  },
+      info:    { color: "var(--primary)",    bg: "rgba(59,130,246,.08)" },
+      warning: { color: "var(--warning)",    bg: "rgba(234,179, 8,.08)" },
+      danger:  { color: "var(--danger)",     bg: "rgba(239,68, 68,.08)" },
+      muted:   { color: "var(--text-muted)", bg: "rgba(0,0,0,.04)"      },
+    };
+
+    const toneCumplimiento = cumplimiento >= 90 ? "success" : cumplimiento >= 65 ? "warning" : "danger";
+
+    const ESTADO_ORDER  = ["disponible", "reservado", "vendido", "bloqueado"];
+    const ESTADO_COLORS = {
+      disponible: { bg: "rgba(34,197,94,.12)",   color: "var(--success)"    },
+      reservado:  { bg: "rgba(234,179,8,.12)",    color: "var(--warning)"    },
+      vendido:    { bg: "rgba(239,68,68,.12)",    color: "var(--danger)"     },
+      bloqueado:  { bg: "rgba(107,114,128,.12)",  color: "var(--text-muted)" },
+    };
+    const proyMap = {};
+    lotes.forEach(l => {
+      const proy = l.proyecto?.nombre || "Sin proyecto";
+      const est  = (l.estado || "sin_estado").toLowerCase();
+      if (!proyMap[proy]) proyMap[proy] = { total: 0, estados: {} };
+      proyMap[proy].total++;
+      proyMap[proy].estados[est] = (proyMap[proy].estados[est] || 0) + 1;
+    });
+    const proyEntries = Object.entries(proyMap).sort((a, b) => b[1].total - a[1].total);
+
+    const kpis = [
+      {
+        icon:  "trending-up",
+        label: "Recaudado este mes",
+        value: UI.fmt(totalRecaudado),
+        meta:  (() => {
+          const n = pagosDeEsteMes.length;
+          return n > 0 ? `${n} pago${n > 1 ? "s" : ""} aceptado${n > 1 ? "s" : ""} en ${mesActual}` : `Sin pagos aceptados en ${mesActual}`;
+        })(),
+        tone: totalRecaudado > 0 ? "success" : "muted",
+        nav:  "pagos-read",
+      },
+      {
+        icon:  "briefcase",
+        label: "Ventas activas",
+        value: ventasActivas,
+        meta:  ventasActivas === 1 ? "1 contrato vigente" : `${ventasActivas} contratos vigentes`,
+        tone:  ventasActivas > 0 ? "info" : "muted",
+        nav:   "ventas",
+      },
+      {
+        icon:  "landmark",
+        label: "Capital pendiente",
+        value: UI.fmt(capitalPendiente),
+        meta:  "Saldo total consolidado de cartera",
+        tone:  "warning",
+        nav:   "ventas",
+      },
+      {
+        icon:  "percent",
+        label: "Cumplimiento recaudo",
+        value: `${cumplimiento.toFixed(1)}%`,
+        meta:  "Recaudado vs facturado en el periodo",
+        tone:  toneCumplimiento,
+        nav:   "pagos-read",
+      },
+      {
+        icon:  "calendar-x",
+        label: "Cuotas vencidas",
+        value: UI.fmt(cuotasVencidas),
+        meta:  numCuotasVenc === 1 ? "1 cuota sin pagar" : `${numCuotasVenc} cuotas sin pagar`,
+        tone:  numCuotasVenc > 0 ? "danger" : "success",
+        nav:   "cuotas",
+      },
+      {
+        icon:  "scale",
+        label: "Casos mora / pre-mora",
+        value: casosMora,
+        meta:  casosMora === 0 ? "Sin ventas en mora o devolucion"
+             : casosMora === 1 ? "1 venta en mora, pre-mora o devolucion"
+             : `${casosMora} ventas en mora, pre-mora o devolucion`,
+        tone:  casosMora > 0 ? "danger" : "success",
+        nav:   "alertas",
+      },
+    ];
+
+    const vistas    = window.currentUser?.vistas ?? [];
+    const canPagos  = vistas.includes("pagos-read");
+    const canVentas = vistas.includes("ventas");
+    const canCuotas = vistas.includes("cuotas");
+
+    const chartCards = [
+      {
+        id:    "repChartRecaudo",
+        title: "Recaudo mensual",
+        sub:   "Pagos aceptados en los ultimos 12 meses",
+        nav:   canPagos ? "pagos-read" : null,
+      },
+      {
+        id:    "repChartVentas",
+        title: "Ventas por estado",
+        sub:   "Distribucion actual del portafolio",
+        nav:   canVentas ? "ventas" : null,
+      },
+      {
+        id:    "repChartVenc",
+        title: "Cartera vencida",
+        sub:   "Cuotas sin pagar agrupadas por mes de vencimiento",
+        nav:   canCuotas ? "cuotas" : null,
+      },
+      {
+        id:    "repChartCartera",
+        title: "Capital por proyecto",
+        sub:   "Saldo pendiente de cartera activa por proyecto",
+        nav:   canVentas ? "ventas" : null,
+      },
+    ];
 
     vc.innerHTML = `
       <section class="page-shell">
-        <section class="stats-grid" style="margin-bottom: 8px;">
-          <article class="stat-card">
-            <div class="stat-label">Capital pendiente</div>
-            <div class="stat-value">${UI.fmt(totalCapitalPendiente)}</div>
-            <div class="stat-sub">Saldo consolidado de cartera</div>
-          </article>
-
-          <article class="stat-card">
-            <div class="stat-label">Ventas activas</div>
-            <div class="stat-value">${totalVentasActivas}</div>
-            <div class="stat-sub">Operaciones actualmente vigentes</div>
-          </article>
-
-          <article class="stat-card">
-            <div class="stat-label">Cuotas vencidas</div>
-            <div class="stat-value">${UI.fmt(totalCuotasVencidas)}</div>
-            <div class="stat-sub">Obligaciones pendientes de pago</div>
-          </article>
-
-          <article class="stat-card">
-            <div class="stat-label">% cumplimiento promedio</div>
-            <div class="stat-value">${(promedioCumplimiento * 100).toFixed(1)}%</div>
-            <div class="stat-sub">Recaudo frente a facturación</div>
-          </article>
-        </section>
-
-        <section class="reportes-grid" style="margin-bottom: 20px;">
-          <article class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-card-title">Facturado vs Recaudado</h3>
-              <p class="chart-card-subtitle">Comparativo histórico por período</p>
-            </div>
-            <div class="chart-card-body">
-              <canvas id="chartFacturacionVsRecaudo"></canvas>
-            </div>
-          </article>
-
-          <article class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-card-title">Capital pendiente por proyecto</h3>
-              <p class="chart-card-subtitle">Concentración de cartera viva</p>
-            </div>
-            <div class="chart-card-body">
-              <canvas id="chartCapitalPendiente"></canvas>
-            </div>
-          </article>
-        </section>
-
-        <div class="table-wrap" style="margin-bottom:20px">
-          <div class="table-header">
-            <h3>Cartera Consolidada por Proyecto</h3>
+        <header class="rep-header">
+          <div>
+            <h2 class="rep-title">Reportes</h2>
+            <p class="rep-sub">Resumen ejecutivo — estado operativo y financiero</p>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Proyecto</th>
-                <th>Estado</th>
-                <th>Ventas Activas</th>
-                <th>Capital Pendiente</th>
-                <th>Cuotas Vencidas</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${cartera.map(c => `
-                <tr>
-                  <td>${c.proyecto}</td>
-                  <td>
-                    <span style="
-                      display:inline-flex;
-                      align-items:center;
-                      padding:4px 10px;
-                      border-radius:999px;
-                      font-size:11px;
-                      font-weight:600;
-                      background:rgba(0,0,0,0.04);
-                      color:${colorEstadoFinanciero(c.estado_financiero)};
-                    ">
-                      ${normalizarEstadoFinanciero(c.estado_financiero)}
-                    </span>
-                  </td>
-                  <td>${c.ventas_activas}</td>
-                  <td>${UI.fmt(c.capital_pendiente)}</td>
-                  <td>${UI.fmt(c.total_cuotas_vencidas)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+          <span class="rep-date">${new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</span>
+        </header>
+
+        <div class="rep-section-label">Inventario por proyecto</div>
+        <div class="rep-proy-grid">
+          ${proyEntries.map(([nombre, info]) => {
+            const estadosOrdenados = [
+              ...ESTADO_ORDER.filter(e => info.estados[e]),
+              ...Object.keys(info.estados).filter(e => !ESTADO_ORDER.includes(e)),
+            ];
+            const barItems = estadosOrdenados.map(e => {
+              const col = (ESTADO_COLORS[e] || ESTADO_COLORS.bloqueado).color;
+              return `<div style="flex:${info.estados[e]};background:${col};opacity:.7;height:100%;border-radius:2px" title="${e}: ${info.estados[e]}"></div>`;
+            }).join("");
+            const badges = estadosOrdenados.map(e => {
+              const { bg, color } = ESTADO_COLORS[e] || ESTADO_COLORS.bloqueado;
+              return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;background:${bg};color:${color}">${info.estados[e]} ${e}</span>`;
+            }).join("");
+            const canNavLotes = vistas.includes("lotes-read");
+            return `
+              <article class="rep-proy-card${canNavLotes ? " rep-proy-card--link" : ""}" ${canNavLotes ? `onclick="window.navigate('lotes-read')"` : ""}>
+                <div class="rep-proy-name">${nombre}</div>
+                <div class="rep-proy-total">${info.total} lote${info.total !== 1 ? "s" : ""}</div>
+                <div class="rep-proy-bar">${barItems}</div>
+                <div class="rep-proy-badges">${badges}</div>
+                ${canNavLotes ? '<div class="rep-kpi-hint" style="margin-top:.5rem"><i data-lucide="arrow-right" style="width:11px;height:11px"></i> Ver más</div>' : ""}
+              </article>`;
+          }).join("")}
         </div>
 
-        <div class="table-wrap">
-          <div class="table-header">
-            <h3>Recaudo vs Facturación Histórico</h3>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Período</th>
-                <th>Facturado</th>
-                <th>Recaudado</th>
-                <th>Diferencia</th>
-                <th>% Cumplimiento</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${recaudo.map(r => `
-                <tr>
-                  <td>${r.periodo}</td>
-                  <td>${UI.fmt(r.total_facturado)}</td>
-                  <td>${UI.fmt(r.total_recaudado)}</td>
-                  <td style="color:${Number(r.diferencia) > 0 ? "var(--danger)" : "var(--success)"}">
-                    ${UI.fmt(r.diferencia)}
-                  </td>
-                  <td>${(Number(r.indice_cumplimiento || 0) * 100).toFixed(1)}%</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
+        <div class="rep-section-label">Resumen ejecutivo</div>
+        <div class="rep-kpi-grid">
+          ${kpis.map(k => {
+            const t       = TONES[k.tone];
+            const canNav  = vistas.includes(k.nav);
+            return `
+              <article class="rep-kpi-card${canNav ? " rep-kpi-card--link" : ""}" ${canNav ? `onclick="window.navigate('${k.nav}')"` : ""}>
+                <div class="rep-kpi-icon" style="background:${t.bg};color:${t.color}">
+                  <i data-lucide="${k.icon}"></i>
+                </div>
+                <div class="rep-kpi-body">
+                  <div class="rep-kpi-label">${k.label}</div>
+                  <div class="rep-kpi-value" style="color:${t.color}">${k.value}</div>
+                  <div class="rep-kpi-meta">${k.meta}</div>
+                  ${canNav ? '<div class="rep-kpi-hint"><i data-lucide="arrow-right" style="width:11px;height:11px"></i> Ver más</div>' : ""}
+                </div>
+              </article>`;
+          }).join("")}
+        </div>
+
+        <div class="rep-section-label">Analisis financiero</div>
+        <div class="rep-charts-grid">
+          ${chartCards.map(c => `
+            <article class="rep-chart-card">
+              <div class="rep-chart-header${c.nav ? " rep-chart-header--link" : ""}" ${c.nav ? `onclick="window.navigate('${c.nav}')"` : ""}>
+                <div>
+                  <div class="rep-chart-title">${c.title}</div>
+                  <div class="rep-chart-sub">${c.sub}${c.nav ? " &mdash; <strong>Ver más</strong>" : ""}</div>
+                </div>
+                ${c.nav ? '<i data-lucide="arrow-right" style="color:var(--primary);width:16px;height:16px;flex-shrink:0"></i>' : ""}
+              </div>
+              <div class="rep-chart-body"><canvas id="${c.id}"></canvas></div>
+            </article>`).join("")}
         </div>
       </section>
     `;
 
-    setTimeout(() => {
-      renderGraficasReportes(cartera, recaudo);
-    }, 0);
+    window.SGIUI?.hydrate();
+    setTimeout(() => _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend), 0);
 
   } catch (e) {
-    vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
+    vc.innerHTML = `<p style="color:var(--danger);padding:20px">${e.message}</p>`;
   }
 };
+
+function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
+  if (typeof Chart === "undefined") return;
+
+  const isDark     = document.documentElement.getAttribute("data-theme") === "dark";
+  const tickColor  = isDark ? "#9ca3af" : "#72675d";
+  const gridColor  = isDark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.05)";
+  const fontFamily = "DM Sans, sans-serif";
+
+  const fmtCOP = v => new Intl.NumberFormat("es-CO", {
+    notation: "compact", compactDisplay: "short",
+    style: "currency", currency: "COP", maximumFractionDigits: 1,
+  }).format(v);
+
+  const tooltipCOP = ctx => `${ctx.dataset.label || ""}: ${new Intl.NumberFormat("es-CO", {
+    style: "currency", currency: "COP", maximumFractionDigits: 0,
+  }).format(ctx.raw || 0)}`;
+
+  const moneyScales = () => ({
+    x: { ticks: { color: tickColor, font: { family: fontFamily } }, grid: { color: gridColor } },
+    y: { ticks: { color: tickColor, font: { family: fontFamily }, callback: fmtCOP }, grid: { color: gridColor } },
+  });
+
+  // ── Chart 1: Recaudo mensual (últimos 12 meses) ──────────────────
+  const c1 = document.getElementById("repChartRecaudo");
+  if (c1) {
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      months.push(d.toISOString().slice(0, 7));
+    }
+    const byMonth = {};
+    months.forEach(m => { byMonth[m] = 0; });
+    (pagos || []).filter(p => p.estado === "aceptado").forEach(p => {
+      const m = String(p.fecha_pago || "").slice(0, 7);
+      if (Object.prototype.hasOwnProperty.call(byMonth, m)) byMonth[m] += Number(p.valor_pago || 0);
+    });
+
+    _repChartRecaudo = new Chart(c1, {
+      type: "bar",
+      data: {
+        labels: months.map(m => {
+          const [y, mo] = m.split("-");
+          return new Date(+y, +mo - 1).toLocaleDateString("es-CO", { month: "short", year: "2-digit" });
+        }),
+        datasets: [{
+          label: "Recaudado",
+          data: months.map(m => byMonth[m]),
+          backgroundColor: "rgba(249,115,22,.78)",
+          borderColor: "rgba(249,115,22,1)",
+          borderWidth: 1,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: tooltipCOP } },
+        },
+        scales: moneyScales(),
+      },
+    });
+  }
+
+  // ── Chart 2: Ventas por estado ────────────────────────────────────
+  const c2 = document.getElementById("repChartVentas");
+  if (c2 && todasVentas?.length) {
+    const ESTADO_META = {
+      activa:     { label: "Activa",     color: "rgba(34,197,94,.85)"   },
+      mora:       { label: "Mora",       color: "rgba(239,68,68,.85)"   },
+      pre_mora:   { label: "Pre-mora",   color: "rgba(234,179,8,.85)"   },
+      devolucion: { label: "Devolucion", color: "rgba(249,115,22,.85)"  },
+      cancelada:  { label: "Cancelada",  color: "rgba(107,114,128,.85)" },
+      pendiente:  { label: "Pendiente",  color: "rgba(59,130,246,.85)"  },
+      completada: { label: "Completada", color: "rgba(99,102,241,.85)"  },
+    };
+    const EXTRA_PALETTE = [
+      "rgba(20,184,166,.85)", "rgba(236,72,153,.85)", "rgba(168,85,247,.85)",
+      "rgba(245,158,11,.85)", "rgba(14,165,233,.85)", "rgba(132,204,22,.85)",
+    ];
+    const conteo = {};
+    todasVentas.forEach(v => {
+      const e = v.estado || "otro";
+      conteo[e] = (conteo[e] || 0) + 1;
+    });
+    const estados = Object.keys(conteo).sort((a, b) => conteo[b] - conteo[a]);
+    let extraIdx = 0;
+    const colors = estados.map(e => {
+      if (ESTADO_META[e]) return ESTADO_META[e].color;
+      return EXTRA_PALETTE[extraIdx++ % EXTRA_PALETTE.length];
+    });
+
+    _repChartVentas = new Chart(c2, {
+      type: "doughnut",
+      data: {
+        labels: estados.map(e => ESTADO_META[e]?.label || e),
+        datasets: [{
+          data: estados.map(e => conteo[e]),
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: isDark ? "#1f2937" : "#fff",
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "right",
+            labels: { color: tickColor, font: { family: fontFamily, size: 11 }, boxWidth: 12, padding: 10 },
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.label}: ${ctx.raw} venta${ctx.raw !== 1 ? "s" : ""}`,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Chart 3: Cartera vencida por mes ─────────────────────────────
+  const c3 = document.getElementById("repChartVenc");
+  if (c3) {
+    const vencByM = {};
+    (cuotasVenc || []).forEach(c => {
+      const m = String(c.fecha_vencimiento || "").slice(0, 7);
+      if (m.length < 7) return;
+      vencByM[m] = (vencByM[m] || 0) + Number(c.valor_cuota || 0);
+    });
+    const vMeses = Object.keys(vencByM).sort();
+
+    _repChartVenc = new Chart(c3, {
+      type: "bar",
+      data: {
+        labels: vMeses.map(m => {
+          const [y, mo] = m.split("-");
+          return new Date(+y, +mo - 1).toLocaleDateString("es-CO", { month: "short", year: "2-digit" });
+        }),
+        datasets: [{
+          label: "Vencido",
+          data: vMeses.map(m => vencByM[m]),
+          backgroundColor: "rgba(239,68,68,.72)",
+          borderColor: "rgba(239,68,68,1)",
+          borderWidth: 1,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: tooltipCOP } },
+        },
+        scales: moneyScales(),
+      },
+    });
+  }
+
+  // ── Chart 4: Capital pendiente por proyecto (desde cuotasPend) ───
+  const c4 = document.getElementById("repChartCartera");
+  if (c4) {
+    const proyAgg = {};
+    (cuotasPend || []).forEach(c => {
+      const proy = c.proyecto && c.proyecto !== "—" ? c.proyecto : "Sin proyecto";
+      proyAgg[proy] = (proyAgg[proy] || 0) + Number(c.valor_pendiente || c.valor_cuota || 0);
+    });
+    const sorted    = Object.entries(proyAgg).sort((a, b) => b[1] - a[1]);
+    const proyectos = sorted.map(([p]) => p);
+    const capitals  = sorted.map(([, v]) => v);
+
+    _repChartCartera = new Chart(c4, {
+      type: "bar",
+      data: {
+        labels: proyectos,
+        datasets: [{
+          label: "Capital pendiente",
+          data: capitals,
+          backgroundColor: isDark ? "rgba(99,102,241,.75)" : "rgba(30,30,30,.70)",
+          borderColor:     isDark ? "rgba(99,102,241,1)"   : "rgba(30,30,30,1)",
+          borderWidth: 1,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: tooltipCOP } },
+        },
+        scales: {
+          x: { ticks: { color: tickColor, font: { family: fontFamily }, callback: fmtCOP }, grid: { color: gridColor } },
+          y: { ticks: { color: tickColor, font: { family: fontFamily } }, grid: { display: false } },
+        },
+      },
+    });
+  }
+}
+
+(() => {
+  const s = document.createElement("style");
+  s.textContent = `
+    .rep-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+    .rep-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 .2rem;
+      color: var(--text);
+    }
+    .rep-sub {
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .rep-date {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-transform: capitalize;
+      margin-top: .2rem;
+    }
+    .rep-section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: .75rem;
+    }
+    .rep-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 900px) {
+      .rep-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      .rep-kpi-grid { grid-template-columns: 1fr; }
+    }
+    .rep-kpi-card {
+      display: flex;
+      align-items: flex-start;
+      gap: .875rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      transition: box-shadow .15s;
+    }
+    .rep-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+    .rep-kpi-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .rep-kpi-icon svg { width: 20px; height: 20px; }
+    .rep-kpi-body {
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+      min-width: 0;
+    }
+    .rep-kpi-label {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+    }
+    .rep-kpi-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rep-kpi-meta {
+      font-size: .76rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .rep-proy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .875rem;
+      margin-bottom: 2rem;
+    }
+    .rep-proy-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+    }
+    .rep-proy-card--link { cursor: pointer; }
+    .rep-proy-card--link:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,.10);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      transition: all .15s;
+    }
+    .rep-proy-name {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: .1rem;
+    }
+    .rep-proy-total {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-bottom: .6rem;
+    }
+    .rep-proy-bar {
+      display: flex;
+      gap: 2px;
+      height: 6px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: .6rem;
+      background: var(--border);
+    }
+    .rep-proy-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .rep-kpi-hint {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: .72rem;
+      color: var(--primary);
+      margin-top: .3rem;
+      font-weight: 500;
+    }
+    .rep-kpi-card--link { cursor: pointer; }
+    .rep-kpi-card--link:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,.10);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      transition: all .15s;
+    }
+    .rep-chart-header--link {
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .rep-chart-header--link:hover { background: var(--surface2); }
+    .rep-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 820px) {
+      .rep-charts-grid { grid-template-columns: 1fr; }
+    }
+    .rep-chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .rep-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: .9rem 1.25rem .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .rep-chart-title {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .rep-chart-sub {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: .15rem;
+    }
+    .rep-chart-body {
+      padding: 1rem 1.25rem 1.25rem;
+      height: 240px;
+      position: relative;
+    }
+  `;
+  document.head.appendChild(s);
+})();
