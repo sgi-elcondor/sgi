@@ -223,3 +223,181 @@
 
 .ump-action--danger { color: var(--danger); }
 .ump-action--danger:hover { background: rgba(var(--danger-rgb), 0.08); }
+/* =========================================================
+   MEJORAS VISUALES TOPBAR
+   Mantiene colores desde tokens.css
+   ========================================================= */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 9000;
+  min-height: 4.5rem;
+  padding: 0.85rem 1.45rem;
+  overflow: visible;
+
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.08), transparent 34%),
+    var(--surface-glass);
+
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(18px);
+
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.topbar-left,
+.topbar-actions,
+.topbar-heading {
+  position: relative;
+  z-index: 2;
+}
+
+.topbar-heading {
+  gap: 0.5rem;
+}
+
+.view-title {
+  font-size: 1.85rem;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.topbar-subtitle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+
+  margin-top: 0;
+  margin-left: 0.65rem;
+  padding-left: 0.75rem;
+
+  color: var(--text-muted);
+  border-left: 1px solid var(--border);
+
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Botón de usuario */
+
+.user-menu {
+  z-index: 9500;
+}
+
+.user-menu-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.12), transparent 60%),
+    var(--surface);
+
+  border: 1px solid var(--border);
+
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.user-menu-btn:hover {
+  transform: translateY(-1px);
+
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.2), transparent 62%),
+    var(--surface-2);
+
+  border-color: rgba(var(--accent-rgb), 0.34);
+}
+
+.user-menu-btn[aria-expanded="true"] {
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.25), transparent 62%),
+    var(--surface-2);
+
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent);
+}
+
+/* Menú desplegable */
+
+.user-menu-panel {
+  top: calc(100% + 0.75rem);
+  width: 19rem;
+  padding: 0.55rem;
+
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.12), transparent 42%),
+    var(--surface);
+
+  border: 1px solid var(--border);
+  border-radius: 1.35rem;
+
+  box-shadow:
+    0 24px 55px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+  z-index: 99999;
+}
+
+.ump-header {
+  padding: 0.85rem 0.85rem 0.95rem;
+}
+
+.ump-avatar {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 1rem;
+
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.28), transparent 62%),
+    var(--accent-soft);
+
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+}
+
+.ump-email {
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.ump-role {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ump-label {
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.ump-theme-btn {
+  min-height: 4.35rem;
+  border-radius: 1rem;
+}
+
+.ump-theme-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--accent-rgb), 0.24);
+}
+
+.ump-theme-btn.active {
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.2), transparent 58%),
+    var(--accent-soft);
+
+  border-color: rgba(var(--accent-rgb), 0.38);
+}
+
+.ump-action {
+  min-height: 2.75rem;
+  border-radius: 0.95rem;
+  font-weight: 700;
+}
+
+.ump-action:hover {
+  transform: translateX(2px);
+}
