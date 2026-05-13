@@ -145,3 +145,131 @@ exports.createCompradorPago = async (req, res) => {
 
   res.status(201).json(pago);
 };
+
+exports.getContrast = async (req, res) => {
+  const { data: payments, error: ep } = await supabase.schema(SCHEMA)
+    .from('pago')
+    .select('*, cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
+    .eq('estado', 'pendiente_revision')
+    .eq('metodo_pago', 'transferencia');
+
+  if (ep) return res.status(500).json({ error: ep.message });
+
+  const { data: transactions, error: et } = await supabase.schema(SCHEMA)
+    .from('bank_transaction')
+    .select('*')
+    .is('id_pago', null)
+    .not('amount', 'is', null);
+
+  if (et) return res.status(500).json({ error: et.message });
+
+  const matches = [];
+
+  for (const pago of (payments || [])) {
+    const pagoAmount = Math.abs(Number(pago.valor_pago));
+    const pagoRef    = (pago.referencia || '').replace(/\s+/g, '').toLowerCase();
+    const pagoDate   = new Date(pago.fecha_pago);
+
+    for (const tx of (transactions || [])) {
+      const txAmount = Math.abs(Number(tx.amount));
+      const txRef    = (tx.reference || '').replace(/\s+/g, '').toLowerCase();
+      const txDate   = new Date(tx.transaction_date);
+
+      let score          = 0;
+      let amountMatch    = false;
+      let referenceMatch = 'none';
+
+      if (pagoAmount === txAmount) { score += 60; amountMatch = true; }
+
+      if (pagoRef && txRef) {
+        if (pagoRef === txRef)                                          { score += 30; referenceMatch = 'exact'; }
+        else if (pagoRef.includes(txRef) || txRef.includes(pagoRef))   { score += 15; referenceMatch = 'partial'; }
+      }
+
+      const diffMs      = Math.abs(txDate - pagoDate);
+      const diffMinutes = diffMs / (1000 * 60);
+      const diffHours   = diffMs / (1000 * 60 * 60);
+      const diffDays    = diffMs / (1000 * 60 * 60 * 24);
+      let dateDiffHuman = '';
+
+      if (diffMinutes < 60) {
+        dateDiffHuman = diffMinutes < 1 ? 'mismo momento' : `${Math.round(diffMinutes)} minuto(s)`;
+        score += 10;
+      } else if (diffHours < 24) {
+        dateDiffHuman = `${Math.round(diffHours)} hora(s)`;
+        score += 10;
+      } else if (diffDays <= 1) {
+        dateDiffHuman = '1 dia'; score += 8;
+      } else if (diffDays <= 3) {
+        dateDiffHuman = `${Math.round(diffDays)} dias`; score += 5;
+      } else if (diffDays <= 7) {
+        dateDiffHuman = `${Math.round(diffDays)} dias`; score += 2;
+      } else {
+        dateDiffHuman = `${Math.round(diffDays)} dias`;
+      }
+
+      if (score > 0) {
+        matches.push({
+          pago,
+          transaction:     tx,
+          score,
+          amount_match:    amountMatch,
+          reference_match: referenceMatch,
+          date_diff_days:  Math.round(diffDays),
+          date_diff_human: dateDiffHuman,
+        });
+      }
+    }
+  }
+
+  matches.sort((a, b) => b.score - a.score);
+
+  const seen     = new Set();
+  const seenTx   = new Set();
+  const best     = matches.filter(m => {
+    if (seen.has(m.pago.id_pago) || seenTx.has(m.transaction.id_transaction)) return false;
+    seen.add(m.pago.id_pago);
+    seenTx.add(m.transaction.id_transaction);
+    return true;
+  });
+
+  res.json(best);
+};
+
+exports.acceptBatch = async (req, res) => {
+  const { validations } = req.body;
+  if (!Array.isArray(validations) || validations.length === 0)
+    return res.status(400).json({ error: 'validations must be a non-empty array' });
+
+  const results = [];
+
+  for (const { id_pago, id_transaction } of validations) {
+    const { data: pago, error: ep } = await supabase.schema(SCHEMA)
+      .from('pago')
+      .update({ estado: 'aceptado' })
+      .eq('id_pago', id_pago)
+      .select()
+      .single();
+
+    if (ep) { results.push({ id_pago, ok: false, error: ep.message }); continue; }
+
+    await supabase.schema(SCHEMA)
+      .from('bank_transaction')
+      .update({ id_pago, updated_at: new Date().toISOString() })
+      .eq('id_transaction', id_transaction);
+
+    await supabase.schema(SCHEMA).from('auditoria').insert([{
+      tabla_afectada: 'pago',
+      id_registro:    id_pago,
+      campo:          'estado',
+      valor_anterior: 'pendiente_revision',
+      valor_nuevo:    'aceptado',
+      usuario_db:     req.usuario.email,
+      motivo:         `validacion_transaccion_bancaria:${id_transaction}`,
+    }]);
+
+    results.push({ id_pago, ok: true, pago });
+  }
+
+  res.json(results);
+};

@@ -1,0 +1,357 @@
+﻿/* ── Bank Transactions ──────────────────────────────────────────────────── */
+
+.bt-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.bt-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.bt-search-wrap {
+  flex: 1;
+  min-width: 11.25rem;
+}
+
+.bt-filters input,
+.bt-filters select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.bt-filters input::placeholder {
+  color: var(--placeholder);
+}
+
+.bt-filters input:focus,
+.bt-filters select:focus {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: var(--ring);
+  background: var(--surface-focus);
+}
+
+.bt-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bt-textarea {
+  width: 100%;
+  min-height: 12.5rem;
+  padding: 0.75rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8125rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.bt-textarea::placeholder {
+  color: var(--placeholder);
+}
+
+.bt-textarea:focus {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: var(--ring);
+  background: var(--surface-focus);
+}
+
+.bt-errors {
+  margin: 0.5rem 0;
+  padding: 0.625rem 0.875rem;
+  background: rgba(var(--danger-rgb), 0.08);
+  border: 1px solid rgba(var(--danger-rgb), 0.2);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+.bt-import-inner {
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+.bt-preview-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bt-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.bt-preview-table th,
+.bt-preview-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.bt-preview-table th {
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bt-preview-table td {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── Payment Validation ─────────────────────────────────────────────────── */
+
+.pv-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.pv-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.pv-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow var(--transition);
+}
+
+.pv-card:has(.pv-accept-chk:not(:checked)) {
+  opacity: 0.55;
+}
+
+.pv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.125rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.pv-score-badge {
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 1.25rem;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.pv-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.pv-ind-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pv-match {
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+.pv-match.exact   { color: var(--success); }
+.pv-match.partial { color: var(--warning); }
+.pv-match.none    { color: var(--danger); }
+
+.pv-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.pv-checkbox-wrap:has(input:checked) {
+  border-color: var(--success);
+  background: rgba(var(--success-rgb), 0.1);
+  color: var(--success);
+}
+
+.pv-checkbox-wrap input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--success);
+}
+
+.pv-card-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.pv-side {
+  padding: 1.125rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pv-side-title {
+  font-weight: 700;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pv-side-payment     { background: var(--surface); }
+.pv-side-transaction { background: var(--surface-2); }
+
+.pv-field {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+}
+
+.pv-field.pv-highlight-ok {
+  background: rgba(var(--success-rgb), 0.1);
+}
+
+.pv-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  min-width: 6.25rem;
+  flex-shrink: 0;
+}
+
+.pv-value {
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.pv-money {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+
+.pv-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 0.625rem;
+  color: var(--border);
+}
+
+.pv-divider-line {
+  flex: 1;
+  width: 1px;
+  background: var(--border);
+}
+
+.pv-divider-icon {
+  font-size: 1rem;
+  padding: 0.375rem 0;
+  color: var(--text-soft);
+}
+
+.pv-baucher-img {
+  max-width: 100%;
+  max-height: 11.25rem;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  border: 1px solid var(--border);
+  object-fit: contain;
+}
+
+.pv-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  padding: 0.875rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  z-index: 10;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 40rem) {
+  .pv-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pv-divider {
+    flex-direction: row;
+    padding: 0 1rem;
+    height: 1.5rem;
+  }
+
+  .pv-divider-line {
+    flex: 1;
+    width: auto;
+    height: 1px;
+  }
+
+  .bt-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
