@@ -1,4 +1,4 @@
-﻿import { esperarAuthListo } from "./auth.js";
+import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
   dashboard:          { fn: "dashboardView",       title: "Panel de control" },
@@ -20,6 +20,8 @@ const VIEWS = {
   auditoria:          { fn: "auditoriaView",        title: "Auditoria" },
   usuarios:           { fn: "usuariosView",         title: "Gestion de Usuarios" },
   roles:              { fn: "rolesView",            title: "Roles y Permisos" },
+  "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
+  "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Pagos y Recibos" },
 };
 
 const SIDEBAR_GROUPS = [
