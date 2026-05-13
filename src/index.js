@@ -49,7 +49,8 @@ app.use('/api/recibos',        require('./routes/recibos.routes'));
 app.use('/api/reportes',       require('./routes/reportes.routes'));
 app.use('/api/usuarios',       require('./routes/usuarios.routes'));
 app.use('/api/roles',          require('./routes/roles.routes'));
-app.use('/api/uploads',        require('./routes/uploads.routes'));
+app.use('/api/uploads',           require('./routes/uploads.routes'));
+app.use('/api/bank-transactions',  require('./routes/bank_transactions.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.use(verificarToken);
@@ -60,3 +61,4 @@ app.get("*", (req, res) => {
 app.listen(PORT, () => {
   console.log(`SGI corriendo en http://localhost:${PORT}`);
 });
+

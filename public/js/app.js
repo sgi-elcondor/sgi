@@ -1,4 +1,4 @@
-import { esperarAuthListo } from "./auth.js";
+﻿import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
   dashboard:          { fn: "dashboardView",       title: "Panel de control" },
@@ -22,6 +22,8 @@ const VIEWS = {
   roles:              { fn: "rolesView",            title: "Roles y Permisos" },
   "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
   "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Pagos y Recibos" },
+  "bank-transactions": { fn: "bankTransactionsView", title: "Transacciones Bancarias" },
+  "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
 };
 
 const SIDEBAR_GROUPS = [
@@ -44,6 +46,8 @@ const SIDEBAR_GROUPS = [
     { view: "comisionistas",  icon: "percent",       label: "Comisionistas" },
     { view: "facturas",       icon: "receipt",       label: "Facturas" },
     { view: "recibos",        icon: "file-text",     label: "Recibos" },
+    { view: "bank-transactions",  icon: "landmark",      label: "Transacciones" },
+    { view: "payment-validation", icon: "shield-check",  label: "Validar pagos" },
   ]},
   { label: "Mi cuenta", items: [
     { view: "mis-cuotas",  icon: "calendar",   label: "Mis Cuotas" },
@@ -80,6 +84,8 @@ const TOPBAR_SUBTITLES = {
   roles:              "Configuracion de roles y permisos",
   "mis-cuotas":        "Consulta y pago de tus cuotas",
   "mis-recibos":       "Estado de tus pagos y recibos emitidos",
+  "bank-transactions": "Registro de movimientos bancarios",
+  "payment-validation":"Contraste y aprobacion de pagos",
 };
 
 window.currentUser    = null;
@@ -603,3 +609,4 @@ async function iniciarApp() {
 
 iniciarApp();
 window.navigate = navigate;
+

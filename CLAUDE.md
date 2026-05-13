@@ -4,6 +4,8 @@
 
 Antes de hacer algun cambio si cres que hay una forma mejor de hacerlo sugieremela.
 
+Al crear estilos CSS estamos usando medidas rem en lugar de px.
+
 ## ¿Como escribir codigo?
 
 Siempre en ingles, si una clase, atributo o objeto no esta en ingles, busca todos los archivos implicados y pasalo a ingles.
