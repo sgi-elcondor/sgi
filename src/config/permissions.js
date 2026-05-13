@@ -24,6 +24,8 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/cuotas':                { recurso: 'cuotas',        accion: 'leer' },
   'GET /api/cuotas/pendientes':     { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/vencidas':       { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/venta':          { recurso: 'cuotas',        accion: 'leer' },
   'POST /api/cuotas':               { recurso: 'cuotas',        accion: 'crear' },
   'PUT /api/cuotas':                { recurso: 'cuotas',        accion: 'actualizar' },
   'PATCH /api/cuotas/valores':      { recurso: 'cuotas',        accion: 'editar_valores' },
@@ -49,6 +51,11 @@ const ROUTE_PERMISSIONS = {
   'GET /api/reportes':              { recurso: 'reportes',      accion: 'leer' },
   'GET /api/reportes/dir':          { recurso: 'reportes_dir',  accion: 'leer' },
   'GET /api/reportes/jur':          { recurso: 'alertas_jur',   accion: 'leer' },
+  'GET /api/reportes/juridico':     { recurso: 'alertas_jur',   accion: 'leer' },
+
+  'GET /api/juridico/cartera':            { recurso: 'alertas_jur',      accion: 'leer' },
+  'GET /api/juridico/observaciones':      { recurso: 'observaciones_jur', accion: 'leer' },
+  'POST /api/juridico/observaciones':     { recurso: 'observaciones_jur', accion: 'crear' },
 
   'GET /api/mi-cuenta':             { recurso: 'mi_cuenta',     accion: 'leer' },
 
