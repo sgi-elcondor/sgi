@@ -9,9 +9,19 @@ exports.getByVenta = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { id_venta, numero_cuota, fecha_vencimiento, valor_cuota, es_extraordinaria } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("cuota")
-    .insert([{ id_venta, numero_cuota, fecha_vencimiento, valor_cuota, es_extraordinaria: es_extraordinaria || false }]).select().single();
+const { id_venta, numero_cuota, fecha_vencimiento, valor_cuota, es_extraordinaria } = req.body;
+
+const { data, error } = await supabase.schema(SCHEMA).from("cuota")
+  .insert([{
+    id_venta,
+    numero_cuota,
+    fecha_vencimiento,
+    valor_cuota,
+    estado: "pendiente",
+    es_extraordinaria: es_extraordinaria || false
+  }])
+  .select()
+  .single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 };
