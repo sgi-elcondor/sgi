@@ -1,243 +1,249 @@
-<<<<<<< HEAD
-﻿.dashboard-hero {
-  display: grid;
-  gap: 1.125rem;
-  padding: 1.5rem;
-  border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  grid-template-columns: 1.5fr 1fr;
-  background:
-    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.12), transparent 24%),
-    linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
-  box-shadow: var(--shadow-soft);
-  align-items: stretch;
-=======
+/* =========================================================
+   DASHBOARD / PANEL DE CONTROL
+   Archivo: css/views/dashboard.css
+   ========================================================= */
+
+/* =========================================================
+   1. CORRECCIÓN DE CAPAS / MENÚ DESPLEGABLE
+   ========================================================= */
+
+.app-header,
+.topbar,
+.header,
+.navbar,
+.main-header,
+.dashboard-header {
+  z-index: 100000 !important;
+  overflow: visible !important;
+}
+
+.header-actions,
+.user-menu-wrapper,
+.user-profile,
+.profile-wrapper,
+.account-wrapper,
+.user-dropdown-wrapper,
+.profile-dropdown-wrapper {
+  position: relative !important;
+  z-index: 100001 !important;
+  overflow: visible !important;
+}
+
+.user-menu,
+.profile-menu,
+.profile-dropdown,
+.account-menu,
+.account-dropdown,
+.settings-menu,
+.theme-menu,
+.theme-dropdown,
+.dropdown-menu,
+.user-popover,
+.profile-popover {
+  z-index: 100002 !important;
+}
+
+main,
+.dashboard,
+.dashboard-page,
+.dashboard-content,
+.page-content,
+.content,
+.app-main {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-hero,
+.kpi-card,
+.panel-card,
+.dashboard-table,
+.activity-item,
+.task-item {
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================================================
+   2. HERO / ENCABEZADO DEL DASHBOARD
+   ========================================================= */
+
 .dashboard-hero {
   display: grid;
-  gap: 18px;
+  grid-template-columns: 1.5fr 0.9fr;
+  gap: 20px;
+  align-items: stretch;
   padding: 24px;
   border: 1px solid var(--border);
-  border-radius: 20px;
-  grid-template-columns: 1.5fr 0.9fr;
+  border-radius: 22px;
   background:
-    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.12), transparent 24%),
-    linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.16), transparent 28%),
+    linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
   box-shadow: var(--shadow-soft);
->>>>>>> origin/develop
+  overflow: hidden;
 }
 
 .dashboard-hero-copy {
   display: flex;
   flex-direction: column;
-<<<<<<< HEAD
-  gap: 0.5rem;
-=======
-  gap: 8px;
->>>>>>> origin/develop
   justify-content: center;
+  gap: 8px;
 }
 
 .hero-eyebrow,
 .hero-role-label {
   color: var(--text-muted);
-<<<<<<< HEAD
-  font-size: 0.6875rem;
-=======
   font-size: 11px;
->>>>>>> origin/develop
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
 
 .hero-title {
   color: var(--text);
-<<<<<<< HEAD
-  font: 2.625rem var(--font-serif);
-=======
   font: 42px var(--font-serif);
->>>>>>> origin/develop
   line-height: 1.04;
 }
 
 .hero-text {
   max-width: 62ch;
   color: var(--text-soft);
-<<<<<<< HEAD
-  font-size: 0.9375rem;
-=======
   font-size: 15px;
->>>>>>> origin/develop
+  line-height: 1.55;
 }
 
 .dashboard-hero-panel {
   display: flex;
   flex-direction: column;
-<<<<<<< HEAD
   justify-content: center;
   align-items: flex-end;
-  gap: 0.875rem;
-  padding: 1.125rem;
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--surface-glass);
-=======
-  justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   padding: 18px;
-  border: 1px solid #f0e3d4;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.84);
->>>>>>> origin/develop
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.08), transparent 100%),
+    var(--surface-glass);
+  box-shadow: var(--shadow-soft);
 }
 
 .hero-role {
   display: flex;
   flex-direction: column;
-<<<<<<< HEAD
-  gap: 0.375rem;
-  padding: 1rem 1.125rem;
+  gap: 6px;
+  width: 100%;
+  padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--surface-glass);
-  box-shadow: var(--shadow-soft);
-=======
-  gap: 4px;
->>>>>>> origin/develop
+  border-radius: 16px;
+  background: var(--surface-2);
 }
 
 .hero-role strong {
   color: var(--text);
-<<<<<<< HEAD
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.hero-role-label {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 12px;
+  width: 100%;
 }
 
-.hero-actions .btn { min-width: 9.375rem; }
-
-=======
-  font-size: 18px;
-  font-weight: 700;
+.hero-actions .btn {
+  min-width: 150px;
+  border-radius: 14px;
 }
 
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* =========================================================
+   3. TARJETAS KPI / INDICADORES
+   ========================================================= */
 
->>>>>>> origin/develop
 .kpi-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-<<<<<<< HEAD
-  min-height: 9.25rem;
-  padding: 1.125rem;
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  background: var(--surface);
-=======
   min-height: 148px;
   padding: 18px;
   border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #ffffff;
->>>>>>> origin/develop
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.045), transparent 100%),
+    var(--surface);
   box-shadow: var(--shadow-soft);
+  overflow: hidden;
   transition:
     transform 0.16s ease,
     border-color var(--transition),
+    background var(--transition),
     box-shadow var(--transition);
+}
+
+.kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: rgba(var(--accent-rgb), 0.45);
+  opacity: 0;
+  transition: opacity var(--transition);
 }
 
 .kpi-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(var(--accent-rgb), 0.22);
+  border-color: rgba(var(--accent-rgb), 0.28);
   box-shadow: var(--shadow);
 }
 
-<<<<<<< HEAD
-.kpi-card.primary { min-height: 9.75rem; }
-=======
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
 .kpi-card.primary {
   min-height: 156px;
 }
->>>>>>> origin/develop
 
 .kpi-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-<<<<<<< HEAD
-  gap: 0.625rem;
-=======
   gap: 10px;
->>>>>>> origin/develop
 }
 
 .kpi-label {
   color: var(--text-muted);
-<<<<<<< HEAD
-  font-size: 0.6875rem;
-=======
   font-size: 11px;
->>>>>>> origin/develop
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .kpi-indicator {
-<<<<<<< HEAD
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 6.1875rem;
-=======
   width: 10px;
   height: 10px;
+  flex-shrink: 0;
   border-radius: 999px;
->>>>>>> origin/develop
-  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 0 0 8px rgba(var(--accent-rgb), 0.08);
 }
 
-.kpi-indicator.success { background: var(--success); }
-.kpi-indicator.warning { background: var(--warning); }
-<<<<<<< HEAD
-.kpi-indicator.danger  { background: var(--danger); }
-.kpi-indicator.info    { background: var(--accent); }
-
-.kpi-value {
-  margin-top: 0.75rem;
-  color: var(--text);
-  font: 2.125rem var(--font-serif);
-  line-height: 1;
+.kpi-indicator.success {
+  background: var(--success);
 }
 
-.kpi-card.secondary .kpi-value { font-size: 1.875rem; }
+.kpi-indicator.warning {
+  background: var(--warning);
+}
 
-.kpi-meta {
-  margin-top: 0.625rem;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-=======
-.kpi-indicator.danger { background: var(--danger); }
-.kpi-indicator.info { background: var(--accent); }
+.kpi-indicator.danger {
+  background: var(--danger);
+}
+
+.kpi-indicator.info {
+  background: var(--accent);
+}
 
 .kpi-value {
   margin-top: 12px;
@@ -254,223 +260,359 @@
   margin-top: 10px;
   color: var(--text-muted);
   font-size: 12px;
->>>>>>> origin/develop
+  line-height: 1.45;
 }
+
+/* =========================================================
+   4. ESTRUCTURA GENERAL DEL DASHBOARD
+   ========================================================= */
 
 .dashboard-two-col {
   display: grid;
-<<<<<<< HEAD
-  gap: 1.125rem;
-=======
-  gap: 18px;
->>>>>>> origin/develop
   grid-template-columns: 1.05fr 0.95fr;
+  gap: 18px;
 }
 
 .panel-card {
-<<<<<<< HEAD
-  padding: 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: 1.125rem;
-  background: var(--surface);
-=======
   padding: 20px;
   border: 1px solid var(--border);
-  border-radius: 18px;
-  background: #ffffff;
->>>>>>> origin/develop
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.035), transparent 100%),
+    var(--surface);
   box-shadow: var(--shadow-soft);
+  overflow: hidden;
 }
 
-.task-list,
+.panel-card h2,
+.panel-card h3,
+.panel-card .panel-title {
+  color: var(--text);
+}
+
+.panel-card p {
+  color: var(--text-muted);
+}
+/* =========================================================
+   5. TAREAS RÁPIDAS / ACCIONES
+   ========================================================= */
+
+.dashboard-actions-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(170px, 1fr)) !important;
+  gap: 14px !important;
+  margin-top: 16px !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+
+.dashboard-actions-grid .action-card {
+  position: relative !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+
+  min-height: 150px !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  width: auto !important;
+
+  border: 1px solid rgba(var(--accent-rgb), 0.2) !important;
+  border-radius: 18px !important;
+
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    var(--surface-2) !important;
+
+  color: var(--text) !important;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+
+  cursor: pointer !important;
+  overflow: hidden !important;
+
+  transition:
+    transform 0.18s ease,
+    border-color var(--transition),
+    background var(--transition),
+    box-shadow var(--transition) !important;
+}
+
+.dashboard-actions-grid .action-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(var(--accent-rgb), 0.4) !important;
+
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.26), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    var(--surface-3) !important;
+
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(var(--accent-rgb), 0.06) !important;
+}
+
+.dashboard-actions-grid .action-card::after {
+  content: "→";
+  position: absolute;
+  top: 14px;
+  right: 16px;
+
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
+
+  opacity: 0;
+  transform: translateX(-5px);
+
+  transition:
+    opacity var(--transition),
+    transform var(--transition);
+}
+
+.dashboard-actions-grid .action-card:hover::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.dashboard-actions-grid .action-card-icon {
+  width: 46px !important;
+  height: 46px !important;
+  padding: 10px !important;
+  margin-bottom: 14px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  border: 1px solid rgba(var(--accent-rgb), 0.28) !important;
+  border-radius: 15px !important;
+
+  color: var(--accent) !important;
+  stroke: var(--accent) !important;
+
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.24), transparent 60%),
+    rgba(var(--accent-rgb), 0.08) !important;
+}
+
+.dashboard-actions-grid .action-card-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  color: var(--accent) !important;
+  stroke: var(--accent) !important;
+}
+
+.dashboard-actions-grid .action-card-title {
+  margin: 0 0 7px 0 !important;
+
+  color: var(--text) !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.dashboard-actions-grid .action-card-desc {
+  margin: 0 !important;
+
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.38 !important;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .dashboard-actions-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-actions-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-actions-grid .action-card {
+    min-height: 130px !important;
+  }
+}
+/* =========================================================
+   6. ACTIVIDAD RECIENTE
+   ========================================================= */
+
 .activity-list {
   display: flex;
   flex-direction: column;
-<<<<<<< HEAD
-  gap: 0.75rem;
-  margin-top: 0.375rem;
-=======
   gap: 12px;
-  margin-top: 6px;
->>>>>>> origin/develop
+  margin-top: 10px;
 }
 
-.task-item,
 .activity-item {
-  display: flex;
-  justify-content: space-between;
-<<<<<<< HEAD
-  gap: 0.875rem;
-  padding: 0.875rem;
-  border: 1px solid var(--border);
-  border-radius: 0.875rem;
-  background: var(--surface-2);
-=======
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
   gap: 14px;
   padding: 14px;
-  border: 1px solid #f0e8dc;
-  border-radius: 14px;
-  background: #fcfaf7;
->>>>>>> origin/develop
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.025), transparent 100%),
+    var(--surface-2);
   transition:
     border-color var(--transition),
-    background var(--transition);
+    background var(--transition),
+    transform 0.16s ease;
 }
 
-.task-item:hover,
 .activity-item:hover {
-<<<<<<< HEAD
+  transform: translateY(-1px);
+  border-color: rgba(var(--accent-rgb), 0.24);
   background: var(--surface-3);
-=======
-  background: #fff7f0;
->>>>>>> origin/develop
-  border-color: rgba(var(--accent-rgb), 0.22);
 }
 
-.task-main,
 .activity-main {
   display: flex;
   flex-direction: column;
-<<<<<<< HEAD
-  gap: 0.25rem;
-=======
   gap: 4px;
->>>>>>> origin/develop
 }
 
-.task-title,
 .activity-title {
   color: var(--text);
-<<<<<<< HEAD
-  font-size: 0.875rem;
-=======
   font-size: 14px;
->>>>>>> origin/develop
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.task-desc,
 .activity-desc {
   color: var(--text-muted);
-<<<<<<< HEAD
-  font-size: 0.75rem;
-  line-height: 1.45;
-}
-
-.activity-item { align-items: center; }
-
-.activity-dot {
-  width: 0.625rem;
-  height: 0.625rem;
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-  border-radius: 6.1875rem;
-=======
   font-size: 12px;
   line-height: 1.45;
-}
-
-.activity-item {
-  align-items: center;
 }
 
 .activity-dot {
   width: 10px;
   height: 10px;
   flex-shrink: 0;
-  margin-top: 2px;
   border-radius: 999px;
->>>>>>> origin/develop
   background: var(--accent);
+  box-shadow: 0 0 0 7px rgba(var(--accent-rgb), 0.1);
 }
 
 .activity-time {
   color: var(--text-muted);
-<<<<<<< HEAD
-  font-size: 0.6875rem;
-=======
   font-size: 11px;
->>>>>>> origin/develop
   white-space: nowrap;
 }
 
+/* =========================================================
+   7. TABLA DEL DASHBOARD
+   ========================================================= */
+
 .dashboard-table {
   overflow: hidden;
-<<<<<<< HEAD
-  border-radius: 1.125rem;
-}
-
-.dashboard-table .table-header { padding: 1.125rem 1.25rem; }
-=======
-  border-radius: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .dashboard-table .table-header {
   padding: 18px 20px;
-}
->>>>>>> origin/develop
-
-.dashboard-table tbody td strong {
-  color: var(--text);
-  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.055), transparent 100%),
+    var(--surface-2);
 }
 
-<<<<<<< HEAD
-@media (max-width: 56.25rem) {
-  .dashboard-hero { grid-template-columns: 1fr; }
-  .dashboard-hero-panel { align-items: flex-start; }
-  .hero-actions { justify-content: flex-start; }
-}
-=======
-/* ===== HERO DASHBOARD ===== */
-
-.dashboard-hero {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 20px;
-  align-items: stretch;
+.dashboard-table table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.dashboard-hero-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 14px;
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.hero-actions .btn {
-  min-width: 150px;
-}
-
-.hero-role {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: var(--shadow-soft);
-}
-
-.hero-role-label {
+.dashboard-table thead th {
+  color: var(--text-muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+}
+
+.dashboard-table tbody td {
   color: var(--text-muted);
 }
 
+.dashboard-table tbody td strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.dashboard-table tbody tr {
+  transition: background var(--transition);
+}
+
+.dashboard-table tbody tr:hover {
+  background: rgba(var(--accent-rgb), 0.055);
+}
+
+/* =========================================================
+   8. AJUSTES VISUALES GENERALES
+   ========================================================= */
+
+.kpi-card,
+.panel-card,
+.dashboard-table,
+.dashboard-hero,
+.dashboard-hero-panel,
+.hero-role,
+.task-item,
+.activity-item {
+  backdrop-filter: blur(10px);
+}
+
+.dashboard-hero,
+.kpi-card,
+.panel-card,
+.dashboard-table {
+  animation: dashboardFadeIn 0.22s ease both;
+}
+
+@keyframes dashboardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   9. RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1100px) {
+  .task-list,
+  .quick-actions,
+  .dashboard-actions,
+  .actions-grid,
+  .tasks-grid,
+  .quick-tasks,
+  .shortcuts-grid,
+  .action-list {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+  }
+}
+
 @media (max-width: 900px) {
-  .dashboard-hero {
+  .dashboard-hero,
+  .dashboard-two-col {
     grid-template-columns: 1fr;
   }
 
@@ -481,5 +623,89 @@
   .hero-actions {
     justify-content: flex-start;
   }
+
+  .hero-actions .btn {
+    min-width: 140px;
+  }
+
+  .task-list,
+  .quick-actions,
+  .dashboard-actions,
+  .actions-grid,
+  .tasks-grid,
+  .quick-tasks,
+  .shortcuts-grid,
+  .action-list {
+    grid-template-columns: 1fr !important;
+  }
 }
->>>>>>> origin/develop
+
+@media (max-width: 640px) {
+  .dashboard-hero {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .hero-title {
+    font-size: 34px;
+  }
+
+  .kpi-card {
+    min-height: 130px;
+  }
+
+  .kpi-value {
+    font-size: 30px;
+  }
+
+  .kpi-card.secondary .kpi-value {
+    font-size: 26px;
+  }
+
+  .panel-card {
+    padding: 16px;
+  }
+
+  .task-item,
+  .quick-action,
+  .dashboard-action,
+  .action-card,
+  .shortcut-card,
+  .shortcut-item,
+  .quick-task,
+  .action-item {
+    grid-template-columns: 48px 1fr !important;
+    min-height: auto !important;
+    padding: 16px !important;
+  }
+
+  .task-item i,
+  .task-item svg,
+  .quick-action i,
+  .quick-action svg,
+  .dashboard-action i,
+  .dashboard-action svg,
+  .action-card i,
+  .action-card svg,
+  .shortcut-card i,
+  .shortcut-card svg,
+  .shortcut-item i,
+  .shortcut-item svg,
+  .quick-task i,
+  .quick-task svg,
+  .action-item i,
+  .action-item svg,
+  .task-icon {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .dashboard-table {
+    overflow-x: auto;
+  }
+
+  .dashboard-table table {
+    min-width: 760px;
+  }
+}
+

@@ -1,5 +1,4 @@
-const supabase          = require('../config/supabase');
-const { invalidateCache } = require('../middlewares/auth.middleware');
+const supabase = require('../config/supabase');
 
 const VISTA_API_MAP = {
   'dashboard':       ['mi_cuenta:leer'],
@@ -8,8 +7,8 @@ const VISTA_API_MAP = {
   'lotes-read':      ['lotes:leer'],
   'lotes-edit':      ['lotes:leer', 'lotes:crear', 'lotes:actualizar'],
   'compradores':     ['compradores:leer', 'compradores:crear', 'compradores:actualizar'],
-  'ventas':          ['ventas:leer', 'ventas:crear', 'ventas:actualizar', 'ventas:solicitar'],
-  'cuotas':          ['cuotas:leer', 'cuotas:crear', 'cuotas:actualizar'],
+  'ventas':          ['ventas:leer', 'ventas:crear', 'ventas:actualizar', 'ventas:solicitar', 'ventas:editar_financiero'],
+  'cuotas':          ['cuotas:leer', 'cuotas:crear', 'cuotas:actualizar', 'cuotas:editar_valores'],
   'pagos-read':      ['pagos:leer'],
   'pagos-upload':    ['pagos:crear'],
   'pagos-edit':      ['pagos:leer', 'pagos:crear'],
@@ -21,6 +20,8 @@ const VISTA_API_MAP = {
   'auditoria':       [],
   'usuarios':        ['usuarios:leer', 'usuarios:crear', 'usuarios:actualizar'],
   'roles':           ['roles:leer', 'roles:actualizar'],
+  'juridico':        ['ventas:leer', 'compradores:leer', 'cuotas:leer', 'pagos:leer', 'alertas_jur:leer', 'observaciones_jur:leer', 'observaciones_jur:crear'],
+  'personal':        ['usuarios:leer', 'compradores:leer', 'comisionistas:leer', 'reportes:leer'],
 };
 
 async function getAll(req, res) {
@@ -128,8 +129,6 @@ async function updatePermisos(req, res) {
       usuario:        req.usuario.email,
       fecha_cambio:   new Date().toISOString(),
     }]);
-
-    invalidateCache();
 
     return res.json({ ok: true, rol: rolData.nombre, vistas });
   } catch (err) {

@@ -1,4 +1,4 @@
-// Mapa: método HTTP + ruta completa desde raíz → { recurso, accion }
+﻿// Mapa: mÃ©todo HTTP + ruta completa desde raÃ­z â†’ { recurso, accion }
 // Usar req.originalUrl (no req.path) en el middleware para que coincidan con /api/...
 const ROUTE_PERMISSIONS = {
   'GET /api/usuarios':              { recurso: 'usuarios',      accion: 'leer' },
@@ -23,8 +23,12 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/ventas/financiero':   { recurso: 'ventas',        accion: 'editar_financiero' },
 
   'GET /api/cuotas':                { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/pendientes':     { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/vencidas':       { recurso: 'cuotas',        accion: 'leer' },
+  'GET /api/cuotas/venta':          { recurso: 'cuotas',        accion: 'leer' },
   'POST /api/cuotas':               { recurso: 'cuotas',        accion: 'crear' },
   'PUT /api/cuotas':                { recurso: 'cuotas',        accion: 'actualizar' },
+  'PATCH /api/cuotas/valores':      { recurso: 'cuotas',        accion: 'editar_valores' },
 
   'GET /api/pagos':                 { recurso: 'pagos',         accion: 'leer' },
   'POST /api/pagos':                { recurso: 'pagos',         accion: 'crear' },
@@ -47,12 +51,38 @@ const ROUTE_PERMISSIONS = {
   'GET /api/reportes':              { recurso: 'reportes',      accion: 'leer' },
   'GET /api/reportes/dir':          { recurso: 'reportes_dir',  accion: 'leer' },
   'GET /api/reportes/jur':          { recurso: 'alertas_jur',   accion: 'leer' },
+  'GET /api/reportes/juridico':     { recurso: 'alertas_jur',   accion: 'leer' },
+
+  'GET /api/juridico/cartera':            { recurso: 'alertas_jur',      accion: 'leer' },
+  'GET /api/juridico/observaciones':      { recurso: 'observaciones_jur', accion: 'leer' },
+  'POST /api/juridico/observaciones':     { recurso: 'observaciones_jur', accion: 'crear' },
 
   'GET /api/mi-cuenta':             { recurso: 'mi_cuenta',     accion: 'leer' },
 
+
+  'GET /api/ventas/mis-ventas':   { recurso: 'mis_ventas',  accion: 'leer' },
+
+  'GET /api/cuotas/mis-cuotas':   { recurso: 'mis_cuotas',  accion: 'leer' },
+
+  'GET /api/pagos/mis-pagos':     { recurso: 'mis_pagos',   accion: 'leer' },
+  'POST /api/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
+
+  'GET /api/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
+
+  'POST /api/uploads/baucher':    { recurso: 'uploads',     accion: 'crear' },
   'GET /api/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
+  'GET /api/bank-transactions':        { recurso: 'bank_transactions', accion: 'leer' },
+  'POST /api/bank-transactions/batch': { recurso: 'bank_transactions', accion: 'crear' },
+  'PUT /api/bank-transactions':        { recurso: 'bank_transactions', accion: 'actualizar' },
+  'DELETE /api/bank-transactions':     { recurso: 'bank_transactions', accion: 'eliminar' },
+
+  'GET /api/pagos/contrast':           { recurso: 'validacion_pagos',  accion: 'leer' },
+  'PATCH /api/pagos/accept-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
+
 };
 
 module.exports = ROUTE_PERMISSIONS;
+
+

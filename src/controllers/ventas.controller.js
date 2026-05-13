@@ -226,9 +226,6 @@ async function crearVenta(req, res, estadoFijo) {
   res.status(201).json(venta);
 }
 
-exports.create = (req, res) => crearVenta(req, res, null);
-
-exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
 exports.updateFinanciero = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });
@@ -299,4 +296,110 @@ exports.getEstadoFinanciero = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("v_aux_ventas_estado_financiero").select("*");
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+};
+
+
+exports.getMisVentas = async (req, res) => {
+  const id_comprador = req.usuario.id_comprador;
+  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado a este usuario" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("venta_comprador")
+    .select(`
+      porcentaje,
+      venta:id_venta (
+        id_venta, valor_total, cuota_inicial, estado, fecha_venta,
+        observaciones, total_permutas,
+        lote:id_lote (
+          codigo_lote, manzana, numero_lote,
+          proyecto:id_proyecto (nombre)
+        ),
+        cuota (
+          id_cuota, numero_cuota, tipo,
+          fecha_vencimiento, valor_cuota, estado,
+          cuota_pago (
+            valor_aplicado,
+            pago:id_pago ( estado )
+          )
+        )
+      )
+    `)
+    .eq("id_comprador", id_comprador);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const hoy = new Date();
+
+  const result = (data || []).map(vc => {
+    const v = vc.venta;
+    if (!v) return null;
+
+    const cuotas = (v.cuota || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
+
+    const totalPagado = cuotas.reduce((sum, c) => {
+      const aplicadoAceptado = (c.cuota_pago || [])
+        .filter(cp => cp.pago?.estado === "aceptado")
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      return sum + aplicadoAceptado;
+    }, 0);
+
+    const valorTotal      = Number(v.valor_total);
+    const saldoPendiente  = Math.max(0, valorTotal - totalPagado);
+    const porcentajePagado = valorTotal > 0 ? (totalPagado / valorTotal) * 100 : 0;
+
+    const cuotaActual = cuotas.find(c => c.estado !== "pagada") || null;
+
+    let diasCuotaActual = null;
+    if (cuotaActual) {
+      const venc = new Date(cuotaActual.fecha_vencimiento + "T12:00:00");
+      diasCuotaActual = Math.floor((venc - hoy) / 86_400_000);
+    }
+
+    return {
+      id_venta:            v.id_venta,
+      estado:              v.estado,
+      fecha_venta:         v.fecha_venta,
+      valor_total:         valorTotal,
+      cuota_inicial:       v.cuota_inicial,
+      total_permutas:      v.total_permutas,
+      porcentaje_propiedad: vc.porcentaje,
+      lote:                v.lote,
+      total_cuotas:        cuotas.length,
+      cuotas_pagadas:      cuotas.filter(c => c.estado === "pagada").length,
+      total_pagado:        totalPagado,
+      saldo_pendiente:     saldoPendiente,
+      porcentaje_pagado:   Math.round(porcentajePagado * 10) / 10,
+      escritura_disponible: porcentajePagado >= 30,
+      cuota_actual:        cuotaActual ? {
+        id_cuota:          cuotaActual.id_cuota,
+        numero_cuota:      cuotaActual.numero_cuota,
+        fecha_vencimiento: cuotaActual.fecha_vencimiento,
+        valor_cuota:       cuotaActual.valor_cuota,
+        dias_restantes:    diasCuotaActual,
+      } : null,
+      cuotas: cuotas.map(c => {
+        const pagadoAceptado = (c.cuota_pago || [])
+          .filter(cp => cp.pago?.estado === "aceptado")
+          .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+        const pagadoPendiente = (c.cuota_pago || [])
+          .filter(cp => cp.pago?.estado === "pendiente_revision")
+          .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+        const dias = Math.floor((new Date(c.fecha_vencimiento + "T12:00:00") - hoy) / 86_400_000);
+        return {
+          id_cuota:          c.id_cuota,
+          numero_cuota:      c.numero_cuota,
+          tipo:              c.tipo,
+          fecha_vencimiento: c.fecha_vencimiento,
+          valor_cuota:       Number(c.valor_cuota),
+          estado:            c.estado,
+          valor_pagado:      pagadoAceptado,
+          valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
+          valor_en_revision: pagadoPendiente,
+          dias_restantes:    dias,
+        };
+      }),
+    };
+  }).filter(Boolean);
+
+  res.json(result);
 };

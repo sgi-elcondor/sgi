@@ -22,8 +22,12 @@
       { key: 'reportes',  label: 'Reportes' },
       { key: 'alertas',   label: 'Alertas juridicas' },
       { key: 'auditoria', label: 'Auditoria' },
+      { key: 'personal',  label: 'Personal registrado' },
       { key: 'usuarios',  label: 'Gestion de usuarios' },
       { key: 'roles',     label: 'Roles y permisos' },
+    ]},
+    { label: 'Juridico', vistas: [
+      { key: 'juridico',  label: 'Seguimiento juridico' },
     ]},
   ];
 
