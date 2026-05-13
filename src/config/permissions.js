@@ -66,7 +66,16 @@ const ROUTE_PERMISSIONS = {
   'GET /api/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
+  'GET /api/bank-transactions':        { recurso: 'bank_transactions', accion: 'leer' },
+  'POST /api/bank-transactions/batch': { recurso: 'bank_transactions', accion: 'crear' },
+  'PUT /api/bank-transactions':        { recurso: 'bank_transactions', accion: 'actualizar' },
+  'DELETE /api/bank-transactions':     { recurso: 'bank_transactions', accion: 'eliminar' },
+
+  'GET /api/pagos/contrast':           { recurso: 'validacion_pagos',  accion: 'leer' },
+  'PATCH /api/pagos/accept-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
+
 };
 
 module.exports = ROUTE_PERMISSIONS;
+
 
