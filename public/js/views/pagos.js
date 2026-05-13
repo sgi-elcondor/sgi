@@ -25,7 +25,7 @@ window.pagosReadView = async function() {
       <div class="table-header"><h3>Pagos</h3></div>
       <table>
         <thead><tr>
-          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>Metodo</th><th>Referencia</th><th>Excedente</th>
         </tr></thead>
         <tbody>${_pagosTabla(data)}</tbody>
       </table>
@@ -48,7 +48,7 @@ window.pagosEditView = async function() {
       </div>
       <table>
         <thead><tr>
-          <th>#</th><th>Fecha</th><th>Valor</th><th>Método</th><th>Referencia</th><th>Excedente</th>
+          <th>#</th><th>Fecha</th><th>Valor</th><th>Metodo</th><th>Referencia</th><th>Excedente</th>
         </tr></thead>
         <tbody>${_pagosTabla(data)}</tbody>
       </table>
@@ -56,6 +56,9 @@ window.pagosEditView = async function() {
 };
 
 window.pagosUploadView = function() {
+  if (typeof window.compradorRecibosView === "function") {
+    window.compradorRecibosView(); return;
+  }
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = `
     <div class="table-wrap">
@@ -100,7 +103,7 @@ window.pagoForm = async function() {
         <input id="f_fp" type="date" value="${new Date().toISOString().split("T")[0]}">
       </div>
       <div class="form-group">
-        <label>Método de pago *</label>
+        <label>Metodo de pago *</label>
         <select id="f_mp">
           <option value="transferencia">Transferencia</option>
           <option value="efectivo">Efectivo</option>
@@ -108,7 +111,7 @@ window.pagoForm = async function() {
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label>Referencia</label>
-        <input id="f_ref" placeholder="Nro. comprobante o transacción">
+        <input id="f_ref" placeholder="Nro. comprobante o transaccion">
       </div>
     </div>
 
@@ -167,10 +170,11 @@ window.guardarPago = async function() {
   try {
     await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, cuotas });
     UI.closeModal();
-    window.SGIUI?.toast("Pago registrado. Recibo generado automáticamente.", "success", "Éxito");
+    window.SGIUI?.toast("Pago registrado. Recibo generado automaticamente.", "success", "Exito");
     window.navigate(window.currentViewKey, false);
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
     window.SGIUI?.toast(e.message || "Error al registrar el pago.", "error", "Error");
   }
 };
+

@@ -55,3 +55,93 @@ exports.create = async (req, res) => {
 
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
+
+
+exports.getMisPagos = async (req, res) => {
+  const id_comprador = req.usuario.id_comprador;
+  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("pago")
+    .select(`
+      id_pago, fecha_pago, valor_pago, metodo_pago, referencia,
+      estado, url_baucher, numero_cuenta_origen, tipo_pago,
+      id_venta, id_cuota_propuesta,
+      cuota_pago (
+        valor_aplicado,
+        cuota:id_cuota (numero_cuota, fecha_vencimiento)
+      ),
+      recibo_pago (
+        recibo:id_recibo (numero_recibo, fecha_emision)
+      )
+    `)
+    .eq("id_comprador", id_comprador)
+    .order("fecha_pago", { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+};
+
+exports.createCompradorPago = async (req, res) => {
+  const id_comprador = req.usuario.id_comprador;
+  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+
+  const {
+    fecha_pago, valor_pago, metodo_pago,
+    numero_cuenta_origen, url_baucher,
+    id_venta, id_cuota_propuesta, tipo_pago,
+    referencia,
+  } = req.body;
+
+  if (!fecha_pago)   return res.status(400).json({ error: "fecha_pago es obligatorio" });
+  if (!valor_pago || Number(valor_pago) <= 0) return res.status(400).json({ error: "valor_pago debe ser mayor a 0" });
+  if (!metodo_pago)  return res.status(400).json({ error: "metodo_pago es obligatorio" });
+
+  const allowed = ["transferencia", "efectivo", "cheque", "permuta"];
+  if (!allowed.includes(metodo_pago)) return res.status(400).json({ error: "metodo_pago invalido" });
+
+  if (metodo_pago === "transferencia" && !url_baucher)
+    return res.status(400).json({ error: "Debe adjuntar el baucher para pagos electronicos" });
+
+  if (id_venta) {
+    const { data: vc } = await supabase.schema(SCHEMA)
+      .from("venta_comprador")
+      .select("id_comprador")
+      .eq("id_venta", id_venta)
+      .eq("id_comprador", id_comprador)
+      .single();
+    if (!vc) return res.status(403).json({ error: "No tienes acceso a esta venta" });
+  }
+
+  const { data: pago, error: ep } = await supabase.schema(SCHEMA)
+    .from("pago")
+    .insert([{
+      fecha_pago,
+      valor_pago:           Number(valor_pago),
+      metodo_pago,
+      referencia:           referencia || null,
+      estado:               "pendiente_revision",
+      url_baucher:          url_baucher || null,
+      numero_cuenta_origen: numero_cuenta_origen || null,
+      tipo_pago:            tipo_pago || "cuota",
+      id_comprador,
+      id_venta:             id_venta || null,
+      id_cuota_propuesta:   id_cuota_propuesta || null,
+    }])
+    .select()
+    .single();
+
+  if (ep) return res.status(400).json({ error: ep.message });
+
+  await supabase.schema(SCHEMA).from("auditoria").insert([{
+    tabla_afectada: "pago",
+    id_registro:    pago.id_pago,
+    campo:          "creacion_comprobante",
+    valor_anterior: null,
+    valor_nuevo:    JSON.stringify({ valor: pago.valor_pago, metodo: metodo_pago, tipo: tipo_pago }),
+    usuario_db:     req.usuario.email,
+    motivo:         "comprobante_comprador",
+  }]);
+
+  res.status(201).json(pago);
+};

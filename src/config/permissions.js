@@ -1,4 +1,4 @@
-// Mapa: método HTTP + ruta completa desde raíz → { recurso, accion }
+﻿// Mapa: mÃ©todo HTTP + ruta completa desde raÃ­z â†’ { recurso, accion }
 // Usar req.originalUrl (no req.path) en el middleware para que coincidan con /api/...
 const ROUTE_PERMISSIONS = {
   'GET /api/usuarios':              { recurso: 'usuarios',      accion: 'leer' },
@@ -52,9 +52,21 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/mi-cuenta':             { recurso: 'mi_cuenta',     accion: 'leer' },
 
+
+  'GET /api/ventas/mis-ventas':   { recurso: 'mis_ventas',  accion: 'leer' },
+
+  'GET /api/cuotas/mis-cuotas':   { recurso: 'mis_cuotas',  accion: 'leer' },
+
+  'GET /api/pagos/mis-pagos':     { recurso: 'mis_pagos',   accion: 'leer' },
+  'POST /api/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
+
+  'GET /api/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
+
+  'POST /api/uploads/baucher':    { recurso: 'uploads',     accion: 'crear' },
   'GET /api/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
 };
 
 module.exports = ROUTE_PERMISSIONS;
+
