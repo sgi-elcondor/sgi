@@ -12,9 +12,9 @@
 .modal-overlay.open {
   display: flex;
 }
-
+ 
 .modal {
-  width: min(35rem, 95vw);
+  width: min(50.5rem, 95vw);
   max-height: 85vh;
   overflow-y: auto;
   border: 1px solid var(--border);

@@ -1,4 +1,4 @@
-import { esperarAuthListo } from "./auth.js";
+﻿import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
   dashboard:          { fn: "dashboardView",       title: "Panel de control" },
@@ -18,8 +18,14 @@ const VIEWS = {
   reportes:           { fn: "reportesView",         title: "Reportes" },
   alertas:            { fn: "alertasView",          title: "Alertas Juridicas" },
   auditoria:          { fn: "auditoriaView",        title: "Auditoria" },
+  juridico:           { fn: "juridicoView",         title: "Seguimiento Juridico" },
+  personal:           { fn: "personalView",         title: "Personal" },
   usuarios:           { fn: "usuariosView",         title: "Gestion de Usuarios" },
   roles:              { fn: "rolesView",            title: "Roles y Permisos" },
+  "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
+  "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Pagos y Recibos" },
+  "bank-transactions": { fn: "bankTransactionsView", title: "Transacciones Bancarias" },
+  "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
 };
 
 const SIDEBAR_GROUPS = [
@@ -42,13 +48,23 @@ const SIDEBAR_GROUPS = [
     { view: "comisionistas",  icon: "percent",       label: "Comisionistas" },
     { view: "facturas",       icon: "receipt",       label: "Facturas" },
     { view: "recibos",        icon: "file-text",     label: "Recibos" },
+    { view: "bank-transactions",  icon: "landmark",      label: "Transacciones" },
+    { view: "payment-validation", icon: "shield-check",  label: "Validar pagos" },
+  ]},
+  { label: "Mi cuenta", items: [
+    { view: "mis-cuotas",  icon: "calendar",   label: "Mis Cuotas" },
+    { view: "mis-recibos", icon: "file-text",  label: "Mis Pagos" },
   ]},
   { label: "Control", items: [
     { view: "reportes",       icon: "bar-chart-3",   label: "Reportes" },
     { view: "alertas",        icon: "triangle-alert",label: "Alertas" },
     { view: "auditoria",      icon: "shield-check",  label: "Auditoria" },
+    { view: "personal",       icon: "users",         label: "Personal" },
     { view: "usuarios",       icon: "settings",      label: "Usuarios" },
     { view: "roles",          icon: "lock",          label: "Roles" },
+  ]},
+  { label: "Juridico", items: [
+    { view: "juridico",       icon: "scale",         label: "Seguimiento Juridico" },
   ]},
 ];
 
@@ -70,14 +86,20 @@ const TOPBAR_SUBTITLES = {
   reportes:           "Indicadores y reportes consolidados",
   alertas:            "Seguimiento juridico y alertas",
   auditoria:          "Trazabilidad y control interno",
+  personal:           "Distribucion de usuarios activos por rol en la plataforma",
   usuarios:           "Administracion de accesos y roles",
   roles:              "Configuracion de roles y permisos",
+  "mis-cuotas":        "Consulta y pago de tus cuotas",
+  "mis-recibos":       "Estado de tus pagos y recibos emitidos",
+  "bank-transactions": "Registro de movimientos bancarios",
+  "payment-validation":"Contraste y aprobacion de pagos",
+  juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
 };
 
 window.currentUser    = null;
 window.currentViewKey = "dashboard";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function capitalize(text) {
   return (text || "").charAt(0).toUpperCase() + (text || "").slice(1);
@@ -96,7 +118,7 @@ function setTodayDate() {
   todayDate.textContent = capitalize(formatted);
 }
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const THEME_KEY = "sgi_theme";
 
@@ -115,7 +137,7 @@ function initTheme() {
   applyTheme(localStorage.getItem(THEME_KEY) || "system");
 }
 
-// ── Navigation ────────────────────────────────────────────────────────────────
+// â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function setActiveNav(viewKey) {
   document.querySelectorAll(".nav-item").forEach((item) => {
@@ -197,18 +219,26 @@ function navigate(viewKey, updateHash) {
   }
 }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
+// â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function renderSidebar(vistas) {
+const SIDEBAR_ALLOWLIST_BY_ROLE = {
+  gerencia: new Set(['dashboard', 'reportes', 'alertas', 'auditoria', 'personal']),
+};
+
+function renderSidebar(vistas, rol) {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
-  const allowed = new Set(vistas || []);
+  const allowlist = SIDEBAR_ALLOWLIST_BY_ROLE[rol] || null;
+  const allowed   = new Set(vistas || []);
   let html = "";
   let firstGroup = true;
 
   SIDEBAR_GROUPS.forEach(function(group) {
-    const visible = group.items.filter(function(item) { return allowed.has(item.view); });
+    const visible = group.items.filter(function(item) {
+      if (!allowed.has(item.view)) return false;
+      return allowlist ? allowlist.has(item.view) : true;
+    });
     if (!visible.length) return;
 
     if (!firstGroup) html += '<div class="nav-divider"></div>';
@@ -235,7 +265,7 @@ function renderSidebar(vistas) {
   window.SGIUI?.hydrate();
 }
 
-// ── User menu panel ───────────────────────────────────────────────────────────
+// â”€â”€ User menu panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function initUserMenu(perfil) {
   const btn   = document.getElementById("userMenuBtn");
@@ -312,7 +342,7 @@ function initUserMenu(perfil) {
   });
 }
 
-// ── Change password view ──────────────────────────────────────────────────────
+// â”€â”€ Change password view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function renderChangePasswordView() {
   const prev = window.currentViewKey || "dashboard";
@@ -393,7 +423,7 @@ function renderChangePasswordView() {
   });
 }
 
-// ── Edit profile view ─────────────────────────────────────────────────────────
+// â”€â”€ Edit profile view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function renderEditProfileView(perfil) {
   const prev = window.currentViewKey || "dashboard";
@@ -442,7 +472,7 @@ function renderEditProfileView(perfil) {
   });
 }
 
-// ── Sidebar toggle ────────────────────────────────────────────────────────────
+// â”€â”€ Sidebar toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function applySidebarState(collapsed) {
   document.body.classList.toggle("sidebar-collapsed", collapsed);
@@ -466,7 +496,7 @@ function initSidebarToggle() {
   });
 }
 
-// ── Onboarding modal ──────────────────────────────────────────────────────────
+// â”€â”€ Onboarding modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function parseDisplayName(displayName) {
   const parts = (displayName || "").trim().split(" ").filter(Boolean);
@@ -521,7 +551,7 @@ function mostrarOnboarding(perfil, firebaseUser) {
   });
 }
 
-// ── App init ──────────────────────────────────────────────────────────────────
+// â”€â”€ App init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getInitialView() {
   const hash = window.location.hash.replace("#", "").trim();
@@ -567,7 +597,7 @@ async function iniciarApp() {
       (perfil.rol === "comisionista" && !perfil.id_comisionista);
 
     if (necesitaOnboarding) {
-      renderSidebar(perfil.vistas);
+      renderSidebar(perfil.vistas, perfil.rol);
       initUserMenu(perfil);
       window.SGIUI?.hydrate();
       initSidebarToggle();
@@ -575,7 +605,7 @@ async function iniciarApp() {
       return;
     }
 
-    renderSidebar(perfil.vistas);
+    renderSidebar(perfil.vistas, perfil.rol);
     initUserMenu(perfil);
     initSidebarToggle();
     window.SGIUI?.hydrate();
@@ -595,3 +625,4 @@ async function iniciarApp() {
 
 iniciarApp();
 window.navigate = navigate;
+

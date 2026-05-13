@@ -68,7 +68,7 @@ window.ventasView = async function() {
         ${botonNueva}
       </div>
       ${esAsesor ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
-        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que un operador o administrador las apruebe.
+        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que gerencia o un administrador las apruebe.
       </p>` : ""}
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-end">
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
@@ -115,178 +115,336 @@ window.ventasView = async function() {
 
   _cargarVentas();
 };
-
 window.verVenta = async function(id) {
   let v;
-  try { v = await API.get(`/ventas/${id}`); }
-  catch(e) { UI.toast(e.message, "error"); return; }
 
-  // ── helpers locales ──
-  const S  = (t,c,ic="") => `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden"><div style="padding:7px 14px;background:var(--surface-2,#f0f4f8);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">${ic}${t}</div><div style="padding:12px 14px">${c}</div></div>`;
-  const R  = (l,v2) => `<div style="display:flex;gap:6px;margin-bottom:5px"><span style="min-width:140px;font-size:.79rem;color:var(--text-muted);flex-shrink:0">${l}</span><span style="font-size:.85rem">${v2}</span></div>`;
-  const bar= (pct,col="var(--primary,#ff6a00)") => `<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:5px 0"><div style="height:100%;width:${Math.min(100,pct).toFixed(1)}%;background:${col};border-radius:4px"></div></div>`;
+  try {
+    v = await API.get(`/ventas/${id}`);
+  } catch(e) {
+    UI.toast(e.message, "error");
+    return;
+  }
 
-  // ── cuotas ──
-  const cuotas   = (v.cuota || []).sort((a,b) => a.numero_cuota - b.numero_cuota);
-  const cuotasIni= cuotas.filter(c => c.tipo === "inicial");
-  const cuotasReg= cuotas.filter(c => c.tipo === "regular");
-  const pagada   = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
-  const hoy      = new Date(); hoy.setHours(0,0,0,0);
-  const vencida  = c => { const f = c.fecha_vencimiento ? new Date(c.fecha_vencimiento+"T12:00:00") : null; return f && f < hoy && !pagada(c); };
+  // ── Helpers visuales del detalle ──
+  const S = (titulo, contenido, icono = "") => `
+    <section class="venta-detail-section">
+      <div class="venta-detail-section-head">
+        <span>${icono}${titulo}</span>
+      </div>
+      <div class="venta-detail-section-body">
+        ${contenido}
+      </div>
+    </section>`;
+
+  const R = (label, value) => `
+    <div class="venta-detail-row">
+      <span class="venta-detail-label">${label}</span>
+      <span class="venta-detail-value">${value}</span>
+    </div>`;
+
+  const bar = (pct, color = "var(--primary,#ff6a00)") => `
+    <div class="venta-progress">
+      <div style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%;background:${color}"></div>
+    </div>`;
+
+  const statCard = (label, value, detail = "") => `
+    <div class="venta-detail-stat">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      ${detail ? `<small>${detail}</small>` : ""}
+    </div>`;
+
+  // ── Cuotas ──
+  const cuotas = (v.cuota || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
+
+  const cuotasIni = cuotas.filter(c => c.tipo === "inicial");
+  const cuotasReg = cuotas.filter(c => c.tipo === "regular");
+
+  const pagada = c =>
+    c.pagado === true ||
+    c.fecha_pago != null ||
+    c.estado === "pagado" ||
+    c.estado === "pagada";
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const vencida = c => {
+    const f = c.fecha_vencimiento
+      ? new Date(c.fecha_vencimiento + "T12:00:00")
+      : null;
+
+    return f && f < hoy && !pagada(c);
+  };
 
   const pagIni = cuotasIni.filter(pagada);
   const pagReg = cuotasReg.filter(pagada);
-  const sumVal = arr => arr.reduce((s,c) => s + Number(c.valor_cuota||0), 0);
+
+  const sumVal = arr => arr.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+
   const totalPagadoIni = sumVal(pagIni);
   const totalPagadoReg = sumVal(pagReg);
-  const totalPagado    = totalPagadoIni + totalPagadoReg;
+  const totalPagado = totalPagadoIni + totalPagadoReg;
 
-  // ── financiero ──
-  const vt    = Number(v.valor_total)    || 0;
-  const ci    = Number(v.cuota_inicial)  || 0;
-  const tp    = Number(v.total_permutas) || 0;
+  const cuotasPendientes = cuotas.filter(c => !pagada(c)).length;
+  const cuotasVencidas = cuotas.filter(vencida).length;
+
+  const proximaCuota = cuotas
+    .filter(c => !pagada(c))
+    .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))[0];
+
+  // ── Financiero ──
+  const vt = Number(v.valor_total) || 0;
+  const ci = Number(v.cuota_inicial) || 0;
+  const tp = Number(v.total_permutas) || 0;
   const saldo = Math.max(0, vt - ci - tp);
-  const pct   = vt > 0 ? totalPagado / vt * 100 : 0;
+  const pct = vt > 0 ? totalPagado / vt * 100 : 0;
+
   const cumple = pct >= 30;
   const escrit = v.escriturado === true || v.fecha_escritura != null;
 
-  // ── comisionista ──
-  const vc0 = Array.isArray(v.venta_comisionista) ? v.venta_comisionista[0] : v.venta_comisionista;
+  // ── Comisionista ──
+  const vc0 = Array.isArray(v.venta_comisionista)
+    ? v.venta_comisionista[0]
+    : v.venta_comisionista;
 
-  // ── permutas detalle ──
+  // ── Permutas detalle ──
   let permsDetalle = "";
+
   if (tp > 0 && v.detalle_permutas) {
     try {
-      permsDetalle = " — " + JSON.parse(v.detalle_permutas).map(p=>`${p.descripcion} (${UI.fmt(p.valor)})`).join(", ");
+      permsDetalle = " — " + JSON.parse(v.detalle_permutas)
+        .map(p => `${p.descripcion} (${UI.fmt(p.valor)})`)
+        .join(", ");
     } catch {}
   }
 
-  // ── fila de cuota ──
+  // ── Tabla de cuotas ──
   const cuotaRow = c => {
-    const ok  = pagada(c);
+    const ok = pagada(c);
     const ven = vencida(c);
-    const est = ok  ? `<span style="color:var(--success,#22c55e);font-size:.75rem;font-weight:600">✓ Pagada</span>`
-              : ven ? `<span style="color:var(--danger,#ef4444);font-size:.75rem;font-weight:600">Vencida</span>`
-              :       `<span style="color:var(--text-muted);font-size:.75rem">Pendiente</span>`;
-    return `<tr style="border-bottom:1px solid var(--border)${ven?" background:rgba(239,68,68,.04)":""}">
-      <td style="padding:5px 8px;color:var(--text-muted);font-size:.75rem">${c.numero_cuota}</td>
-      <td style="padding:5px 8px;font-size:.82rem">${UI.date(c.fecha_vencimiento)}</td>
-      <td style="padding:5px 8px;font-size:.82rem;text-align:right"><b>${UI.fmt(c.valor_cuota)}</b></td>
-      <td style="padding:5px 8px;font-size:.75rem;color:var(--text-muted)">${c.fecha_pago ? UI.date(c.fecha_pago) : "—"}</td>
-      <td style="padding:5px 8px">${est}</td>
-    </tr>`;
+
+    const badgeClass = ok
+      ? "is-paid"
+      : ven
+        ? "is-overdue"
+        : "is-pending";
+
+    const label = ok
+      ? "Pagada"
+      : ven
+        ? "Vencida"
+        : "Pendiente";
+
+    return `
+      <tr class="${ven ? "is-overdue" : ""}">
+        <td>${c.numero_cuota}</td>
+        <td>${UI.date(c.fecha_vencimiento)}</td>
+        <td class="venta-quota-value">${UI.fmt(c.valor_cuota)}</td>
+        <td>${c.fecha_pago ? UI.date(c.fecha_pago) : "—"}</td>
+        <td>
+          <span class="venta-quota-badge ${badgeClass}">
+            ${label}
+          </span>
+        </td>
+      </tr>`;
   };
-  const thead = `<thead><tr style="border-bottom:2px solid var(--border)">
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">#</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Vencimiento</th>
-    <th style="padding:4px 8px;text-align:right;font-size:.72rem;color:var(--text-muted)">Valor</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Fecha pago</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Estado</th>
-  </tr></thead>`;
+
+  const theadCuotas = `
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Vencimiento</th>
+        <th style="text-align:right">Valor</th>
+        <th>Fecha pago</th>
+        <th>Estado</th>
+      </tr>
+    </thead>`;
 
   const lote = v.lote || {};
 
   const html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div><span style="font-size:.85rem;color:var(--text-muted)">Registrada el ${UI.date(v.fecha_venta)}</span></div>
-      <div>${UI.badge(v.estado)}</div>
-    </div>
+    <div class="venta-detail-modal">
 
-    ${S("Lote / Proyecto", `
-      ${R("Proyecto", `<b>${lote.proyecto?.nombre||"—"}</b>`)}
-      ${R("Código", lote.codigo_lote||"—")}
-      ${R("Ubicación", `Mz ${lote.manzana||"—"} · Lote ${lote.numero_lote||"—"}`)}
-      ${lote.area_m2 ? R("Área",`${lote.area_m2} m²`) : ""}
-      ${R("Precio lista", UI.fmt(lote.precio_lista))}
-      ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
-    `)}
-
-    ${S("Valores financieros", `
-      ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
-      ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
-      ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
-      ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
-      ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
-    `)}
-    ${(() => {
-      const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
-      const vfBody = `
-        ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
-        ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
-        ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
-        ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
-        ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
-      `;
-      return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
-        <div style="padding:7px 14px;background:var(--surface-2,#f0f4f8);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Valores financieros</span>
-          ${puedeEditar ? `<button type="button" class="btn btn-ghost btn-sm"
-            style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:600;letter-spacing:0"
-            onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">Editar valores</button>` : ""}
+      <div class="venta-detail-hero">
+        <div>
+          <span class="venta-detail-kicker">Detalle de venta</span>
+          <h3>Venta #${v.id_venta}</h3>
+          <p>Registrada el ${UI.date(v.fecha_venta)}</p>
         </div>
-        <div id="sgi_vf_body" style="padding:12px 14px">${vfBody}</div>
-      </div>`;
-    })()}
 
-    ${S("Compradores", `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="border-bottom:2px solid var(--border)">
-        ${["Nombre","Documento","Teléfono","Correo","%"].map(h=>`<th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">${h}</th>`).join("")}
-      </tr></thead>
-      <tbody>${(v.venta_comprador||[]).map(vc=>`<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:6px 8px;font-size:.85rem"><b>${vc.comprador?.nombres||""} ${vc.comprador?.apellidos||""}</b></td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.documento||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.telefono||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.mail||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.porcentaje||100}%</td>
-      </tr>`).join("") || `<tr><td colspan="5" style="padding:8px;color:var(--text-muted);font-size:.85rem">Sin compradores</td></tr>`}
-      </tbody></table></div>`)}
-
-    ${vc0 ? S("Comisionista", `
-      ${R("Nombre",`<b>${vc0.comisionista?.nombres||""} ${vc0.comisionista?.apellidos||""}</b>`)}
-      ${vc0.comisionista?.documento ? R("Documento", vc0.comisionista.documento) : ""}
-      ${vc0.comisionista?.telefono  ? R("Teléfono",  vc0.comisionista.telefono)  : ""}
-      ${vc0.comisionista?.mail      ? R("Correo",    vc0.comisionista.mail)       : ""}
-      ${R("Valor comisión",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(vc0.valor_comision)}</b>`)}
-    `) : ""}
-
-    ${cuotasIni.length ? S("Cuotas de cuota inicial", `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px">
-        <span>Pagadas: <b>${pagIni.length}/${cuotasIni.length}</b></span>
-        <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoIni)}</b></span>
-        <span>Pendiente: <b style="color:var(--text-muted)">${UI.fmt(sumVal(cuotasIni)-totalPagadoIni)}</b></span>
+        <div class="venta-detail-status">
+          ${UI.badge(v.estado)}
+        </div>
       </div>
-      ${bar(cuotasIni.length ? pagIni.length/cuotasIni.length*100 : 0, "var(--success,#22c55e)")}
-      <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">${thead}<tbody>${cuotasIni.map(cuotaRow).join("")}</tbody></table></div>
-    `) : ""}
 
-    ${cuotasReg.length ? S("Cuotas regulares", `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px">
-        <span>Pagadas: <b>${pagReg.length}/${cuotasReg.length}</b></span>
-        <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoReg)}</b></span>
-        <span>Pendiente: <b style="color:var(--danger,#ef4444)">${UI.fmt(sumVal(cuotasReg)-totalPagadoReg)}</b></span>
-        <span style="color:var(--text-muted)">Cuota: ≈ ${UI.fmt(Math.round(sumVal(cuotasReg)/cuotasReg.length))}/mes</span>
+      <div class="venta-detail-stats">
+        ${statCard("Valor total", UI.fmt(vt), "Valor comercial registrado")}
+        ${statCard("Saldo financiado", UI.fmt(saldo), `${cuotasReg.length} cuota(s) regular(es)`)}
+        ${statCard("Total pagado", UI.fmt(totalPagado), `${pct.toFixed(1)}% del valor total`)}
+        ${statCard(
+          "Próximo vencimiento",
+          proximaCuota ? UI.date(proximaCuota.fecha_vencimiento) : "—",
+          cuotasVencidas > 0
+            ? `${cuotasVencidas} cuota(s) vencida(s)`
+            : `${cuotasPendientes} cuota(s) pendiente(s)`
+        )}
       </div>
-      ${bar(cuotasReg.length ? pagReg.length/cuotasReg.length*100 : 0)}
-      <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">${thead}<tbody>${cuotasReg.map(cuotaRow).join("")}</tbody></table></div>
-    `) : cuotas.length===0 ? `<div style="font-size:.82rem;color:var(--text-muted);padding:8px 0">Sin plan de pago registrado</div>` : ""}
 
-    ${S("Estado global de pagos y escritura", `
-      ${R("Total pagado", `<b>${UI.fmt(totalPagado)}</b> de ${UI.fmt(vt)}`)}
-      ${R("Porcentaje pagado", `<b style="color:${pct>=30?"var(--success,#22c55e)":"var(--primary,#ff6a00)"}">${pct.toFixed(1)}%</b>`)}
-      <div style="margin:4px 0 10px">${bar(pct, pct>=30?"var(--success,#22c55e)":"var(--primary,#ff6a00)")}</div>
-      ${R("Por pagar", `<b style="color:var(--danger,#ef4444)">${UI.fmt(Math.max(0,vt-totalPagado))}</b>`)}
-      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
-      ${R("Requisito escritura (30%)", cumple
-        ? `<span style="color:var(--success,#22c55e);font-weight:600">✓ Cumple — ${pct.toFixed(1)}% pagado</span>`
-        : `<span style="color:var(--text-muted)">No cumple — faltan ${(30-pct).toFixed(1)}% (${UI.fmt(Math.max(0,vt*0.3-totalPagado))})</span>`
-      )}
-      ${R("Escriturado", escrit
-        ? `<span style="color:var(--success,#22c55e);font-weight:600">✓ Sí${v.fecha_escritura?" · "+UI.date(v.fecha_escritura):""}</span>`
-        : cumple
-          ? `<span style="color:var(--warning,#f59e0b);font-weight:600">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
-          : `<span style="color:var(--text-muted)">No — aún no alcanza el 30%</span>`
-      )}
-    `)}`;
+      ${S("Lote / Proyecto", `
+        ${R("Proyecto", `<b>${lote.proyecto?.nombre || "—"}</b>`)}
+        ${R("Código", lote.codigo_lote || "—")}
+        ${R("Ubicación", `Mz ${lote.manzana || "—"} · Lote ${lote.numero_lote || "—"}`)}
+        ${lote.area_m2 ? R("Área", `${lote.area_m2} m²`) : ""}
+        ${R("Precio lista", UI.fmt(lote.precio_lista))}
+        ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
+      `)}
+
+      ${(() => {
+        const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
+
+        const vfBody = `
+          ${R("Valor total", `<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
+          ${ci > 0 ? R("Cuota inicial", UI.fmt(ci)) : ""}
+          ${tp > 0 ? R("Permutas", `${UI.fmt(tp)}${permsDetalle}`) : ""}
+          ${R("Saldo financiado", `<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+          ${v.observaciones ? R("Observaciones", `<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
+        `;
+
+        return `
+          <section class="venta-detail-section">
+            <div class="venta-detail-section-head">
+              <span>Valores financieros</span>
+              ${puedeEditar ? `
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:700;letter-spacing:0"
+                  onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">
+                  Editar valores
+                </button>` : ""}
+            </div>
+            <div id="sgi_vf_body" class="venta-detail-section-body">
+              ${vfBody}
+            </div>
+          </section>`;
+      })()}
+
+      ${S("Compradores", `
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Documento</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(v.venta_comprador || []).map(vc => `
+                <tr>
+                  <td><b>${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}</b></td>
+                  <td>${vc.comprador?.documento || "—"}</td>
+                  <td>${vc.comprador?.telefono || "—"}</td>
+                  <td>${vc.comprador?.mail || "—"}</td>
+                  <td>${vc.porcentaje || 100}%</td>
+                </tr>
+              `).join("") || `
+                <tr>
+                  <td colspan="5" style="color:var(--text-muted)">Sin compradores</td>
+                </tr>`}
+            </tbody>
+          </table>
+        </div>
+      `)}
+
+      ${vc0 ? S("Comisionista", `
+        ${R("Nombre", `<b>${vc0.comisionista?.nombres || ""} ${vc0.comisionista?.apellidos || ""}</b>`)}
+        ${vc0.comisionista?.documento ? R("Documento", vc0.comisionista.documento) : ""}
+        ${vc0.comisionista?.telefono ? R("Teléfono", vc0.comisionista.telefono) : ""}
+        ${vc0.comisionista?.mail ? R("Correo", vc0.comisionista.mail) : ""}
+        ${R("Valor comisión", `<b style="color:var(--primary,#ff6a00)">${UI.fmt(vc0.valor_comision)}</b>`)}
+      `) : ""}
+
+      ${cuotasIni.length ? S("Cuotas de cuota inicial", `
+        <div class="venta-quota-summary">
+          <span>Pagadas: <b>${pagIni.length}/${cuotasIni.length}</b></span>
+          <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoIni)}</b></span>
+          <span>Pendiente: <b>${UI.fmt(sumVal(cuotasIni) - totalPagadoIni)}</b></span>
+        </div>
+
+        ${bar(
+          cuotasIni.length ? pagIni.length / cuotasIni.length * 100 : 0,
+          "var(--success,#22c55e)"
+        )}
+
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            ${theadCuotas}
+            <tbody>${cuotasIni.map(cuotaRow).join("")}</tbody>
+          </table>
+        </div>
+      `) : ""}
+
+      ${cuotasReg.length ? S("Cuotas regulares", `
+        <div class="venta-quota-summary">
+          <span>Pagadas: <b>${pagReg.length}/${cuotasReg.length}</b></span>
+          <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoReg)}</b></span>
+          <span>Pendiente: <b style="color:var(--danger,#ef4444)">${UI.fmt(sumVal(cuotasReg) - totalPagadoReg)}</b></span>
+          <span>Cuota: <b>${UI.fmt(Math.round(sumVal(cuotasReg) / cuotasReg.length))}/mes</b></span>
+        </div>
+
+        ${bar(cuotasReg.length ? pagReg.length / cuotasReg.length * 100 : 0)}
+
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            ${theadCuotas}
+            <tbody>${cuotasReg.map(cuotaRow).join("")}</tbody>
+          </table>
+        </div>
+      `) : cuotas.length === 0 ? `
+        <div style="font-size:.82rem;color:var(--text-muted);padding:8px 0">
+          Sin plan de pago registrado
+        </div>` : ""}
+
+      ${S("Estado global de pagos y escritura", `
+        ${R("Total pagado", `<b>${UI.fmt(totalPagado)}</b> de ${UI.fmt(vt)}`)}
+        ${R(
+          "Porcentaje pagado",
+          `<b style="color:${pct >= 30 ? "var(--success,#22c55e)" : "var(--primary,#ff6a00)"}">${pct.toFixed(1)}%</b>`
+        )}
+
+        <div style="margin:4px 0 10px">
+          ${bar(
+            pct,
+            pct >= 30 ? "var(--success,#22c55e)" : "var(--primary,#ff6a00)"
+          )}
+        </div>
+
+        ${R("Por pagar", `<b style="color:var(--danger,#ef4444)">${UI.fmt(Math.max(0, vt - totalPagado))}</b>`)}
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+
+        ${R(
+          "Requisito escritura (30%)",
+          cumple
+            ? `<span style="color:var(--success,#22c55e);font-weight:700">✓ Cumple — ${pct.toFixed(1)}% pagado</span>`
+            : `<span style="color:var(--text-muted)">No cumple — faltan ${(30 - pct).toFixed(1)}% (${UI.fmt(Math.max(0, vt * 0.3 - totalPagado))})</span>`
+        )}
+
+        ${R(
+          "Escriturado",
+          escrit
+            ? `<span style="color:var(--success,#22c55e);font-weight:700">✓ Sí${v.fecha_escritura ? " · " + UI.date(v.fecha_escritura) : ""}</span>`
+            : cumple
+              ? `<span style="color:var(--warning,#f59e0b);font-weight:700">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
+              : `<span style="color:var(--text-muted)">No — aún no alcanza el 30%</span>`
+        )}
+      `)}
+
+    </div>`;
 
   UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
 };
@@ -1127,11 +1285,67 @@ window._ocultarResumenVenta = function() {
   document.getElementById("venta_form_wrap").style.display = "block";
   document.getElementById("venta_resumen_wrap").style.display = "none";
 };
+function _getVentaErrorWrap() {
+  let errorWrap = document.getElementById("venta_error_wrap");
+
+  if (errorWrap) return errorWrap;
+
+  const formWrap = document.getElementById("venta_form_wrap");
+  const resumenWrap = document.getElementById("venta_resumen_wrap");
+
+  const target =
+    resumenWrap && resumenWrap.style.display !== "none"
+      ? resumenWrap
+      : formWrap;
+
+  if (!target) return null;
+
+  errorWrap = document.createElement("div");
+  errorWrap.id = "venta_error_wrap";
+  errorWrap.className = "venta-modal-error";
+
+  target.prepend(errorWrap);
+
+  return errorWrap;
+}
+
+function _mostrarErrorVenta(mensaje) {
+  const errorWrap = _getVentaErrorWrap();
+
+  if (!errorWrap) {
+    UI.toast(mensaje || "Ocurrió un error al procesar la venta", "error");
+    return;
+  }
+
+  errorWrap.innerHTML = `
+    <strong>No se pudo completar la operación</strong>
+    <span>${mensaje || "Revise la información ingresada e intente nuevamente."}</span>
+  `;
+
+  errorWrap.style.display = "block";
+  errorWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function _limpiarErrorVenta() {
+  const errorWrap = document.getElementById("venta_error_wrap");
+
+  if (!errorWrap) return;
+
+  errorWrap.innerHTML = "";
+  errorWrap.style.display = "none";
+}
 
 window._mostrarResumenVenta = function(fnConfirmar) {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
+
+if (err) {
+  _mostrarErrorVenta(err);
+  UI.toast(err, "error");
+  return;
+}
+
+_limpiarErrorVenta();
 
   const selLote = document.getElementById("f_lote");
   const loteInfo = (() => { try { return JSON.parse(selLote?.options[selLote.selectedIndex]?.dataset.lote || "null"); } catch { return null; } })();
@@ -1195,7 +1409,7 @@ function _iniciarFormularioDinamico() {
   _actualizarCalculos();
 }
 
-// ─── Formulario estándar (admin / operador) ───
+// ─── Formulario estándar (admin / auxiliar_contable) ───
 window.ventaForm = async function() {
   let lotes, compradores, comisionistas;
   try {
@@ -1267,13 +1481,36 @@ function _validarBodyVenta(body) {
 window.guardarVenta = async function() {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
+
+  if (err) {
+    _mostrarErrorVenta(err);
+    UI.toast(err, "error");
+    return;
+  }
+
+  _limpiarErrorVenta();
+
   try {
-    await API.post("/ventas", body);
+    const ventaCreada = await API.post("/ventas", body);
+
     UI.closeModal();
-    UI.toast("Venta creada", "ok");
+
+    const cuotas = ventaCreada?.cuotas_generadas || 0;
+
+    UI.toast(
+      cuotas > 0
+        ? `Venta creada correctamente con ${cuotas} cuota(s) generada(s)`
+        : "Venta creada correctamente",
+      "ok"
+    );
+
     ventasView();
-  } catch(e) { UI.toast(e.message, "error"); }
+  } catch(e) {
+    const mensaje = e.message || "No se pudo crear la venta";
+
+    _mostrarErrorVenta(mensaje);
+    UI.toast(mensaje, "error");
+  }
 };
 
 // ─── Formulario de solicitud (asesor_comercial) ───
@@ -1300,7 +1537,7 @@ window.ventaFormSolicitud = async function() {
   UI.openModal("Solicitar Venta (pendiente de autorización)",
     `<div id="venta_form_wrap">
       <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:.75rem;">
-        Esta solicitud quedará en estado <b>pendiente</b> y deberá ser aprobada por un administrador u operador antes de activarse.
+        Esta solicitud quedará en estado <b>pendiente</b> y deberá ser aprobada por un administrador o auxiliar contable antes de activarse.
       </p>
       ` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">
@@ -1315,11 +1552,34 @@ window.ventaFormSolicitud = async function() {
 window.guardarSolicitudVenta = async function() {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
+
+  if (err) {
+    _mostrarErrorVenta(err);
+    UI.toast(err, "error");
+    return;
+  }
+
+  _limpiarErrorVenta();
+
   try {
-    await API.post("/ventas/solicitud", body);
+    const ventaCreada = await API.post("/ventas/solicitud", body);
+
     UI.closeModal();
-    UI.toast("Solicitud enviada — pendiente de autorización", "ok");
+
+    const cuotas = ventaCreada?.cuotas_generadas || 0;
+
+    UI.toast(
+      cuotas > 0
+        ? `Solicitud enviada con ${cuotas} cuota(s) generada(s)`
+        : "Solicitud enviada — pendiente de autorización",
+      "ok"
+    );
+
     ventasView();
-  } catch(e) { UI.toast(e.message, "error"); }
+  } catch(e) {
+    const mensaje = e.message || "No se pudo enviar la solicitud";
+
+    _mostrarErrorVenta(mensaje);
+    UI.toast(mensaje, "error");
+  }
 };

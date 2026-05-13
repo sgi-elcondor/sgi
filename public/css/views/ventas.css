@@ -259,3 +259,318 @@
     flex-direction: column;
   }
 }
+
+/* =========================================================
+   DETALLE DE VENTA - MODAL PROFESIONAL
+   ========================================================= */
+
+.modal-card:has(.venta-detail-modal),
+.modal-content:has(.venta-detail-modal),
+.modal-dialog:has(.venta-detail-modal) {
+  width: min(980px, calc(100vw - 32px));
+  max-width: 980px;
+}
+
+.venta-detail-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text);
+}
+
+.venta-detail-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(var(--accent-rgb), 0.16), transparent 34%),
+    linear-gradient(180deg, var(--surface-2), var(--surface));
+  box-shadow: var(--shadow-soft);
+}
+
+.venta-detail-kicker {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.venta-detail-hero h3 {
+  margin: 0;
+  color: var(--text);
+  font: 28px var(--font-serif);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.venta-detail-hero p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.venta-detail-status {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.venta-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.venta-detail-stat {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.045), transparent),
+    var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.venta-detail-stat span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.venta-detail-stat strong {
+  display: block;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.venta-detail-stat small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.venta-detail-section {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.venta-detail-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(var(--accent-rgb), 0.06), transparent),
+    var(--surface-2);
+}
+
+.venta-detail-section-head span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.venta-detail-section-body {
+  padding: 15px 16px;
+}
+
+.venta-detail-row {
+  display: grid;
+  grid-template-columns: 155px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 5px 0;
+}
+
+.venta-detail-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.venta-detail-value {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.venta-progress {
+  height: 9px;
+  margin: 8px 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.venta-progress > div {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
+.venta-quota-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.venta-quota-summary b {
+  color: var(--text);
+}
+
+.venta-quota-table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.venta-quota-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.venta-quota-table th {
+  padding: 10px 12px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+}
+
+.venta-quota-table td {
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.venta-quota-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.venta-quota-table tr.is-overdue {
+  background: rgba(var(--danger-rgb), 0.06);
+}
+
+.venta-quota-value {
+  text-align: right;
+  font-weight: 900;
+}
+
+.venta-quota-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.venta-quota-badge.is-paid {
+  color: var(--success);
+  background: rgba(var(--success-rgb), 0.1);
+  border: 1px solid rgba(var(--success-rgb), 0.2);
+}
+
+.venta-quota-badge.is-overdue {
+  color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.1);
+  border: 1px solid rgba(var(--danger-rgb), 0.2);
+}
+
+.venta-quota-badge.is-pending {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 820px) {
+  .venta-detail-hero {
+    flex-direction: column;
+  }
+
+  .venta-detail-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .venta-detail-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
+
+@media (max-width: 520px) {
+  .venta-detail-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .venta-detail-hero h3 {
+    font-size: 24px;
+  }
+}
+
+/* =========================================================
+   ERROR INTERNO EN MODAL DE VENTA
+   ========================================================= */
+
+.venta-modal-error {
+  display: none;
+  margin-bottom: 14px;
+  padding: 13px 15px;
+  border: 1px solid rgba(220, 77, 77, 0.24);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(220, 77, 77, 0.1), rgba(220, 77, 77, 0.055));
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.venta-modal-error strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.venta-modal-error span {
+  color: var(--danger);
+  opacity: 0.92;
+}

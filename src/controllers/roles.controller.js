@@ -1,5 +1,4 @@
-const supabase          = require('../config/supabase');
-const { invalidateCache } = require('../middlewares/auth.middleware');
+const supabase = require('../config/supabase');
 
 const VISTA_API_MAP = {
   'dashboard':       ['mi_cuenta:leer'],
@@ -21,6 +20,8 @@ const VISTA_API_MAP = {
   'auditoria':       [],
   'usuarios':        ['usuarios:leer', 'usuarios:crear', 'usuarios:actualizar'],
   'roles':           ['roles:leer', 'roles:actualizar'],
+  'juridico':        ['ventas:leer', 'compradores:leer', 'cuotas:leer', 'pagos:leer', 'alertas_jur:leer', 'observaciones_jur:leer', 'observaciones_jur:crear'],
+  'personal':        ['usuarios:leer', 'compradores:leer', 'comisionistas:leer', 'reportes:leer'],
 };
 
 async function getAll(req, res) {
@@ -128,8 +129,6 @@ async function updatePermisos(req, res) {
       usuario:        req.usuario.email,
       fecha_cambio:   new Date().toISOString(),
     }]);
-
-    invalidateCache();
 
     return res.json({ ok: true, rol: rolData.nombre, vistas });
   } catch (err) {
