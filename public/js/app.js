@@ -625,4 +625,97 @@ async function iniciarApp() {
 
 iniciarApp();
 window.navigate = navigate;
+/* =========================================================
+   MOBILE SIDEBAR / OFF-CANVAS
+   Menú lateral responsive
+   ========================================================= */
 
+(function setupMobileSidebarDrawer() {
+  const MOBILE_QUERY = "(max-width: 57.5rem)";
+
+  function isMobile() {
+    return window.matchMedia(MOBILE_QUERY).matches;
+  }
+
+  function getElements() {
+    return {
+      btn: document.getElementById("mobileMenuToggle"),
+      backdrop: document.getElementById("mobileSidebarBackdrop"),
+      sidebar: document.getElementById("sidebar")
+    };
+  }
+
+  function openSidebar() {
+    if (!isMobile()) return;
+
+    const { btn } = getElements();
+
+    document.body.classList.add("sidebar-mobile-open");
+
+    if (btn) {
+      btn.setAttribute("aria-expanded", "true");
+      btn.setAttribute("aria-label", "Cerrar menú");
+    }
+  }
+
+  function closeSidebar() {
+    const { btn } = getElements();
+
+    document.body.classList.remove("sidebar-mobile-open");
+
+    if (btn) {
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-label", "Abrir menú");
+    }
+  }
+
+  function toggleSidebar() {
+    if (document.body.classList.contains("sidebar-mobile-open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  }
+
+  function init() {
+    const { btn, backdrop } = getElements();
+
+    if (btn) {
+      btn.addEventListener("click", function() {
+        toggleSidebar();
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener("click", closeSidebar);
+    }
+
+    document.addEventListener("click", function(event) {
+      if (!isMobile()) return;
+
+      const navItem = event.target.closest(".sidebar .nav-item");
+
+      if (navItem) {
+        closeSidebar();
+      }
+    });
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") {
+        closeSidebar();
+      }
+    });
+
+    window.addEventListener("resize", function() {
+      if (!isMobile()) {
+        closeSidebar();
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
