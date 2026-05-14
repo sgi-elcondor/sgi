@@ -627,6 +627,9 @@ exports.getMisVentas = async (req, res) => {
           cuota_pago (
             valor_aplicado,
             pago:id_pago ( estado )
+          ),
+          cuota_factura (
+            factura:id_factura ( id_factura, estado )
           )
         )
       )
@@ -703,6 +706,7 @@ exports.getMisVentas = async (req, res) => {
           valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
           valor_en_revision: pagadoPendiente,
           dias_restantes:    dias,
+          tiene_factura:     (c.cuota_factura || []).some(cf => cf.factura?.estado === "emitida"),
         };
       }),
     };

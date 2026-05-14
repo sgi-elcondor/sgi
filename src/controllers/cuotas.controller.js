@@ -114,7 +114,7 @@ exports.updateValores = async (req, res) => {
 exports.getPendientes = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos)))")
+    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento)))")
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
   if (error) return res.status(500).json({ error: error.message });
@@ -126,9 +126,11 @@ exports.getPendientes = async (req, res) => {
     const dias      = Math.floor((hoy - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
     return {
       id_cuota:          c.id_cuota,
+      id_venta:          c.id_venta,
       proyecto:          lote?.proyecto?.nombre || "â€”",
       codigo_lote:       lote?.codigo_lote      || "â€”",
       comprador:         comprador ? `${comprador.nombres} ${comprador.apellidos || ""}`.trim() : "â€”",
+      documento:         comprador?.documento   || "",
       numero_cuota:      c.numero_cuota,
       fecha_vencimiento: c.fecha_vencimiento,
       dias_atraso:       dias,
@@ -226,8 +228,8 @@ exports.getMisCuotas = async (req, res) => {
       valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
       valor_en_revision: enRevision,
       dias_restantes:    dias,
-      lote:              c.venta?.lote?.codigo_lote   || "—",
-      proyecto:          c.venta?.lote?.proyecto?.nombre || "—",
+      lote:              c.venta?.lote?.codigo_lote   || "ï¿½",
+      proyecto:          c.venta?.lote?.proyecto?.nombre || "ï¿½",
     };
   }));
 };

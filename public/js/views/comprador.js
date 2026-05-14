@@ -232,7 +232,7 @@
       const isVencida = c.dias_restantes < 0 && !isPagada;
       const dl  = diasLabel(c);
       const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
-      const canPay = isCurrent && !isPagada;
+      const canPay = isCurrent && !isPagada && c.tiene_factura;
       return `
         <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
           <div class="cuota-card-left">
@@ -250,7 +250,11 @@
           </div>
           <div class="cuota-card-right">
             ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
-            ${canPay ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>` : ""}
+            ${canPay
+              ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>`
+              : isCurrent && !isPagada
+                ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
+                : ""}
           </div>
         </div>`;
     }).join("");
