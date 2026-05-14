@@ -171,7 +171,7 @@ git pull origin develop
 git push origin feature/descripcion-tecnica-del-cambio
 ```
 
-**Título del PR:**
+**Título del PR::**
 
 ```
 [TÉCNICO] Título claro y descriptivo del cambio
@@ -292,11 +292,7 @@ git push origin develop  # JAMÁS directo, siempre por PR
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
 
-
-
-
 # Promt
-
 
 ```
 -- COLUMNAS
@@ -340,6 +336,7 @@ WHERE routine_schema = 'condor'
 
 ORDER BY tipo, table_name;
 ```
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
@@ -353,14 +350,13 @@ ORDER BY tipo, table_name;
 ```
 
 ```
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
 
-
-
-
 # Promt
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
@@ -375,10 +371,8 @@ ORDER BY tipo, table_name;
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
 
-
-
-
 # Promt
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
@@ -392,18 +386,16 @@ ORDER BY tipo, table_name;
 ```
 
 ```
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
-
-
-
 
 # Promt
+
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
 ```
 
 > Siempre: `pull develop` → trabajar → `push feature` → PR → revisión → merge.
->

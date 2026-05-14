@@ -33,3 +33,4 @@
   │ auth.middleware.js     │ Verifica que el usuario esté autenticado (valida token JWT/Firebase) │ 
   │ permisos.middleware.js │ Verifica que el usuario tenga permisos para la acción solicitada     │
 
+This
