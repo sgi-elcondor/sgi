@@ -1,4 +1,7 @@
-# Requerimientos —  Auxiliar Contable (Miguel)
+# Requerimientos — Generales
+
+> Se deben terminar de especificar adecuadamente las vistas y roles
+> Añadir al admin la opcion de cambiar de vista
 
 > Apuntes de reunión con auxiliar contable — Proyecto El Cóndor
 
@@ -12,7 +15,9 @@
 
 * Cada proyecto se maneja en un solo Excel.
 * El control de facturación va enlazado al cierre de caja.
+  > Jabes empieza la implementacion
 * Falta agregar el campo **"manzana"** en la tabla.
+  > Separar manzana de codigo de lote
 
 ### Cuotas y Financiación
 
@@ -24,18 +29,17 @@
   > La cuota inicial para las micro-cuotas, y asi susesivamente.
   >
   > Tambien debe ser posible ajustar el porcentaje de cada cuota regular aunque por defecto dependera del numero de cuotas que se establezca.
-  >
+  > Barco se encarga
+  > Si es un valor entre (1, 1000) se agregan ceros de millon por UX
 * ~~Cada cuota debe tener  fecha inicial .~~
 * El saldo a diferir varía según la negociación del cliente.
-
-  > Aclarar con Miguel como pasa esto y luego sugerirle como se podria implementar.
-  >
+  > Que se puedan editar los porcentajes de cuotas
 * ~~Estructura del plan: `Valor inicial → Número de cuotas sobre el valor restante`.~~
 * ~~También existe  **diferido de la cuota inicial** .~~
 * ~~⚠️ Generar **alertas** cuando el cliente deba pagar la próxima cuota.~~
+  > Corregirlo para que funcione bien.
 
   > Se pueden crear notificaciones pero eso agrega un costo de desarrollo y otro monetario mensual para soportar mensajes de texto.
-  >
 * Se debe contemplar el manejo de  **clientes en mora** .
 * ⚠️ Generar **alertas** para clientes en mora.
 * ### Consideraciones de Fechas
@@ -51,7 +55,7 @@
 ### Escrituras
 
 * Si el cliente paga el  **30%** , se le da escritura.
-
+ > El auxiliar contable debe ser notificado de esto 
 ### Permutas
 
 * Se reciben bienes o activos como parte de pago.
@@ -65,7 +69,7 @@
 * Algunos clientes apartan con un valor parcial (ejemplo: $1.000.000) y completan el resto posteriormente.
 
   > Se debe poder recibir parte de una cuota.
-  >
+  > 
 * Algunos clientes adelantan cuotas iniciales, que pueden aplicar:
 
   * Al monto total.
