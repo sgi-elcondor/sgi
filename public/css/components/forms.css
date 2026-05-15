@@ -53,6 +53,10 @@
   box-shadow: var(--ring);
 }
 
+.form-group--full {
+  grid-column: 1 / -1;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

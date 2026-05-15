@@ -1,53 +1,134 @@
 const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
+function _periodo() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function _nextPagConsec() {
+  const periodo = _periodo();
+  const { data, error } = await supabase.rpc("next_consecutivo_condor", {
+    p_prefijo: "PAG",
+    p_periodo: periodo,
+  });
+  if (error) throw new Error(error.message);
+  const n = String(data).padStart(5, "0");
+  return { numero_pago: `PAG-${periodo}-${n}`, numero_recibo: `RC-${periodo}-${n}` };
+}
+
 exports.getAll = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("pago").select("*").order("fecha_pago", { ascending: false });
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("pago")
+    .select(`
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado,
+      cuota_pago(
+        valor_aplicado,
+        cuota:id_cuota(
+          id_cuota, numero_cuota,
+          cuota_factura(factura:id_factura(id_factura, numero_factura, estado)),
+          venta:id_venta(
+            id_venta,
+            lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
+            venta_comprador(comprador:id_comprador(nombres, apellidos))
+          )
+        )
+      ),
+      recibo_pago(recibo:id_recibo(numero_recibo))
+    `)
+    .order("fecha_pago", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  res.json((data || []).map(p => {
+    const cp      = p.cuota_pago?.[0];
+    const cuota   = cp?.cuota;
+    const venta   = cuota?.venta;
+    const lote    = venta?.lote;
+    const comp    = venta?.venta_comprador?.[0]?.comprador;
+    const factura = cuota?.cuota_factura?.[0]?.factura;
+    return {
+      id_pago:        p.id_pago,
+      numero_pago:    p.numero_pago    ?? null,
+      fecha_pago:     p.fecha_pago,
+      valor_pago:     p.valor_pago,
+      metodo_pago:    p.metodo_pago,
+      referencia:     p.referencia,
+      estado:         p.estado,
+      id_venta:       venta?.id_venta  ?? p.id_venta ?? null,
+      numero_cuota:   cuota?.numero_cuota ?? null,
+      id_factura:     factura?.id_factura ?? null,
+      numero_factura: factura?.numero_factura ?? null,
+      proyecto:       lote?.proyecto?.nombre ?? "—",
+      codigo_lote:    lote?.codigo_lote      ?? "—",
+      comprador:      comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+      numero_recibo:  p.recibo_pago?.[0]?.recibo?.numero_recibo ?? null,
+    };
+  }));
 };
 
 exports.create = async (req, res) => {
-  const { fecha_pago, metodo_pago, referencia, cuotas } = req.body;
+  const { fecha_pago, metodo_pago, referencia, id_factura, cuotas: cuotasBody } = req.body;
+
+  let cuotas       = cuotasBody;
+  let id_cuota_pago = null; // cuota derivada de la factura
+
+  if (id_factura) {
+    const { data: cf, error: ecf } = await supabase.schema(SCHEMA)
+      .from("cuota_factura")
+      .select("id_cuota, cuota:id_cuota(valor_cuota)")
+      .eq("id_factura", id_factura)
+      .single();
+    if (ecf || !cf) return res.status(400).json({ error: "Factura no encontrada o sin cuota vinculada" });
+    id_cuota_pago = cf.id_cuota;
+    cuotas = [{ id_cuota: cf.id_cuota, valor_aplicado: Number(cf.cuota.valor_cuota) }];
+  }
 
   if (!cuotas || cuotas.length === 0)
-    return res.status(400).json({ error: "Debe seleccionar al menos una cuota" });
+    return res.status(400).json({ error: "Debe seleccionar una factura o cuota" });
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
-  // 1. Crear registro de pago
+  let pagConsec;
+  try { pagConsec = await _nextPagConsec(); }
+  catch(e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
+
   const { data: pago, error: ep } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{ fecha_pago, valor_pago, metodo_pago, referencia: referencia || null }]).select().single();
+    .insert([{ fecha_pago, valor_pago, metodo_pago, referencia: referencia || null, numero_pago: pagConsec.numero_pago }])
+    .select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
-  // 2. Vincular cuotas al pago
-  const cuotaRows = cuotas.map(c => ({
-    id_pago:        pago.id_pago,
-    id_cuota:       c.id_cuota,
-    valor_aplicado: Number(c.valor_aplicado),
-  }));
-  const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(cuotaRows);
+  const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(
+    cuotas.map(c => ({ id_pago: pago.id_pago, id_cuota: c.id_cuota, valor_aplicado: Number(c.valor_aplicado) }))
+  );
   if (ec) return res.status(400).json({ error: ec.message });
 
-  // 3. Marcar como pagada cada cuota donde valor_aplicado >= valor_cuota
-  const ids = cuotas.map(c => c.id_cuota);
-  const { data: cuotasDB } = await supabase.schema(SCHEMA)
-    .from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids);
-
-  if (cuotasDB) {
-    for (const db of cuotasDB) {
-      const c = cuotas.find(x => Number(x.id_cuota) === db.id_cuota);
-      if (c && Number(c.valor_aplicado) >= Number(db.valor_cuota)) {
-        await supabase.schema(SCHEMA).from("cuota")
-          .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
+  if (id_factura && id_cuota_pago) {
+    // Pago directo contra factura: marcar cuota y factura como pagadas de inmediato
+    await Promise.all([
+      supabase.schema(SCHEMA).from("cuota").update({ estado: "pagada" }).eq("id_cuota", id_cuota_pago),
+      supabase.schema(SCHEMA).from("factura").update({ estado: "pagada" }).eq("id_factura", id_factura),
+    ]);
+  } else if (cuotas?.length) {
+    // Path legacy con array de cuotas: marcar pagada solo si se cubrió el valor completo
+    const ids = cuotas.map(c => c.id_cuota);
+    const { data: cuotasDB } = await supabase.schema(SCHEMA)
+      .from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids);
+    if (cuotasDB) {
+      for (const db of cuotasDB) {
+        const c = cuotas.find(x => Number(x.id_cuota) === Number(db.id_cuota));
+        if (c && Number(c.valor_aplicado) >= Number(db.valor_cuota)) {
+          await supabase.schema(SCHEMA).from("cuota")
+            .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
+        }
       }
     }
   }
 
-  // 4. Auto-generar recibo vinculado al pago
-  const numero_recibo = `REC-${String(pago.id_pago).padStart(6, "0")}`;
+  const numero_recibo = pagConsec.numero_recibo;
+  const fecha_emision = new Date().toISOString().split("T")[0];
   const { data: recibo } = await supabase.schema(SCHEMA).from("recibo")
-    .insert([{ numero_recibo, emitido_por: req.usuario.email }]).select().single();
+    .insert([{ numero_recibo, fecha_emision, emitido_por: req.usuario?.email || "sistema" }])
+    .select().single();
   if (recibo) {
     await supabase.schema(SCHEMA).from("recibo_pago")
       .insert([{ id_recibo: recibo.id_recibo, id_pago: pago.id_pago }]);
@@ -64,7 +145,7 @@ exports.getMisPagos = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
       estado, url_baucher, numero_cuenta_origen, tipo_pago,
       id_venta, id_cuota_propuesta,
       cuota_pago (
@@ -102,6 +183,15 @@ exports.createCompradorPago = async (req, res) => {
 
   if (metodo_pago === "transferencia" && !url_baucher)
     return res.status(400).json({ error: "Debe adjuntar el baucher para pagos electronicos" });
+
+  if (id_cuota_propuesta) {
+    const { data: cf } = await supabase.schema(SCHEMA)
+      .from("cuota_factura")
+      .select("factura:id_factura(estado)")
+      .eq("id_cuota", id_cuota_propuesta);
+    const tieneFactura = (cf || []).some(r => r.factura?.estado === "emitida");
+    if (!tieneFactura) return res.status(400).json({ error: "La cuota no tiene una factura emitida. Comunicate con la oficina." });
+  }
 
   if (id_venta) {
     const { data: vc } = await supabase.schema(SCHEMA)
@@ -149,7 +239,12 @@ exports.createCompradorPago = async (req, res) => {
 exports.getContrast = async (req, res) => {
   const { data: payments, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
-    .select('*, cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
+    .select(`
+      *,
+      comprador:id_comprador(nombres, apellidos),
+      venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre))),
+      cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))
+    `)
     .eq('estado', 'pendiente_revision')
     .eq('metodo_pago', 'transferencia');
 
@@ -233,7 +328,21 @@ exports.getContrast = async (req, res) => {
     return true;
   });
 
-  res.json(best);
+  const matchedIds = new Set(best.map(m => m.pago.id_pago));
+  const unmatched  = (payments || [])
+    .filter(p => !matchedIds.has(p.id_pago))
+    .map(p => ({
+      pago:            p,
+      transaction:     null,
+      score:           0,
+      amount_match:    false,
+      reference_match: 'none',
+      date_diff_days:  null,
+      date_diff_human: null,
+      manual:          true,
+    }));
+
+  res.json([...best, ...unmatched]);
 };
 
 exports.acceptBatch = async (req, res) => {
@@ -244,6 +353,14 @@ exports.acceptBatch = async (req, res) => {
   const results = [];
 
   for (const { id_pago, id_transaction } of validations) {
+    const { data: pagoActual, error: ep0 } = await supabase.schema(SCHEMA)
+      .from('pago')
+      .select('id_pago, valor_pago, id_cuota_propuesta')
+      .eq('id_pago', id_pago)
+      .single();
+
+    if (ep0 || !pagoActual) { results.push({ id_pago, ok: false, error: ep0?.message || 'Pago no encontrado' }); continue; }
+
     const { data: pago, error: ep } = await supabase.schema(SCHEMA)
       .from('pago')
       .update({ estado: 'aceptado' })
@@ -253,10 +370,12 @@ exports.acceptBatch = async (req, res) => {
 
     if (ep) { results.push({ id_pago, ok: false, error: ep.message }); continue; }
 
-    await supabase.schema(SCHEMA)
-      .from('bank_transaction')
-      .update({ id_pago, updated_at: new Date().toISOString() })
-      .eq('id_transaction', id_transaction);
+    if (id_transaction) {
+      await supabase.schema(SCHEMA)
+        .from('bank_transaction')
+        .update({ id_pago, updated_at: new Date().toISOString() })
+        .eq('id_transaction', id_transaction);
+    }
 
     await supabase.schema(SCHEMA).from('auditoria').insert([{
       tabla_afectada: 'pago',
@@ -265,10 +384,87 @@ exports.acceptBatch = async (req, res) => {
       valor_anterior: 'pendiente_revision',
       valor_nuevo:    'aceptado',
       usuario_db:     req.usuario.email,
-      motivo:         `validacion_transaccion_bancaria:${id_transaction}`,
+      motivo:         id_transaction ? `validacion_transaccion_bancaria:${id_transaction}` : 'aprobacion_manual_baucher',
     }]);
 
-    results.push({ id_pago, ok: true, pago });
+    // Si el pago tiene cuota propuesta, crear cuota_pago y cerrar cuota + factura
+    if (pagoActual.id_cuota_propuesta) {
+      const idCuota = pagoActual.id_cuota_propuesta;
+
+      const { data: cuota } = await supabase.schema(SCHEMA)
+        .from('cuota').select('id_cuota, valor_cuota').eq('id_cuota', idCuota).single();
+
+      if (cuota) {
+        await supabase.schema(SCHEMA).from('cuota_pago').insert([{
+          id_pago:        id_pago,
+          id_cuota:       idCuota,
+          valor_aplicado: Number(pagoActual.valor_pago),
+        }]).then(() => {}).catch(() => {});
+
+        if (Number(pagoActual.valor_pago) >= Number(cuota.valor_cuota)) {
+          await supabase.schema(SCHEMA).from('cuota')
+            .update({ estado: 'pagada' }).eq('id_cuota', idCuota);
+
+          // Buscar factura emitida vinculada a esta cuota y marcarla pagada
+          const { data: cf } = await supabase.schema(SCHEMA)
+            .from('cuota_factura')
+            .select('id_factura, factura:id_factura(estado)')
+            .eq('id_cuota', idCuota);
+
+          const facturaEmitida = (cf || []).find(r => r.factura?.estado === 'emitida');
+          if (facturaEmitida) {
+            await supabase.schema(SCHEMA).from('factura')
+              .update({ estado: 'pagada' }).eq('id_factura', facturaEmitida.id_factura);
+          }
+        }
+      }
+    }
+
+    const { data: existeLink } = await supabase.schema(SCHEMA)
+      .from("recibo_pago").select("id_recibo").eq("id_pago", id_pago).maybeSingle();
+
+    let reciboCreado = null;
+    let reciboError  = null;
+
+    if (!existeLink) {
+      let pagConsec;
+      try { pagConsec = await _nextPagConsec(); }
+      catch(e) { results.push({ id_pago, ok: true, pago, recibo: null, recibo_error: `consecutivo: ${e.message}` }); continue; }
+
+      await supabase.schema(SCHEMA).from("pago")
+        .update({ numero_pago: pagConsec.numero_pago }).eq("id_pago", id_pago);
+
+      const numero_recibo = pagConsec.numero_recibo;
+      const fecha_emision = new Date().toISOString().split("T")[0];
+      const emitido_por   = req.usuario?.email || "sistema";
+
+      // Recover an orphaned recibo (inserted in a previous attempt but recibo_pago failed)
+      let idRecibo = null;
+      const { data: orphan } = await supabase.schema(SCHEMA)
+        .from("recibo").select("id_recibo").eq("numero_recibo", numero_recibo).maybeSingle();
+
+      if (orphan) {
+        idRecibo = orphan.id_recibo;
+        reciboCreado = orphan;
+      } else {
+        const { data: nuevo, error: er } = await supabase.schema(SCHEMA)
+          .from("recibo")
+          .insert([{ numero_recibo, fecha_emision, emitido_por }])
+          .select()
+          .single();
+        if (!er && nuevo) { idRecibo = nuevo.id_recibo; reciboCreado = nuevo; }
+        else reciboError = er?.message || "Error al insertar recibo";
+      }
+
+      if (idRecibo) {
+        const { error: erp } = await supabase.schema(SCHEMA)
+          .from("recibo_pago")
+          .insert([{ id_recibo: idRecibo, id_pago }]);
+        if (erp) { reciboError = `recibo_pago: ${erp.message}`; reciboCreado = null; }
+      }
+    }
+
+    results.push({ id_pago, ok: true, pago, recibo: reciboCreado, recibo_error: reciboError });
   }
 
   res.json(results);

@@ -63,15 +63,18 @@
   }
 
   function sgiNormalizarProyecto(proyecto = {}) {
+    const nombre =
+      proyecto.nombre ||
+      proyecto.nombre_proyecto ||
+      proyecto.proyecto ||
+      proyecto.descripcion ||
+      "Proyecto";
+
     return {
       ...proyecto,
       id: sgiGetProyectoId(proyecto),
-      nombre:
-        proyecto.nombre ||
-        proyecto.nombre_proyecto ||
-        proyecto.proyecto ||
-        proyecto.descripcion ||
-        "Proyecto"
+      nombre,
+      sigla: proyecto.sigla || ""
     };
   }
 
@@ -346,6 +349,10 @@
   const proyectoId = Number(payload.proyectoId);
   const area = Number(payload.area);
   const precio = Number(payload.precio);
+  const manzana = String(payload.manzana || "").trim().toUpperCase();
+  const numeroLote = String(payload.numero_lote || "").trim();
+  const dimensiones = String(payload.dimensiones || `${area} m²`).trim();
+  const descripcion = String(payload.descripcion || "").trim() || null;
   const codigoPartes = sgiParseCodigoLote(codigo);
 
   if (!codigo) {
@@ -366,14 +373,12 @@
     throw new Error("El precio debe ser mayor a cero.");
   }
 
-  const dimensiones = `${area} m²`;
-
   const body = {
     id_proyecto: proyectoId,
 
     codigo_lote: codigo,
-    manzana: codigoPartes.manzana || codigo,
-    numero_lote: codigoPartes.numero_lote || codigo,
+    manzana: manzana || codigoPartes.manzana || codigo,
+    numero_lote: numeroLote || codigoPartes.numero_lote || codigo,
 
     area_m2: area,
     dimensiones,
@@ -381,6 +386,7 @@
     precio_base: precio,
     precio_lista: precio,
 
+    descripcion,
     estado: "disponible"
   };
 
@@ -400,17 +406,6 @@
     body.innerHTML = `
       <form id="sgiCreateLoteForm">
         <div class="form-grid">
-          <div class="form-group">
-            <label for="loteCodigo">Código del lote</label>
-            <input
-              id="loteCodigo"
-              name="codigo"
-              type="text"
-              placeholder="Ej: E-22"
-              required
-            />
-          </div>
-
           <div class="form-group">
             <label for="loteProyecto">Proyecto</label>
             <select id="loteProyecto" name="proyectoId" required>
@@ -432,15 +427,56 @@
           </div>
 
           <div class="form-group">
-            <label for="loteArea">Área (m²)</label>
+            <label for="loteManzana">Manzana</label>
+            <input
+              id="loteManzana"
+              name="manzana"
+              type="text"
+              placeholder="Ej: A"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteNumero">Número de lote</label>
+            <input
+              id="loteNumero"
+              name="numero_lote"
+              type="text"
+              placeholder="Ej: 22"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteCodigo">Código del lote</label>
+            <input
+              id="loteCodigo"
+              name="codigo"
+              type="text"
+              placeholder="Se genera automáticamente"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteArea">Área total (m²)</label>
             <input
               id="loteArea"
               name="area"
               type="number"
               min="1"
               step="1"
-              placeholder="Ej: 100"
+              placeholder="Ej: 150"
               required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteDimensiones">Medidas del lote</label>
+            <input
+              id="loteDimensiones"
+              name="dimensiones"
+              type="text"
+              placeholder="Ej: 10m × 15m"
             />
           </div>
 
@@ -449,10 +485,9 @@
             <input
               id="lotePrecio"
               name="precio"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Ej: 65000000"
+              type="text"
+              inputmode="numeric"
+              placeholder="Ej: 65.000.000"
               required
             />
           </div>
@@ -465,6 +500,16 @@
               value="Disponible"
               disabled
             />
+          </div>
+
+          <div class="form-group form-group--full">
+            <label for="loteDescripcion">Descripción</label>
+            <textarea
+              id="loteDescripcion"
+              name="descripcion"
+              rows="3"
+              placeholder="Observaciones o detalles adicionales del lote"
+            ></textarea>
           </div>
         </div>
 
@@ -493,6 +538,42 @@
     const cancelBtn = document.getElementById("sgiCancelCreateLote");
     const submitBtn = document.getElementById("sgiSubmitCreateLote");
     const errorBox = document.getElementById("sgiLoteFormError");
+    const codigoInput = document.getElementById("loteCodigo");
+    const proyectoSelect = document.getElementById("loteProyecto");
+    const manzanaInput = document.getElementById("loteManzana");
+    const numeroInput = document.getElementById("loteNumero");
+    const areaInput = document.getElementById("loteArea");
+    const dimensionesInput = document.getElementById("loteDimensiones");
+
+    let codigoTouched = false;
+    codigoInput.addEventListener("input", () => { codigoTouched = true; });
+
+    function sgiAutoGenerarCodigo() {
+      if (codigoTouched) return;
+      const proyecto = proyectos.find((p) => String(p.id) === String(proyectoSelect.value));
+      const sigla = proyecto?.sigla || "";
+      const manzana = manzanaInput.value.trim().toUpperCase();
+      const numero = numeroInput.value.trim().toUpperCase();
+      codigoInput.value = [sigla, manzana, numero].filter(Boolean).join("-");
+    }
+
+    proyectoSelect.addEventListener("change", sgiAutoGenerarCodigo);
+    manzanaInput.addEventListener("input", sgiAutoGenerarCodigo);
+    numeroInput.addEventListener("input", sgiAutoGenerarCodigo);
+
+    const precioInput = document.getElementById("lotePrecio");
+    precioInput.addEventListener("input", () => {
+      const digits = precioInput.value.replace(/\D/g, "");
+      precioInput.value = digits ? Number(digits).toLocaleString("es-CO") : "";
+    });
+
+    let dimensionesTouched = false;
+    dimensionesInput.addEventListener("input", () => { dimensionesTouched = true; });
+    areaInput.addEventListener("input", () => {
+      if (!dimensionesTouched) {
+        dimensionesInput.value = areaInput.value ? `${areaInput.value} m²` : "";
+      }
+    });
 
     const closeHandler = () => sgiCloseLoteModal();
 
@@ -516,8 +597,12 @@
       const payload = {
         codigo: formData.get("codigo"),
         proyectoId: Number(formData.get("proyectoId")),
+        manzana: formData.get("manzana"),
+        numero_lote: formData.get("numero_lote"),
         area: formData.get("area"),
-        precio: formData.get("precio")
+        dimensiones: formData.get("dimensiones"),
+        precio: String(formData.get("precio") || "").replace(/\./g, ""),
+        descripcion: formData.get("descripcion")
       };
 
       try {

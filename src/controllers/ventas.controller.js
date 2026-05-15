@@ -339,7 +339,10 @@ async function crearVenta(req, res, estadoFijo) {
     numero_cuotas,
     fecha_primera_cuota,
     permutas,
-    microcuotas
+    microcuotas,
+    fecha_venta,
+    escriturado,
+    fecha_escritura
   } = req.body;
 
   const errValidacion = validarCamposVenta({
@@ -409,7 +412,10 @@ async function crearVenta(req, res, estadoFijo) {
       estado:           estadoVenta,
       observaciones:    observaciones || null,
       total_permutas:   totalPermutas > 0 ? totalPermutas : null,
-      detalle_permutas: detallePermutas
+      detalle_permutas: detallePermutas,
+      fecha_venta:      fecha_venta || null,
+      escriturado:      escriturado === true || escriturado === "true" ? true : false,
+      fecha_escritura:  (escriturado && fecha_escritura) ? fecha_escritura : null
     }])
     .select()
     .single();
@@ -627,6 +633,9 @@ exports.getMisVentas = async (req, res) => {
           cuota_pago (
             valor_aplicado,
             pago:id_pago ( estado )
+          ),
+          cuota_factura (
+            factura:id_factura ( id_factura, estado )
           )
         )
       )
@@ -703,6 +712,7 @@ exports.getMisVentas = async (req, res) => {
           valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
           valor_en_revision: pagadoPendiente,
           dias_restantes:    dias,
+          tiene_factura:     (c.cuota_factura || []).some(cf => cf.factura?.estado === "emitida"),
         };
       }),
     };

@@ -91,3 +91,17 @@
 .no-venta-state { text-align:center;padding:60px 24px;color:var(--text-muted) }
 .no-venta-state i { width:48px;height:48px;margin-bottom:16px;color:var(--border) }
 .no-venta-state h3 { font-size:18px;color:var(--text);margin-bottom:8px }
+
+/* Recibo list items */
+.recibo-list-item { display:flex;align-items:center;gap:1rem;padding:1.125rem 1.25rem;border-bottom:1px solid var(--border);transition:background .15s }
+.recibo-list-item:last-child { border-bottom:none }
+.recibo-list-item:hover { background:var(--surface2) }
+.recibo-list-icon { flex-shrink:0;color:var(--success);opacity:.8 }
+.recibo-list-icon i { width:1.375rem;height:1.375rem }
+.recibo-list-body { flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem }
+.recibo-list-num { font-size:.875rem;font-weight:700;color:var(--text);font-family:monospace }
+.recibo-list-meta { font-size:.75rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.recibo-list-right { display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;flex-shrink:0 }
+.recibo-list-fecha { font-size:.75rem;color:var(--text-muted) }
+.recibo-list-valor { font-size:1rem;font-weight:700;color:var(--text) }
+
