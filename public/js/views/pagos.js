@@ -2,9 +2,14 @@ function _pagosNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
 
-function _fmtFactNum(n) {
-  const s = String(n).padStart(9, "0");
-  return /^\d{9}$/.test(s) ? `20${s.slice(0, 2)}-${s.slice(2, 6)}-${s.slice(6)}` : String(n);
+function _fmtFactNum(v) {
+  if (!v) return "—";
+  const s = String(v);
+  if (/^\d{7,9}$/.test(s)) {
+    const p = s.padStart(9, "0");
+    return `20${p.slice(0, 2)}-${p.slice(2, 6)}-${p.slice(6)}`;
+  }
+  return s;
 }
 
 function _facturasListaHTML(facturas, filtro) {
@@ -195,13 +200,12 @@ window.pagosDeVentaView = function(grupo, puedeEscribir) {
   }
 
   function filaPago(p) {
-    const factDisplay = p.numero_factura ? _fmtFactNum(p.numero_factura) : "—";
     return `<tr>
-      <td style="font-weight:600">#${p.id_pago}</td>
+      <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${p.numero_pago || `#${p.id_pago}`}</td>
       <td>${UI.date(p.fecha_pago)}</td>
       <td style="text-align:right;font-weight:600">${UI.fmt(p.valor_pago)}</td>
       <td>${p.metodo_pago || "—"}</td>
-      <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${factDisplay}</td>
+      <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${_fmtFactNum(p.numero_factura)}</td>
       <td>${p.numero_cuota != null ? `#${p.numero_cuota}` : "—"}</td>
       <td style="max-width:120px;font-size:.82rem">${p.referencia || "—"}</td>
       <td>${p.estado ? UI.badge(p.estado) : "—"}</td>
@@ -231,7 +235,7 @@ window.pagosDeVentaView = function(grupo, puedeEscribir) {
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th># Pago</th><th>Fecha</th><th style="text-align:right">Valor</th><th>Método</th>
+            <th>N° Pago</th><th>Fecha</th><th style="text-align:right">Valor</th><th>Método</th>
             <th>Factura</th><th>Cuota</th><th>Referencia</th><th>Estado</th><th>Recibo</th>
           </tr></thead>
           <tbody>${grupo.pagos.map(filaPago).join("")}</tbody>

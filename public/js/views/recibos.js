@@ -2,10 +2,14 @@ function _rNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
 
-function _rFmtFactNum(n) {
-  if (!n) return "—";
-  const s = String(n).padStart(9, "0");
-  return /^\d{9}$/.test(s) ? `20${s.slice(0, 2)}-${s.slice(2, 6)}-${s.slice(6)}` : String(n);
+function _rFmtFactNum(v) {
+  if (!v) return "—";
+  const s = String(v);
+  if (/^\d{7,9}$/.test(s)) {
+    const p = s.padStart(9, "0");
+    return `20${p.slice(0, 2)}-${p.slice(2, 6)}-${p.slice(6)}`;
+  }
+  return s;
 }
 
 function _rFmtCOP(n) {
