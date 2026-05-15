@@ -1,6 +1,11 @@
 const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
+function _periodo() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 exports.getAll = async (req, res) => {
   // Query from accepted payments so the view always shows real data,
   // even when no formal recibo record has been created yet.
@@ -68,7 +73,7 @@ exports.generarRecibos = async (req, res) => {
 
   const { data: pagos, error: ep } = await supabase.schema(SCHEMA)
     .from("pago")
-    .select("id_pago, recibo_pago(id_recibo)")
+    .select("id_pago, numero_pago, recibo_pago(id_recibo)")
     .eq("estado", "aceptado");
 
   if (ep) return res.status(500).json({ error: ep.message });
@@ -76,13 +81,28 @@ exports.generarRecibos = async (req, res) => {
   const pendientes = (pagos || []).filter(p => !p.recibo_pago?.length);
   if (!pendientes.length) return res.json({ generados: 0, pendientes: 0, primer_error: null });
 
-  let generados = 0;
+  let generados   = 0;
   let primerError = null;
 
   for (const p of pendientes) {
-    const numero_recibo = `REC-${String(p.id_pago).padStart(6, "0")}`;
+    let numero_recibo;
 
-    // Recover orphaned recibo before trying a fresh insert
+    if (p.numero_pago?.startsWith("PAG-")) {
+      numero_recibo = p.numero_pago.replace(/^PAG-/, "RC-");
+    } else {
+      const periodo = _periodo();
+      const { data: rx, error: erx } = await supabase.rpc("next_consecutivo_condor", {
+        p_prefijo: "PAG",
+        p_periodo: periodo,
+      });
+      if (erx) { if (!primerError) primerError = `consecutivo (pago ${p.id_pago}): ${erx.message}`; continue; }
+      const n = String(rx).padStart(5, "0");
+      const numero_pago_nuevo = `PAG-${periodo}-${n}`;
+      numero_recibo           = `RC-${periodo}-${n}`;
+      await supabase.schema(SCHEMA).from("pago")
+        .update({ numero_pago: numero_pago_nuevo }).eq("id_pago", p.id_pago);
+    }
+
     let idRecibo = null;
     const { data: orphan } = await supabase.schema(SCHEMA)
       .from("recibo").select("id_recibo").eq("numero_recibo", numero_recibo).maybeSingle();

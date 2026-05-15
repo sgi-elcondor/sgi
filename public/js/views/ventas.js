@@ -532,14 +532,23 @@ function _htmlFormVenta(proyectos) {
         </select>
       </div>
 
-      <div class="form-group" style="grid-column:1/-1"><label>Lote disponible *</label>
-        <input type="text" id="f_lote_buscar" placeholder="Buscar por código de lote…"
-               oninput="_buscarLote(this.value)" autocomplete="off" style="margin-bottom:4px" disabled/>
-        <select id="f_lote" onchange="_mostrarInfoLote()">
-          <option value="">— Primero seleccione un proyecto —</option>
-        </select>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Lote disponible *</label>
+        <input type="hidden" id="f_lote"/>
+        <div id="f_lote_card" style="display:none;background:var(--surface-2,#f0f4f8);border-radius:6px;padding:8px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div id="f_lote_card_info" style="font-size:.85rem;line-height:1.6"></div>
+            <button type="button" class="btn btn-ghost btn-sm"
+                    style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarLote()">✕</button>
+          </div>
+        </div>
+        <div id="f_lote_search_wrap">
+          <input type="text" id="f_lote_buscar" placeholder="— Primero seleccione un proyecto —"
+                 oninput="_buscarLote(this.value)" onfocus="_buscarLote(this.value)"
+                 autocomplete="off" disabled/>
+          <div id="f_lote_results" style="display:none;border:1px solid var(--border);border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;background:var(--surface);position:relative;z-index:10"></div>
+        </div>
       </div>
-      <div id="f_lote_info" style="grid-column:1/-1"></div>
 
       <div class="form-group">
         <label>Valor Total *</label>
@@ -550,6 +559,15 @@ function _htmlFormVenta(proyectos) {
         <label>Cuota Inicial</label>
         <input id="f_ci" type="text" inputmode="numeric" placeholder="0" value="0"
                oninput="_onMoneyInput(this);_actualizarCalculos()"/>
+      </div>
+
+      <div class="form-group">
+        <label>Fecha de venta *</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="f_fecha_venta" type="date" style="flex:1"/>
+          <button type="button" class="btn btn-ghost btn-sm" style="white-space:nowrap"
+                  onclick="document.getElementById('f_fecha_venta').value=new Date().toISOString().split('T')[0]">Hoy</button>
+        </div>
       </div>
 
       <!-- Permutas -->
@@ -602,6 +620,17 @@ function _htmlFormVenta(proyectos) {
 
       ${_htmlCompradorField()}
       ${_htmlComisionistaField()}
+
+      <div class="form-group" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="f_escriturado" onchange="_toggleFechaEscritura()"/>
+          <span>¿Ya está escriturado?</span>
+        </label>
+        <div id="f_fecha_escritura_wrap" style="display:none;margin-top:6px">
+          <label style="font-size:.8rem;color:var(--text-muted)">Fecha de escritura</label>
+          <input id="f_fecha_escritura" type="date" style="margin-top:4px;width:100%"/>
+        </div>
+      </div>
 
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label>
         <textarea id="f_obs" rows="2"></textarea>
@@ -760,6 +789,7 @@ function _bodyVenta() {
   }
 
   const idComi = document.getElementById("f_comi").value;
+  const escriturado = document.getElementById("f_escriturado")?.checked || false;
   return {
     id_lote:                     +document.getElementById("f_lote").value,
     valor_total:                 _parseMiles(document.getElementById("f_vt").value),
@@ -774,6 +804,9 @@ function _bodyVenta() {
     valor_comision:              _parseMiles(document.getElementById("f_pcom").value),
     permutas:                    window._ventaPermutas || [],
     microcuotas,
+    fecha_venta:                 document.getElementById("f_fecha_venta")?.value || null,
+    escriturado,
+    fecha_escritura:             escriturado ? (document.getElementById("f_fecha_escritura")?.value || null) : null,
   };
 }
 
@@ -784,28 +817,16 @@ window._filtrarLotesPorProyecto = function() {
   const filtrados = nombreProy ? lotes.filter(l => l.proyecto === nombreProy) : [];
 
   window._lotesProyecto = filtrados;
+  _limpiarLote();
 
   const buscar = document.getElementById("f_lote_buscar");
+  if (!buscar) return;
   buscar.value = "";
   buscar.disabled = filtrados.length === 0;
   buscar.placeholder = filtrados.length
     ? "Buscar por código de lote…"
     : "— No hay lotes disponibles en este proyecto —";
-
-  _poblarSelectLotes(filtrados);
-  document.getElementById("f_lote_info").innerHTML = "";
 };
-
-function _poblarSelectLotes(lista) {
-  const sel = document.getElementById("f_lote");
-  sel.innerHTML = lista.length
-    ? lista.map(l =>
-        `<option value="${l.id_lote}" data-lote='${JSON.stringify(l).replace(/'/g, "&#39;")}'>` +
-        `${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)} — ${UI.fmt(l.precio_lista)}` +
-        `</option>`).join("")
-    : `<option value="">— Sin resultados —</option>`;
-  if (lista.length === 1) _mostrarInfoLote();
-}
 
 window._buscarLote = function(texto) {
   const lotes = window._lotesProyecto || [];
@@ -813,23 +834,74 @@ window._buscarLote = function(texto) {
   const filtrados = q
     ? lotes.filter(l => (l.codigo_lote || `Mz${l.manzana}Lt${l.numero_lote}`).toLowerCase().includes(q))
     : lotes;
-  _poblarSelectLotes(filtrados);
-  document.getElementById("f_lote_info").innerHTML = "";
+
+  const div = document.getElementById("f_lote_results");
+  if (!div) return;
+
+  if (!filtrados.length) {
+    div.style.display = q ? "block" : "none";
+    div.innerHTML = q
+      ? `<div style="padding:10px 12px;color:var(--text-muted);font-size:.85rem">Sin resultados para "${texto.trim()}"</div>`
+      : "";
+    return;
+  }
+
+  div.style.display = "block";
+  div.innerHTML = filtrados.map(l => `
+    <div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.85rem"
+         onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
+         onmouseout="this.style.background=''"
+         onclick="_seleccionarLote(${l.id_lote})">
+      <div style="font-weight:600">${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)}</div>
+      <div style="color:var(--text-muted);font-size:.78rem">
+        Mz ${l.manzana || "—"} · Lote ${l.numero_lote || "—"}${l.area_m2 ? " · " + l.area_m2 + " m²" : ""} · Precio lista: ${UI.fmt(l.precio_lista)}
+      </div>
+    </div>`).join("");
+
+  if (filtrados.length === 1) _seleccionarLote(filtrados[0].id_lote);
 };
 
-window._mostrarInfoLote = function() {
-  const sel = document.getElementById("f_lote");
-  const opt = sel.options[sel.selectedIndex];
-  const info = document.getElementById("f_lote_info");
-  if (!opt || !opt.dataset.lote) { info.innerHTML = ""; return; }
-  const l = JSON.parse(opt.dataset.lote);
-  info.innerHTML = `
-    <div style="background:var(--surface-2,#f0f4f8);border-radius:6px;padding:8px 14px;font-size:.85rem;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:4px">
-      <span><b>Manzana:</b> ${l.manzana || "—"}</span>
-      <span><b>N° Lote:</b> ${l.numero_lote || "—"}</span>
-      <span><b>Área:</b> ${l.area_m2 ? l.area_m2 + " m²" : "—"}</span>
-      <span><b>Precio lista:</b> ${UI.fmt(l.precio_lista)}</span>
-    </div>`;
+window._seleccionarLote = function(idLote) {
+  const l = (window._lotesProyecto || []).find(x => x.id_lote === idLote);
+  if (!l) return;
+
+  window._loteSeleccionado = l;
+  document.getElementById("f_lote").value = idLote;
+
+  document.getElementById("f_lote_card_info").innerHTML =
+    `<div style="font-weight:600">${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)}</div>` +
+    `<div style="color:var(--text-muted)">Mz ${l.manzana || "—"} · Lote ${l.numero_lote || "—"}` +
+    `${l.area_m2 ? " · " + l.area_m2 + " m²" : ""} · Precio lista: ${UI.fmt(l.precio_lista)}</div>`;
+
+  document.getElementById("f_lote_card").style.display = "block";
+  document.getElementById("f_lote_search_wrap").style.display = "none";
+  document.getElementById("f_lote_results").style.display = "none";
+
+  const vtInput = document.getElementById("f_vt");
+  if (vtInput && l.precio_lista) {
+    vtInput.value = _fmtMiles(l.precio_lista);
+    _actualizarCalculos();
+  }
+};
+
+window._limpiarLote = function() {
+  window._loteSeleccionado = null;
+  const hidden = document.getElementById("f_lote");
+  if (hidden) hidden.value = "";
+  const card = document.getElementById("f_lote_card");
+  const searchWrap = document.getElementById("f_lote_search_wrap");
+  const buscar = document.getElementById("f_lote_buscar");
+  const results = document.getElementById("f_lote_results");
+  if (card) card.style.display = "none";
+  if (searchWrap) searchWrap.style.display = "";
+  if (buscar) buscar.value = "";
+  if (results) results.style.display = "none";
+};
+
+window._toggleFechaEscritura = function() {
+  const checked = document.getElementById("f_escriturado")?.checked;
+  const wrap = document.getElementById("f_fecha_escritura_wrap");
+  if (wrap) wrap.style.display = checked ? "block" : "none";
 };
 
 // ─── Permutas ───
@@ -1347,8 +1419,7 @@ if (err) {
 
 _limpiarErrorVenta();
 
-  const selLote = document.getElementById("f_lote");
-  const loteInfo = (() => { try { return JSON.parse(selLote?.options[selLote.selectedIndex]?.dataset.lote || "null"); } catch { return null; } })();
+  const loteInfo = window._loteSeleccionado || null;
   const proy = document.getElementById("f_proy")?.value || "—";
   const tp   = _totalPermutas();
   const saldo = Math.max(0, body.valor_total - body.cuota_inicial - tp);
@@ -1385,7 +1456,9 @@ _limpiarErrorVenta();
   const html = `
     <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Revise antes de confirmar — cada sección tiene un botón <b>Editar</b> para volver al formulario.</p>
     ${_seccionResumen("Lote", `<b>${proy}</b> · ${loteInfo?.codigo_lote||"—"} · Mz ${loteInfo?.manzana||"—"} Lt ${loteInfo?.numero_lote||"—"} · ${loteInfo?.area_m2?loteInfo.area_m2+" m²":"—"} · Precio lista: ${UI.fmt(loteInfo?.precio_lista)}`)}
+    ${_seccionResumen("Fecha de venta", body.fecha_venta ? UI.date(body.fecha_venta) : "—")}
     ${_seccionResumen("Valores", `Valor total: <b>${UI.fmt(body.valor_total)}</b> · Cuota inicial: <b>${UI.fmt(body.cuota_inicial)}</b>${tp>0?` · Permutas: <b>${UI.fmt(tp)}</b> (${perms.map(p=>p.descripcion||"bien").join(", ")})`:""}  · Saldo: <b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+    ${body.escriturado ? _seccionResumen("Escritura", `Escriturado${body.fecha_escritura ? " · " + UI.date(body.fecha_escritura) : ""}`) : ""}
     ${body.cuota_inicial>0 ? _seccionResumen("Cuota inicial",`${body.numero_cuotas_inicial} micro-cuota${body.numero_cuotas_inicial>1?"s":""}<table style="margin-top:4px;border-collapse:collapse;font-size:.82rem">${mcRows}</table>`) : ""}
     ${_seccionResumen("Cuotas regulares", cuotaLine)}
     ${_seccionResumen("Comprador", comp ? `<b>${comp.nombres} ${comp.apellidos||""}</b> · CC ${comp.documento}${comp.telefono?" · "+comp.telefono:""}${comp.mail?" · "+comp.mail:""}` : "—")}
@@ -1405,8 +1478,11 @@ _limpiarErrorVenta();
 // ─── Inicialización de la sección dinámica del formulario ───
 function _iniciarFormularioDinamico() {
   window._ventaPermutas = [];
+  window._loteSeleccionado = null;
   _renderMicroCuotas(1);
   _actualizarCalculos();
+  const fechaInput = document.getElementById("f_fecha_venta");
+  if (fechaInput) fechaInput.value = new Date().toISOString().split("T")[0];
 }
 
 // ─── Formulario estándar (admin / auxiliar_contable) ───

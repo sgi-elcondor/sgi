@@ -1,6 +1,35 @@
 const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
+function _periodo() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function _nextConsec(prefijo, periodo) {
+  const { data, error } = await supabase.rpc("next_consecutivo_condor", {
+    p_prefijo: prefijo,
+    p_periodo: periodo,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function _buildNumFactura(id_cuota) {
+  const periodo = _periodo();
+  let sigla = "GEN";
+  if (id_cuota) {
+    const { data } = await supabase.schema(SCHEMA)
+      .from("cuota")
+      .select("venta:id_venta(lote:id_lote(proyecto:id_proyecto(sigla)))")
+      .eq("id_cuota", id_cuota)
+      .single();
+    sigla = data?.venta?.lote?.proyecto?.sigla || "GEN";
+  }
+  const n = await _nextConsec("FV", periodo);
+  return `FV-${periodo}-${sigla}-${String(n).padStart(5, "0")}`;
+}
+
 exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("factura")
@@ -92,12 +121,15 @@ exports.getCuotasSinFactura = async (req, res) => {
 
 exports.generarPendientes = async (req, res) => {
   const ESTADOS_FACTURABLES = ["activa", "pre_mora", "en_mora"];
-  const hoy = new Date().toISOString().split("T")[0];
-  const yr  = new Date().getFullYear() % 100;
+  const hoy    = new Date().toISOString().split("T")[0];
+  const periodo = _periodo();
 
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("id_cuota, id_venta, numero_cuota, valor_cuota, cuota_factura(id_cuota), venta(id_venta, estado)")
+    .select(`
+      id_cuota, id_venta, numero_cuota, valor_cuota, cuota_factura(id_cuota),
+      venta(id_venta, estado, lote:id_lote(proyecto:id_proyecto(sigla)))
+    `)
     .lte("fecha_vencimiento", hoy)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
@@ -107,27 +139,37 @@ exports.generarPendientes = async (req, res) => {
   );
   if (!pendientes.length) return res.json({ generadas: 0 });
 
-  const facturas = pendientes.map(c => ({
-    numero_factura:  yr * 10_000_000 + (c.id_venta || 0) * 1000 + (c.numero_cuota || 0),
-    fecha_emision:   hoy,
-    valor_facturado: c.valor_cuota,
-    estado:          "emitida",
-  }));
+  let generadas = 0;
+  for (const c of pendientes) {
+    const sigla = c.venta?.lote?.proyecto?.sigla || "GEN";
+    try {
+      const n = await _nextConsec("FV", periodo);
+      const numero_factura = `FV-${periodo}-${sigla}-${String(n).padStart(5, "0")}`;
+      const { data: f, error: ef } = await supabase.schema(SCHEMA).from("factura")
+        .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: c.valor_cuota, estado: "emitida" }])
+        .select("id_factura").single();
+      if (!ef && f) {
+        await supabase.schema(SCHEMA).from("cuota_factura")
+          .insert([{ id_factura: f.id_factura, id_cuota: c.id_cuota }]);
+        generadas++;
+      }
+    } catch {}
+  }
 
-  const { data: creadas, error: ef } = await supabase.schema(SCHEMA)
-    .from("factura").insert(facturas).select("id_factura");
-  if (ef) return res.status(400).json({ error: ef.message });
-
-  const links = creadas.map((f, i) => ({ id_factura: f.id_factura, id_cuota: pendientes[i].id_cuota }));
-  await supabase.schema(SCHEMA).from("cuota_factura").insert(links);
-
-  res.json({ generadas: creadas.length });
+  res.json({ generadas });
 };
 
 exports.create = async (req, res) => {
-  const { numero_factura, fecha_emision, valor_facturado, estado, observaciones, id_cuota } = req.body;
+  const { fecha_emision, valor_facturado, estado, observaciones, id_cuota } = req.body;
+  let numero_factura;
+  try {
+    numero_factura = await _buildNumFactura(id_cuota || null);
+  } catch(e) {
+    return res.status(500).json({ error: `Error al generar número de factura: ${e.message}` });
+  }
   const { data: factura, error: ef } = await supabase.schema(SCHEMA).from("factura")
-    .insert([{ numero_factura, fecha_emision, valor_facturado, estado: estado || "emitida", observaciones }]).select().single();
+    .insert([{ numero_factura, fecha_emision, valor_facturado, estado: estado || "emitida", observaciones }])
+    .select().single();
   if (ef) return res.status(400).json({ error: ef.message });
   if (id_cuota) {
     await supabase.schema(SCHEMA).from("cuota_factura").insert([{ id_cuota, id_factura: factura.id_factura }]);

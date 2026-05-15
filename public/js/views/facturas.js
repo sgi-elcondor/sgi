@@ -2,15 +2,14 @@ function _fNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
 
-function _fmtNumFactura(n) {
-  const s = String(n).padStart(9, "0");
-  if (/^\d{9}$/.test(s)) return `20${s.slice(0, 2)}-${s.slice(2, 6)}-${s.slice(6)}`;
-  return String(n);
-}
-
-function _sugerirNumFactura(idVenta, numeroCuota) {
-  const yr = new Date().getFullYear() % 100;
-  return yr * 10_000_000 + (idVenta || 0) * 1000 + (numeroCuota || 0);
+function _fmtNumFactura(v) {
+  if (!v) return "—";
+  const s = String(v);
+  if (/^\d{7,9}$/.test(s)) {
+    const p = s.padStart(9, "0");
+    return `20${p.slice(0, 2)}-${p.slice(2, 6)}-${p.slice(6)}`;
+  }
+  return s;
 }
 
 window._toggleGrupoCuota = function(key) {
@@ -473,10 +472,6 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
   } catch(e) {}
   window._facturaCuotas = cuotas;
 
-  const numSugerido = cuotaPresel
-    ? _sugerirNumFactura(cuotaPresel.id_venta, cuotaPresel.numero_cuota)
-    : "";
-
   const ctxLabel = idVentaCtx
     ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta #${idVentaCtx}</span>`
     : "";
@@ -507,13 +502,6 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
   UI.openModal("Nueva Factura", `
     <div class="form-grid">
       ${cuotaSection}
-      <div class="form-group">
-        <label>N° Factura *
-          <span style="font-size:.73rem;color:var(--text-muted);font-weight:400">(formato 20AA-VVVV-CCC)</span>
-        </label>
-        <input id="f_nf" type="number" min="1" value="${numSugerido}"
-          title="AA=año, VVVV=venta, CCC=cuota. Ej: 2026-0005-003 → 260005003"/>
-      </div>
       <div class="form-group"><label>Fecha de Emisión *</label><input id="f_fe" type="date" value="${hoy}"/></div>
       <div class="form-group"><label>Valor *</label><input id="f_vf" type="number" value="${cuotaPresel?.valor_cuota || ""}"/></div>
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label><textarea id="f_obs" rows="2"></textarea></div>
@@ -530,8 +518,6 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
         if (e.target.type !== "radio") return;
         document.getElementById("f_id_cuota").value = e.target.value;
         document.getElementById("f_vf").value       = e.target.dataset.valor;
-        document.getElementById("f_nf").value       =
-          _sugerirNumFactura(+e.target.dataset.idVenta, +e.target.dataset.numCuota);
       });
     }
   }
@@ -539,17 +525,15 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
 
 window.guardarFactura = async function() {
   const id_cuota_str    = document.getElementById("f_id_cuota")?.value;
-  const numero_factura  = +document.getElementById("f_nf").value;
   const fecha_emision   = document.getElementById("f_fe").value;
   const valor_facturado = +document.getElementById("f_vf").value;
   const observaciones   = document.getElementById("f_obs").value;
 
   if (!id_cuota_str)                            return UI.toast("Seleccione una cuota", "error");
-  if (!numero_factura)                          return UI.toast("Ingrese el número de factura", "error");
   if (!fecha_emision)                           return UI.toast("Ingrese la fecha de emisión", "error");
   if (!valor_facturado || valor_facturado <= 0) return UI.toast("El valor debe ser mayor a 0", "error");
 
-  const body = { numero_factura, fecha_emision, valor_facturado, observaciones, id_cuota: +id_cuota_str };
+  const body = { fecha_emision, valor_facturado, observaciones, id_cuota: +id_cuota_str };
   try {
     await API.post("/facturas", body);
     UI.closeModal();

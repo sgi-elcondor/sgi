@@ -1,11 +1,27 @@
 const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
+function _periodo() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function _nextPagConsec() {
+  const periodo = _periodo();
+  const { data, error } = await supabase.rpc("next_consecutivo_condor", {
+    p_prefijo: "PAG",
+    p_periodo: periodo,
+  });
+  if (error) throw new Error(error.message);
+  const n = String(data).padStart(5, "0");
+  return { numero_pago: `PAG-${periodo}-${n}`, numero_recibo: `RC-${periodo}-${n}` };
+}
+
 exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado,
       cuota_pago(
         valor_aplicado,
         cuota:id_cuota(
@@ -32,6 +48,7 @@ exports.getAll = async (req, res) => {
     const factura = cuota?.cuota_factura?.[0]?.factura;
     return {
       id_pago:        p.id_pago,
+      numero_pago:    p.numero_pago    ?? null,
       fecha_pago:     p.fecha_pago,
       valor_pago:     p.valor_pago,
       metodo_pago:    p.metodo_pago,
@@ -71,8 +88,13 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
+  let pagConsec;
+  try { pagConsec = await _nextPagConsec(); }
+  catch(e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
+
   const { data: pago, error: ep } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{ fecha_pago, valor_pago, metodo_pago, referencia: referencia || null }]).select().single();
+    .insert([{ fecha_pago, valor_pago, metodo_pago, referencia: referencia || null, numero_pago: pagConsec.numero_pago }])
+    .select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
   const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(
@@ -102,7 +124,7 @@ exports.create = async (req, res) => {
     }
   }
 
-  const numero_recibo = `REC-${String(pago.id_pago).padStart(6, "0")}`;
+  const numero_recibo = pagConsec.numero_recibo;
   const fecha_emision = new Date().toISOString().split("T")[0];
   const { data: recibo } = await supabase.schema(SCHEMA).from("recibo")
     .insert([{ numero_recibo, fecha_emision, emitido_por: req.usuario?.email || "sistema" }])
@@ -123,7 +145,7 @@ exports.getMisPagos = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
       estado, url_baucher, numero_cuenta_origen, tipo_pago,
       id_venta, id_cuota_propuesta,
       cuota_pago (
@@ -405,7 +427,14 @@ exports.acceptBatch = async (req, res) => {
     let reciboError  = null;
 
     if (!existeLink) {
-      const numero_recibo = `REC-${String(id_pago).padStart(6, "0")}`;
+      let pagConsec;
+      try { pagConsec = await _nextPagConsec(); }
+      catch(e) { results.push({ id_pago, ok: true, pago, recibo: null, recibo_error: `consecutivo: ${e.message}` }); continue; }
+
+      await supabase.schema(SCHEMA).from("pago")
+        .update({ numero_pago: pagConsec.numero_pago }).eq("id_pago", id_pago);
+
+      const numero_recibo = pagConsec.numero_recibo;
       const fecha_emision = new Date().toISOString().split("T")[0];
       const emitido_por   = req.usuario?.email || "sistema";
 
