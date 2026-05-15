@@ -135,6 +135,53 @@ exports.create = async (req, res) => {
   res.status(201).json(factura);
 };
 
+exports.getMisFacturas = async (req, res) => {
+  const id_comprador = req.usuario.id_comprador;
+  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+
+  const { data: vc, error: ev } = await supabase.schema(SCHEMA)
+    .from("venta_comprador").select("id_venta").eq("id_comprador", id_comprador);
+
+  if (ev || !vc?.length) return res.json([]);
+
+  const ventaIds = vc.map(v => v.id_venta);
+
+  const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
+    .from("cuota")
+    .select(`
+      id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, id_venta,
+      cuota_factura(factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
+      venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
+    `)
+    .in("id_venta", ventaIds)
+    .neq("estado", "pagada");
+
+  if (ec) return res.status(500).json({ error: ec.message });
+
+  const result = [];
+  for (const c of (cuotas || [])) {
+    const factura = (c.cuota_factura || [])
+      .map(cf => cf.factura)
+      .find(f => f?.estado === "emitida");
+    if (!factura) continue;
+    const lote = c.venta?.lote;
+    result.push({
+      id_factura:        factura.id_factura,
+      numero_factura:    factura.numero_factura,
+      valor_facturado:   factura.valor_facturado,
+      fecha_emision:     factura.fecha_emision,
+      id_cuota:          c.id_cuota,
+      numero_cuota:      c.numero_cuota,
+      fecha_vencimiento: c.fecha_vencimiento,
+      id_venta:          c.id_venta,
+      proyecto:          lote?.proyecto?.nombre ?? "—",
+      codigo_lote:       lote?.codigo_lote      ?? "—",
+    });
+  }
+
+  res.json(result);
+};
+
 exports.anular = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("factura").update({ estado: "anulada" }).eq("id_factura", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });

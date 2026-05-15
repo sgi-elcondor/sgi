@@ -23,7 +23,7 @@ const VIEWS = {
   usuarios:           { fn: "usuariosView",         title: "Gestion de Usuarios" },
   roles:              { fn: "rolesView",            title: "Roles y Permisos" },
   "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
-  "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Pagos y Recibos" },
+  "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Recibos" },
   "bank-transactions": { fn: "bankTransactionsView", title: "Transacciones Bancarias" },
   "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
 };
@@ -53,7 +53,7 @@ const SIDEBAR_GROUPS = [
   ]},
   { label: "Mi cuenta", items: [
     { view: "mis-cuotas",  icon: "calendar",   label: "Mis Cuotas" },
-    { view: "mis-recibos", icon: "file-text",  label: "Mis Pagos" },
+    { view: "mis-recibos", icon: "receipt",     label: "Mis Recibos" },
   ]},
   { label: "Control", items: [
     { view: "reportes",       icon: "bar-chart-3",   label: "Reportes" },
@@ -90,7 +90,7 @@ const TOPBAR_SUBTITLES = {
   usuarios:           "Administracion de accesos y roles",
   roles:              "Configuracion de roles y permisos",
   "mis-cuotas":        "Consulta y pago de tus cuotas",
-  "mis-recibos":       "Estado de tus pagos y recibos emitidos",
+  "mis-recibos":       "Recibos de pago emitidos a tu nombre",
   "bank-transactions": "Registro de movimientos bancarios",
   "payment-validation":"Contraste y aprobacion de pagos",
   juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
