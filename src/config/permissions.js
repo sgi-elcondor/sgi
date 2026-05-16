@@ -45,9 +45,12 @@ const ROUTE_PERMISSIONS = {
   'POST /api/compradores':          { recurso: 'compradores',   accion: 'crear' },
   'PUT /api/compradores':           { recurso: 'compradores',   accion: 'actualizar' },
 
-  'GET /api/comisionistas':         { recurso: 'comisionistas', accion: 'leer' },
-  'POST /api/comisionistas':        { recurso: 'comisionistas', accion: 'crear' },
-  'PUT /api/comisionistas':         { recurso: 'comisionistas', accion: 'actualizar' },
+  'GET /api/comisionistas':                        { recurso: 'comisionistas', accion: 'leer' },
+  'POST /api/comisionistas':                       { recurso: 'comisionistas', accion: 'crear' },
+  'PUT /api/comisionistas':                        { recurso: 'comisionistas', accion: 'actualizar' },
+  'GET /api/comisionistas/comisiones':             { recurso: 'comisionistas', accion: 'leer' },
+  'POST /api/comisionistas/ventas/micropago':      { recurso: 'comisionistas', accion: 'actualizar' },
+  'PATCH /api/comisionistas/ventas/pagada':        { recurso: 'comisionistas', accion: 'actualizar' },
 
   'GET /api/reportes':              { recurso: 'reportes',      accion: 'leer' },
   'GET /api/reportes/dir':          { recurso: 'reportes_dir',  accion: 'leer' },
