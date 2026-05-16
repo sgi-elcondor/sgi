@@ -86,6 +86,11 @@ const ROUTE_PERMISSIONS = {
   'GET /api/pagos/contrast':           { recurso: 'validacion_pagos',  accion: 'leer' },
   'PATCH /api/pagos/accept-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
 
+  'GET /api/gastos':                   { recurso: 'gastos', accion: 'leer' },
+  'GET /api/gastos/resumen':           { recurso: 'gastos', accion: 'leer' },
+  'POST /api/gastos':                  { recurso: 'gastos', accion: 'crear' },
+  'PUT /api/gastos':                   { recurso: 'gastos', accion: 'actualizar' },
+
 };
 
 module.exports = ROUTE_PERMISSIONS;

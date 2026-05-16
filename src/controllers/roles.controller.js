@@ -22,6 +22,7 @@ const VISTA_API_MAP = {
   'roles':           ['roles:leer', 'roles:actualizar'],
   'juridico':        ['ventas:leer', 'compradores:leer', 'cuotas:leer', 'pagos:leer', 'alertas_jur:leer', 'observaciones_jur:leer', 'observaciones_jur:crear'],
   'personal':        ['usuarios:leer', 'compradores:leer', 'comisionistas:leer', 'reportes:leer'],
+  'gastos':          ['gastos:leer', 'gastos:crear', 'gastos:actualizar', 'uploads:crear'],
 };
 
 async function getAll(req, res) {

@@ -26,6 +26,7 @@ const VIEWS = {
   "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Recibos" },
   "bank-transactions": { fn: "bankTransactionsView", title: "Transacciones Bancarias" },
   "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
+  gastos:              { fn: "gastosView",            title: "Gastos Operativos" },
 };
 
 const SIDEBAR_GROUPS = [
@@ -50,6 +51,7 @@ const SIDEBAR_GROUPS = [
     { view: "recibos",        icon: "file-text",     label: "Recibos" },
     { view: "bank-transactions",  icon: "landmark",      label: "Transacciones" },
     { view: "payment-validation", icon: "shield-check",  label: "Validar pagos" },
+    { view: "gastos",             icon: "trending-down", label: "Gastos" },
   ]},
   { label: "Mi cuenta", items: [
     { view: "mis-cuotas",  icon: "calendar",   label: "Mis Cuotas" },
@@ -93,6 +95,7 @@ const TOPBAR_SUBTITLES = {
   "mis-recibos":       "Recibos de pago emitidos a tu nombre",
   "bank-transactions": "Registro de movimientos bancarios",
   "payment-validation":"Contraste y aprobacion de pagos",
+  gastos:              "Registro y control de gastos operativos por proyecto",
   juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
 };
 
