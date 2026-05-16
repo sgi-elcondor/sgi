@@ -52,10 +52,11 @@ const ROUTE_PERMISSIONS = {
   'POST /api/comisionistas/ventas/micropago':      { recurso: 'comisionistas', accion: 'actualizar' },
   'PATCH /api/comisionistas/ventas/pagada':        { recurso: 'comisionistas', accion: 'actualizar' },
 
-  'GET /api/reportes':              { recurso: 'reportes',      accion: 'leer' },
-  'GET /api/reportes/dir':          { recurso: 'reportes_dir',  accion: 'leer' },
-  'GET /api/reportes/jur':          { recurso: 'alertas_jur',   accion: 'leer' },
-  'GET /api/reportes/juridico':     { recurso: 'alertas_jur',   accion: 'leer' },
+  'GET /api/reportes':                   { recurso: 'reportes',     accion: 'leer' },
+  'GET /api/reportes/dir':               { recurso: 'reportes_dir', accion: 'leer' },
+  'GET /api/reportes/jur':               { recurso: 'alertas_jur',  accion: 'leer' },
+  'GET /api/reportes/juridico':          { recurso: 'alertas_jur',  accion: 'leer' },
+  'GET /api/reportes/comisiones-jefe':   { recurso: 'reportes',     accion: 'leer' },
 
   'GET /api/juridico/cartera':            { recurso: 'alertas_jur',      accion: 'leer' },
   'GET /api/juridico/observaciones':      { recurso: 'observaciones_jur', accion: 'leer' },

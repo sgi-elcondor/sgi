@@ -7,5 +7,6 @@ router.get("/alertas",   ctrl.getAlertasJuridicas);
 router.get("/recaudo",   ctrl.getRecaudoHistorico);
 router.get("/comisiones",ctrl.getComisionesResumen);
 router.get("/juridico",  ctrl.getCarteraJuridica);
-router.get("/auditoria", ctrl.getAuditoria);
+router.get("/auditoria",       ctrl.getAuditoria);
+router.get("/comisiones-jefe", ctrl.getComisionesJefe);
 module.exports = router;
