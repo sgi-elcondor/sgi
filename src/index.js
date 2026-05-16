@@ -53,6 +53,7 @@ app.use('/api/uploads',           require('./routes/uploads.routes'));
 app.use('/api/bank-transactions',  require('./routes/bank_transactions.routes'));
 app.use('/api/uploads',        require('./routes/uploads.routes'));
 app.use('/api/juridico',       require('./routes/juridico.routes'));
+app.use('/api/gastos',         require('./routes/gastos.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.use(verificarToken);

@@ -17,6 +17,7 @@
       { key: 'comisionistas', label: 'Comisionistas' },
       { key: 'facturas',      label: 'Facturas' },
       { key: 'recibos',       label: 'Recibos' },
+      { key: 'gastos',        label: 'Gastos operativos' },
     ]},
     { label: 'Control', vistas: [
       { key: 'reportes',  label: 'Reportes' },
