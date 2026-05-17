@@ -1,4 +1,6 @@
-﻿// Bank transaction parsers registry
+(function () {
+
+// Bank transaction parsers registry
 const BANK_PARSERS = { bancolombia: _parseBancolombia };
 const BANK_LABELS  = { bancolombia: 'Bancolombia' };
 const SPANISH_MONTHS = { ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12 };
@@ -63,8 +65,9 @@ let _btCurrentTab = 'list', _btImportBank = 'bancolombia', _btImportParsed = [];
 let _btSearchTimer = null;
 
 window.bankTransactionsView = async function() {
-  const vc = document.getElementById('viewContainer');
-  vc.innerHTML = UI.loader();
+  const vc        = document.getElementById('viewContainer');
+  const canCreate = AppState.can('bank_transactions', 'crear');
+  vc.innerHTML    = UI.loader();
   _btCurrentTab = 'list'; _btImportParsed = [];
 
   vc.innerHTML = `
@@ -72,7 +75,7 @@ window.bankTransactionsView = async function() {
       <div class="table-wrap">
         <div class="table-header">
           <h3>Transacciones Bancarias</h3>
-          <button class="btn btn-primary btn-sm" id="bt-tab-btn" onclick="btSwitchTab('import')">+ Importar</button>
+          ${canCreate ? `<button class="btn btn-primary btn-sm" id="bt-tab-btn" onclick="btSwitchTab('import')">+ Importar</button>` : ""}
         </div>
         <div id="bt-filters" class="bt-filters">
           <select id="btf_bank" class="form-input" onchange="_btLoad()" style="min-width:140px">
@@ -301,3 +304,4 @@ window.btDeleteTxConfirm = async function(id) {
     _btLoad();
   } catch(e) { window.SGIUI?.toast(e.message, 'error', 'Error'); }
 };
+})();

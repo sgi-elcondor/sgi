@@ -36,9 +36,9 @@ window.personalView = async function () {
       ? Number(comisiones.total_comisiones_pendientes ?? comisiones.pendiente ?? comisiones.saldo_pendiente ?? 0)
       : 0;
 
-    const canVerUsuarios      = (window.currentUser?.vistas ?? []).includes("usuarios");
-    const canVerComisionistas = (window.currentUser?.vistas ?? []).includes("comisionistas");
-    const canVerCompradores   = (window.currentUser?.vistas ?? []).includes("compradores");
+    const canVerUsuarios      = AppState.hasVista("usuarios");
+    const canVerComisionistas = AppState.hasVista("comisionistas");
+    const canVerCompradores   = AppState.hasVista("compradores");
 
     const rolesOrdenados = Object.entries(rolConteo).sort((a, b) => b[1] - a[1]);
 
@@ -69,7 +69,7 @@ window.personalView = async function () {
             const esComisionista = rol === "comisionista";
             const esComprador    = rol === "comprador";
             const navTarget      = esComprador ? "compradores" : esComisionista ? "comisionistas" : canVerUsuarios ? "usuarios" : null;
-            const canNav         = navTarget && (window.currentUser?.vistas ?? []).includes(navTarget);
+            const canNav         = navTarget && AppState.hasVista(navTarget);
             const pct            = totalActivos > 0 ? Math.round((count / totalActivos) * 100) : 0;
             return `
               <article class="per-rol-card${canNav ? " rep-proy-card--link" : ""}" ${canNav ? `onclick="window.navigate('${navTarget}')"` : ""}>

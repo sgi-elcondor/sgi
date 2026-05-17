@@ -49,14 +49,12 @@ app.use('/api/recibos',        require('./routes/recibos.routes'));
 app.use('/api/reportes',       require('./routes/reportes.routes'));
 app.use('/api/usuarios',       require('./routes/usuarios.routes'));
 app.use('/api/roles',          require('./routes/roles.routes'));
-app.use('/api/uploads',           require('./routes/uploads.routes'));
+app.use('/api/uploads',            require('./routes/uploads.routes'));
 app.use('/api/bank-transactions',  require('./routes/bank_transactions.routes'));
-app.use('/api/uploads',        require('./routes/uploads.routes'));
 app.use('/api/juridico',       require('./routes/juridico.routes'));
 app.use('/api/gastos',         require('./routes/gastos.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
-app.use(verificarToken);
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "index.html"));
 });

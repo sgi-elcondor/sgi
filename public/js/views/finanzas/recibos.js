@@ -1,3 +1,5 @@
+(function () {
+
 function _rNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
@@ -320,3 +322,5 @@ window.recibosDeVentaView = function(grupo) {
       </div>
     </div>`;
 };
+
+})();

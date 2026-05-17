@@ -2,9 +2,13 @@
 
 > Contexto de proyecto para Claude Code. Lee este archivo antes de cualquier tarea.
 
+En supabase el schema en el que estamos trabajando es `condor` 
+
 Antes de hacer algun cambio si cres que hay una forma mejor de hacerlo sugieremela.
 
 Al crear estilos CSS estamos usando medidas rem en lugar de px.
+
+El rol admin debe tener permiso a todas las funcioalidades y vistas.
 
 ## ¿Como escribir codigo?
 
@@ -59,17 +63,22 @@ sgi/
 │           ├── reportes.js
 │           ├── dashboard.js
 │           └── usuarios.js
+...
 └── src/
     ├── index.js            ← entrada del servidor Express
     ├── config/
     │   ├── supabase.js     ← cliente Supabase
     │   ├── firebase.js     ← cliente Firebase
     │   └── permissions.js  ← mapa de permisos por rol
+...
     ├── middlewares/
     │   ├── auth.middleware.js      ← valida token Firebase
     │   └── permisos.middleware.js  ← valida rol y permisos
+...
     ├── controllers/        ← lógica de negocio, uno por módulo
+...
     └── routes/             ← endpoints REST, uno por módulo
+...
 ```
 
 ---
@@ -145,6 +154,8 @@ sgi/
 ---
 
 ## Base de Datos (Supabase / PostgreSQL)
+
+Toma como contexto la base de datos en supabase ya que hace parte del proyecto si no esta conectada con el Model Context Protocol (MCP) explicame como conectarlo.
 
 * Conexión centralizada en `src/config/supabase.js`
 * Usar siempre el cliente importado desde ese archivo, nunca instanciar uno nuevo
