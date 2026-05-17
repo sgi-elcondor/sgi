@@ -1,11 +1,17 @@
-﻿window.compradoresView = async function() {
-  const vc = document.getElementById("viewContainer");
-  vc.innerHTML = UI.loader();
+(function () {
+
+window.compradoresView = async function() {
+  const vc        = document.getElementById("viewContainer");
+  const canCreate = AppState.can("compradores", "crear");
+  vc.innerHTML    = UI.loader();
   const data = await API.get("/compradores").catch(e => { vc.innerHTML=`<p style="color:var(--danger)">${e.message}</p>`; return null; });
   if (!data) return;
   vc.innerHTML = `
     <div class="table-wrap">
-      <div class="table-header"><h3>Compradores</h3><button class="btn btn-primary btn-sm" onclick="compradorForm()">+ Nuevo</button></div>
+      <div class="table-header">
+        <h3>Compradores</h3>
+        ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()">+ Nuevo</button>` : ""}
+      </div>
       <table>
         <thead><tr><th>Documento</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th></tr></thead>
         <tbody>${data.map(c=>`<tr>
@@ -39,3 +45,5 @@ window.guardarComprador = async function() {
   try { await API.post("/compradores", body); UI.closeModal(); UI.toast("Comprador creado","ok"); compradoresView(); }
   catch(e) { UI.toast(e.message,"error"); }
 };
+
+})();

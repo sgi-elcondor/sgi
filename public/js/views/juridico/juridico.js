@@ -1,3 +1,5 @@
+(function () {
+
 window.juridicoView = async function () {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
@@ -322,3 +324,5 @@ window.juridicoView = async function () {
   renderShell();
   loadTab("cartera");
 };
+
+})();

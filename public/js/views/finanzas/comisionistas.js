@@ -1,3 +1,5 @@
+(function () {
+
 let _currentComisiones = [];
 
 function _fmtMoneyInput(el) {
@@ -12,16 +14,17 @@ function _parseMoney(value) {
 // ─── Main view ────────────────────────────────────────────────────────────────
 
 window.comisionistasView = async function() {
-  const vc = document.getElementById("viewContainer");
-  vc.innerHTML = UI.loader();
+  const vc       = document.getElementById("viewContainer");
+  const canCreate = AppState.can("comisionistas", "crear");
+  vc.innerHTML   = UI.loader();
 
   const lista = await API.get("/comisionistas").catch(() => []);
 
   vc.innerHTML = `
     ${SGIUI.pageHeader({
-      kicker: "Finanzas",
-      title:  "Comisionistas",
-      actions: `<button class="btn btn-primary btn-sm" onclick="comisionistaForm()">+ Nuevo</button>`
+      kicker:  "Finanzas",
+      title:   "Comisionistas",
+      actions: canCreate ? `<button class="btn btn-primary btn-sm" onclick="comisionistaForm()">+ Nuevo</button>` : "",
     })}
 
     <div class="table-wrap" style="margin-bottom:1.25rem">
@@ -556,3 +559,9 @@ window.guardarComisionista = async function() {
     comisionistasView();
   } catch(e) { UI.toast(e.message, "error"); }
 };
+
+window._toggleComisionCard  = _toggleComisionCard;
+window._verReciboMicropago  = _verReciboMicropago;
+window._fmtMoneyInput       = _fmtMoneyInput;
+
+})();

@@ -86,7 +86,7 @@ window.reportesView = async function () {
           return n > 0 ? `${n} pago${n > 1 ? "s" : ""} aceptado${n > 1 ? "s" : ""} en ${mesActual}` : `Sin pagos aceptados en ${mesActual}`;
         })(),
         tone: totalRecaudado > 0 ? "success" : "muted",
-        nav:  "pagos-read",
+        nav:  "pagos",
       },
       {
         icon:  "briefcase",
@@ -110,7 +110,7 @@ window.reportesView = async function () {
         value: `${cumplimiento.toFixed(1)}%`,
         meta:  "Recaudado vs facturado en el periodo",
         tone:  toneCumplimiento,
-        nav:   "pagos-read",
+        nav:   "pagos",
       },
       {
         icon:  "calendar-x",
@@ -132,17 +132,16 @@ window.reportesView = async function () {
       },
     ];
 
-    const vistas    = window.currentUser?.vistas ?? [];
-    const canPagos  = vistas.includes("pagos-read");
-    const canVentas = vistas.includes("ventas");
-    const canCuotas = vistas.includes("cuotas");
+    const canPagos  = AppState.hasVista("pagos");
+    const canVentas = AppState.hasVista("ventas");
+    const canCuotas = AppState.hasVista("cuotas");
 
     const chartCards = [
       {
         id:    "repChartRecaudo",
         title: "Recaudo mensual",
         sub:   "Pagos aceptados en los ultimos 12 meses",
-        nav:   canPagos ? "pagos-read" : null,
+        nav:   canPagos ? "pagos" : null,
       },
       {
         id:    "repChartVentas",
@@ -189,9 +188,9 @@ window.reportesView = async function () {
               const { bg, color } = ESTADO_COLORS[e] || ESTADO_COLORS.bloqueado;
               return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;background:${bg};color:${color}">${info.estados[e]} ${e}</span>`;
             }).join("");
-            const canNavLotes = vistas.includes("lotes-read");
+            const canNavLotes = AppState.hasVista("lotes");
             return `
-              <article class="rep-proy-card${canNavLotes ? " rep-proy-card--link" : ""}" ${canNavLotes ? `onclick="window.navigate('lotes-read')"` : ""}>
+              <article class="rep-proy-card${canNavLotes ? " rep-proy-card--link" : ""}" ${canNavLotes ? `onclick="window.navigate('lotes')"` : ""}>
                 <div class="rep-proy-name">${nombre}</div>
                 <div class="rep-proy-total">${info.total} lote${info.total !== 1 ? "s" : ""}</div>
                 <div class="rep-proy-bar">${barItems}</div>
@@ -205,7 +204,7 @@ window.reportesView = async function () {
         <div class="rep-kpi-grid">
           ${kpis.map(k => {
             const t       = TONES[k.tone];
-            const canNav  = vistas.includes(k.nav);
+            const canNav  = k.nav && AppState.hasVista(k.nav);
             return `
               <article class="rep-kpi-card${canNav ? " rep-kpi-card--link" : ""}" ${canNav ? `onclick="window.navigate('${k.nav}')"` : ""}>
                 <div class="rep-kpi-icon" style="background:${t.bg};color:${t.color}">

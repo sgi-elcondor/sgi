@@ -1,4 +1,6 @@
-﻿window.usuariosView = async function () {
+(function () {
+
+window.usuariosView = async function () {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
   await Promise.all([cargarRolesCache(), cargarUsuariosTabla()]);
@@ -21,7 +23,8 @@ async function cargarRolesCache() {
 }
 
 async function cargarUsuariosTabla() {
-  const vc = document.getElementById("viewContainer");
+  const vc        = document.getElementById("viewContainer");
+  const canCreate = AppState.can("usuarios", "crear");
   try {
     _todosUsuarios = await API.get('/usuarios');
 
@@ -47,7 +50,7 @@ async function cargarUsuariosTabla() {
               <option value="inactivo">Inactivos</option>
             </select>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()">+ Nuevo usuario</button>
+          ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()">+ Nuevo usuario</button>` : ""}
         </div>
 
         <div id="alerta-pendientes" style="display:none;
@@ -403,3 +406,14 @@ async function reactivarUsuario(id) {
   }
 }
 
+// Expose functions called from inline onclick handlers
+window.filtrarUsuarios         = filtrarUsuarios;
+window.abrirModalNuevoUsuario  = abrirModalNuevoUsuario;
+window.abrirModalEditarUsuario = abrirModalEditarUsuario;
+window.guardarNuevoUsuario     = guardarNuevoUsuario;
+window.guardarEdicionUsuario   = guardarEdicionUsuario;
+window.confirmarDesactivar     = confirmarDesactivar;
+window.reactivarUsuario        = reactivarUsuario;
+window.cambiarRolInline        = cambiarRolInline;
+
+})();

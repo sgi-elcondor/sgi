@@ -1,3 +1,5 @@
+(function () {
+
 function _gastosFormatInput(el) {
   const raw = el.value.replace(/\D/g, "");
   el.value  = raw ? Number(raw).toLocaleString("es-CO") : "";
@@ -287,8 +289,9 @@ window._gastosExport = async function() {
 // ─── Main view ────────────────────────────────────────────────────────────────
 
 window.gastosView = async function() {
-  const vc = document.getElementById("viewContainer");
-  vc.innerHTML = UI.loader();
+  const vc        = document.getElementById("viewContainer");
+  const canCreate = AppState.can("gastos", "crear");
+  vc.innerHTML    = UI.loader();
 
   _gastosList      = [];
   _gastosProyectos = [];
@@ -310,7 +313,7 @@ window.gastosView = async function() {
       title:   "Gastos Operativos",
       actions: `
         <button class="btn btn-sm" id="gastos_export_btn" onclick="_gastosExport()">Exportar Excel</button>
-        <button class="btn btn-primary btn-sm" onclick="gastosOpenCreate()">+ Nuevo gasto</button>
+        ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="gastosOpenCreate()">+ Nuevo gasto</button>` : ""}
       `,
     })}
     ${_gastosFilterBar()}
@@ -543,3 +546,7 @@ window._gastosSubmit = async function() {
     btn.textContent = _gastosEditId ? "Guardar cambios" : "Registrar gasto";
   }
 };
+
+window._gastosFormatInput = _gastosFormatInput;
+
+})();

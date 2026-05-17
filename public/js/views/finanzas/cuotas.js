@@ -1,3 +1,5 @@
+(function () {
+
 window.cuotasView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
@@ -8,7 +10,7 @@ window.cuotasView = async function() {
   });
   if (!data) return;
 
-  const esAuxiliar = window.currentUser?.rol === "auxiliar_contable";
+  const esAuxiliar = AppState.can('cuotas', 'editar_valores');
 
   const cuotasMap = {};
   data.forEach(c => { cuotasMap[c.id_cuota] = c; });
@@ -206,3 +208,5 @@ window.cuotasView = async function() {
     }
   });
 };
+
+})();

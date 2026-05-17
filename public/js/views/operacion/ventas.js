@@ -1,9 +1,12 @@
+(function () {
+
 window.ventasView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
 
-  const esAsesor = window.currentUser?.rol === "asesor_comercial";
-  const botonNueva = esAsesor
+  const modoSolicitud = AppState.can('ventas', 'solicitar') && !AppState.can('ventas', 'actualizar');
+  const canCreate     = AppState.can('ventas', 'crear') || AppState.can('ventas', 'solicitar');
+  const botonNueva    = !canCreate ? "" : modoSolicitud
     ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()">+ Solicitar Venta</button>`
     : `<button class="btn btn-primary btn-sm" onclick="ventaForm()">+ Nueva Venta</button>`;
 
@@ -67,8 +70,8 @@ window.ventasView = async function() {
         <h3>Ventas</h3>
         ${botonNueva}
       </div>
-      ${esAsesor ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
-        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que gerencia o un administrador las apruebe.
+      ${modoSolicitud ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
+        Puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que sean aprobadas.
       </p>` : ""}
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-end">
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
@@ -301,7 +304,7 @@ window.verVenta = async function(id) {
       `)}
 
       ${(() => {
-        const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
+        const puedeEditar = AppState.can('ventas', 'editar_financiero');
 
         const vfBody = `
           ${R("Valor total", `<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
@@ -1659,3 +1662,9 @@ window.guardarSolicitudVenta = async function() {
     UI.toast(mensaje, "error");
   }
 };
+
+// Helpers called from inline oninput handlers in the sale form
+window._actualizarCalculos   = _actualizarCalculos;
+window._onMoneyInput         = _onMoneyInput;
+
+})();

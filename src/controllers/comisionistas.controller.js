@@ -1,24 +1,6 @@
-const supabase = require("../config/supabase");
-const SCHEMA   = "condor";
-
-function _periodo() {
-  const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-async function _nextMcomConsec() {
-  const periodo = _periodo();
-  const [{ data: mcomN, error: e1 }, { data: rcN, error: e2 }] = await Promise.all([
-    supabase.rpc("next_consecutivo_condor", { p_prefijo: "MCOM", p_periodo: periodo }),
-    supabase.rpc("next_consecutivo_condor", { p_prefijo: "PAG",  p_periodo: periodo })
-  ]);
-  if (e1) throw new Error(e1.message);
-  if (e2) throw new Error(e2.message);
-  return {
-    numero_micropago: `MCOM-${periodo}-${String(mcomN).padStart(5, "0")}`,
-    numero_recibo:    `RC-${periodo}-${String(rcN).padStart(5, "0")}`
-  };
-}
+const supabase     = require("../config/supabase");
+const consecutivos = require("../services/consecutivos.service");
+const SCHEMA       = "condor";
 
 exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("comisionista").select("*").order("nombres");
@@ -168,7 +150,7 @@ exports.registrarMicropago = async (req, res) => {
 
   let numero_recibo = null;
   try {
-    const consec     = await _nextMcomConsec();
+    const consec     = await consecutivos.nextMicropago();
     const fecha_emis = new Date().toISOString().split("T")[0];
 
     const { data: recibo } = await supabase.schema(SCHEMA)
