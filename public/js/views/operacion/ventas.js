@@ -73,7 +73,7 @@ window.ventasView = async function() {
       ${modoSolicitud ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
         Puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que sean aprobadas.
       </p>` : ""}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-end">
+      <div class="table-filters">
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
           <label style="font-size:.78rem;margin-bottom:2px">Proyecto</label>
           <input id="fv_proyecto" type="text" placeholder="Filtrar por proyecto…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
@@ -442,7 +442,7 @@ window.verVenta = async function(id) {
           escrit
             ? `<span style="color:var(--success,#22c55e);font-weight:700">✓ Sí${v.fecha_escritura ? " · " + UI.date(v.fecha_escritura) : ""}</span>`
             : cumple
-              ? `<span style="color:var(--warning,#f59e0b);font-weight:700">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
+              ? `<span style="color:var(--warning,#e8570c);font-weight:700">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
               : `<span style="color:var(--text-muted)">No — aún no alcanza el 30%</span>`
         )}
       `)}
@@ -1032,7 +1032,7 @@ function _actualizarResumenInicial() {
     total += _parseMiles(document.getElementById(`f_mc_val_${i}`)?.value || "0");
   }
   const diff = ci - total;
-  const color = diff === 0 ? "var(--success,#22c55e)" : diff > 0 ? "var(--warning,#f59e0b)" : "var(--danger,#ef4444)";
+  const color = diff === 0 ? "var(--success,#22c55e)" : diff > 0 ? "var(--warning,#e8570c)" : "var(--danger,#ef4444)";
   const msg   = diff === 0 ? "✓ Cuadra perfectamente"
               : diff > 0   ? `Faltan ${UI.fmt(diff)}`
               :               `Excede en ${UI.fmt(-diff)}`;

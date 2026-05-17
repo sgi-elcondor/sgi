@@ -248,13 +248,13 @@ window.facturasView = async function() {
   }
 
   const bannerHtml = sinFactura.length
-    ? `<div class="facturas-sin-banner" style="background:rgba(245,158,11,.08);border:1px solid var(--warning,#f59e0b);border-radius:8px;padding:12px 16px;margin-bottom:1rem">
+    ? `<div class="facturas-sin-banner" style="background:rgba(245,158,11,.08);border:1px solid var(--warning,#e8570c);border-radius:8px;padding:12px 16px;margin-bottom:1rem">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
           <strong style="font-size:.9rem">
             ${sinFactura.length} cuota${sinFactura.length>1?"s":""} vencida${sinFactura.length>1?"s":""} sin factura
           </strong>
           ${puedeEscribir ? `<button class="btn btn-sm btn-generar-todas"
-            style="background:var(--warning,#f59e0b);color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:.8rem;font-weight:600">
+            style="background:var(--warning,#e8570c);color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:.8rem;font-weight:600">
             Generar todas
           </button>` : ""}
         </div>
@@ -282,7 +282,7 @@ window.facturasView = async function() {
                   <td style="padding:5px 0 5px 12px">${UI.badge(c.estado)}</td>
                   ${puedeEscribir ? `<td style="padding:5px 0 5px 8px;white-space:nowrap">
                     <button class="btn btn-sm btn-generar-factura"
-                      style="background:var(--warning,#f59e0b);color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:600">
+                      style="background:var(--warning,#e8570c);color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:600">
                       Generar
                     </button>
                   </td>` : ""}
@@ -302,7 +302,7 @@ window.facturasView = async function() {
 
       ${bannerHtml}
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 0 1rem">
+      <div class="table-filters">
         <select id="ff-proyecto" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
           <option value="">Todos los proyectos</option>
           ${optsProyecto}

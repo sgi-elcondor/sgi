@@ -30,7 +30,7 @@
   --danger-rgb: 220, 77, 77;
   --success: #2fa56d;
   --success-rgb: 47, 165, 109;
-  --warning: #d9981f;
+  --warning: #e8570c;
   --warning-rgb: 217, 152, 31;
   --info: #f97316;
 
@@ -52,8 +52,14 @@
   --radius-lg: 0.875rem;
   --radius-xl: 1.125rem;
 
-  --font-serif: "DM Serif Display", Georgia, serif;
-  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "Montserrat", sans-serif;
+  --font-serif-weight: 700;
+  --font-sans: "Montserrat", sans-serif; 
+  --font-sans-weight: 350;
+
+  /* Alternative   */
+  /* --font-serif: "DM Serif Display", Georgia, serif; 
+  --font-sans: "DM Sans", system-ui, sans-serif;  */
 
   --shadow: 0 18px 44px rgba(17, 17, 17, 0.08);
   --shadow-soft: 0 8px 24px rgba(17, 17, 17, 0.06);
@@ -62,7 +68,7 @@
   --scrollbar-thumb: #cfc4b7;
   --scrollbar-thumb-hover: #baae9f;
 
-  --transition-fast: 0.15s ease;
+  --transition-fast: 0.15s ease; 
   --transition: 0.22s ease;
 }
 

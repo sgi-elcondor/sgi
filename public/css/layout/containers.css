@@ -53,6 +53,7 @@
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
   box-shadow: var(--shadow-soft);
   padding: 1.5rem 1.625rem;
+  margin-bottom: .5rem; 
 }
 
 .page-header-main {

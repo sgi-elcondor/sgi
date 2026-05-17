@@ -6,7 +6,7 @@ En supabase el schema en el que estamos trabajando es `condor`
 
 Antes de hacer algun cambio si cres que hay una forma mejor de hacerlo sugieremela.
 
-Al crear estilos CSS estamos usando medidas rem en lugar de px.
+Al crear estilos CSS estamos usando medidas rem en lugar de px, obiamente hay excepciones como en bordes detallados o cosas que si normalmente requeren de pixeles para funcionar mejor.
 
 El rol admin debe tener permiso a todas las funcioalidades y vistas.
 

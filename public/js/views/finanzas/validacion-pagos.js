@@ -12,7 +12,7 @@ function _pvScoreBadge(score, manual) {
   if (manual) return `<span class="pv-score-badge" style="background:#6366f1">Revision manual</span>`;
   let color = '#ef4444', label = 'Baja';
   if (score >= 80) { color = '#22c55e'; label = 'Alta'; }
-  else if (score >= 50) { color = '#f59e0b'; label = 'Media'; }
+  else if (score >= 50) { color = '#e8570c'; label = 'Media'; }
   return `<span class="pv-score-badge" style="background:${color}">${label} (${score})</span>`;
 }
 function _pvMatchIcon(m) {

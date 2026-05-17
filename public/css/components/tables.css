@@ -16,6 +16,19 @@
   background: var(--surface-glass);
 }
 
+.table-wrap .table-filters {
+  padding: .5rem; 
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:12px;
+  align-items:flex-end; 
+}
+
+.form-group {
+  padding: .5rem; 
+}
+
 .table-wrap .table-header h3 {
   color: var(--text);
   font: 1.125rem var(--font-serif);
