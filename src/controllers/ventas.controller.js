@@ -659,7 +659,7 @@ exports.getMisVentas = async (req, res) => {
           fecha_vencimiento, valor_cuota, estado,
           cuota_pago (
             valor_aplicado,
-            pago:id_pago ( estado )
+            pago:id_pago ( estado, tipo_pago )
           ),
           cuota_factura (
             factura:id_factura ( id_factura, estado )
@@ -679,16 +679,36 @@ exports.getMisVentas = async (req, res) => {
 
     const cuotas = (v.cuota || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
 
-    const totalPagado = cuotas.reduce((sum, c) => {
-      const aplicadoAceptado = (c.cuota_pago || [])
-        .filter(cp => cp.pago?.estado === "aceptado")
-        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-      return sum + aplicadoAceptado;
-    }, 0);
+   const totalPagadoRegular = cuotas.reduce((sum, c) => {
+   const aplicadoAceptado = (c.cuota_pago || [])
+    .filter(cp =>
+      cp.pago?.estado === "aceptado" &&
+      cp.pago?.tipo_pago !== "abono_extraordinario"
+    )
+    .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
 
-    const valorTotal      = Number(v.valor_total);
-    const saldoPendiente  = Math.max(0, valorTotal - totalPagado);
-    const porcentajePagado = valorTotal > 0 ? (totalPagado / valorTotal) * 100 : 0;
+  return sum + aplicadoAceptado;
+}, 0);
+
+const totalAbonadoExtraordinario = cuotas.reduce((sum, c) => {
+  const aplicadoExtraordinario = (c.cuota_pago || [])
+    .filter(cp =>
+      cp.pago?.estado === "aceptado" &&
+      cp.pago?.tipo_pago === "abono_extraordinario"
+    )
+    .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+
+  return sum + aplicadoExtraordinario;
+}, 0);
+
+const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario;
+
+const valorTotal          = Number(v.valor_total);
+const saldoPendiente      = Math.max(0, valorTotal - totalPagado);
+const saldoPendienteReal  = Math.max(0, valorTotal - totalPagado);
+const porcentajePagado    = valorTotal > 0 ? (totalPagado / valorTotal) * 100 : 0;
+
+ 
 
     const cuotaActual = cuotas.find(c => c.estado !== "pagada") || null;
 
@@ -698,28 +718,32 @@ exports.getMisVentas = async (req, res) => {
       diasCuotaActual = Math.floor((venc - hoy) / 86_400_000);
     }
 
-    return {
-      id_venta:            v.id_venta,
-      estado:              v.estado,
-      fecha_venta:         v.fecha_venta,
-      valor_total:         valorTotal,
-      cuota_inicial:       v.cuota_inicial,
-      total_permutas:      v.total_permutas,
-      porcentaje_propiedad: vc.porcentaje,
-      lote:                v.lote,
-      total_cuotas:        cuotas.length,
-      cuotas_pagadas:      cuotas.filter(c => c.estado === "pagada").length,
-      total_pagado:        totalPagado,
-      saldo_pendiente:     saldoPendiente,
-      porcentaje_pagado:   Math.round(porcentajePagado * 10) / 10,
-      escritura_disponible: porcentajePagado >= 30,
-      cuota_actual:        cuotaActual ? {
-        id_cuota:          cuotaActual.id_cuota,
-        numero_cuota:      cuotaActual.numero_cuota,
-        fecha_vencimiento: cuotaActual.fecha_vencimiento,
-        valor_cuota:       cuotaActual.valor_cuota,
-        dias_restantes:    diasCuotaActual,
-      } : null,
+return {
+  id_venta:                     v.id_venta,
+  estado:                       v.estado,
+  fecha_venta:                  v.fecha_venta,
+  valor_total:                  valorTotal,
+  cuota_inicial:                v.cuota_inicial,
+  total_permutas:               v.total_permutas,
+  porcentaje_propiedad:         vc.porcentaje,
+  lote:                         v.lote,
+  total_cuotas:                 cuotas.length,
+  cuotas_pagadas:               cuotas.filter(c => c.estado === "pagada").length,
+
+  total_pagado:                 totalPagado,
+  total_abonado_extraordinario: totalAbonadoExtraordinario,
+  saldo_pendiente:              saldoPendiente,
+  saldo_pendiente_real:         saldoPendienteReal,
+  porcentaje_pagado:            Math.round(porcentajePagado * 10) / 10,
+  escritura_disponible:         porcentajePagado >= 30,
+
+  cuota_actual: cuotaActual ? {
+    id_cuota:          cuotaActual.id_cuota,
+    numero_cuota:      cuotaActual.numero_cuota,
+    fecha_vencimiento: cuotaActual.fecha_vencimiento,
+    valor_cuota:       cuotaActual.valor_cuota,
+    dias_restantes:    diasCuotaActual,
+  } : null,
       cuotas: cuotas.map(c => {
         const pagadoAceptado = (c.cuota_pago || [])
           .filter(cp => cp.pago?.estado === "aceptado")

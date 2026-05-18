@@ -253,6 +253,7 @@ exports.createAbonoExtraordinario = async (req, res) => {
       referencia: referencia || null,
       numero_pago: pagConsec.numero_pago,
       tipo_pago: "abono_extraordinario",
+      estado: "aceptado",
       id_venta,
     }])
     .select()
