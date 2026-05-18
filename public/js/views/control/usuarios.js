@@ -36,15 +36,11 @@ async function cargarUsuariosTabla() {
               style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
                      font-size:.875rem; background:var(--surface); color:var(--text); width:200px;"
               oninput="filtrarUsuarios()" />
-            <select id="filtro-rol" onchange="filtrarUsuarios()"
-              style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
-                     font-size:.875rem; background:var(--surface); color:var(--text);">
+            <select id="filtro-rol" onchange="filtrarUsuarios()" class="select-sm" style="width:auto;">
               <option value="">Todos los roles</option>
               ${_rolesCache.map(r => `<option value="${r.nombre}">${r.nombre}</option>`).join('')}
             </select>
-            <select id="filtro-estado" onchange="filtrarUsuarios()"
-              style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
-                     font-size:.875rem; background:var(--surface); color:var(--text);">
+            <select id="filtro-estado" onchange="filtrarUsuarios()" class="select-sm" style="width:auto;">
               <option value="">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos</option>
@@ -126,9 +122,7 @@ function renderTablaUsuarios(usuarios) {
       <td>${avatarCell}</td>
       <td>${u.email}</td>
       <td>
-        <select data-id="${u.id_usuario}" onchange="cambiarRolInline(this)"
-          style="padding:.3rem .6rem; border:1px solid var(--border); border-radius:6px;
-                 font-size:.85rem; background:var(--surface); color:var(--text); cursor:pointer;">
+        <select data-id="${u.id_usuario}" onchange="cambiarRolInline(this)" class="select-sm" style="width:auto;">
           ${opcionesRol}
         </select>
       </td>

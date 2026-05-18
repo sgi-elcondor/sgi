@@ -82,7 +82,7 @@ window.cuotasView = async function() {
       <div class="table-header"><h3>Cuotas Pendientes</h3></div>
 
       <div class="table-filters"> 
-        <select id="f-proyecto" style="flex:1;min-width:150px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
+        <select id="f-proyecto" class="select-sm" style="flex:1;min-width:150px;">
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
@@ -90,7 +90,7 @@ window.cuotasView = async function() {
           style="flex:1;min-width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
         <input id="f-comprador" type="text" placeholder="Buscar comprador..."
           style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
-        <select id="f-estado" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
+        <select id="f-estado" class="select-sm" style="flex:1;min-width:140px;">
           <option value="">Todos los estados</option>
           ${optsEstado}
         </select>

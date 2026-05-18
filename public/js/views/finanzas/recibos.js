@@ -198,7 +198,7 @@ window.recibosView = async function() {
 
       ${grupos.length ? `
       <div class="table-filters">
-        <select id="rv-proyecto" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
+        <select id="rv-proyecto" class="select-sm" style="flex:1;min-width:160px;">
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>

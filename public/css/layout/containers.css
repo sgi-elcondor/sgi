@@ -317,29 +317,6 @@
     var(--accent-soft);
 }
 
-/* Scrollbar del contenedor principal */
-
-.view-container {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--accent-rgb), 0.45) transparent;
-}
-
-.view-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.view-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.view-container::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.45);
-  border-radius: 999px;
-}
-
-.view-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.7);
-}
 
 /* Responsive */
 

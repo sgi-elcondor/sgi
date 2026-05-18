@@ -84,7 +84,7 @@ window.ventasView = async function() {
         </div>
         <div class="form-group" style="margin:0;min-width:160px">
           <label style="font-size:.78rem;margin-bottom:2px">Estado</label>
-          <select id="fv_estado" onchange="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem">
+          <select id="fv_estado" onchange="_cargarVentasFiltro()" class="select-sm" style="width:auto;">
             <option value="">Todos los estados</option>
             ${ESTADOS.map(e => `<option value="${e}">${e.replace(/_/g," ")}</option>`).join("")}
           </select>
