@@ -8,15 +8,17 @@
   <meta name="description" content="Sistema de Gestión Inmobiliaria El Cóndor" />
   <meta name="theme-color" content="#ff6a00" />
 
-  <link rel="icon" href="/src/img/favicon_white.svg" type="image/svg+xml" />
+  <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
 
   <link
-    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;1,9..40,300&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
     rel="stylesheet"
   />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 
   <!-- Estilos principales -->
   <link rel="stylesheet" href="/css/style.css" />
@@ -32,10 +34,8 @@
   <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
     <div class="sidebar-brand">
       <div class="brand-brand">
-        <span class="brand-icon">
-          <img src="/src/img/favicon_white.svg" alt="Logo El Cóndor" class="brand-logo" />
-        </span>
-        <span class="brand-name">El Cóndor</span>
+        <img src="/src/img/brand_logo_black.svg" alt="Logo El Cóndor" class="brand-logo brand-logo-light" />
+        <img src="/src/img/brand_logo_white.svg" alt="Logo El Cóndor" class="brand-logo brand-logo-dark" />
       </div>
 
       <button
@@ -119,11 +119,19 @@
         <h2 class="modal-title" id="modalTitle"></h2>
 
         <button type="button" class="modal-close" id="modalClose" aria-label="Cerrar modal">
-          ✕
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
 
       <div class="modal-body" id="modalBody"></div>
+
+      <div class="modal-confirm" id="modalConfirm" hidden>
+        <span class="modal-confirm-message">¿Seguro que deseas salir? Los datos no guardados se perderán.</span>
+        <div class="modal-confirm-actions">
+          <button class="btn btn-ghost btn-sm" onclick="UI.cancelConfirm()">No, volver</button>
+          <button class="btn btn-danger btn-sm" onclick="UI.forceClose()">Sí, salir</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -184,6 +192,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script src="/js/components/avatar-cropper.js"></script>
 
   <script type="module" src="/js/app.js"></script>
 </body>

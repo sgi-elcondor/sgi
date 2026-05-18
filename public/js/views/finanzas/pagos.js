@@ -41,7 +41,7 @@
         <div onclick="_toggleGrupoFacturaPago('${key}')"
              style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
           <span>
-            <span id="pfg-arrow-${key}" style="display:inline-block;width:12px;font-size:.7rem;margin-right:4px">▶</span>
+            <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
             Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
           </span>
           <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
@@ -74,7 +74,7 @@
     if (!body) return;
     const open = body.style.display !== "none";
     body.style.display = open ? "none" : "block";
-    if (arrow) arrow.textContent = open ? "▶" : "▼";
+    if (arrow) arrow.innerHTML = open ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
   };
 
   window._filtrarFacturasPago = function() {
@@ -125,7 +125,7 @@
         <td>${g.proyecto !== "—" ? `${g.proyecto} · <strong>${g.codigo_lote}</strong>` : "—"}</td>
         <td style="text-align:center"><strong>${g.pagos.length}</strong></td>
         <td style="text-align:right">${UI.fmt(total)}</td>
-        <td><button class="btn btn-ghost btn-sm btn-ver-pagos">Ver →</button></td>
+        <td><button class="btn btn-ghost btn-sm btn-ver-pagos">Ver <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button></td>
       </tr>`;
     }
 
@@ -133,10 +133,10 @@
       <div class="table-wrap">
         <div class="table-header">
           <h3>Pagos por Venta</h3>
-          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm()">+ Registrar Pago</button>` : ""}
+          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 0 1rem">
-          <select id="pv-proyecto" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
+        <div class="table-filters">
+          <select id="pv-proyecto" class="select-sm" style="flex:1;min-width:160px;">
             <option value="">Todos los proyectos</option>
             ${optsProyecto}
           </select>
@@ -213,10 +213,10 @@
       <div class="table-wrap">
         <div class="table-header">
           <div style="display:flex;align-items:center;gap:10px">
-            <button class="btn btn-ghost btn-sm" onclick="_volverPagosView()">← Volver</button>
+            <button class="btn btn-ghost btn-sm" onclick="_volverPagosView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
             <h3>Pagos &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
           </div>
-          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm(${grupo.id_venta ?? "null"})">+ Registrar Pago</button>` : ""}
+          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm(${grupo.id_venta ?? "null"})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
         </div>
         <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:.88rem;display:flex;gap:24px;flex-wrap:wrap">
           <span><span style="color:var(--text-muted)">Cliente:</span> <strong>${grupo.comprador}</strong></span>
@@ -283,7 +283,7 @@
           </select>
         </div>
         <div class="form-group" style="grid-column:1/-1">
-          <label>Referencia</label>
+          <label>Referencia *</label>
           <input id="pf_ref" placeholder="Nro. comprobante o transacción">
         </div>
         <div class="form-group" style="grid-column:1/-1">
@@ -313,6 +313,7 @@
 
     if (!id_factura) return UI.toast("Seleccione una factura", "error");
     if (!fecha_pago) return UI.toast("Ingrese la fecha de pago", "error");
+    if (!referencia) return UI.toast("La referencia de pago es obligatoria", "error");
 
     const btn = document.getElementById("pf_btn_guardar");
     if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
@@ -343,7 +344,7 @@
           <p style="color:var(--text-muted);margin-bottom:16px">
             Selecciona la factura que deseas pagar y registra el comprobante.
           </p>
-          <button class="btn btn-primary" onclick="pagoForm()">+ Registrar Pago</button>
+          <button class="btn btn-primary" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>
         </div>
       </div>`;
   }

@@ -10,16 +10,22 @@ window.compradoresView = async function() {
     <div class="table-wrap">
       <div class="table-header">
         <h3>Compradores</h3>
-        ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()">+ Nuevo</button>` : ""}
+        ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>` : ""}
       </div>
       <table>
-        <thead><tr><th>Documento</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th></tr></thead>
-        <tbody>${data.map(c=>`<tr>
-          <td>${c.documento}</td><td>${c.tipo_persona}</td>
-          <td>${c.nombres} ${c.apellidos||""}</td>
-          <td>${c.telefono||"—"}</td><td>${c.mail||"—"}</td>
-          <td>${UI.badge(c.estado)}</td>
-        </tr>`).join("")}</tbody>
+        <thead><tr><th style="width:2.5rem"></th><th>Documento</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th></tr></thead>
+        <tbody>${data.map(c=>{
+          const av = c.photo_url
+            ? `<img src="${c.photo_url}" class="user-avatar-sm" alt="foto" />`
+            : `<div class="user-avatar-icon">${(c.nombres||"?")[0].toUpperCase()}</div>`;
+          return `<tr>
+            <td>${av}</td>
+            <td>${c.documento}</td><td>${c.tipo_persona}</td>
+            <td>${c.nombres} ${c.apellidos||""}</td>
+            <td>${c.telefono||"—"}</td><td>${c.mail||"—"}</td>
+            <td>${UI.badge(c.estado)}</td>
+          </tr>`;
+        }).join("")}</tbody>
       </table>
     </div>`;
 };

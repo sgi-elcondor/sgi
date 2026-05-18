@@ -71,6 +71,9 @@ exports.create = async (req, res) => {
     cuotas = [{ id_cuota: cf.id_cuota, valor_aplicado: Number(cf.cuota.valor_cuota) }];
   }
 
+  if (!referencia || !String(referencia).trim())
+    return res.status(400).json({ error: "La referencia de pago es obligatoria" });
+
   if (!cuotas || cuotas.length === 0)
     return res.status(400).json({ error: "Debe seleccionar una factura o cuota" });
 

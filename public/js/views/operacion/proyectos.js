@@ -44,7 +44,7 @@
             ? "Administra los proyectos y su inventario de lotes."
             : "Consulta los proyectos registrados y su relacion con los lotes disponibles.",
           meta:     `<span class="results-chip">${window.SGIUI.icon("building-2")} ${rows.length} proyecto(s)</span>`,
-          actions:  canCreate ? '<button class="btn btn-primary" id="btnNuevoProyecto">+ Nuevo proyecto</button>' : "",
+          actions:  canCreate ? '<button class="btn btn-primary" id="btnNuevoProyecto"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo proyecto</button>' : "",
         }) +
         '<section class="stats-grid">' +
         `<article class="stat-card"><div class="stat-label">Total proyectos</div><div class="stat-value">${fmt(rows.length)}</div><div class="stat-sub">Base actual registrada</div></article>` +

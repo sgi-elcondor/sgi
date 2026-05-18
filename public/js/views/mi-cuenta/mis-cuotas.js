@@ -157,7 +157,7 @@
 
     // ── Amortizacion ──────────────────────────────────────────────────────────
     if (soloAmortizacion) {
-      UI.openModal("Amortizacion total", `
+      UI.openModal("Abono a capital", `
         <div style="display:flex;flex-direction:column;gap:18px">
           <div class="form-group">
             <label>Valor del abono *</label>
@@ -324,7 +324,7 @@
         ${window.SGIUI?.pageHeader({
           kicker: "Mis cuotas", title: "Plan de pago",
           subtitle: `${venta.lote?.proyecto?.nombre || ""} · Lote ${venta.lote?.codigo_lote || ""}`,
-          actions: `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Amortizacion total</button>`,
+          actions: `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>`,
           meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
         }) ?? ""}
         <section class="table-wrap">

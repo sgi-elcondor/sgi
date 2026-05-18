@@ -9,6 +9,14 @@ const PORT = process.env.PORT || 3000;
 const { verificarToken }   = require('./middlewares/auth.middleware');
 const { verificarPermiso } = require('./middlewares/permisos.middleware');
 
+if (process.env.NODE_ENV === 'development') {
+  const livereload = require('livereload');
+  const connectLivereload = require('connect-livereload');
+  const lrServer = livereload.createServer();
+  lrServer.watch(path.join(__dirname, '..', 'public'));
+  app.use(connectLivereload());
+}
+
 // â”€â”€ Middlewares globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(cors());
 app.use(express.json());
