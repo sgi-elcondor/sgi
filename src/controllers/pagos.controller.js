@@ -138,6 +138,8 @@ exports.createAbonoExtraordinario = async (req, res) => {
     return res.status(400).json({ error: "metodo_pago es obligatorio" });
   }
 
+  const valorAbono = Number(valor_abono);
+
   const { data: cuotasPendientes, error: errorCuotas } = await supabase
     .schema(SCHEMA)
     .from("cuota")
@@ -156,15 +158,44 @@ exports.createAbonoExtraordinario = async (req, res) => {
     });
   }
 
+  let valorRestante = valorAbono;
+  const cuotasAfectadas = [];
+
+  for (const cuota of cuotasPendientes) {
+    if (valorRestante <= 0) break;
+
+    const valorCuota = Number(cuota.valor_cuota);
+    const valorAplicado = Math.min(valorRestante, valorCuota);
+    const cuotaQuedaPagada = valorAplicado >= valorCuota;
+
+    cuotasAfectadas.push({
+      id_cuota: cuota.id_cuota,
+      numero_cuota: cuota.numero_cuota,
+      valor_cuota: valorCuota,
+      valor_aplicado: valorAplicado,
+      estado_actual: cuota.estado,
+      estado_resultante: cuotaQuedaPagada ? "pagada" : "pendiente",
+    });
+
+    valorRestante -= valorAplicado;
+  }
+
+  const totalAplicado = cuotasAfectadas.reduce(
+    (total, cuota) => total + Number(cuota.valor_aplicado),
+    0
+  );
+
   return res.status(200).json({
-    message: "Endpoint de abono extraordinario activo",
+    message: "Vista previa del abono extraordinario generada correctamente",
     id_venta,
-    valor_abono: Number(valor_abono),
+    valor_abono: valorAbono,
+    total_aplicado: totalAplicado,
+    valor_sin_aplicar: valorRestante,
     fecha_pago,
     metodo_pago,
     referencia: referencia || null,
     cuotas_pendientes_encontradas: cuotasPendientes.length,
-    cuotas_pendientes: cuotasPendientes,
+    cuotas_afectadas: cuotasAfectadas,
   });
 };
 
