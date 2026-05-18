@@ -7,46 +7,23 @@
 }
 
 :root {
-  --bg: #f6f3ee;
-  --bg-elevated: #efe9e0;
-
-  --surface: rgba(255, 255, 255, 0.92);
-  --surface-2: #fffaf4;
-  --surface-3: #f5ede2;
-  --surface-focus: #fffdf9;
-
-  --border: #e7ddd1;
   --border-strong: #dccdbb;
+  --shadow-login: 0 24px 60px rgba(17, 17, 17, 0.12);
+  --shadow-login-soft: 0 12px 30px rgba(17, 17, 17, 0.08);
+}
 
-  --accent: #f97316;
-  --accent-hover: #ea580c;
-  --accent-deep: #d94f08;
-  --accent-rgb: 249, 115, 22;
-
-  --text: #1d1d1d;
-  --text-muted: #72675d;
-  --text-soft: #8f8377;
-  --text-on-accent: #ffffff;
-  --placeholder: #aa9f93;
-
-  --danger: #dc4d4d;
-  --danger-rgb: 220, 77, 77;
-  --success: #2fa56d;
-  --success-rgb: 47, 165, 109;
-
-  --font-serif: "DM Serif Display", Georgia, serif;
-  --font-sans: "DM Sans", system-ui, sans-serif;
-
-  --shadow: 0 24px 60px rgba(17, 17, 17, 0.12);
-  --shadow-soft: 0 12px 30px rgba(17, 17, 17, 0.08);
-  --ring: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
-  --transition: 0.22s ease;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --border-strong: #3a342e;
+    --shadow-login: 0 24px 60px rgba(0, 0, 0, 0.4);
+    --shadow-login-soft: 0 12px 30px rgba(0, 0, 0, 0.3);
+  }
 }
 
 html, body { min-height: 100%; }
 
 body {
-  min-height: 100vh;
+  min-height: 100vh;  
   display: grid;
   place-items: center;
   padding: 2rem 1.125rem;
@@ -55,22 +32,26 @@ body {
     linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
   color: var(--text);
   font-family: var(--font-sans);
+  font-weight: var(--font-sans-weight);
   overflow-x: hidden;
   position: relative;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: url("/src/img/favicon_white.svg") no-repeat left -5rem center / min(42vw, 32.5rem);
-  opacity: 0.08;
-  pointer-events: none;
-  filter: grayscale(1) contrast(0.9);
+.cracks-filter {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 
-.cracked-earth,
-svg[style*="position:absolute"] { display: none; }
+.cracked-earth {
+  position: fixed;
+  inset: 0;
+  background-color: var(--accent);
+  filter: url(#cracks);
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
+}
 
 .card {
   position: relative;
@@ -81,7 +62,7 @@ svg[style*="position:absolute"] { display: none; }
   border: 1px solid var(--border);
   border-radius: 1.5rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 250, 244, 0.94) 100%);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-login);
   backdrop-filter: blur(14px);
   animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -93,41 +74,18 @@ svg[style*="position:absolute"] { display: none; }
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  margin-bottom: 1.5rem;
+  justify-content: center;
+  margin-bottom: 1.75rem;
 }
 
-.brand-icon {
-  width: 3.375rem;
-  height: 3.375rem;
-  display: grid;
-  place-items: center;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
-  box-shadow: var(--shadow-soft);
-  flex-shrink: 0;
+.brand-logo-wrap {
+  display: block;
 }
 
-.brand-icon img {
-  width: 2.125rem;
-  height: 2.125rem;
+.brand-logo-img {
+  height: 2.75rem;
+  width: auto;
   object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
-.brand-name {
-  font-family: var(--font-serif);
-  font-size: 2rem;
-  line-height: 1;
-  color: var(--text);
-  letter-spacing: -0.02em;
-}
-
-.brand-sub {
-  margin-top: 0.25rem;
-  font-size: 0.9375rem;
-  color: var(--text-muted);
 }
 
 .tabs {
@@ -371,19 +329,37 @@ input:focus {
 @media (max-width: 35rem) {
   body { padding: 1.125rem 0.875rem; }
 
-  body::before {
-    background-position: center top;
-    background-size: 82vw;
-    opacity: 0.06;
-  }
-
   .card {
     padding: 1.5rem 1.25rem 1.25rem;
     border-radius: 1.25rem;
   }
 
-  .brand-name { font-size: 1.7rem; }
-  .brand-sub  { font-size: 0.84rem; }
+  .brand-logo-img { height: 2.25rem; }
   .tabs { margin-bottom: 1.25rem; }
   .tab-btn { font-size: 0.875rem; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: linear-gradient(180deg, rgba(32, 29, 26, 0.96) 0%, rgba(40, 36, 32, 0.94) 100%);
+    border-color: var(--border);
+  }
+
+  input {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  input::placeholder { color: var(--placeholder); }
+
+  .btn-google {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .btn-google:hover:not(:disabled) {
+    background: var(--surface-3);
+  }
 }

@@ -8,19 +8,36 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/base/tokens.css" />
   <link rel="stylesheet" href="/css/views/login.css" />
 </head>
 <body>
 
+<div class="cracked-earth"></div>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" class="cracks-filter" aria-hidden="true">
+  <filter id="cracks">
+    <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="5" seed="10" result="noise"></feTurbulence>
+    <feColorMatrix type="luminanceToAlpha" in="noise" result="alphaNoise"></feColorMatrix>
+    <feComponentTransfer in="alphaNoise" result="plates">
+      <feFuncA type="discrete" tableValues="0 1"></feFuncA>
+    </feComponentTransfer>
+    <feConvolveMatrix order="3 3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" in="plates" result="edges"></feConvolveMatrix>
+    <feComponentTransfer in="edges" result="invertedEdges">
+      <feFuncR type="table" tableValues="1 0"></feFuncR>
+      <feFuncG type="table" tableValues="1 0"></feFuncG>
+      <feFuncB type="table" tableValues="1 0"></feFuncB>
+    </feComponentTransfer>
+    <feFlood flood-color="#f97316" result="bgColor"></feFlood>
+    <feComposite operator="in" in="bgColor" in2="invertedEdges"></feComposite>
+  </filter>
+</svg>
+
 <div class="card">
   <div class="brand">
-    <span class="brand-icon">
-      <img src="/src/img/favicon_white.svg" alt="El Cóndor" />
-    </span>
-    <div>
-      <div class="brand-name">El Cóndor</div>
-      <div class="brand-sub">Sistema de Gestión Inmobiliaria</div>
-    </div>
+    <picture class="brand-logo-wrap">
+      <source srcset="/src/img/brand_logo_white.svg" media="(prefers-color-scheme: dark)" />
+      <img src="/src/img/brand_logo_black.svg" alt="El Cóndor" class="brand-logo-img" />
+    </picture>
   </div>
 
   <div class="tabs" id="tabs-principales">
