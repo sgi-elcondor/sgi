@@ -401,3 +401,63 @@
 .ump-action:hover {
   transform: translateX(2px);
 }
+
+/* ── Role view switcher (admin only) ── */
+
+.role-view-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  background:
+    radial-gradient(circle at top, rgba(var(--accent-rgb), 0.1), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.role-view-switcher:focus-within {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
+.rvs-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.rvs-icon svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.rvs-select {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  min-width: 8rem;
+  max-width: 13rem;
+  letter-spacing: -0.01em;
+}
+
+.rvs-select option {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}

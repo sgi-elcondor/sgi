@@ -1,4 +1,6 @@
-﻿function _pvFmt(amount) {
+(function () {
+
+function _pvFmt(amount) {
   if (amount === null || amount === undefined) return '--';
   return new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', minimumFractionDigits:0 }).format(Math.abs(amount));
 }
@@ -20,9 +22,10 @@ function _pvMatchIcon(m) {
 }
 
 window.paymentValidationView = async function() {
-  const vc = document.getElementById('viewContainer');
-  vc.innerHTML = UI.loader();
-  const matches = await API.get('/pagos/contrast').catch(e => {
+  const vc       = document.getElementById('viewContainer');
+  const canWrite = AppState.can('validacion_pagos', 'crear');
+  vc.innerHTML   = UI.loader();
+  const matches  = await API.get('/pagos/contrast').catch(e => {
     vc.innerHTML = `<p style="color:var(--danger);padding:20px">${e.message}</p>`; return null;
   });
   if (!matches) return;
@@ -45,14 +48,15 @@ window.paymentValidationView = async function() {
             <h3>Validacion de Pagos</h3>
             <p style="color:var(--text-muted);font-size:13px;margin:2px 0 0">${matches.length} coincidencia(s) encontrada(s)</p>
           </div>
-          <button class="btn btn-primary" onclick="pvAcceptSelected()">Aceptar pagos seleccionados</button>
+          ${canWrite ? `<button class="btn btn-primary" onclick="pvAcceptSelected()">Aceptar pagos seleccionados</button>` : ""}
         </div>
       </div>
       <div class="pv-cards" id="pv-cards-container">${matches.map((m, i) => _pvCard(m, i)).join('')}</div>
+      ${canWrite ? `
       <div class="pv-footer">
         <button class="btn btn-primary btn-lg" onclick="pvAcceptSelected()">Aceptar pagos seleccionados</button>
         <span id="pv-accept-count" style="color:var(--text-muted);font-size:13px"></span>
-      </div>
+      </div>` : ""}
     </div>`;
   _pvUpdateCount();
 };
@@ -195,3 +199,4 @@ window.pvAcceptSelected = async function() {
     window.SGIUI?.toast(e.message, 'error', 'Error');
   }
 };
+})();

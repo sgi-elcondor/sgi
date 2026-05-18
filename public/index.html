@@ -86,6 +86,11 @@
       </div>
 
       <div class="topbar-actions">
+        <div class="role-view-switcher" id="roleViewSwitcher" style="display:none" aria-label="Simular vista de rol">
+          <span class="rvs-icon"><i data-lucide="eye"></i></span>
+          <select id="roleViewSelect" class="rvs-select" aria-label="Vista de rol"></select>
+        </div>
+
         <div class="user-menu" id="userMenu">
           <button
             type="button"
@@ -142,26 +147,40 @@
 
   <script src="/js/api.js"></script>
   <script src="/js/ui.js"></script>
+  <script src="/js/state.js"></script>
 
   <script src="/js/views/dashboard.js"></script>
-  <script src="/js/views/proyectos.js"></script>
-  <script src="/js/views/lotes.js"></script>
-  <script src="/js/views/compradores.js"></script>
-  <script src="/js/views/ventas.js"></script>
-  <script src="/js/views/cuotas.js"></script>
-  <script src="/js/views/pagos.js"></script>
-  <script src="/js/views/comisionistas.js"></script>
-  <script src="/js/views/facturas.js"></script>
-  <script src="/js/views/recibos.js"></script>
-  <script src="/js/views/reportes.js"></script>
-  <script src="/js/views/alertas.js"></script>
-  <script src="/js/views/juridico.js"></script>
-  <script src="/js/views/personal.js"></script>
-  <script src="/js/views/usuarios.js"></script>
-  <script src="/js/views/roles.js"></script>
-  <script src="/js/views/bank_transactions.js"></script>
-  <script src="/js/views/payment_validation.js"></script>
-  <script src="/js/views/comprador.js"></script>
+
+  <!-- Operacion -->
+  <script src="/js/views/operacion/proyectos.js"></script>
+  <script src="/js/views/operacion/lotes.js"></script>
+  <script src="/js/views/operacion/compradores.js"></script>
+  <script src="/js/views/operacion/ventas.js"></script>
+
+  <!-- Finanzas -->
+  <script src="/js/views/finanzas/cuotas.js"></script>
+  <script src="/js/views/finanzas/pagos.js"></script>
+  <script src="/js/views/finanzas/comisionistas.js"></script>
+  <script src="/js/views/finanzas/facturas.js"></script>
+  <script src="/js/views/finanzas/recibos.js"></script>
+  <script src="/js/views/finanzas/gastos.js"></script>
+  <script src="/js/views/finanzas/transacciones.js"></script>
+  <script src="/js/views/finanzas/validacion-pagos.js"></script>
+
+  <!-- Control -->
+  <script src="/js/views/control/reportes.js"></script>
+  <script src="/js/views/control/alertas.js"></script>
+  <script src="/js/views/control/auditoria.js"></script>
+  <script src="/js/views/control/personal.js"></script>
+  <script src="/js/views/control/usuarios.js"></script>
+  <script src="/js/views/control/permisos.js"></script>
+
+  <!-- Juridico -->
+  <script src="/js/views/juridico/juridico.js"></script>
+
+  <!-- Mi cuenta -->
+  <script src="/js/views/mi-cuenta/mis-cuotas.js"></script>
+  <script src="/js/views/mi-cuenta/mis-recibos.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>

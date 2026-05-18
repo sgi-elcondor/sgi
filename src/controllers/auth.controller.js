@@ -21,11 +21,15 @@ async function registrarUsuario(req, res) {
 
 async function miPerfil(req, res) {
   const { email, rol, id_comprador, id_comisionista, permisos } = req.usuario;
-  const vistas = [...permisos]
-    .filter(p => p.startsWith('vista:'))
-    .map(p => p.replace('vista:', ''));
-  let profileData = {};
 
+  const vistas = [];
+  const can = [];
+  for (const p of permisos) {
+    if (p.startsWith('vista:')) vistas.push(p.slice(6));
+    else can.push(p);
+  }
+
+  let profileData = {};
   try {
     if (rol === 'comprador' && id_comprador) {
       const { data } = await supabase.schema('condor').from('comprador')
@@ -42,22 +46,24 @@ async function miPerfil(req, res) {
     }
   } catch (_) {}
 
-  return res.json({ email, rol, id_comprador, id_comisionista, vistas, ...profileData });
+  return res.json({ email, rol, id_comprador, id_comisionista, vistas, can, ...profileData });
 }
 
 async function completarPerfil(req, res) {
   const { rol, email, id_comprador, id_comisionista } = req.usuario;
-  const { documento, nombres, apellidos, telefono } = req.body;
+  const { documento, nombres, apellidos, telefono, tipo } = req.body;
 
-  if (rol !== 'comprador' && rol !== 'comisionista') {
+  const tipoEfectivo = rol === 'admin' ? tipo : rol;
+
+  if (tipoEfectivo !== 'comprador' && tipoEfectivo !== 'comisionista') {
     return res.status(400).json({ error: 'Este endpoint solo aplica para compradores y comisionistas' });
   }
 
-  if (rol === 'comprador' && id_comprador) {
+  if (tipoEfectivo === 'comprador' && id_comprador) {
     return res.status(400).json({ error: 'Este usuario ya tiene un comprador vinculado' });
   }
 
-  if (rol === 'comisionista' && id_comisionista) {
+  if (tipoEfectivo === 'comisionista' && id_comisionista) {
     return res.status(400).json({ error: 'Este usuario ya tiene un comisionista vinculado' });
   }
 
@@ -66,7 +72,7 @@ async function completarPerfil(req, res) {
   }
 
   try {
-    if (rol === 'comprador') {
+    if (tipoEfectivo === 'comprador') {
       const { data: existente } = await supabase
         .schema('condor')
         .from('comprador')
@@ -96,7 +102,7 @@ async function completarPerfil(req, res) {
       return res.json({ ok: true, id_comprador: comprador.id_comprador });
     }
 
-    if (rol === 'comisionista') {
+    if (tipoEfectivo === 'comisionista') {
       const { data: existente } = await supabase
         .schema('condor')
         .from('comisionista')

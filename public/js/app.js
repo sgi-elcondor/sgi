@@ -2,16 +2,12 @@
 
 const VIEWS = {
   dashboard:          { fn: "dashboardView",       title: "Panel de control" },
-  "proyectos-read":   { fn: "proyectosReadView",   title: "Proyectos" },
-  "proyectos-edit":   { fn: "proyectosEditView",   title: "Proyectos" },
-  "lotes-read":       { fn: "lotesReadView",       title: "Lotes" },
-  "lotes-edit":       { fn: "lotesEditView",       title: "Lotes" },
+  proyectos:           { fn: "proyectosView",        title: "Proyectos" },
+  lotes:               { fn: "lotesView",            title: "Lotes" },
   compradores:        { fn: "compradoresView",      title: "Compradores" },
   ventas:             { fn: "ventasView",           title: "Ventas" },
   cuotas:             { fn: "cuotasView",           title: "Cuotas" },
-  "pagos-read":       { fn: "pagosReadView",        title: "Pagos" },
-  "pagos-upload":     { fn: "pagosUploadView",      title: "Pagos" },
-  "pagos-edit":       { fn: "pagosEditView",        title: "Pagos" },
+  pagos:               { fn: "pagosView",             title: "Pagos" },
   comisionistas:      { fn: "comisionistasView",    title: "Comisionistas" },
   facturas:           { fn: "facturasView",         title: "Facturas" },
   recibos:            { fn: "recibosView",          title: "Recibos" },
@@ -21,11 +17,12 @@ const VIEWS = {
   juridico:           { fn: "juridicoView",         title: "Seguimiento Juridico" },
   personal:           { fn: "personalView",         title: "Personal" },
   usuarios:           { fn: "usuariosView",         title: "Gestion de Usuarios" },
-  roles:              { fn: "rolesView",            title: "Roles y Permisos" },
+  roles:              { fn: "rolesView",            title: "Permisos" },
   "mis-cuotas":        { fn: "compradorCuotasView",   title: "Mis Cuotas" },
   "mis-recibos":       { fn: "compradorRecibosView",  title: "Mis Recibos" },
   "bank-transactions": { fn: "bankTransactionsView", title: "Transacciones Bancarias" },
   "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
+  gastos:              { fn: "gastosView",            title: "Gastos Operativos" },
 };
 
 const SIDEBAR_GROUPS = [
@@ -33,23 +30,20 @@ const SIDEBAR_GROUPS = [
     { view: "dashboard",      icon: "layout-dashboard", label: "Panel" },
   ]},
   { label: "Operacion", items: [
-    { view: "proyectos-read", icon: "building-2",    label: "Proyectos" },
-    { view: "proyectos-edit", icon: "building-2",    label: "Proyectos (gestion)" },
-    { view: "lotes-read",     icon: "map",           label: "Lotes" },
-    { view: "lotes-edit",     icon: "map",           label: "Lotes (gestion)" },
-    { view: "compradores",    icon: "users",         label: "Compradores" },
-    { view: "ventas",         icon: "briefcase",     label: "Ventas" },
+    { view: "proyectos",  icon: "building-2",    label: "Proyectos" },
+    { view: "lotes",      icon: "map",           label: "Lotes" },
+    { view: "compradores",icon: "users",         label: "Compradores" },
+    { view: "ventas",     icon: "briefcase",     label: "Ventas" },
   ]},
   { label: "Finanzas", items: [
-    { view: "cuotas",         icon: "calendar",      label: "Cuotas" },
-    { view: "pagos-read",     icon: "wallet",        label: "Pagos" },
-    { view: "pagos-upload",   icon: "wallet",        label: "Mis pagos" },
-    { view: "pagos-edit",     icon: "wallet",        label: "Pagos (gestion)" },
-    { view: "comisionistas",  icon: "percent",       label: "Comisionistas" },
-    { view: "facturas",       icon: "receipt",       label: "Facturas" },
-    { view: "recibos",        icon: "file-text",     label: "Recibos" },
+    { view: "cuotas",             icon: "calendar",      label: "Cuotas" },
+    { view: "pagos",              icon: "wallet",        label: "Pagos" },
+    { view: "comisionistas",      icon: "percent",       label: "Comisionistas" },
+    { view: "facturas",           icon: "receipt",       label: "Facturas" },
+    { view: "recibos",            icon: "file-text",     label: "Recibos" },
     { view: "bank-transactions",  icon: "landmark",      label: "Transacciones" },
     { view: "payment-validation", icon: "shield-check",  label: "Validar pagos" },
+    { view: "gastos",             icon: "trending-down", label: "Gastos" },
   ]},
   { label: "Mi cuenta", items: [
     { view: "mis-cuotas",  icon: "calendar",   label: "Mis Cuotas" },
@@ -61,7 +55,7 @@ const SIDEBAR_GROUPS = [
     { view: "auditoria",      icon: "shield-check",  label: "Auditoria" },
     { view: "personal",       icon: "users",         label: "Personal" },
     { view: "usuarios",       icon: "settings",      label: "Usuarios" },
-    { view: "roles",          icon: "lock",          label: "Roles" },
+    { view: "roles",          icon: "shield-check",  label: "Permisos" },
   ]},
   { label: "Juridico", items: [
     { view: "juridico",       icon: "scale",         label: "Seguimiento Juridico" },
@@ -70,16 +64,12 @@ const SIDEBAR_GROUPS = [
 
 const TOPBAR_SUBTITLES = {
   dashboard:          "Centro de operacion inmobiliaria",
-  "proyectos-read":   "Consulta de proyectos",
-  "proyectos-edit":   "Gestion de proyectos",
-  "lotes-read":       "Inventario de lotes",
-  "lotes-edit":       "Inventario y comercializacion de lotes",
+  proyectos:          "Gestion e inventario de proyectos",
+  lotes:              "Inventario y comercializacion de lotes",
   compradores:        "Administracion de compradores",
   ventas:             "Seguimiento del proceso comercial",
   cuotas:             "Control de obligaciones y vencimientos",
-  "pagos-read":       "Consulta de pagos registrados",
-  "pagos-upload":     "Registro de comprobantes de pago",
-  "pagos-edit":       "Registro y aplicacion de pagos",
+  pagos:              "Registro, consulta y aplicacion de pagos",
   comisionistas:      "Seguimiento de comisiones",
   facturas:           "Emision y control de facturas",
   recibos:            "Consulta de recibos",
@@ -88,16 +78,19 @@ const TOPBAR_SUBTITLES = {
   auditoria:          "Trazabilidad y control interno",
   personal:           "Distribucion de usuarios activos por rol en la plataforma",
   usuarios:           "Administracion de accesos y roles",
-  roles:              "Configuracion de roles y permisos",
+  roles:              "Que puede ver y hacer cada rol del sistema",
   "mis-cuotas":        "Consulta y pago de tus cuotas",
   "mis-recibos":       "Recibos de pago emitidos a tu nombre",
   "bank-transactions": "Registro de movimientos bancarios",
   "payment-validation":"Contraste y aprobacion de pagos",
+  gastos:              "Registro y control de gastos operativos por proyecto",
   juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
 };
 
 window.currentUser    = null;
 window.currentViewKey = "dashboard";
+
+const ROLE_VIEW_STORAGE_KEY = "sgi_view_as";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -180,8 +173,7 @@ function navigate(viewKey, updateHash) {
   const vc   = document.getElementById("viewContainer");
   if (!view) return;
 
-  const permitidas = window.currentUser?.vistas ?? [];
-  if (!permitidas.includes(viewKey)) {
+  if (!AppState.hasVista(viewKey)) {
     setActiveNav(viewKey);
     setViewTitle(view.title, viewKey);
     if (vc) vc.innerHTML = renderAccessDenied();
@@ -221,23 +213,17 @@ function navigate(viewKey, updateHash) {
 
 // â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const SIDEBAR_ALLOWLIST_BY_ROLE = {
-  gerencia: new Set(['dashboard', 'reportes', 'alertas', 'auditoria', 'personal']),
-};
-
-function renderSidebar(vistas, rol) {
+function renderSidebar(vistas) {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
-  const allowlist = SIDEBAR_ALLOWLIST_BY_ROLE[rol] || null;
-  const allowed   = new Set(vistas || []);
+  const allowed = new Set(vistas || []);
   let html = "";
   let firstGroup = true;
 
   SIDEBAR_GROUPS.forEach(function(group) {
     const visible = group.items.filter(function(item) {
-      if (!allowed.has(item.view)) return false;
-      return allowlist ? allowlist.has(item.view) : true;
+      return allowed.has(item.view);
     });
     if (!visible.length) return;
 
@@ -553,6 +539,173 @@ function mostrarOnboarding(perfil, firebaseUser) {
 
 // â”€â”€ App init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// ── Role view switcher ────────────────────────────────────────────────────────────────────────────
+
+function revertRoleSelect() {
+  const select = document.getElementById("roleViewSelect");
+  if (select) select.value = "admin";
+  sessionStorage.setItem(ROLE_VIEW_STORAGE_KEY, "admin");
+  applyAdminView();
+}
+
+function applyAdminView() {
+  const perfil = window.currentUser;
+  window.currentUser.vistas = perfil._originalVistas.slice();
+  AppState.restore(perfil);
+  renderSidebar(perfil._originalVistas);
+  navigate(window.currentViewKey || "dashboard");
+}
+
+function applyRoleView(idRol, rolNombre) {
+  if (rolNombre === "comprador" && !window.currentUser.id_comprador) {
+    showLinkProfileModal("comprador", function() { applyRoleView(idRol, rolNombre); }, revertRoleSelect);
+    return;
+  }
+  if (rolNombre === "comisionista" && !window.currentUser.id_comisionista) {
+    showLinkProfileModal("comisionista", function() { applyRoleView(idRol, rolNombre); }, revertRoleSelect);
+    return;
+  }
+
+  API.get("/roles/" + idRol + "/permisos").then(function(data) {
+    const vistas = data.vistas || [];
+    window.currentUser.vistas = vistas;
+    AppState.simulate(vistas, data.can || []);
+    renderSidebar(vistas);
+    const cur  = window.currentViewKey || "dashboard";
+    const next = vistas.includes(cur) ? cur : (vistas[0] || "dashboard");
+    navigate(next);
+  }).catch(function(err) {
+    console.error("Error fetching role vistas:", err);
+  });
+}
+
+function showLinkProfileModal(tipo, onSuccess, onCancel) {
+  const existing = document.getElementById("link-profile-overlay");
+  if (existing) existing.remove();
+
+  const tipoLabel    = tipo === "comprador" ? "Comprador" : "Comisionista";
+  const fieldStyle   = "width:100%;padding:.5rem .75rem;border:1px solid var(--border,#ddd);border-radius:8px;box-sizing:border-box;background:var(--surface);color:var(--text);font-family:inherit;font-size:.9rem;";
+  const disabledStyle = fieldStyle + "background:var(--surface-2,#f5f5f5);color:var(--text-muted,#888);";
+  const labelStyle   = "display:block;font-size:.85rem;margin-bottom:.3rem;font-weight:500;";
+
+  const overlay = document.createElement("div");
+  overlay.id = "link-profile-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;";
+
+  overlay.innerHTML =
+    '<div style="background:var(--surface,#fff);border-radius:1rem;padding:2rem;width:min(480px,94vw);box-shadow:0 8px 32px rgba(0,0,0,.28)">' +
+    '<h2 style="margin:0 0 .5rem;font-size:1.2rem;font-family:var(--font-serif)">Vincular perfil de ' + tipoLabel + '</h2>' +
+    '<p style="margin:0 0 1.5rem;color:var(--text-muted,#666);font-size:.875rem;line-height:1.55">Para simular la vista de <strong>' + tipoLabel + '</strong> necesitas un perfil vinculado a tu cuenta de admin.</p>' +
+    '<div style="display:grid;gap:.875rem">' +
+    '<div><label style="' + labelStyle + '">Correo electronico</label>' +
+    '<input type="email" value="' + (window.currentUser?.email || "") + '" disabled style="' + disabledStyle + '" /></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">' +
+    '<div><label style="' + labelStyle + '">Nombres <span style="color:var(--danger,red)">*</span></label>' +
+    '<input id="lp-nombres" type="text" placeholder="Nombres" style="' + fieldStyle + '" /></div>' +
+    '<div><label style="' + labelStyle + '">Apellidos <span style="color:var(--danger,red)">*</span></label>' +
+    '<input id="lp-apellidos" type="text" placeholder="Apellidos" style="' + fieldStyle + '" /></div>' +
+    '</div>' +
+    '<div><label style="' + labelStyle + '">Cedula <span style="color:var(--danger,red)">*</span></label>' +
+    '<input id="lp-documento" type="text" placeholder="Ej: 1234567890" style="' + fieldStyle + '" /></div>' +
+    '<div><label style="' + labelStyle + '">Telefono <span style="color:var(--text-muted,#888);font-weight:400">(opcional)</span></label>' +
+    '<input id="lp-telefono" type="tel" placeholder="Ej: 3001234567" style="' + fieldStyle + '" /></div>' +
+    '<div id="lp-error" style="display:none;color:var(--danger,red);font-size:.85rem"></div>' +
+    '<button id="lp-submit" class="btn btn-primary" style="width:100%;margin-top:.25rem">Guardar y continuar</button>' +
+    '<button id="lp-cancel" style="width:100%;padding:.6rem;border:1px solid var(--border,#ddd);border-radius:.5rem;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:.875rem;font-weight:500">Cancelar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+  window.SGIUI?.hydrate();
+
+  document.getElementById("lp-cancel").addEventListener("click", function() {
+    overlay.remove();
+    onCancel();
+  });
+
+  document.getElementById("lp-submit").addEventListener("click", async function() {
+    const nombres   = document.getElementById("lp-nombres").value.trim();
+    const apellidos = document.getElementById("lp-apellidos").value.trim();
+    const documento = document.getElementById("lp-documento").value.trim();
+    const telefono  = document.getElementById("lp-telefono").value.trim();
+    const errorEl   = document.getElementById("lp-error");
+    const btn       = document.getElementById("lp-submit");
+
+    if (!nombres || !apellidos || !documento) {
+      errorEl.textContent = "Nombres, apellidos y cedula son obligatorios.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    errorEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+
+    try {
+      const result = await API.post("/auth/completar-perfil", {
+        nombres, apellidos, documento,
+        telefono: telefono || undefined,
+        tipo,
+      });
+      if (tipo === "comprador")    window.currentUser.id_comprador    = result.id_comprador;
+      if (tipo === "comisionista") window.currentUser.id_comisionista = result.id_comisionista;
+      overlay.remove();
+      onSuccess();
+    } catch (err) {
+      errorEl.textContent = err.message || "Error al guardar.";
+      errorEl.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Guardar y continuar";
+    }
+  });
+}
+
+function initRoleViewSwitcher(perfil) {
+  if (perfil.rol !== "admin") return;
+
+  const container = document.getElementById("roleViewSwitcher");
+  if (!container) return;
+  container.style.display = "";
+
+  API.get("/roles").then(function(roles) {
+    const select = document.getElementById("roleViewSelect");
+    if (!select) return;
+
+    select.innerHTML = '<option value="admin">Vista Admin</option>';
+    roles.forEach(function(r) {
+      if (r.nombre === "admin") return;
+      const opt          = document.createElement("option");
+      opt.value          = r.id_rol;
+      opt.dataset.nombre = r.nombre;
+      opt.textContent    = humanizeRole(r.nombre);
+      select.appendChild(opt);
+    });
+
+    const saved = sessionStorage.getItem(ROLE_VIEW_STORAGE_KEY);
+    if (saved && saved !== "admin") {
+      select.value = saved;
+      if (select.value === saved) {
+        const opt    = select.options[select.selectedIndex];
+        const nombre = opt.dataset.nombre;
+        applyRoleView(Number(saved), nombre);
+      }
+    }
+
+    select.addEventListener("change", function() {
+      const val = this.value;
+      sessionStorage.setItem(ROLE_VIEW_STORAGE_KEY, val);
+      if (val === "admin") {
+        applyAdminView();
+      } else {
+        const opt    = this.options[this.selectedIndex];
+        const nombre = opt.dataset.nombre;
+        applyRoleView(Number(val), nombre);
+      }
+    });
+  }).catch(function(err) {
+    console.error("Error loading roles for switcher:", err);
+  });
+}
+
 function getInitialView() {
   const hash = window.location.hash.replace("#", "").trim();
   return VIEWS[hash] ? hash : "dashboard";
@@ -591,13 +744,16 @@ async function iniciarApp() {
   try {
     const perfil = await API.get("/auth/perfil");
     window.currentUser = perfil;
+    AppState.init(perfil);
 
     const necesitaOnboarding =
       (perfil.rol === "comprador"    && !perfil.id_comprador) ||
       (perfil.rol === "comisionista" && !perfil.id_comisionista);
 
+    window.currentUser._originalVistas = perfil.vistas.slice();
+
     if (necesitaOnboarding) {
-      renderSidebar(perfil.vistas, perfil.rol);
+      renderSidebar(perfil.vistas);
       initUserMenu(perfil);
       window.SGIUI?.hydrate();
       initSidebarToggle();
@@ -605,8 +761,9 @@ async function iniciarApp() {
       return;
     }
 
-    renderSidebar(perfil.vistas, perfil.rol);
+    renderSidebar(perfil.vistas);
     initUserMenu(perfil);
+    initRoleViewSwitcher(perfil);
     initSidebarToggle();
     window.SGIUI?.hydrate();
     setTodayDate();

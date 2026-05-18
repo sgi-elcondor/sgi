@@ -1,3 +1,5 @@
+(function () {
+
 function _fNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
@@ -189,9 +191,7 @@ window.facturasView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
 
-  const rol = window.currentUser?.rol;
-  const esAuxiliar = rol === "auxiliar_contable";
-  const puedeEscribir = esAuxiliar || rol === "admin";
+  const puedeEscribir = AppState.can('facturas', 'crear');
 
   const [data, sinFactura] = await Promise.all([
     API.get("/facturas").catch(e => {
@@ -382,7 +382,7 @@ window.facturasView = async function() {
 // ── Vista detalle: facturas de una venta ─────────────────────────────────────
 window.facturasDeVentaView = function(grupo) {
   const vc = document.getElementById("viewContainer");
-  const esAuxiliar = window.currentUser?.rol === "auxiliar_contable";
+  const esAuxiliar = AppState.can('facturas', 'crear');
 
   function filaFactura(f) {
     return `<tr>
@@ -554,3 +554,5 @@ window.anularFactura = async function(id) {
     UI.toast(e.message, "error");
   }
 };
+
+})();
