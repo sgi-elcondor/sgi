@@ -1,6 +1,35 @@
 ﻿const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 
+exports.uploadAvatar = (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No se recibio ningun archivo" });
+
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(req.file.mimetype)) {
+    return res.status(400).json({ error: "Formato no permitido. Use JPG, PNG o WebP" });
+  }
+
+  const MAX_BYTES = 5 * 1024 * 1024;
+  if (req.file.size > MAX_BYTES) {
+    return res.status(400).json({ error: "El archivo supera el limite de 5 MB" });
+  }
+
+  const uploadStream = cloudinary.uploader.upload_stream(
+    {
+      folder:          "sgi/avatars",
+      resource_type:   "image",
+      allowed_formats: ["jpg", "png", "webp"],
+      transformation:  [{ width: 400, height: 400, crop: "scale" }, { quality: "auto:good", fetch_format: "webp" }],
+    },
+    (err, result) => {
+      if (err) return res.status(500).json({ error: "Error al subir imagen: " + err.message });
+      res.json({ url: result.secure_url, public_id: result.public_id });
+    }
+  );
+
+  streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+};
+
 exports.uploadBaucher = (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No se recibio ningun archivo" });
 

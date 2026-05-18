@@ -2,6 +2,7 @@ let _repChartRecaudo  = null;
 let _repChartCartera  = null;
 let _repChartVentas   = null;
 let _repChartVenc     = null;
+let _repComisionesAll = [];
 
 function _destroyRepCharts() {
   if (_repChartRecaudo) { _repChartRecaudo.destroy();  _repChartRecaudo  = null; }
@@ -18,7 +19,7 @@ window.reportesView = async function () {
   try {
     const mesActual = new Date().toISOString().slice(0, 7);
 
-    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesDetalle] = await Promise.all([
+    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesJefe] = await Promise.all([
       API.get("/cuotas/vencidas").catch(() => []),
       API.get("/cuotas/pendientes").catch(() => []),
       API.get("/pagos").catch(() => []),
@@ -27,8 +28,10 @@ window.reportesView = async function () {
       API.get("/reportes/recaudo").catch(() => []),
       API.get("/lotes").catch(() => []),
       API.get("/reportes/comisiones").catch(() => null),
-      API.get("/comisionistas/comisiones").catch(() => []),
+      API.get("/reportes/comisiones-jefe").catch(() => []),
     ]);
+
+    _repComisionesAll = comisionesJefe || [];
 
     const ventasActivas = todasVentas.filter(v => v.estado === "activa").length;
     const casosMora     = todasVentas.filter(v => ["mora", "pre_mora", "devolucion"].includes(v.estado)).length;
@@ -83,7 +86,7 @@ window.reportesView = async function () {
           return n > 0 ? `${n} pago${n > 1 ? "s" : ""} aceptado${n > 1 ? "s" : ""} en ${mesActual}` : `Sin pagos aceptados en ${mesActual}`;
         })(),
         tone: totalRecaudado > 0 ? "success" : "muted",
-        nav:  "pagos-read",
+        nav:  "pagos",
       },
       {
         icon:  "briefcase",
@@ -107,7 +110,7 @@ window.reportesView = async function () {
         value: `${cumplimiento.toFixed(1)}%`,
         meta:  "Recaudado vs facturado en el periodo",
         tone:  toneCumplimiento,
-        nav:   "pagos-read",
+        nav:   "pagos",
       },
       {
         icon:  "calendar-x",
@@ -129,17 +132,16 @@ window.reportesView = async function () {
       },
     ];
 
-    const vistas    = window.currentUser?.vistas ?? [];
-    const canPagos  = vistas.includes("pagos-read");
-    const canVentas = vistas.includes("ventas");
-    const canCuotas = vistas.includes("cuotas");
+    const canPagos  = AppState.hasVista("pagos");
+    const canVentas = AppState.hasVista("ventas");
+    const canCuotas = AppState.hasVista("cuotas");
 
     const chartCards = [
       {
         id:    "repChartRecaudo",
         title: "Recaudo mensual",
         sub:   "Pagos aceptados en los ultimos 12 meses",
-        nav:   canPagos ? "pagos-read" : null,
+        nav:   canPagos ? "pagos" : null,
       },
       {
         id:    "repChartVentas",
@@ -186,9 +188,9 @@ window.reportesView = async function () {
               const { bg, color } = ESTADO_COLORS[e] || ESTADO_COLORS.bloqueado;
               return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;background:${bg};color:${color}">${info.estados[e]} ${e}</span>`;
             }).join("");
-            const canNavLotes = vistas.includes("lotes-read");
+            const canNavLotes = AppState.hasVista("lotes");
             return `
-              <article class="rep-proy-card${canNavLotes ? " rep-proy-card--link" : ""}" ${canNavLotes ? `onclick="window.navigate('lotes-read')"` : ""}>
+              <article class="rep-proy-card${canNavLotes ? " rep-proy-card--link" : ""}" ${canNavLotes ? `onclick="window.navigate('lotes')"` : ""}>
                 <div class="rep-proy-name">${nombre}</div>
                 <div class="rep-proy-total">${info.total} lote${info.total !== 1 ? "s" : ""}</div>
                 <div class="rep-proy-bar">${barItems}</div>
@@ -202,7 +204,7 @@ window.reportesView = async function () {
         <div class="rep-kpi-grid">
           ${kpis.map(k => {
             const t       = TONES[k.tone];
-            const canNav  = vistas.includes(k.nav);
+            const canNav  = k.nav && AppState.hasVista(k.nav);
             return `
               <article class="rep-kpi-card${canNav ? " rep-kpi-card--link" : ""}" ${canNav ? `onclick="window.navigate('${k.nav}')"` : ""}>
                 <div class="rep-kpi-icon" style="background:${t.bg};color:${t.color}">
@@ -232,6 +234,8 @@ window.reportesView = async function () {
               <div class="rep-chart-body"><canvas id="${c.id}"></canvas></div>
             </article>`).join("")}
         </div>
+
+        ${_renderSeccionComisiones(comisionesJefe || [])}
       </section>
     `;
 
@@ -447,6 +451,213 @@ function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
     });
   }
 }
+
+function _renderSeccionComisiones(rows) {
+  if (!rows.length) return "";
+
+  const ganadas         = rows.filter(r => r.ganada);
+  const pendientes      = rows.filter(r => !r.pagada);
+  const pagadas         = rows.filter(r => r.pagada);
+  const conMicropagos   = rows.filter(r => (r.total_micropagos || 0) > 0);
+  const totalPendiente  = pendientes.reduce((s, r) => s + Number(r.valor_comision || 0), 0);
+  const totalPagado     = pagadas.reduce((s, r) => s + Number(r.valor_comision || 0), 0);
+  const totalMicropagos = rows.reduce((s, r) => s + Number(r.total_micropagos || 0), 0);
+
+  const proyectos = [...new Set(
+    rows.map(r => r.venta?.lote?.proyecto?.nombre || "").filter(Boolean)
+  )].sort();
+
+  const kpis = [
+    { icon: "list",         color: "var(--primary)",        bg: "rgba(59,130,246,.08)",  label: "Total causadas",       value: rows.length,            meta: `${rows.length} comisiones registradas` },
+    { icon: "trophy",       color: "var(--success)",        bg: "rgba(34,197,94,.08)",   label: "Ganadas",              value: ganadas.length,         meta: `de ${rows.length} comisiones` },
+    { icon: "clock",        color: "var(--warning)",        bg: "rgba(234,179,8,.08)",   label: "Pendiente de pago",    value: UI.fmt(totalPendiente), meta: `${pendientes.length} sin liquidar` },
+    { icon: "check-circle", color: "var(--success)",        bg: "rgba(34,197,94,.08)",   label: "Liquidadas",           value: UI.fmt(totalPagado),    meta: `${pagadas.length} pagada${pagadas.length !== 1 ? "s" : ""}` },
+    { icon: "coins",        color: "var(--accent,#6366f1)", bg: "rgba(99,102,241,.08)",  label: "Pagado en micropagos", value: UI.fmt(totalMicropagos),meta: `en ${conMicropagos.length} comisi${conMicropagos.length !== 1 ? "ones" : "ón"}` },
+  ];
+
+  return `
+    <div class="rep-section-label" style="margin-top:.5rem">Comisiones causadas</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(13.5rem,1fr));gap:1rem;margin-bottom:1.5rem">
+      ${kpis.map(k => `
+        <article class="rep-kpi-card" style="align-items:flex-start">
+          <div class="rep-kpi-icon" style="background:${k.bg};color:${k.color};flex-shrink:0">
+            <i data-lucide="${k.icon}"></i>
+          </div>
+          <div class="rep-kpi-body" style="min-width:0;flex:1">
+            <div class="rep-kpi-label">${k.label}</div>
+            <div style="font-size:1.25rem;font-weight:700;color:${k.color};line-height:1.25;margin:.15rem 0">${k.value}</div>
+            <div class="rep-kpi-meta">${k.meta}</div>
+          </div>
+        </article>`).join("")}
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+      <label style="font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.35rem">
+        <i data-lucide="filter" style="width:13px;height:13px"></i> Proyecto
+      </label>
+      <select id="rep_com_proy_filter" onchange="window._repFiltrarComisiones()"
+        style="font-size:.82rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:.4rem;background:var(--surface);color:var(--text);min-width:10rem">
+        <option value="">Todos los proyectos</option>
+        ${proyectos.map(p => `<option value="${p}">${p}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:2rem">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Comisionista</th>
+            <th>Venta</th>
+            <th>Lote</th>
+            <th>Proyecto</th>
+            <th style="text-align:right">Valor comisi&oacute;n</th>
+            <th style="text-align:right">Micropagos</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="rep_com_tbody">
+          ${_renderComisionesRows(rows)}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function _renderComisionesRows(rows) {
+  if (!rows.length) {
+    return `<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--text-muted)">Sin comisiones para mostrar</td></tr>`;
+  }
+  return rows.map(r => {
+    const vid          = r.id_venta;
+    const comisionista = r.comisionista
+      ? `${r.comisionista.nombres} ${r.comisionista.apellidos || ""}`.trim()
+      : "—";
+    const lote    = r.venta?.lote
+      ? `${r.venta.lote.codigo_lote} M${r.venta.lote.manzana}-${r.venta.lote.numero_lote}`
+      : "—";
+    const proyecto = r.venta?.lote?.proyecto?.nombre || "—";
+    const micro    = Number(r.total_micropagos || 0);
+    const fecha    = r.pagada ? UI.date(r.fecha_pagado) : UI.date(r.fecha_ganada);
+
+    const estadoBadge = r.pagada
+      ? `<span style="display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;background:rgba(34,197,94,.12);color:var(--success)">Pagada</span>`
+      : `<span style="display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;background:rgba(234,179,8,.12);color:var(--warning)">Pendiente</span>`;
+
+    return `
+      <tr style="cursor:pointer" onclick="window._toggleRepComisionRow(${vid})">
+        <td style="width:1.5rem;text-align:center;color:var(--text-muted)">
+          <span id="rep_chev_${vid}" style="display:inline-block;transition:transform .2s ease;font-size:.75rem">&#9660;</span>
+        </td>
+        <td>${comisionista}</td>
+        <td>#${r.venta?.id_venta || vid}</td>
+        <td style="white-space:nowrap">${lote}</td>
+        <td>${proyecto}</td>
+        <td style="text-align:right;font-weight:600">${UI.fmt(r.valor_comision)}</td>
+        <td style="text-align:right;color:${micro > 0 ? "var(--success)" : "var(--text-muted)"}">
+          ${micro > 0 ? UI.fmt(micro) : "—"}
+        </td>
+        <td>${estadoBadge}</td>
+        <td style="white-space:nowrap;color:var(--text-muted);font-size:.85rem">${fecha}</td>
+      </tr>
+      <tr id="rep_detail_${vid}" style="display:none">
+        <td colspan="9" style="padding:0;border-top:none">
+          <div style="padding:.85rem 1.25rem 1rem;background:var(--surface-2,var(--surface));border-top:1px dashed var(--border)">
+            ${_renderComisionDetail(r)}
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function _renderComisionDetail(r) {
+  const micros    = r.micropagos || [];
+  const totalMicro = Number(r.total_micropagos || 0);
+  const valorCom   = Number(r.valor_comision   || 0);
+  const pendiente  = Math.max(0, valorCom - totalMicro);
+  const pct        = valorCom > 0 ? Math.min(100, Math.round(totalMicro / valorCom * 100)) : 0;
+  const compradores = (r.venta?.venta_comprador || [])
+    .map(vc => `${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}`.trim())
+    .filter(Boolean).join(", ") || "—";
+
+  const micropagosHTML = micros.length === 0
+    ? `<div style="font-size:.82rem;color:var(--text-muted);padding:.25rem 0">Sin micropagos registrados</div>`
+    : `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-size:.7rem;color:var(--text-muted);padding:.2rem .5rem .35rem 0;border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Fecha</th>
+            <th style="text-align:right;font-size:.7rem;color:var(--text-muted);padding:.2rem .5rem .35rem;border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor</th>
+            <th style="text-align:left;font-size:.7rem;color:var(--text-muted);padding:.2rem 0 .35rem .5rem;border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Nota / N&deg; pago</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${micros.map(m => `
+            <tr>
+              <td style="padding:.3rem .5rem .3rem 0;white-space:nowrap;color:var(--text-muted)">${UI.date(m.fecha)}</td>
+              <td style="padding:.3rem .5rem;text-align:right;font-weight:600;color:var(--success)">${UI.fmt(m.valor)}</td>
+              <td style="padding:.3rem 0 .3rem .5rem;color:var(--text-muted)">
+                ${m.nota ? `<span>${m.nota}</span>` : ""}
+                ${m.numero_pago ? `<span style="font-size:.72rem;opacity:.7;margin-left:.35rem">${m.numero_pago}</span>` : ""}
+                ${!m.nota && !m.numero_pago ? "—" : ""}
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+      <div style="margin-top:.65rem;padding:.55rem .7rem;background:var(--surface);border-radius:.4rem;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-muted);margin-bottom:.3rem">
+          <span>Progreso micropagos</span><span style="font-weight:600">${pct}%</span>
+        </div>
+        <div style="background:var(--border);border-radius:.25rem;height:.35rem;overflow:hidden">
+          <div style="width:${pct}%;background:var(--success);height:100%;border-radius:.25rem"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-muted);margin-top:.3rem">
+          <span>Pagado: <strong>${UI.fmt(totalMicro)}</strong></span>
+          <span>Pendiente: <strong style="color:${pendiente > 0 ? "var(--warning)" : "var(--success)"}">${UI.fmt(pendiente)}</strong></span>
+        </div>
+      </div>`;
+
+  return `
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:14rem">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:.5rem">Micropagos aplicados</div>
+        ${micropagosHTML}
+      </div>
+      <div style="min-width:13rem;display:flex;flex-direction:column;gap:.3rem">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:.2rem">Detalle comisi&oacute;n</div>
+        ${[
+          ["Valor comisión",   UI.fmt(r.valor_comision)],
+          ["Ganada",           r.ganada ? `<span style="color:var(--success);font-weight:600">Sí</span>` : `<span style="color:var(--warning)">No aún</span>`],
+          ["Fecha ganada",     r.fecha_ganada ? UI.date(r.fecha_ganada) : "—"],
+          ["Pagada al comisionista", r.pagada ? `<span style="color:var(--success);font-weight:600">Sí — ${UI.date(r.fecha_pagado)}</span>` : "No"],
+          ["Comprador(es)",    compradores],
+          ["Fecha venta",      UI.date(r.venta?.fecha_venta)],
+        ].map(([lbl, val]) => `
+          <div style="display:flex;justify-content:space-between;gap:1rem;font-size:.82rem;padding:.18rem 0;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-muted);white-space:nowrap">${lbl}</span>
+            <span style="text-align:right">${val}</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+window._toggleRepComisionRow = function(ventaId) {
+  const detail  = document.getElementById(`rep_detail_${ventaId}`);
+  const chevron = document.getElementById(`rep_chev_${ventaId}`);
+  if (!detail) return;
+  const isOpen = detail.style.display !== "none";
+  detail.style.display = isOpen ? "none" : "table-row";
+  if (chevron) chevron.style.transform = isOpen ? "rotate(0deg)" : "rotate(-90deg)";
+};
+
+window._repFiltrarComisiones = function() {
+  const proyFilter = document.getElementById("rep_com_proy_filter")?.value || "";
+  const rows = proyFilter
+    ? _repComisionesAll.filter(r => (r.venta?.lote?.proyecto?.nombre || "") === proyFilter)
+    : _repComisionesAll;
+  const tbody = document.getElementById("rep_com_tbody");
+  if (tbody) tbody.innerHTML = _renderComisionesRows(rows);
+};
 
 (() => {
   const s = document.createElement("style");

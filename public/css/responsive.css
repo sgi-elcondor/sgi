@@ -1,0 +1,672 @@
+/* =========================================================
+   RESPONSIVE GLOBAL
+   ========================================================= */
+
+/* =========================================================
+   1. BASE RESPONSIVE GENERAL
+   ========================================================= */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+table {
+  width: 100%;
+}
+
+/* Botón móvil oculto por defecto en escritorio */
+.mobile-menu-toggle {
+  display: none;
+}
+
+/* Fondo oscuro cuando se abre el menú móvil */
+.mobile-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+/* =========================================================
+   2. TABLET / PANTALLAS MEDIANAS
+   Hasta 1200px
+   ========================================================= */
+
+@media (max-width: 75rem) {
+  .view-container {
+    padding: 1.25rem;
+  }
+
+  .dashboard-shell,
+  .page-shell {
+    gap: 1.25rem;
+  }
+
+  .stats-grid,
+  .stats-grid-primary,
+  .stats-grid-secondary,
+  .summary-strip,
+  .dashboard-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dashboard-two-col,
+  .dashboard-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-hero-panel {
+    align-items: flex-start;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+
+  .page-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header-side {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .page-actions {
+    justify-content: flex-start;
+  }
+
+  .venta-detail-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   3. TABLET PEQUEÑA / CELULAR HORIZONTAL
+   Hasta 920px
+   Aquí el sidebar pasa a drawer/off-canvas
+   ========================================================= */
+
+@media (max-width: 57.5rem) {
+  .sidebar-brand .sidebar-toggle {
+    display: none !important;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .main-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .view-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1.125rem;
+    overflow-x: hidden !important;
+  }
+
+  .dashboard-shell,
+  .page-shell {
+    gap: 1.125rem;
+  }
+
+  /* ---------- Sidebar móvil tipo drawer ---------- */
+
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+
+    width: min(18rem, 84vw) !important;
+    min-width: min(18rem, 84vw) !important;
+    max-width: 84vw !important;
+    height: 100vh !important;
+
+    z-index: 9999 !important;
+
+    transform: translateX(-110%) !important;
+    transition: transform 0.22s ease !important;
+
+    box-shadow:
+      20px 0 46px rgba(0, 0, 0, 0.42),
+      inset -1px 0 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  body.sidebar-mobile-open .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body.sidebar-mobile-open .mobile-sidebar-backdrop {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* En móvil se muestran los textos completos aunque el body tenga sidebar-collapsed */
+  body.sidebar-collapsed .sidebar,
+  body.sidebar-mobile-open .sidebar {
+    width: min(18rem, 84vw) !important;
+    min-width: min(18rem, 84vw) !important;
+    max-width: 84vw !important;
+  }
+
+  body.sidebar-collapsed .brand-name,
+  body.sidebar-collapsed .sidebar-footer,
+  body.sidebar-collapsed .nav-group-title,
+  body.sidebar-collapsed .nav-item span:not(.nav-icon),
+  body.sidebar-mobile-open .brand-name,
+  body.sidebar-mobile-open .sidebar-footer,
+  body.sidebar-mobile-open .nav-group-title,
+  body.sidebar-mobile-open .nav-item span:not(.nav-icon) {
+    display: initial !important;
+  }
+
+  body.sidebar-collapsed .sidebar-brand,
+  body.sidebar-mobile-open .sidebar-brand {
+    justify-content: space-between !important;
+    padding: 1rem !important;
+  }
+
+  body.sidebar-collapsed .sidebar-nav,
+  body.sidebar-mobile-open .sidebar-nav {
+    padding-left: 0.72rem !important;
+    padding-right: 0.72rem !important;
+  }
+
+  body.sidebar-collapsed .nav-item,
+  body.sidebar-mobile-open .nav-item {
+    width: 100% !important;
+    height: auto !important;
+    justify-content: flex-start !important;
+    padding: 0.72rem 0.85rem !important;
+    margin-inline: 0 !important;
+  }
+
+  body.sidebar-collapsed .nav-icon,
+  body.sidebar-mobile-open .nav-icon {
+    width: 1.35rem !important;
+  }
+
+  /* ---------- Topbar móvil ---------- */
+
+  .topbar {
+    min-height: auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    padding: 0.9rem 1.125rem !important;
+  }
+
+  .topbar-left {
+    width: auto !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .topbar-heading {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .topbar-actions {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .user-menu {
+    margin-left: auto !important;
+  }
+
+  .user-menu-panel {
+    right: 0 !important;
+    left: auto !important;
+    width: min(19rem, calc(100vw - 1.5rem)) !important;
+    z-index: 10000 !important;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-grid !important;
+    place-items: center;
+
+    width: 2.55rem;
+    height: 2.55rem;
+    flex-shrink: 0;
+
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+
+    background:
+      radial-gradient(circle at top, rgba(var(--accent-rgb), 0.14), transparent 62%),
+      var(--surface);
+
+    color: var(--text);
+    cursor: pointer;
+
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+    transition:
+      background var(--transition),
+      border-color var(--transition),
+      color var(--transition),
+      transform 0.12s ease;
+  }
+
+  .mobile-menu-toggle:hover {
+    color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.34);
+    background:
+      radial-gradient(circle at top, rgba(var(--accent-rgb), 0.24), transparent 62%),
+      var(--surface-2);
+  }
+
+  .mobile-menu-toggle:active {
+    transform: scale(0.96);
+  }
+
+  .mobile-menu-toggle svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .view-title,
+  .topbar-subtitle {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .view-title {
+    white-space: nowrap !important;
+    font-size: 1.55rem;
+  }
+
+  .topbar-subtitle {
+    font-size: 0.72rem;
+  }
+
+  /* ---------- Estructuras generales ---------- */
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-title {
+    font-size: 2rem;
+  }
+
+  .page-header-card {
+    padding: 1.25rem;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .table-wrap,
+  .dashboard-table,
+  .venta-quota-table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 720px;
+  }
+
+  .modal,
+  .modal-card,
+  .modal-content,
+  .modal-dialog {
+    width: min(94vw, 720px) !important;
+    max-width: 94vw !important;
+  }
+
+  .venta-detail-hero {
+    flex-direction: column;
+  }
+
+  .venta-detail-status {
+    justify-content: flex-start;
+  }
+
+  .venta-detail-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+/* =========================================================
+   4. CELULARES
+   Hasta 640px
+   ========================================================= */
+
+@media (max-width: 40rem) {
+  body {
+    font-size: 0.8125rem;
+  }
+
+  .view-container {
+    padding: 0.875rem;
+  }
+
+  .dashboard-shell,
+  .page-shell {
+    gap: 1rem;
+  }
+
+  .topbar {
+    padding: 0.8rem 0.875rem !important;
+  }
+
+  .topbar-subtitle {
+    display: none !important;
+  }
+
+  .view-title {
+    font-size: 1.35rem !important;
+  }
+
+  .page-header-card {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .page-header-main {
+    gap: 1rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .page-meta,
+  .page-actions,
+  .section-actions {
+    width: 100%;
+  }
+
+  .page-actions .btn,
+  .section-actions .btn,
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stats-grid,
+  .stats-grid-primary,
+  .stats-grid-secondary,
+  .summary-strip,
+  .dashboard-actions-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-hero {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-text {
+    font-size: 0.875rem;
+  }
+
+  .dashboard-hero-panel,
+  .hero-role,
+  .hero-actions {
+    width: 100%;
+  }
+
+  .kpi-card,
+  .panel-card,
+  .dashboard-table,
+  .venta-detail-section,
+  .venta-detail-stat {
+    border-radius: 1rem;
+  }
+
+  .kpi-card {
+    min-height: auto;
+  }
+
+  .kpi-value {
+    font-size: 1.75rem;
+  }
+
+  .panel-card {
+    padding: 1rem;
+  }
+
+  .dashboard-actions-grid {
+    gap: 0.75rem;
+  }
+
+  .dashboard-actions-grid .action-card {
+    min-height: 120px;
+    padding: 0.875rem;
+  }
+
+  .activity-item {
+    grid-template-columns: 10px 1fr;
+    align-items: flex-start;
+  }
+
+  .activity-time {
+    grid-column: 2;
+    width: fit-content;
+    white-space: normal;
+  }
+
+  .venta-detail-modal {
+    gap: 0.875rem;
+  }
+
+  .venta-detail-hero {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .venta-detail-hero h3 {
+    font-size: 1.5rem;
+  }
+
+  .venta-detail-stats {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  .venta-detail-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .venta-detail-section-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .venta-detail-section-body {
+    padding: 0.875rem;
+  }
+
+  .venta-quota-summary {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .venta-quota-table {
+    min-width: 620px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal,
+  .modal-card,
+  .modal-content,
+  .modal-dialog {
+    width: calc(100vw - 1.5rem) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    max-height: calc(100vh - 1.5rem) !important;
+  }
+
+  .toast-root {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .toast {
+    min-width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* =========================================================
+   5. CELULARES PEQUEÑOS
+   Hasta 480px
+   ========================================================= */
+
+@media (max-width: 30rem) {
+  .sidebar,
+  body.sidebar-collapsed .sidebar,
+  body.sidebar-mobile-open .sidebar {
+    width: min(17rem, 88vw) !important;
+    min-width: min(17rem, 88vw) !important;
+    max-width: 88vw !important;
+  }
+
+  .sidebar-brand {
+    padding: 0.9rem !important;
+  }
+
+  .sidebar-brand .sidebar-toggle {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .sidebar-nav {
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+  }
+
+  .view-container {
+    padding: 0.75rem;
+  }
+
+  .topbar {
+    padding: 0.75rem !important;
+  }
+
+  .view-title {
+    font-size: 1.2rem !important;
+  }
+
+  .mobile-menu-toggle,
+  .user-menu-btn {
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+  }
+
+  .page-title {
+    font-size: 1.55rem;
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+  }
+
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .kpi-card {
+    padding: 0.875rem;
+  }
+
+  .kpi-value {
+    font-size: 1.55rem;
+  }
+
+  .dashboard-actions-grid .action-card {
+    min-height: 110px;
+  }
+
+  .dashboard-actions-grid .action-card-title {
+    font-size: 0.875rem;
+  }
+
+  .dashboard-actions-grid .action-card-desc {
+    font-size: 0.75rem;
+  }
+
+  .venta-detail-stat strong {
+    font-size: 1rem;
+  }
+
+  .venta-detail-label,
+  .venta-detail-value {
+    font-size: 0.78rem;
+  }
+
+  .empty-state {
+    padding: 1.5rem 1rem;
+  }
+
+  .empty-state-title {
+    font-size: 1.125rem;
+  }
+}

@@ -29,9 +29,11 @@ img {
   max-width: 100%;
 }
 
+/* ── Scrollbars ── */
+
 ::-webkit-scrollbar {
-  width: 0.4375rem;
-  height: 0.4375rem;
+  width: 0.5rem;
+  height: 0.5rem;
 }
 
 ::-webkit-scrollbar-track {
@@ -39,10 +41,40 @@ img {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 6.1875rem;
+  border-radius: 99px;
+  /* 3px border on each side → 2px visible thumb on an 8px track */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  background-color: rgba(var(--accent-rgb), 0.15);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+/* Expand thumb on hover without shifting layout */
+*:hover::-webkit-scrollbar-thumb {
+  border-width: 1px;
+  background-color: rgba(var(--accent-rgb), 0.45);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--accent-rgb), 0.65);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(var(--accent-rgb), 0.35) transparent;
+}
+
+/* Touch devices: hide scrollbars completely */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    scrollbar-width: none;
+  }
 }

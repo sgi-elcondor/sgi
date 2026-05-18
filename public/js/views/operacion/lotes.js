@@ -63,15 +63,18 @@
   }
 
   function sgiNormalizarProyecto(proyecto = {}) {
+    const nombre =
+      proyecto.nombre ||
+      proyecto.nombre_proyecto ||
+      proyecto.proyecto ||
+      proyecto.descripcion ||
+      "Proyecto";
+
     return {
       ...proyecto,
       id: sgiGetProyectoId(proyecto),
-      nombre:
-        proyecto.nombre ||
-        proyecto.nombre_proyecto ||
-        proyecto.proyecto ||
-        proyecto.descripcion ||
-        "Proyecto"
+      nombre,
+      sigla: proyecto.sigla || ""
     };
   }
 
@@ -239,40 +242,22 @@
     }
   }
 
-  function sgiLoteBuildRows(lotes) {
+  function sgiLoteBuildRows(lotes, { showActions = false } = {}) {
+    const cols = showActions ? 7 : 6;
     if (!lotes.length) {
-      return `
-        <tr>
-          <td colspan="7" class="empty-row">
-            No hay lotes que coincidan con los filtros actuales.
-          </td>
-        </tr>
-      `;
+      return `<tr><td colspan="${cols}" class="empty-row">No hay lotes que coincidan con los filtros actuales.</td></tr>`;
     }
-
-    return lotes
-      .map(
-        (lote) => `
-          <tr>
-            <td><strong>${lote.codigo}</strong></td>
-            <td>${lote.proyecto}</td>
-            <td>${Number(lote.area || 0)} m²</td>
-            <td>${sgiLoteFormatCurrency(lote.precio)}</td>
-            <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
-            <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
-            <td>
-              <button
-                class="btn btn-sm btn-ghost"
-                disabled
-                title="El estado del lote no se modifica manualmente"
-              >
-                Solo lectura
-              </button>
-            </td>
-          </tr>
-        `
-      )
-      .join("");
+    return lotes.map(lote => `
+      <tr>
+        <td><strong>${lote.codigo}</strong></td>
+        <td>${lote.proyecto}</td>
+        <td>${Number(lote.area || 0)} m²</td>
+        <td>${sgiLoteFormatCurrency(lote.precio)}</td>
+        <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
+        <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
+        ${showActions ? `<td><button class="btn btn-sm btn-ghost" disabled title="El estado del lote no se modifica manualmente">Solo lectura</button></td>` : ""}
+      </tr>`
+    ).join("");
   }
 
   function sgiEnsureToastRoot() {
@@ -346,6 +331,10 @@
   const proyectoId = Number(payload.proyectoId);
   const area = Number(payload.area);
   const precio = Number(payload.precio);
+  const manzana = String(payload.manzana || "").trim().toUpperCase();
+  const numeroLote = String(payload.numero_lote || "").trim();
+  const dimensiones = String(payload.dimensiones || `${area} m²`).trim();
+  const descripcion = String(payload.descripcion || "").trim() || null;
   const codigoPartes = sgiParseCodigoLote(codigo);
 
   if (!codigo) {
@@ -366,14 +355,12 @@
     throw new Error("El precio debe ser mayor a cero.");
   }
 
-  const dimensiones = `${area} m²`;
-
   const body = {
     id_proyecto: proyectoId,
 
     codigo_lote: codigo,
-    manzana: codigoPartes.manzana || codigo,
-    numero_lote: codigoPartes.numero_lote || codigo,
+    manzana: manzana || codigoPartes.manzana || codigo,
+    numero_lote: numeroLote || codigoPartes.numero_lote || codigo,
 
     area_m2: area,
     dimensiones,
@@ -381,6 +368,7 @@
     precio_base: precio,
     precio_lista: precio,
 
+    descripcion,
     estado: "disponible"
   };
 
@@ -400,17 +388,6 @@
     body.innerHTML = `
       <form id="sgiCreateLoteForm">
         <div class="form-grid">
-          <div class="form-group">
-            <label for="loteCodigo">Código del lote</label>
-            <input
-              id="loteCodigo"
-              name="codigo"
-              type="text"
-              placeholder="Ej: E-22"
-              required
-            />
-          </div>
-
           <div class="form-group">
             <label for="loteProyecto">Proyecto</label>
             <select id="loteProyecto" name="proyectoId" required>
@@ -432,15 +409,56 @@
           </div>
 
           <div class="form-group">
-            <label for="loteArea">Área (m²)</label>
+            <label for="loteManzana">Manzana</label>
+            <input
+              id="loteManzana"
+              name="manzana"
+              type="text"
+              placeholder="Ej: A"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteNumero">Número de lote</label>
+            <input
+              id="loteNumero"
+              name="numero_lote"
+              type="text"
+              placeholder="Ej: 22"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteCodigo">Código del lote</label>
+            <input
+              id="loteCodigo"
+              name="codigo"
+              type="text"
+              placeholder="Se genera automáticamente"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteArea">Área total (m²)</label>
             <input
               id="loteArea"
               name="area"
               type="number"
               min="1"
               step="1"
-              placeholder="Ej: 100"
+              placeholder="Ej: 150"
               required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="loteDimensiones">Medidas del lote</label>
+            <input
+              id="loteDimensiones"
+              name="dimensiones"
+              type="text"
+              placeholder="Ej: 10m × 15m"
             />
           </div>
 
@@ -449,10 +467,9 @@
             <input
               id="lotePrecio"
               name="precio"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Ej: 65000000"
+              type="text"
+              inputmode="numeric"
+              placeholder="Ej: 65.000.000"
               required
             />
           </div>
@@ -465,6 +482,16 @@
               value="Disponible"
               disabled
             />
+          </div>
+
+          <div class="form-group form-group--full">
+            <label for="loteDescripcion">Descripción</label>
+            <textarea
+              id="loteDescripcion"
+              name="descripcion"
+              rows="3"
+              placeholder="Observaciones o detalles adicionales del lote"
+            ></textarea>
           </div>
         </div>
 
@@ -493,6 +520,42 @@
     const cancelBtn = document.getElementById("sgiCancelCreateLote");
     const submitBtn = document.getElementById("sgiSubmitCreateLote");
     const errorBox = document.getElementById("sgiLoteFormError");
+    const codigoInput = document.getElementById("loteCodigo");
+    const proyectoSelect = document.getElementById("loteProyecto");
+    const manzanaInput = document.getElementById("loteManzana");
+    const numeroInput = document.getElementById("loteNumero");
+    const areaInput = document.getElementById("loteArea");
+    const dimensionesInput = document.getElementById("loteDimensiones");
+
+    let codigoTouched = false;
+    codigoInput.addEventListener("input", () => { codigoTouched = true; });
+
+    function sgiAutoGenerarCodigo() {
+      if (codigoTouched) return;
+      const proyecto = proyectos.find((p) => String(p.id) === String(proyectoSelect.value));
+      const sigla = proyecto?.sigla || "";
+      const manzana = manzanaInput.value.trim().toUpperCase();
+      const numero = numeroInput.value.trim().toUpperCase();
+      codigoInput.value = [sigla, manzana, numero].filter(Boolean).join("-");
+    }
+
+    proyectoSelect.addEventListener("change", sgiAutoGenerarCodigo);
+    manzanaInput.addEventListener("input", sgiAutoGenerarCodigo);
+    numeroInput.addEventListener("input", sgiAutoGenerarCodigo);
+
+    const precioInput = document.getElementById("lotePrecio");
+    precioInput.addEventListener("input", () => {
+      const digits = precioInput.value.replace(/\D/g, "");
+      precioInput.value = digits ? Number(digits).toLocaleString("es-CO") : "";
+    });
+
+    let dimensionesTouched = false;
+    dimensionesInput.addEventListener("input", () => { dimensionesTouched = true; });
+    areaInput.addEventListener("input", () => {
+      if (!dimensionesTouched) {
+        dimensionesInput.value = areaInput.value ? `${areaInput.value} m²` : "";
+      }
+    });
 
     const closeHandler = () => sgiCloseLoteModal();
 
@@ -516,8 +579,12 @@
       const payload = {
         codigo: formData.get("codigo"),
         proyectoId: Number(formData.get("proyectoId")),
+        manzana: formData.get("manzana"),
+        numero_lote: formData.get("numero_lote"),
         area: formData.get("area"),
-        precio: formData.get("precio")
+        dimensiones: formData.get("dimensiones"),
+        precio: String(formData.get("precio") || "").replace(/\./g, ""),
+        descripcion: formData.get("descripcion")
       };
 
       try {
@@ -548,6 +615,8 @@
   function lotesView(container) {
     if (!container) return "";
 
+    const canCreate = AppState.can('lotes', 'crear');
+
     const state = {
       proyecto: "",
       search: "",
@@ -576,16 +645,18 @@
               <div class="lotes-intro-body">
                 <div>
                   <span class="section-kicker">Inventario</span>
-                  <h3 class="section-title">Gestión de lotes</h3>
+                  <h3 class="section-title">${canCreate ? "Gestión de lotes" : "Lotes disponibles"}</h3>
                   <p class="lotes-intro-text">
-                    Visualiza el inventario de lotes por proyecto y registra nuevos
-                    lotes listos para comercialización.
+                    ${canCreate
+                      ? "Visualiza el inventario de lotes por proyecto y registra nuevos lotes listos para comercialización."
+                      : "Consulta el inventario de lotes por proyecto."}
                   </p>
                 </div>
 
+                ${canCreate ? `
                 <div class="hero-actions">
                   <button class="btn btn-primary" id="btnNuevoLote">Nuevo lote</button>
-                </div>
+                </div>` : ""}
               </div>
             </section>
 
@@ -698,26 +769,19 @@
                           <th>Precio</th>
                           <th>Estado</th>
                           <th>Fecha creación</th>
-                          <th>Acción</th>
+                          ${canCreate ? "<th>Acción</th>" : ""}
                         </tr>
                       </thead>
                       <tbody>
-                        ${sgiLoteBuildRows(filteredLotes)}
+                        ${sgiLoteBuildRows(filteredLotes, { showActions: canCreate })}
                       </tbody>
                     </table>
                   `
                   : `
                     <div class="empty-state">
                       <div class="empty-state-title">No hay resultados</div>
-                      <div class="empty-state-text">
-                        No encontramos lotes con los filtros actuales. Puedes cambiar
-                        la búsqueda o crear un nuevo lote.
-                      </div>
-                      <div>
-                        <button class="btn btn-primary" id="btnEmptyCreateLote">
-                          Crear lote
-                        </button>
-                      </div>
+                      <div class="empty-state-text">No encontramos lotes con los filtros actuales.</div>
+                      ${canCreate ? `<div><button class="btn btn-primary" id="btnEmptyCreateLote">Crear lote</button></div>` : ""}
                     </div>
                   `
               }
@@ -774,126 +838,6 @@
     renderLotesScreen();
   }
 
-  
-function lotesReadView(container) {
-    if (!container) return "";
-
-    const state = { proyecto: "", search: "", sortBy: "proyecto_codigo" };
-
-    async function renderLotesScreen() {
-      try {
-        container.innerHTML = window.UI?.loader ? UI.loader() : "";
-
-        const [allLotes, proyectos] = await Promise.all([
-          sgiCargarLotesBackend(),
-          sgiCargarProyectosBackend()
-        ]);
-
-        const filteredLotes = sgiLoteSortList(sgiLoteApplyFilters(allLotes, state), state.sortBy);
-        const summary = sgiLoteBuildSummary(filteredLotes);
-
-        container.innerHTML = `
-          <section class="dashboard-shell">
-            <section class="table-wrap lotes-intro">
-              <div class="lotes-intro-body">
-                <div>
-                  <span class="section-kicker">Inventario</span>
-                  <h3 class="section-title">Lotes disponibles</h3>
-                  <p class="lotes-intro-text">Consulta el inventario de lotes por proyecto.</p>
-                </div>
-              </div>
-            </section>
-
-            <section class="dashboard-block">
-              <div class="section-head">
-                <div>
-                  <span class="section-kicker">Resumen</span>
-                  <h3 class="section-title">Estado del inventario</h3>
-                </div>
-              </div>
-              <div class="stats-grid lotes-summary-grid">
-                <article class="stat-card">
-                  <div class="stat-label">Total lotes</div>
-                  <div class="stat-value">${summary.total}</div>
-                  <div class="stat-sub">Resultado actual</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Disponibles</div>
-                  <div class="stat-value">${summary.disponibles}</div>
-                  <div class="stat-sub">Listos para comercializacion</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Vendidos</div>
-                  <div class="stat-value">${summary.vendidos}</div>
-                  <div class="stat-sub">Con venta registrada</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Entregados</div>
-                  <div class="stat-value">${summary.entregados}</div>
-                  <div class="stat-sub">Proceso finalizado</div>
-                </article>
-              </div>
-            </section>
-
-            <section class="table-wrap">
-              <div class="table-header"><h3>Filtros y busqueda</h3></div>
-              <div class="filter-bar">
-                <div class="form-group filter-field">
-                  <label for="filtroProyectoR">Proyecto</label>
-                  <select id="filtroProyectoR">
-                    <option value="">Todos</option>
-                    ${proyectos.map((p) => `<option value="${p.id}" ${String(state.proyecto) === String(p.id) ? "selected" : ""}>${p.nombre}</option>`).join("")}
-                  </select>
-                </div>
-                <div class="form-group filter-field">
-                  <label for="buscarLoteR">Buscar</label>
-                  <input id="buscarLoteR" type="text" placeholder="Buscar por codigo, proyecto o estado" value="${state.search}" />
-                </div>
-              </div>
-            </section>
-
-            <section class="table-wrap">
-              <div class="table-header"><h3>Listado de lotes</h3></div>
-              ${filteredLotes.length ? `
-                <table>
-                  <thead>
-                    <tr><th>Codigo</th><th>Proyecto</th><th>Area</th><th>Precio</th><th>Estado</th></tr>
-                  </thead>
-                  <tbody>
-                    ${filteredLotes.map((lote) => `
-                      <tr>
-                        <td><strong>${lote.codigo}</strong></td>
-                        <td>${lote.proyecto}</td>
-                        <td>${Number(lote.area || 0)} m&sup2;</td>
-                        <td>${sgiLoteFormatCurrency(lote.precio)}</td>
-                        <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
-                      </tr>
-                    `).join("")}
-                  </tbody>
-                </table>
-              ` : `<div class="empty-state"><div class="empty-state-title">No hay resultados</div></div>`}
-            </section>
-          </section>
-        `;
-
-        document.getElementById("filtroProyectoR")?.addEventListener("change", (e) => { state.proyecto = e.target.value; renderLotesScreen(); });
-        document.getElementById("buscarLoteR")?.addEventListener("input", (e) => { state.search = e.target.value; renderLotesScreen(); });
-        window.SGIUI?.hydrate?.();
-
-      } catch (error) {
-        console.error("Error cargando lotes:", error);
-        container.innerHTML = `<section class="table-wrap" style="padding:24px"><div class="table-header"><h3>Error</h3></div><div style="padding:20px;color:var(--danger)">${error.message}</div></section>`;
-      }
-    }
-
-    renderLotesScreen();
-  }
-
-  function lotesEditView(container) {
-    window.lotesView(container);
-  }
-
-  window.lotesView     = lotesView;
-  window.lotesReadView = lotesReadView;
-  window.lotesEditView = lotesEditView;
+  // Single entry point — lotesView resolves permissions internally
+  window.lotesView = lotesView;
 })();

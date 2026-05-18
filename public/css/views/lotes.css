@@ -1,69 +1,40 @@
-<<<<<<< HEAD
 ﻿.lotes-page .page-header-card {
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
-=======
-.lotes-page .page-header-card {
-  background: linear-gradient(180deg, #fffaf4 0%, #ffffff 100%);
->>>>>>> origin/develop
 }
 
 .summary-strip {
   display: grid;
-<<<<<<< HEAD
   gap: 1rem;
-=======
-  gap: 16px;
->>>>>>> origin/develop
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .summary-tile {
-<<<<<<< HEAD
   padding: 1.125rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
   background: var(--surface);
-=======
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #ffffff;
->>>>>>> origin/develop
   box-shadow: var(--shadow-soft);
 }
 
 .summary-label {
   display: block;
   color: var(--text-muted);
-<<<<<<< HEAD
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 0.625rem;
-=======
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 10px;
->>>>>>> origin/develop
 }
 
 .summary-tile strong {
   color: var(--text);
-<<<<<<< HEAD
   font: 1.875rem var(--font-serif);
-=======
-  font: 30px var(--font-serif);
->>>>>>> origin/develop
 }
 
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-<<<<<<< HEAD
   gap: 1rem;
   padding: 1rem 1.25rem 1.25rem;
 }
@@ -71,53 +42,27 @@
 .filter-field {
   min-width: 13.75rem;
   flex: 1 1 13.75rem;
-=======
-  gap: 16px;
-  padding: 16px 20px 20px;
-}
-
-.filter-field {
-  min-width: 220px;
-  flex: 1 1 220px;
->>>>>>> origin/develop
 }
 
 .table-head-actions {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.625rem;
-=======
-  gap: 10px;
->>>>>>> origin/develop
 }
 
 .table-caption {
   color: var(--text-muted);
-<<<<<<< HEAD
   font-size: 0.75rem;
-=======
-  font-size: 12px;
->>>>>>> origin/develop
   font-weight: 600;
 }
 
 .empty-state-icon {
-<<<<<<< HEAD
   width: 3.375rem;
   height: 3.375rem;
   display: grid;
   place-items: center;
   margin-bottom: 0.25rem;
   border-radius: 0.875rem;
-=======
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 4px;
-  border-radius: 14px;
->>>>>>> origin/develop
   background: rgba(var(--accent-rgb), 0.12);
   color: var(--accent);
 }
@@ -126,62 +71,35 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.75rem;
   padding: 2.5rem 1.5rem;
-=======
-  gap: 12px;
-  padding: 40px 24px;
->>>>>>> origin/develop
   text-align: center;
 }
 
 .empty-state-title {
   color: var(--text);
-<<<<<<< HEAD
   font: 1.375rem var(--font-serif);
-=======
-  font: 22px var(--font-serif);
->>>>>>> origin/develop
 }
 
 .empty-state-text {
   max-width: 56ch;
   color: var(--text-muted);
-<<<<<<< HEAD
   font-size: 0.875rem;
   line-height: 1.6;
 }
-=======
-  font-size: 14px;
-  line-height: 1.6;
-}
-/* ===== LOTES: CABECERA Y BOTONES ===== */
->>>>>>> origin/develop
 
 .page-header-card .page-actions,
 .lotes-actions,
 .lotes-header-actions {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
 .page-header-card .btn-primary { min-width: 8.75rem; }
 .table-header .btn, .section-head .btn { min-width: auto; }
-=======
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-.page-header-card .btn-primary {
-  min-width: 140px;
+.lotes-intro-body {
+  padding: 1rem; 
 }
-
-.table-header .btn,
-.section-head .btn {
-  min-width: auto;
-}
->>>>>>> origin/develop

@@ -1,11 +1,14 @@
+(function () {
+
 window.ventasView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
 
-  const esAsesor = window.currentUser?.rol === "asesor_comercial";
-  const botonNueva = esAsesor
-    ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()">+ Solicitar Venta</button>`
-    : `<button class="btn btn-primary btn-sm" onclick="ventaForm()">+ Nueva Venta</button>`;
+  const modoSolicitud = AppState.can('ventas', 'solicitar') && !AppState.can('ventas', 'actualizar');
+  const canCreate     = AppState.can('ventas', 'crear') || AppState.can('ventas', 'solicitar');
+  const botonNueva    = !canCreate ? "" : modoSolicitud
+    ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Solicitar Venta</button>`
+    : `<button class="btn btn-primary btn-sm" onclick="ventaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Venta</button>`;
 
   // Build query from filter state
   async function _cargarVentas() {
@@ -67,10 +70,10 @@ window.ventasView = async function() {
         <h3>Ventas</h3>
         ${botonNueva}
       </div>
-      ${esAsesor ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
-        Como asesor comercial puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que gerencia o un administrador las apruebe.
+      ${modoSolicitud ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
+        Puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que sean aprobadas.
       </p>` : ""}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:flex-end">
+      <div class="table-filters">
         <div class="form-group" style="margin:0;flex:1;min-width:130px">
           <label style="font-size:.78rem;margin-bottom:2px">Proyecto</label>
           <input id="fv_proyecto" type="text" placeholder="Filtrar por proyecto…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
@@ -81,7 +84,7 @@ window.ventasView = async function() {
         </div>
         <div class="form-group" style="margin:0;min-width:160px">
           <label style="font-size:.78rem;margin-bottom:2px">Estado</label>
-          <select id="fv_estado" onchange="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem">
+          <select id="fv_estado" onchange="_cargarVentasFiltro()" class="select-sm" style="width:auto;">
             <option value="">Todos los estados</option>
             ${ESTADOS.map(e => `<option value="${e}">${e.replace(/_/g," ")}</option>`).join("")}
           </select>
@@ -115,178 +118,336 @@ window.ventasView = async function() {
 
   _cargarVentas();
 };
-
 window.verVenta = async function(id) {
   let v;
-  try { v = await API.get(`/ventas/${id}`); }
-  catch(e) { UI.toast(e.message, "error"); return; }
 
-  // ── helpers locales ──
-  const S  = (t,c,ic="") => `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden"><div style="padding:7px 14px;background:var(--surface-2,#f0f4f8);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">${ic}${t}</div><div style="padding:12px 14px">${c}</div></div>`;
-  const R  = (l,v2) => `<div style="display:flex;gap:6px;margin-bottom:5px"><span style="min-width:140px;font-size:.79rem;color:var(--text-muted);flex-shrink:0">${l}</span><span style="font-size:.85rem">${v2}</span></div>`;
-  const bar= (pct,col="var(--primary,#ff6a00)") => `<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:5px 0"><div style="height:100%;width:${Math.min(100,pct).toFixed(1)}%;background:${col};border-radius:4px"></div></div>`;
+  try {
+    v = await API.get(`/ventas/${id}`);
+  } catch(e) {
+    UI.toast(e.message, "error");
+    return;
+  }
 
-  // ── cuotas ──
-  const cuotas   = (v.cuota || []).sort((a,b) => a.numero_cuota - b.numero_cuota);
-  const cuotasIni= cuotas.filter(c => c.tipo === "inicial");
-  const cuotasReg= cuotas.filter(c => c.tipo === "regular");
-  const pagada   = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
-  const hoy      = new Date(); hoy.setHours(0,0,0,0);
-  const vencida  = c => { const f = c.fecha_vencimiento ? new Date(c.fecha_vencimiento+"T12:00:00") : null; return f && f < hoy && !pagada(c); };
+  // ── Helpers visuales del detalle ──
+  const S = (titulo, contenido, icono = "") => `
+    <section class="venta-detail-section">
+      <div class="venta-detail-section-head">
+        <span>${icono}${titulo}</span>
+      </div>
+      <div class="venta-detail-section-body">
+        ${contenido}
+      </div>
+    </section>`;
+
+  const R = (label, value) => `
+    <div class="venta-detail-row">
+      <span class="venta-detail-label">${label}</span>
+      <span class="venta-detail-value">${value}</span>
+    </div>`;
+
+  const bar = (pct, color = "var(--primary,#ff6a00)") => `
+    <div class="venta-progress">
+      <div style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%;background:${color}"></div>
+    </div>`;
+
+  const statCard = (label, value, detail = "") => `
+    <div class="venta-detail-stat">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      ${detail ? `<small>${detail}</small>` : ""}
+    </div>`;
+
+  // ── Cuotas ──
+  const cuotas = (v.cuota || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
+
+  const cuotasIni = cuotas.filter(c => c.tipo === "inicial");
+  const cuotasReg = cuotas.filter(c => c.tipo === "regular");
+
+  const pagada = c =>
+    c.pagado === true ||
+    c.fecha_pago != null ||
+    c.estado === "pagado" ||
+    c.estado === "pagada";
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const vencida = c => {
+    const f = c.fecha_vencimiento
+      ? new Date(c.fecha_vencimiento + "T12:00:00")
+      : null;
+
+    return f && f < hoy && !pagada(c);
+  };
 
   const pagIni = cuotasIni.filter(pagada);
   const pagReg = cuotasReg.filter(pagada);
-  const sumVal = arr => arr.reduce((s,c) => s + Number(c.valor_cuota||0), 0);
+
+  const sumVal = arr => arr.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+
   const totalPagadoIni = sumVal(pagIni);
   const totalPagadoReg = sumVal(pagReg);
-  const totalPagado    = totalPagadoIni + totalPagadoReg;
+  const totalPagado = totalPagadoIni + totalPagadoReg;
 
-  // ── financiero ──
-  const vt    = Number(v.valor_total)    || 0;
-  const ci    = Number(v.cuota_inicial)  || 0;
-  const tp    = Number(v.total_permutas) || 0;
+  const cuotasPendientes = cuotas.filter(c => !pagada(c)).length;
+  const cuotasVencidas = cuotas.filter(vencida).length;
+
+  const proximaCuota = cuotas
+    .filter(c => !pagada(c))
+    .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))[0];
+
+  // ── Financiero ──
+  const vt = Number(v.valor_total) || 0;
+  const ci = Number(v.cuota_inicial) || 0;
+  const tp = Number(v.total_permutas) || 0;
   const saldo = Math.max(0, vt - ci - tp);
-  const pct   = vt > 0 ? totalPagado / vt * 100 : 0;
+  const pct = vt > 0 ? totalPagado / vt * 100 : 0;
+
   const cumple = pct >= 30;
   const escrit = v.escriturado === true || v.fecha_escritura != null;
 
-  // ── comisionista ──
-  const vc0 = Array.isArray(v.venta_comisionista) ? v.venta_comisionista[0] : v.venta_comisionista;
+  // ── Comisionista ──
+  const vc0 = Array.isArray(v.venta_comisionista)
+    ? v.venta_comisionista[0]
+    : v.venta_comisionista;
 
-  // ── permutas detalle ──
+  // ── Permutas detalle ──
   let permsDetalle = "";
+
   if (tp > 0 && v.detalle_permutas) {
     try {
-      permsDetalle = " — " + JSON.parse(v.detalle_permutas).map(p=>`${p.descripcion} (${UI.fmt(p.valor)})`).join(", ");
+      permsDetalle = " — " + JSON.parse(v.detalle_permutas)
+        .map(p => `${p.descripcion} (${UI.fmt(p.valor)})`)
+        .join(", ");
     } catch {}
   }
 
-  // ── fila de cuota ──
+  // ── Tabla de cuotas ──
   const cuotaRow = c => {
-    const ok  = pagada(c);
+    const ok = pagada(c);
     const ven = vencida(c);
-    const est = ok  ? `<span style="color:var(--success,#22c55e);font-size:.75rem;font-weight:600">✓ Pagada</span>`
-              : ven ? `<span style="color:var(--danger,#ef4444);font-size:.75rem;font-weight:600">Vencida</span>`
-              :       `<span style="color:var(--text-muted);font-size:.75rem">Pendiente</span>`;
-    return `<tr style="border-bottom:1px solid var(--border)${ven?" background:rgba(239,68,68,.04)":""}">
-      <td style="padding:5px 8px;color:var(--text-muted);font-size:.75rem">${c.numero_cuota}</td>
-      <td style="padding:5px 8px;font-size:.82rem">${UI.date(c.fecha_vencimiento)}</td>
-      <td style="padding:5px 8px;font-size:.82rem;text-align:right"><b>${UI.fmt(c.valor_cuota)}</b></td>
-      <td style="padding:5px 8px;font-size:.75rem;color:var(--text-muted)">${c.fecha_pago ? UI.date(c.fecha_pago) : "—"}</td>
-      <td style="padding:5px 8px">${est}</td>
-    </tr>`;
+
+    const badgeClass = ok
+      ? "is-paid"
+      : ven
+        ? "is-overdue"
+        : "is-pending";
+
+    const label = ok
+      ? "Pagada"
+      : ven
+        ? "Vencida"
+        : "Pendiente";
+
+    return `
+      <tr class="${ven ? "is-overdue" : ""}">
+        <td>${c.numero_cuota}</td>
+        <td>${UI.date(c.fecha_vencimiento)}</td>
+        <td class="venta-quota-value">${UI.fmt(c.valor_cuota)}</td>
+        <td>${c.fecha_pago ? UI.date(c.fecha_pago) : "—"}</td>
+        <td>
+          <span class="venta-quota-badge ${badgeClass}">
+            ${label}
+          </span>
+        </td>
+      </tr>`;
   };
-  const thead = `<thead><tr style="border-bottom:2px solid var(--border)">
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">#</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Vencimiento</th>
-    <th style="padding:4px 8px;text-align:right;font-size:.72rem;color:var(--text-muted)">Valor</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Fecha pago</th>
-    <th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">Estado</th>
-  </tr></thead>`;
+
+  const theadCuotas = `
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Vencimiento</th>
+        <th style="text-align:right">Valor</th>
+        <th>Fecha pago</th>
+        <th>Estado</th>
+      </tr>
+    </thead>`;
 
   const lote = v.lote || {};
 
   const html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div><span style="font-size:.85rem;color:var(--text-muted)">Registrada el ${UI.date(v.fecha_venta)}</span></div>
-      <div>${UI.badge(v.estado)}</div>
-    </div>
+    <div class="venta-detail-modal">
 
-    ${S("Lote / Proyecto", `
-      ${R("Proyecto", `<b>${lote.proyecto?.nombre||"—"}</b>`)}
-      ${R("Código", lote.codigo_lote||"—")}
-      ${R("Ubicación", `Mz ${lote.manzana||"—"} · Lote ${lote.numero_lote||"—"}`)}
-      ${lote.area_m2 ? R("Área",`${lote.area_m2} m²`) : ""}
-      ${R("Precio lista", UI.fmt(lote.precio_lista))}
-      ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
-    `)}
-
-    ${S("Valores financieros", `
-      ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
-      ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
-      ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
-      ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
-      ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
-    `)}
-    ${(() => {
-      const puedeEditar = window.currentUser?.rol === "auxiliar_contable";
-      const vfBody = `
-        ${R("Valor total",`<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
-        ${ci>0 ? R("Cuota inicial",UI.fmt(ci)) : ""}
-        ${tp>0 ? R("Permutas",`${UI.fmt(tp)}${permsDetalle}`) : ""}
-        ${R("Saldo financiado",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
-        ${v.observaciones ? R("Observaciones",`<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
-      `;
-      return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
-        <div style="padding:7px 14px;background:var(--surface-2,#f0f4f8);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Valores financieros</span>
-          ${puedeEditar ? `<button type="button" class="btn btn-ghost btn-sm"
-            style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:600;letter-spacing:0"
-            onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">Editar valores</button>` : ""}
+      <div class="venta-detail-hero">
+        <div>
+          <span class="venta-detail-kicker">Detalle de venta</span>
+          <h3>Venta #${v.id_venta}</h3>
+          <p>Registrada el ${UI.date(v.fecha_venta)}</p>
         </div>
-        <div id="sgi_vf_body" style="padding:12px 14px">${vfBody}</div>
-      </div>`;
-    })()}
 
-    ${S("Compradores", `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="border-bottom:2px solid var(--border)">
-        ${["Nombre","Documento","Teléfono","Correo","%"].map(h=>`<th style="padding:4px 8px;text-align:left;font-size:.72rem;color:var(--text-muted)">${h}</th>`).join("")}
-      </tr></thead>
-      <tbody>${(v.venta_comprador||[]).map(vc=>`<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:6px 8px;font-size:.85rem"><b>${vc.comprador?.nombres||""} ${vc.comprador?.apellidos||""}</b></td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.documento||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.telefono||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.comprador?.mail||"—"}</td>
-        <td style="padding:6px 8px;font-size:.82rem">${vc.porcentaje||100}%</td>
-      </tr>`).join("") || `<tr><td colspan="5" style="padding:8px;color:var(--text-muted);font-size:.85rem">Sin compradores</td></tr>`}
-      </tbody></table></div>`)}
-
-    ${vc0 ? S("Comisionista", `
-      ${R("Nombre",`<b>${vc0.comisionista?.nombres||""} ${vc0.comisionista?.apellidos||""}</b>`)}
-      ${vc0.comisionista?.documento ? R("Documento", vc0.comisionista.documento) : ""}
-      ${vc0.comisionista?.telefono  ? R("Teléfono",  vc0.comisionista.telefono)  : ""}
-      ${vc0.comisionista?.mail      ? R("Correo",    vc0.comisionista.mail)       : ""}
-      ${R("Valor comisión",`<b style="color:var(--primary,#ff6a00)">${UI.fmt(vc0.valor_comision)}</b>`)}
-    `) : ""}
-
-    ${cuotasIni.length ? S("Cuotas de cuota inicial", `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px">
-        <span>Pagadas: <b>${pagIni.length}/${cuotasIni.length}</b></span>
-        <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoIni)}</b></span>
-        <span>Pendiente: <b style="color:var(--text-muted)">${UI.fmt(sumVal(cuotasIni)-totalPagadoIni)}</b></span>
+        <div class="venta-detail-status">
+          ${UI.badge(v.estado)}
+        </div>
       </div>
-      ${bar(cuotasIni.length ? pagIni.length/cuotasIni.length*100 : 0, "var(--success,#22c55e)")}
-      <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">${thead}<tbody>${cuotasIni.map(cuotaRow).join("")}</tbody></table></div>
-    `) : ""}
 
-    ${cuotasReg.length ? S("Cuotas regulares", `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;margin-bottom:6px">
-        <span>Pagadas: <b>${pagReg.length}/${cuotasReg.length}</b></span>
-        <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoReg)}</b></span>
-        <span>Pendiente: <b style="color:var(--danger,#ef4444)">${UI.fmt(sumVal(cuotasReg)-totalPagadoReg)}</b></span>
-        <span style="color:var(--text-muted)">Cuota: ≈ ${UI.fmt(Math.round(sumVal(cuotasReg)/cuotasReg.length))}/mes</span>
+      <div class="venta-detail-stats">
+        ${statCard("Valor total", UI.fmt(vt), "Valor comercial registrado")}
+        ${statCard("Saldo financiado", UI.fmt(saldo), `${cuotasReg.length} cuota(s) regular(es)`)}
+        ${statCard("Total pagado", UI.fmt(totalPagado), `${pct.toFixed(1)}% del valor total`)}
+        ${statCard(
+          "Próximo vencimiento",
+          proximaCuota ? UI.date(proximaCuota.fecha_vencimiento) : "—",
+          cuotasVencidas > 0
+            ? `${cuotasVencidas} cuota(s) vencida(s)`
+            : `${cuotasPendientes} cuota(s) pendiente(s)`
+        )}
       </div>
-      ${bar(cuotasReg.length ? pagReg.length/cuotasReg.length*100 : 0)}
-      <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">${thead}<tbody>${cuotasReg.map(cuotaRow).join("")}</tbody></table></div>
-    `) : cuotas.length===0 ? `<div style="font-size:.82rem;color:var(--text-muted);padding:8px 0">Sin plan de pago registrado</div>` : ""}
 
-    ${S("Estado global de pagos y escritura", `
-      ${R("Total pagado", `<b>${UI.fmt(totalPagado)}</b> de ${UI.fmt(vt)}`)}
-      ${R("Porcentaje pagado", `<b style="color:${pct>=30?"var(--success,#22c55e)":"var(--primary,#ff6a00)"}">${pct.toFixed(1)}%</b>`)}
-      <div style="margin:4px 0 10px">${bar(pct, pct>=30?"var(--success,#22c55e)":"var(--primary,#ff6a00)")}</div>
-      ${R("Por pagar", `<b style="color:var(--danger,#ef4444)">${UI.fmt(Math.max(0,vt-totalPagado))}</b>`)}
-      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
-      ${R("Requisito escritura (30%)", cumple
-        ? `<span style="color:var(--success,#22c55e);font-weight:600">✓ Cumple — ${pct.toFixed(1)}% pagado</span>`
-        : `<span style="color:var(--text-muted)">No cumple — faltan ${(30-pct).toFixed(1)}% (${UI.fmt(Math.max(0,vt*0.3-totalPagado))})</span>`
-      )}
-      ${R("Escriturado", escrit
-        ? `<span style="color:var(--success,#22c55e);font-weight:600">✓ Sí${v.fecha_escritura?" · "+UI.date(v.fecha_escritura):""}</span>`
-        : cumple
-          ? `<span style="color:var(--warning,#f59e0b);font-weight:600">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
-          : `<span style="color:var(--text-muted)">No — aún no alcanza el 30%</span>`
-      )}
-    `)}`;
+      ${S("Lote / Proyecto", `
+        ${R("Proyecto", `<b>${lote.proyecto?.nombre || "—"}</b>`)}
+        ${R("Código", lote.codigo_lote || "—")}
+        ${R("Ubicación", `Mz ${lote.manzana || "—"} · Lote ${lote.numero_lote || "—"}`)}
+        ${lote.area_m2 ? R("Área", `${lote.area_m2} m²`) : ""}
+        ${R("Precio lista", UI.fmt(lote.precio_lista))}
+        ${lote.estado ? R("Estado del lote", UI.badge(lote.estado)) : ""}
+      `)}
+
+      ${(() => {
+        const puedeEditar = AppState.can('ventas', 'editar_financiero');
+
+        const vfBody = `
+          ${R("Valor total", `<b style="font-size:.95rem">${UI.fmt(vt)}</b>`)}
+          ${ci > 0 ? R("Cuota inicial", UI.fmt(ci)) : ""}
+          ${tp > 0 ? R("Permutas", `${UI.fmt(tp)}${permsDetalle}`) : ""}
+          ${R("Saldo financiado", `<b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+          ${v.observaciones ? R("Observaciones", `<em style="color:var(--text-muted)">${v.observaciones}</em>`) : ""}
+        `;
+
+        return `
+          <section class="venta-detail-section">
+            <div class="venta-detail-section-head">
+              <span>Valores financieros</span>
+              ${puedeEditar ? `
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:700;letter-spacing:0"
+                  onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">
+                  Editar valores
+                </button>` : ""}
+            </div>
+            <div id="sgi_vf_body" class="venta-detail-section-body">
+              ${vfBody}
+            </div>
+          </section>`;
+      })()}
+
+      ${S("Compradores", `
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Documento</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(v.venta_comprador || []).map(vc => `
+                <tr>
+                  <td><b>${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}</b></td>
+                  <td>${vc.comprador?.documento || "—"}</td>
+                  <td>${vc.comprador?.telefono || "—"}</td>
+                  <td>${vc.comprador?.mail || "—"}</td>
+                  <td>${vc.porcentaje || 100}%</td>
+                </tr>
+              `).join("") || `
+                <tr>
+                  <td colspan="5" style="color:var(--text-muted)">Sin compradores</td>
+                </tr>`}
+            </tbody>
+          </table>
+        </div>
+      `)}
+
+      ${vc0 ? S("Comisionista", `
+        ${R("Nombre", `<b>${vc0.comisionista?.nombres || ""} ${vc0.comisionista?.apellidos || ""}</b>`)}
+        ${vc0.comisionista?.documento ? R("Documento", vc0.comisionista.documento) : ""}
+        ${vc0.comisionista?.telefono ? R("Teléfono", vc0.comisionista.telefono) : ""}
+        ${vc0.comisionista?.mail ? R("Correo", vc0.comisionista.mail) : ""}
+        ${R("Valor comisión", `<b style="color:var(--primary,#ff6a00)">${UI.fmt(vc0.valor_comision)}</b>`)}
+      `) : ""}
+
+      ${cuotasIni.length ? S("Cuotas de cuota inicial", `
+        <div class="venta-quota-summary">
+          <span>Pagadas: <b>${pagIni.length}/${cuotasIni.length}</b></span>
+          <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoIni)}</b></span>
+          <span>Pendiente: <b>${UI.fmt(sumVal(cuotasIni) - totalPagadoIni)}</b></span>
+        </div>
+
+        ${bar(
+          cuotasIni.length ? pagIni.length / cuotasIni.length * 100 : 0,
+          "var(--success,#22c55e)"
+        )}
+
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            ${theadCuotas}
+            <tbody>${cuotasIni.map(cuotaRow).join("")}</tbody>
+          </table>
+        </div>
+      `) : ""}
+
+      ${cuotasReg.length ? S("Cuotas regulares", `
+        <div class="venta-quota-summary">
+          <span>Pagadas: <b>${pagReg.length}/${cuotasReg.length}</b></span>
+          <span>Recaudado: <b style="color:var(--success,#22c55e)">${UI.fmt(totalPagadoReg)}</b></span>
+          <span>Pendiente: <b style="color:var(--danger,#ef4444)">${UI.fmt(sumVal(cuotasReg) - totalPagadoReg)}</b></span>
+          <span>Cuota: <b>${UI.fmt(Math.round(sumVal(cuotasReg) / cuotasReg.length))}/mes</b></span>
+        </div>
+
+        ${bar(cuotasReg.length ? pagReg.length / cuotasReg.length * 100 : 0)}
+
+        <div class="venta-quota-table-wrap">
+          <table class="venta-quota-table">
+            ${theadCuotas}
+            <tbody>${cuotasReg.map(cuotaRow).join("")}</tbody>
+          </table>
+        </div>
+      `) : cuotas.length === 0 ? `
+        <div style="font-size:.82rem;color:var(--text-muted);padding:8px 0">
+          Sin plan de pago registrado
+        </div>` : ""}
+
+      ${S("Estado global de pagos y escritura", `
+        ${R("Total pagado", `<b>${UI.fmt(totalPagado)}</b> de ${UI.fmt(vt)}`)}
+        ${R(
+          "Porcentaje pagado",
+          `<b style="color:${pct >= 30 ? "var(--success,#22c55e)" : "var(--primary,#ff6a00)"}">${pct.toFixed(1)}%</b>`
+        )}
+
+        <div style="margin:4px 0 10px">
+          ${bar(
+            pct,
+            pct >= 30 ? "var(--success,#22c55e)" : "var(--primary,#ff6a00)"
+          )}
+        </div>
+
+        ${R("Por pagar", `<b style="color:var(--danger,#ef4444)">${UI.fmt(Math.max(0, vt - totalPagado))}</b>`)}
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+
+        ${R(
+          "Requisito escritura (30%)",
+          cumple
+            ? `<span style="color:var(--success,#22c55e);font-weight:700">✓ Cumple — ${pct.toFixed(1)}% pagado</span>`
+            : `<span style="color:var(--text-muted)">No cumple — faltan ${(30 - pct).toFixed(1)}% (${UI.fmt(Math.max(0, vt * 0.3 - totalPagado))})</span>`
+        )}
+
+        ${R(
+          "Escriturado",
+          escrit
+            ? `<span style="color:var(--success,#22c55e);font-weight:700">✓ Sí${v.fecha_escritura ? " · " + UI.date(v.fecha_escritura) : ""}</span>`
+            : cumple
+              ? `<span style="color:var(--warning,#e8570c);font-weight:700">Pendiente — cumple el requisito, en espera del auxiliar contable</span>`
+              : `<span style="color:var(--text-muted)">No — aún no alcanza el 30%</span>`
+        )}
+      `)}
+
+    </div>`;
 
   UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
 };
@@ -374,14 +535,23 @@ function _htmlFormVenta(proyectos) {
         </select>
       </div>
 
-      <div class="form-group" style="grid-column:1/-1"><label>Lote disponible *</label>
-        <input type="text" id="f_lote_buscar" placeholder="Buscar por código de lote…"
-               oninput="_buscarLote(this.value)" autocomplete="off" style="margin-bottom:4px" disabled/>
-        <select id="f_lote" onchange="_mostrarInfoLote()">
-          <option value="">— Primero seleccione un proyecto —</option>
-        </select>
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Lote disponible *</label>
+        <input type="hidden" id="f_lote"/>
+        <div id="f_lote_card" style="display:none;background:var(--surface-2,#f0f4f8);border-radius:6px;padding:8px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div id="f_lote_card_info" style="font-size:.85rem;line-height:1.6"></div>
+            <button type="button" class="btn btn-ghost btn-sm"
+                    style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarLote()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+        <div id="f_lote_search_wrap">
+          <input type="text" id="f_lote_buscar" placeholder="— Primero seleccione un proyecto —"
+                 oninput="_buscarLote(this.value)" onfocus="_buscarLote(this.value)"
+                 autocomplete="off" disabled/>
+          <div id="f_lote_results" style="display:none;border:1px solid var(--border);border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;background:var(--surface);position:relative;z-index:10"></div>
+        </div>
       </div>
-      <div id="f_lote_info" style="grid-column:1/-1"></div>
 
       <div class="form-group">
         <label>Valor Total *</label>
@@ -394,12 +564,21 @@ function _htmlFormVenta(proyectos) {
                oninput="_onMoneyInput(this);_actualizarCalculos()"/>
       </div>
 
+      <div class="form-group">
+        <label>Fecha de venta *</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="f_fecha_venta" type="date" style="flex:1"/>
+          <button type="button" class="btn btn-ghost btn-sm" style="white-space:nowrap"
+                  onclick="document.getElementById('f_fecha_venta').value=new Date().toISOString().split('T')[0]">Hoy</button>
+        </div>
+      </div>
+
       <!-- Permutas -->
       <div class="form-group" style="grid-column:1/-1">
         <label style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span>Permutas / Abonos en especie</span>
           <button type="button" class="btn btn-ghost btn-sm" style="font-size:.78rem;padding:2px 8px"
-                  onclick="_agregarPermuta()">+ Agregar permuta</button>
+                  onclick="_agregarPermuta()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar permuta</button>
         </label>
         <div id="f_permutas_lista"></div>
         <div id="f_permutas_resumen" style="display:none;font-size:.82rem;color:var(--text-muted);margin-top:4px"></div>
@@ -445,6 +624,17 @@ function _htmlFormVenta(proyectos) {
       ${_htmlCompradorField()}
       ${_htmlComisionistaField()}
 
+      <div class="form-group" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="f_escriturado" onchange="_toggleFechaEscritura()"/>
+          <span>¿Ya está escriturado?</span>
+        </label>
+        <div id="f_fecha_escritura_wrap" style="display:none;margin-top:6px">
+          <label style="font-size:.8rem;color:var(--text-muted)">Fecha de escritura</label>
+          <input id="f_fecha_escritura" type="date" style="margin-top:4px;width:100%"/>
+        </div>
+      </div>
+
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label>
         <textarea id="f_obs" rows="2"></textarea>
       </div>
@@ -458,9 +648,9 @@ function _htmlCompradorField() {
         <span>Comprador *</span>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-ghost btn-sm" id="btn_edit_comp"
-                  style="display:none;font-size:.78rem;padding:2px 8px" onclick="_editarComprador()">✎ Editar</button>
+                  style="display:none;padding:2px 8px" onclick="_editarComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar</button>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComprador()">+ Nuevo</button>
+                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
         </div>
       </label>
       <input type="hidden" id="f_comp"/>
@@ -469,7 +659,7 @@ function _htmlCompradorField() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div id="f_comp_card_info" style="font-size:.85rem;line-height:1.6"></div>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarComprador()">✕</button>
+                  style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
 
@@ -524,9 +714,9 @@ function _htmlComisionistaField() {
         <span>Comisionista</span>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-ghost btn-sm" id="btn_edit_comi"
-                  style="display:none;font-size:.78rem;padding:2px 8px" onclick="_editarComisionista()">✎ Editar</button>
+                  style="display:none;padding:2px 8px" onclick="_editarComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar</button>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComisionista()">+ Nuevo</button>
+                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
         </div>
       </label>
       <input type="hidden" id="f_comi"/>
@@ -535,7 +725,7 @@ function _htmlComisionistaField() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div id="f_comi_card_info" style="font-size:.85rem;line-height:1.6"></div>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarComisionista()">✕</button>
+                  style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
 
@@ -602,6 +792,7 @@ function _bodyVenta() {
   }
 
   const idComi = document.getElementById("f_comi").value;
+  const escriturado = document.getElementById("f_escriturado")?.checked || false;
   return {
     id_lote:                     +document.getElementById("f_lote").value,
     valor_total:                 _parseMiles(document.getElementById("f_vt").value),
@@ -616,6 +807,9 @@ function _bodyVenta() {
     valor_comision:              _parseMiles(document.getElementById("f_pcom").value),
     permutas:                    window._ventaPermutas || [],
     microcuotas,
+    fecha_venta:                 document.getElementById("f_fecha_venta")?.value || null,
+    escriturado,
+    fecha_escritura:             escriturado ? (document.getElementById("f_fecha_escritura")?.value || null) : null,
   };
 }
 
@@ -626,28 +820,16 @@ window._filtrarLotesPorProyecto = function() {
   const filtrados = nombreProy ? lotes.filter(l => l.proyecto === nombreProy) : [];
 
   window._lotesProyecto = filtrados;
+  _limpiarLote();
 
   const buscar = document.getElementById("f_lote_buscar");
+  if (!buscar) return;
   buscar.value = "";
   buscar.disabled = filtrados.length === 0;
   buscar.placeholder = filtrados.length
     ? "Buscar por código de lote…"
     : "— No hay lotes disponibles en este proyecto —";
-
-  _poblarSelectLotes(filtrados);
-  document.getElementById("f_lote_info").innerHTML = "";
 };
-
-function _poblarSelectLotes(lista) {
-  const sel = document.getElementById("f_lote");
-  sel.innerHTML = lista.length
-    ? lista.map(l =>
-        `<option value="${l.id_lote}" data-lote='${JSON.stringify(l).replace(/'/g, "&#39;")}'>` +
-        `${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)} — ${UI.fmt(l.precio_lista)}` +
-        `</option>`).join("")
-    : `<option value="">— Sin resultados —</option>`;
-  if (lista.length === 1) _mostrarInfoLote();
-}
 
 window._buscarLote = function(texto) {
   const lotes = window._lotesProyecto || [];
@@ -655,23 +837,74 @@ window._buscarLote = function(texto) {
   const filtrados = q
     ? lotes.filter(l => (l.codigo_lote || `Mz${l.manzana}Lt${l.numero_lote}`).toLowerCase().includes(q))
     : lotes;
-  _poblarSelectLotes(filtrados);
-  document.getElementById("f_lote_info").innerHTML = "";
+
+  const div = document.getElementById("f_lote_results");
+  if (!div) return;
+
+  if (!filtrados.length) {
+    div.style.display = q ? "block" : "none";
+    div.innerHTML = q
+      ? `<div style="padding:10px 12px;color:var(--text-muted);font-size:.85rem">Sin resultados para "${texto.trim()}"</div>`
+      : "";
+    return;
+  }
+
+  div.style.display = "block";
+  div.innerHTML = filtrados.map(l => `
+    <div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.85rem"
+         onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
+         onmouseout="this.style.background=''"
+         onclick="_seleccionarLote(${l.id_lote})">
+      <div style="font-weight:600">${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)}</div>
+      <div style="color:var(--text-muted);font-size:.78rem">
+        Mz ${l.manzana || "—"} · Lote ${l.numero_lote || "—"}${l.area_m2 ? " · " + l.area_m2 + " m²" : ""} · Precio lista: ${UI.fmt(l.precio_lista)}
+      </div>
+    </div>`).join("");
+
+  if (filtrados.length === 1) _seleccionarLote(filtrados[0].id_lote);
 };
 
-window._mostrarInfoLote = function() {
-  const sel = document.getElementById("f_lote");
-  const opt = sel.options[sel.selectedIndex];
-  const info = document.getElementById("f_lote_info");
-  if (!opt || !opt.dataset.lote) { info.innerHTML = ""; return; }
-  const l = JSON.parse(opt.dataset.lote);
-  info.innerHTML = `
-    <div style="background:var(--surface-2,#f0f4f8);border-radius:6px;padding:8px 14px;font-size:.85rem;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:4px">
-      <span><b>Manzana:</b> ${l.manzana || "—"}</span>
-      <span><b>N° Lote:</b> ${l.numero_lote || "—"}</span>
-      <span><b>Área:</b> ${l.area_m2 ? l.area_m2 + " m²" : "—"}</span>
-      <span><b>Precio lista:</b> ${UI.fmt(l.precio_lista)}</span>
-    </div>`;
+window._seleccionarLote = function(idLote) {
+  const l = (window._lotesProyecto || []).find(x => x.id_lote === idLote);
+  if (!l) return;
+
+  window._loteSeleccionado = l;
+  document.getElementById("f_lote").value = idLote;
+
+  document.getElementById("f_lote_card_info").innerHTML =
+    `<div style="font-weight:600">${l.codigo_lote || ("Mz" + l.manzana + " Lt" + l.numero_lote)}</div>` +
+    `<div style="color:var(--text-muted)">Mz ${l.manzana || "—"} · Lote ${l.numero_lote || "—"}` +
+    `${l.area_m2 ? " · " + l.area_m2 + " m²" : ""} · Precio lista: ${UI.fmt(l.precio_lista)}</div>`;
+
+  document.getElementById("f_lote_card").style.display = "block";
+  document.getElementById("f_lote_search_wrap").style.display = "none";
+  document.getElementById("f_lote_results").style.display = "none";
+
+  const vtInput = document.getElementById("f_vt");
+  if (vtInput && l.precio_lista) {
+    vtInput.value = _fmtMiles(l.precio_lista);
+    _actualizarCalculos();
+  }
+};
+
+window._limpiarLote = function() {
+  window._loteSeleccionado = null;
+  const hidden = document.getElementById("f_lote");
+  if (hidden) hidden.value = "";
+  const card = document.getElementById("f_lote_card");
+  const searchWrap = document.getElementById("f_lote_search_wrap");
+  const buscar = document.getElementById("f_lote_buscar");
+  const results = document.getElementById("f_lote_results");
+  if (card) card.style.display = "none";
+  if (searchWrap) searchWrap.style.display = "";
+  if (buscar) buscar.value = "";
+  if (results) results.style.display = "none";
+};
+
+window._toggleFechaEscritura = function() {
+  const checked = document.getElementById("f_escriturado")?.checked;
+  const wrap = document.getElementById("f_fecha_escritura_wrap");
+  if (wrap) wrap.style.display = checked ? "block" : "none";
 };
 
 // ─── Permutas ───
@@ -704,7 +937,7 @@ function _renderPermutasLista() {
              oninput="_onMoneyInput(this);window._ventaPermutas[${i}].valor=_parseMiles(this.value);_actualizarCalculos()"
              style="flex:1;min-width:0"/>
       <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0"
-              onclick="_eliminarPermuta(${i})">✕</button>
+              onclick="_eliminarPermuta(${i})"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>`).join("");
   _actualizarPermutasResumen();
 }
@@ -799,7 +1032,7 @@ function _actualizarResumenInicial() {
     total += _parseMiles(document.getElementById(`f_mc_val_${i}`)?.value || "0");
   }
   const diff = ci - total;
-  const color = diff === 0 ? "var(--success,#22c55e)" : diff > 0 ? "var(--warning,#f59e0b)" : "var(--danger,#ef4444)";
+  const color = diff === 0 ? "var(--success,#22c55e)" : diff > 0 ? "var(--warning,#e8570c)" : "var(--danger,#ef4444)";
   const msg   = diff === 0 ? "✓ Cuadra perfectamente"
               : diff > 0   ? `Faltan ${UI.fmt(diff)}`
               :               `Excede en ${UI.fmt(-diff)}`;
@@ -1127,14 +1360,69 @@ window._ocultarResumenVenta = function() {
   document.getElementById("venta_form_wrap").style.display = "block";
   document.getElementById("venta_resumen_wrap").style.display = "none";
 };
+function _getVentaErrorWrap() {
+  let errorWrap = document.getElementById("venta_error_wrap");
+
+  if (errorWrap) return errorWrap;
+
+  const formWrap = document.getElementById("venta_form_wrap");
+  const resumenWrap = document.getElementById("venta_resumen_wrap");
+
+  const target =
+    resumenWrap && resumenWrap.style.display !== "none"
+      ? resumenWrap
+      : formWrap;
+
+  if (!target) return null;
+
+  errorWrap = document.createElement("div");
+  errorWrap.id = "venta_error_wrap";
+  errorWrap.className = "venta-modal-error";
+
+  target.prepend(errorWrap);
+
+  return errorWrap;
+}
+
+function _mostrarErrorVenta(mensaje) {
+  const errorWrap = _getVentaErrorWrap();
+
+  if (!errorWrap) {
+    UI.toast(mensaje || "Ocurrió un error al procesar la venta", "error");
+    return;
+  }
+
+  errorWrap.innerHTML = `
+    <strong>No se pudo completar la operación</strong>
+    <span>${mensaje || "Revise la información ingresada e intente nuevamente."}</span>
+  `;
+
+  errorWrap.style.display = "block";
+  errorWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function _limpiarErrorVenta() {
+  const errorWrap = document.getElementById("venta_error_wrap");
+
+  if (!errorWrap) return;
+
+  errorWrap.innerHTML = "";
+  errorWrap.style.display = "none";
+}
 
 window._mostrarResumenVenta = function(fnConfirmar) {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
 
-  const selLote = document.getElementById("f_lote");
-  const loteInfo = (() => { try { return JSON.parse(selLote?.options[selLote.selectedIndex]?.dataset.lote || "null"); } catch { return null; } })();
+if (err) {
+  _mostrarErrorVenta(err);
+  UI.toast(err, "error");
+  return;
+}
+
+_limpiarErrorVenta();
+
+  const loteInfo = window._loteSeleccionado || null;
   const proy = document.getElementById("f_proy")?.value || "—";
   const tp   = _totalPermutas();
   const saldo = Math.max(0, body.valor_total - body.cuota_inicial - tp);
@@ -1171,15 +1459,17 @@ window._mostrarResumenVenta = function(fnConfirmar) {
   const html = `
     <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Revise antes de confirmar — cada sección tiene un botón <b>Editar</b> para volver al formulario.</p>
     ${_seccionResumen("Lote", `<b>${proy}</b> · ${loteInfo?.codigo_lote||"—"} · Mz ${loteInfo?.manzana||"—"} Lt ${loteInfo?.numero_lote||"—"} · ${loteInfo?.area_m2?loteInfo.area_m2+" m²":"—"} · Precio lista: ${UI.fmt(loteInfo?.precio_lista)}`)}
+    ${_seccionResumen("Fecha de venta", body.fecha_venta ? UI.date(body.fecha_venta) : "—")}
     ${_seccionResumen("Valores", `Valor total: <b>${UI.fmt(body.valor_total)}</b> · Cuota inicial: <b>${UI.fmt(body.cuota_inicial)}</b>${tp>0?` · Permutas: <b>${UI.fmt(tp)}</b> (${perms.map(p=>p.descripcion||"bien").join(", ")})`:""}  · Saldo: <b style="color:var(--primary,#ff6a00)">${UI.fmt(saldo)}</b>`)}
+    ${body.escriturado ? _seccionResumen("Escritura", `Escriturado${body.fecha_escritura ? " · " + UI.date(body.fecha_escritura) : ""}`) : ""}
     ${body.cuota_inicial>0 ? _seccionResumen("Cuota inicial",`${body.numero_cuotas_inicial} micro-cuota${body.numero_cuotas_inicial>1?"s":""}<table style="margin-top:4px;border-collapse:collapse;font-size:.82rem">${mcRows}</table>`) : ""}
     ${_seccionResumen("Cuotas regulares", cuotaLine)}
     ${_seccionResumen("Comprador", comp ? `<b>${comp.nombres} ${comp.apellidos||""}</b> · CC ${comp.documento}${comp.telefono?" · "+comp.telefono:""}${comp.mail?" · "+comp.mail:""}` : "—")}
     ${_seccionResumen("Comisionista", comi ? `<b>${comi.nombres} ${comi.apellidos||""}</b> · CC ${comi.documento} · Comisión: ${UI.fmt(body.valor_comision)}` : "Sin comisionista")}
     ${body.observaciones ? _seccionResumen("Observaciones", body.observaciones) : ""}
     <div class="form-actions">
-      <button class="btn btn-ghost" onclick="_ocultarResumenVenta()">← Editar</button>
-      <button class="btn btn-primary" onclick="${fnConfirmar}">✓ Confirmar y crear</button>
+      <button class="btn btn-ghost" onclick="_ocultarResumenVenta()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Editar</button>
+      <button class="btn btn-primary" onclick="${fnConfirmar}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmar y crear</button>
     </div>`;
 
   document.getElementById("venta_form_wrap").style.display = "none";
@@ -1191,8 +1481,11 @@ window._mostrarResumenVenta = function(fnConfirmar) {
 // ─── Inicialización de la sección dinámica del formulario ───
 function _iniciarFormularioDinamico() {
   window._ventaPermutas = [];
+  window._loteSeleccionado = null;
   _renderMicroCuotas(1);
   _actualizarCalculos();
+  const fechaInput = document.getElementById("f_fecha_venta");
+  if (fechaInput) fechaInput.value = new Date().toISOString().split("T")[0];
 }
 
 // ─── Formulario estándar (admin / auxiliar_contable) ───
@@ -1221,7 +1514,7 @@ window.ventaForm = async function() {
     `<div id="venta_form_wrap">` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarVenta()')">Revisar →</button>
+        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarVenta()')">Revisar <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
       </div>
     </div>
     <div id="venta_resumen_wrap" style="display:none"></div>`);
@@ -1267,13 +1560,36 @@ function _validarBodyVenta(body) {
 window.guardarVenta = async function() {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
+
+  if (err) {
+    _mostrarErrorVenta(err);
+    UI.toast(err, "error");
+    return;
+  }
+
+  _limpiarErrorVenta();
+
   try {
-    await API.post("/ventas", body);
+    const ventaCreada = await API.post("/ventas", body);
+
     UI.closeModal();
-    UI.toast("Venta creada", "ok");
+
+    const cuotas = ventaCreada?.cuotas_generadas || 0;
+
+    UI.toast(
+      cuotas > 0
+        ? `Venta creada correctamente con ${cuotas} cuota(s) generada(s)`
+        : "Venta creada correctamente",
+      "ok"
+    );
+
     ventasView();
-  } catch(e) { UI.toast(e.message, "error"); }
+  } catch(e) {
+    const mensaje = e.message || "No se pudo crear la venta";
+
+    _mostrarErrorVenta(mensaje);
+    UI.toast(mensaje, "error");
+  }
 };
 
 // ─── Formulario de solicitud (asesor_comercial) ───
@@ -1305,7 +1621,7 @@ window.ventaFormSolicitud = async function() {
       ` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarSolicitudVenta()')">Revisar →</button>
+        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarSolicitudVenta()')">Revisar <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
       </div>
     </div>
     <div id="venta_resumen_wrap" style="display:none"></div>`);
@@ -1315,11 +1631,40 @@ window.ventaFormSolicitud = async function() {
 window.guardarSolicitudVenta = async function() {
   const body = _bodyVenta();
   const err  = _validarBodyVenta(body);
-  if (err) return UI.toast(err, "error");
+
+  if (err) {
+    _mostrarErrorVenta(err);
+    UI.toast(err, "error");
+    return;
+  }
+
+  _limpiarErrorVenta();
+
   try {
-    await API.post("/ventas/solicitud", body);
+    const ventaCreada = await API.post("/ventas/solicitud", body);
+
     UI.closeModal();
-    UI.toast("Solicitud enviada — pendiente de autorización", "ok");
+
+    const cuotas = ventaCreada?.cuotas_generadas || 0;
+
+    UI.toast(
+      cuotas > 0
+        ? `Solicitud enviada con ${cuotas} cuota(s) generada(s)`
+        : "Solicitud enviada — pendiente de autorización",
+      "ok"
+    );
+
     ventasView();
-  } catch(e) { UI.toast(e.message, "error"); }
+  } catch(e) {
+    const mensaje = e.message || "No se pudo enviar la solicitud";
+
+    _mostrarErrorVenta(mensaje);
+    UI.toast(mensaje, "error");
+  }
 };
+
+// Helpers called from inline oninput handlers in the sale form
+window._actualizarCalculos   = _actualizarCalculos;
+window._onMoneyInput         = _onMoneyInput;
+
+})();

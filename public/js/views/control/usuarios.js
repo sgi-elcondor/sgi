@@ -1,4 +1,6 @@
-﻿window.usuariosView = async function () {
+(function () {
+
+window.usuariosView = async function () {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
   await Promise.all([cargarRolesCache(), cargarUsuariosTabla()]);
@@ -21,7 +23,8 @@ async function cargarRolesCache() {
 }
 
 async function cargarUsuariosTabla() {
-  const vc = document.getElementById("viewContainer");
+  const vc        = document.getElementById("viewContainer");
+  const canCreate = AppState.can("usuarios", "crear");
   try {
     _todosUsuarios = await API.get('/usuarios');
 
@@ -33,21 +36,17 @@ async function cargarUsuariosTabla() {
               style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
                      font-size:.875rem; background:var(--surface); color:var(--text); width:200px;"
               oninput="filtrarUsuarios()" />
-            <select id="filtro-rol" onchange="filtrarUsuarios()"
-              style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
-                     font-size:.875rem; background:var(--surface); color:var(--text);">
+            <select id="filtro-rol" onchange="filtrarUsuarios()" class="select-sm" style="width:auto;">
               <option value="">Todos los roles</option>
               ${_rolesCache.map(r => `<option value="${r.nombre}">${r.nombre}</option>`).join('')}
             </select>
-            <select id="filtro-estado" onchange="filtrarUsuarios()"
-              style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
-                     font-size:.875rem; background:var(--surface); color:var(--text);">
+            <select id="filtro-estado" onchange="filtrarUsuarios()" class="select-sm" style="width:auto;">
               <option value="">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos</option>
             </select>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()">+ Nuevo usuario</button>
+          ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo usuario</button>` : ""}
         </div>
 
         <div id="alerta-pendientes" style="display:none;
@@ -58,6 +57,7 @@ async function cargarUsuariosTabla() {
         <table>
           <thead>
             <tr>
+              <th style="width:2.5rem"></th>
               <th>Email</th>
               <th>Rol</th>
               <th>Vinculado a</th>
@@ -89,7 +89,7 @@ function mostrarAlertaPendientes(usuarios) {
     con rol comprador sin perfil completo.
     <a href="#" style="color:#b8860b; font-weight:600; margin-left:.5rem;"
       onclick="document.getElementById('filtro-rol').value='comprador'; filtrarUsuarios(); return false;">
-      Ver &rarr;
+      Ver <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>`;
 }
 
@@ -98,7 +98,7 @@ function renderTablaUsuarios(usuarios) {
   if (!tbody) return;
 
   if (usuarios.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin resultados</td></tr>';
     return;
   }
 
@@ -109,16 +109,20 @@ function renderTablaUsuarios(usuarios) {
       ? `${u.comisionista.nombres} ${u.comisionista.apellidos}`
       : '<span style="color:var(--text-muted)">-</span>';
 
+    const initial = (u.email || "?")[0].toUpperCase();
+    const avatarCell = u.photo_url
+      ? `<img src="${u.photo_url}" class="user-avatar-sm" alt="foto" />`
+      : `<div class="user-avatar-icon">${initial}</div>`;
+
     const opcionesRol = _rolesCache.map(r =>
       `<option value="${r.id_rol}" ${u.roles?.id_rol === r.id_rol ? 'selected' : ''}>${r.nombre}</option>`
     ).join('');
 
     return `<tr>
+      <td>${avatarCell}</td>
       <td>${u.email}</td>
       <td>
-        <select data-id="${u.id_usuario}" onchange="cambiarRolInline(this)"
-          style="padding:.3rem .6rem; border:1px solid var(--border); border-radius:6px;
-                 font-size:.85rem; background:var(--surface); color:var(--text); cursor:pointer;">
+        <select data-id="${u.id_usuario}" onchange="cambiarRolInline(this)" class="select-sm" style="width:auto;">
           ${opcionesRol}
         </select>
       </td>
@@ -403,3 +407,14 @@ async function reactivarUsuario(id) {
   }
 }
 
+// Expose functions called from inline onclick handlers
+window.filtrarUsuarios         = filtrarUsuarios;
+window.abrirModalNuevoUsuario  = abrirModalNuevoUsuario;
+window.abrirModalEditarUsuario = abrirModalEditarUsuario;
+window.guardarNuevoUsuario     = guardarNuevoUsuario;
+window.guardarEdicionUsuario   = guardarEdicionUsuario;
+window.confirmarDesactivar     = confirmarDesactivar;
+window.reactivarUsuario        = reactivarUsuario;
+window.cambiarRolInline        = cambiarRolInline;
+
+})();

@@ -37,21 +37,31 @@ const ROUTE_PERMISSIONS = {
   'POST /api/facturas':             { recurso: 'facturas',      accion: 'crear' },
   'PUT /api/facturas':              { recurso: 'facturas',      accion: 'actualizar' },
 
-  'GET /api/recibos':               { recurso: 'recibos',       accion: 'leer' },
-  'POST /api/recibos':              { recurso: 'recibos',       accion: 'crear' },
+  'GET /api/recibos':                        { recurso: 'recibos', accion: 'leer' },
+  'POST /api/recibos':                       { recurso: 'recibos', accion: 'crear' },
+  'POST /api/recibos/generar-pendientes':    { recurso: 'recibos', accion: 'crear' },
 
   'GET /api/compradores':           { recurso: 'compradores',   accion: 'leer' },
   'POST /api/compradores':          { recurso: 'compradores',   accion: 'crear' },
   'PUT /api/compradores':           { recurso: 'compradores',   accion: 'actualizar' },
 
-  'GET /api/comisionistas':         { recurso: 'comisionistas', accion: 'leer' },
-  'POST /api/comisionistas':        { recurso: 'comisionistas', accion: 'crear' },
-  'PUT /api/comisionistas':         { recurso: 'comisionistas', accion: 'actualizar' },
+  'GET /api/comisionistas':                        { recurso: 'comisionistas', accion: 'leer' },
+  'POST /api/comisionistas':                       { recurso: 'comisionistas', accion: 'crear' },
+  'PUT /api/comisionistas':                        { recurso: 'comisionistas', accion: 'actualizar' },
+  'GET /api/comisionistas/comisiones':             { recurso: 'comisionistas', accion: 'leer' },
+  'POST /api/comisionistas/ventas/micropago':      { recurso: 'comisionistas', accion: 'actualizar' },
+  'PATCH /api/comisionistas/ventas/pagada':        { recurso: 'comisionistas', accion: 'actualizar' },
 
-  'GET /api/reportes':              { recurso: 'reportes',      accion: 'leer' },
-  'GET /api/reportes/dir':          { recurso: 'reportes_dir',  accion: 'leer' },
-  'GET /api/reportes/jur':          { recurso: 'alertas_jur',   accion: 'leer' },
-  'GET /api/reportes/juridico':     { recurso: 'alertas_jur',   accion: 'leer' },
+  'GET /api/reportes':                   { recurso: 'reportes',     accion: 'leer' },
+  'GET /api/reportes/dir':               { recurso: 'reportes_dir', accion: 'leer' },
+  'GET /api/reportes/jur':               { recurso: 'alertas_jur',  accion: 'leer' },
+  'GET /api/reportes/juridico':          { recurso: 'alertas_jur',  accion: 'leer' },
+  'GET /api/reportes/comisiones-jefe':   { recurso: 'reportes',     accion: 'leer' },
+
+  'GET /api/reportes/panel':             { recurso: 'dashboard', accion: 'ver_operacion' },
+  'GET /api/reportes/cartera-hoy':       { recurso: 'dashboard', accion: 'ver_cartera' },
+  'GET /api/reportes/comisiones':        { recurso: 'dashboard', accion: 'ver_comisiones' },
+  'GET /api/reportes/alertas':           { recurso: 'dashboard', accion: 'ver_juridico' },
 
   'GET /api/juridico/cartera':            { recurso: 'alertas_jur',      accion: 'leer' },
   'GET /api/juridico/observaciones':      { recurso: 'observaciones_jur', accion: 'leer' },
@@ -70,6 +80,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
 
   'POST /api/uploads/baucher':    { recurso: 'uploads',     accion: 'crear' },
+  'POST /api/uploads/avatar':     { recurso: 'uploads',     accion: 'avatar' },
   'GET /api/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
@@ -80,6 +91,11 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/pagos/contrast':           { recurso: 'validacion_pagos',  accion: 'leer' },
   'PATCH /api/pagos/accept-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
+
+  'GET /api/gastos':                   { recurso: 'gastos', accion: 'leer' },
+  'GET /api/gastos/resumen':           { recurso: 'gastos', accion: 'leer' },
+  'POST /api/gastos':                  { recurso: 'gastos', accion: 'crear' },
+  'PUT /api/gastos':                   { recurso: 'gastos', accion: 'actualizar' },
 
 };
 

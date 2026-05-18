@@ -3,7 +3,8 @@ node_modules/
 desktop.ini
 Thumbs.db
 dist/
-src/config/firebase-service-account.json
-estructura_listada.txt
 git-workflow.md
-.claude
+aux-changes.md
+db/
+.claude/
+CLAUDE.md
