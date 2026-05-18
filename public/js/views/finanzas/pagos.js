@@ -194,18 +194,24 @@
     window._pagosDetalleGrupo = grupo;
 
     function filaPago(p) {
-      return `<tr>
-        <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${p.numero_pago || `#${p.id_pago}`}</td>
-        <td>${UI.date(p.fecha_pago)}</td>
-        <td style="text-align:right;font-weight:600">${UI.fmt(p.valor_pago)}</td>
-        <td>${p.metodo_pago || "—"}</td>
-        <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${fmtFactNum(p.numero_factura)}</td>
-        <td>${p.numero_cuota != null ? `#${p.numero_cuota}` : "—"}</td>
-        <td style="max-width:120px;font-size:.82rem">${p.referencia || "—"}</td>
-        <td>${p.estado ? UI.badge(p.estado) : "—"}</td>
-        <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">${p.numero_recibo || "—"}</td>
-      </tr>`;
-    }
+  const esAbonoExtraordinario = p.tipo_pago === "abono_extraordinario";
+
+  const cuotaLabel = esAbonoExtraordinario
+    ? `<span class="badge badge-info">Abono al total</span>`
+    : (p.numero_cuota != null ? `#${p.numero_cuota}` : "—");
+
+  return `<tr>
+    <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${p.numero_pago || `#${p.id_pago}`}</td>
+    <td>${UI.date(p.fecha_pago)}</td>
+    <td style="text-align:right;font-weight:600">${UI.fmt(p.valor_pago)}</td>
+    <td>${p.metodo_pago || "—"}</td>
+    <td style="font-family:monospace;font-size:.82rem;white-space:nowrap">${fmtFactNum(p.numero_factura)}</td>
+    <td>${cuotaLabel}</td>
+    <td style="max-width:120px;font-size:.82rem">${p.referencia || "—"}</td>
+    <td>${p.estado ? UI.badge(p.estado) : "—"}</td>
+    <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">${p.numero_recibo || "—"}</td>
+  </tr>`;
+}
 
     const totalPagado = grupo.pagos.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
 

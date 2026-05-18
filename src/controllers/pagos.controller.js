@@ -9,7 +9,7 @@ exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, tipo_pago, id_venta,
       cuota_pago(
         valor_aplicado,
         cuota:id_cuota(
@@ -42,6 +42,7 @@ exports.getAll = async (req, res) => {
       metodo_pago:    p.metodo_pago,
       referencia:     p.referencia,
       estado:         p.estado,
+      tipo_pago:      p.tipo_pago ?? null,
       id_venta:       venta?.id_venta  ?? p.id_venta ?? null,
       numero_cuota:   cuota?.numero_cuota ?? null,
       id_factura:     factura?.id_factura ?? null,
