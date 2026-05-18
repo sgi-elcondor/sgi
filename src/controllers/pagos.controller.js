@@ -113,6 +113,60 @@ exports.create = async (req, res) => {
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
 
+exports.createAbonoExtraordinario = async (req, res) => {
+  const {
+    id_venta,
+    valor_abono,
+    fecha_pago,
+    metodo_pago,
+    referencia,
+  } = req.body;
+
+  if (!id_venta) {
+    return res.status(400).json({ error: "id_venta es obligatorio" });
+  }
+
+  if (!valor_abono || Number(valor_abono) <= 0) {
+    return res.status(400).json({ error: "valor_abono debe ser mayor a 0" });
+  }
+
+  if (!fecha_pago) {
+    return res.status(400).json({ error: "fecha_pago es obligatorio" });
+  }
+
+  if (!metodo_pago) {
+    return res.status(400).json({ error: "metodo_pago es obligatorio" });
+  }
+
+  const { data: cuotasPendientes, error: errorCuotas } = await supabase
+    .schema(SCHEMA)
+    .from("cuota")
+    .select("id_cuota, id_venta, numero_cuota, valor_cuota, estado")
+    .eq("id_venta", id_venta)
+    .eq("estado", "pendiente")
+    .order("numero_cuota", { ascending: false });
+
+  if (errorCuotas) {
+    return res.status(500).json({ error: errorCuotas.message });
+  }
+
+  if (!cuotasPendientes || cuotasPendientes.length === 0) {
+    return res.status(400).json({
+      error: "La venta no tiene cuotas pendientes para aplicar el abono extraordinario",
+    });
+  }
+
+  return res.status(200).json({
+    message: "Endpoint de abono extraordinario activo",
+    id_venta,
+    valor_abono: Number(valor_abono),
+    fecha_pago,
+    metodo_pago,
+    referencia: referencia || null,
+    cuotas_pendientes_encontradas: cuotasPendientes.length,
+    cuotas_pendientes: cuotasPendientes,
+  });
+};
 
 exports.getMisPagos = async (req, res) => {
   const id_comprador = req.usuario.id_comprador;
