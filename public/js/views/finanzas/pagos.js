@@ -283,7 +283,7 @@
           </select>
         </div>
         <div class="form-group" style="grid-column:1/-1">
-          <label>Referencia</label>
+          <label>Referencia *</label>
           <input id="pf_ref" placeholder="Nro. comprobante o transacción">
         </div>
         <div class="form-group" style="grid-column:1/-1">
@@ -313,6 +313,7 @@
 
     if (!id_factura) return UI.toast("Seleccione una factura", "error");
     if (!fecha_pago) return UI.toast("Ingrese la fecha de pago", "error");
+    if (!referencia) return UI.toast("La referencia de pago es obligatoria", "error");
 
     const btn = document.getElementById("pf_btn_guardar");
     if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
