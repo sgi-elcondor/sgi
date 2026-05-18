@@ -356,6 +356,9 @@ function renderMoraEscritura(ventas = []) {
     const fmtC       = n => n != null ? Number(n).toLocaleString("es-CO", { style:"currency", currency:"COP", maximumFractionDigits:0 }) : "—";
     const fmtD       = d => d ? new Date(d+"T12:00:00").toLocaleDateString("es-CO", { year:"numeric", month:"long", day:"numeric" }) : "—";
 
+    const totalAbonoExtraordinario = Number(v.total_abonado_extraordinario || 0);
+    const saldoPendienteReal       = Number(v.saldo_pendiente_real ?? v.saldo_pendiente ?? 0);
+
     function buildAlerta(cuota) {
       if (!cuota) return "";
       const dias = cuota.dias_restantes;
@@ -421,11 +424,33 @@ function renderMoraEscritura(ventas = []) {
             <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
           </div>
           <div class="finance-grid">
-            <div class="finance-item"><div class="finance-item-label">Valor total</div><div class="finance-item-value">${fmtC(v.valor_total)}</div></div>
-            <div class="finance-item"><div class="finance-item-label">Pagado</div><div class="finance-item-value success">${fmtC(v.total_pagado)}</div></div>
-            <div class="finance-item"><div class="finance-item-label">Saldo a diferir</div><div class="finance-item-value warning">${fmtC(v.saldo_pendiente)}</div></div>
-            <div class="finance-item"><div class="finance-item-label">Cuotas</div><div class="finance-item-value accent">${v.cuotas_pagadas} / ${v.total_cuotas}</div></div>
-          </div>
+  <div class="finance-item">
+    <div class="finance-item-label">Valor total</div>
+    <div class="finance-item-value">${fmtC(v.valor_total)}</div>
+  </div>
+
+  <div class="finance-item">
+    <div class="finance-item-label">Pagado total</div>
+    <div class="finance-item-value success">${fmtC(v.total_pagado)}</div>
+  </div>
+
+  ${totalAbonoExtraordinario > 0 ? `
+    <div class="finance-item">
+      <div class="finance-item-label">Abono al total</div>
+      <div class="finance-item-value success">${fmtC(totalAbonoExtraordinario)}</div>
+    </div>
+  ` : ""}
+
+  <div class="finance-item">
+    <div class="finance-item-label">Saldo pendiente real</div>
+    <div class="finance-item-value warning">${fmtC(saldoPendienteReal)}</div>
+  </div>
+
+  <div class="finance-item">
+    <div class="finance-item-label">Cuotas</div>
+    <div class="finance-item-value accent">${v.cuotas_pagadas} / ${v.total_cuotas}</div>
+  </div>
+</div>
         </div>
         <div class="comprador-actions">
           <button class="btn btn-primary" id="dash-btn-pagar-cuota">${window.SGIUI?.icon("wallet")??""} Pagar cuota</button>
