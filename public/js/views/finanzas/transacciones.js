@@ -75,7 +75,7 @@ window.bankTransactionsView = async function() {
       <div class="table-wrap">
         <div class="table-header">
           <h3>Transacciones Bancarias</h3>
-          ${canCreate ? `<button class="btn btn-primary btn-sm" id="bt-tab-btn" onclick="btSwitchTab('import')">+ Importar</button>` : ""}
+          ${canCreate ? `<button class="btn btn-primary btn-sm" id="bt-tab-btn" onclick="btSwitchTab('import')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Importar</button>` : ""}
         </div>
         <div id="bt-filters" class="bt-filters">
           <select id="btf_bank" class="form-input" onchange="_btLoad()" style="min-width:140px">
@@ -140,10 +140,10 @@ window.btSwitchTab = function(tab) {
   const btn   = document.getElementById('bt-tab-btn');
   if (tab === 'import') {
     listP.style.display = 'none'; impP.style.display = 'block'; filt.style.display = 'none';
-    btn.textContent = '← Ver transacciones'; btn.setAttribute('onclick', "btSwitchTab('list')");
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Ver transacciones'; btn.setAttribute('onclick', "btSwitchTab('list')");
   } else {
     listP.style.display = 'block'; impP.style.display = 'none'; filt.style.display = 'flex';
-    btn.textContent = '+ Importar'; btn.setAttribute('onclick', "btSwitchTab('import')");
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Importar'; btn.setAttribute('onclick', "btSwitchTab('import')");
     _btLoad();
   }
 };

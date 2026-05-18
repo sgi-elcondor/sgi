@@ -20,7 +20,7 @@ window._toggleGrupoCuota = function(key) {
   if (!body) return;
   const open = body.style.display !== "none";
   body.style.display  = open ? "none" : "block";
-  if (arrow) arrow.textContent = open ? "▶" : "▼";
+  if (arrow) arrow.innerHTML = open ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 };
 
 function _cuotasAgrupadasHTML(cuotas, filtro) {
@@ -48,7 +48,7 @@ function _cuotasAgrupadasHTML(cuotas, filtro) {
       <div onclick="_toggleGrupoCuota('${key}')"
            style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
         <span>
-          <span id="gc-arrow-${key}" style="display:inline-block;width:12px;font-size:.7rem;margin-right:4px">▶</span>
+          <span id="gc-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
           Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
         </span>
         <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
@@ -243,7 +243,7 @@ window.facturasView = async function() {
       <td style="text-align:center"><strong>${g.facturas.length}</strong></td>
       <td>${badges}</td>
       <td style="text-align:right">${UI.fmt(total)}</td>
-      <td><button class="btn btn-ghost btn-sm btn-ver-facturas">Ver →</button></td>
+      <td><button class="btn btn-ghost btn-sm btn-ver-facturas">Ver <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button></td>
     </tr>`;
   }
 
@@ -297,7 +297,7 @@ window.facturasView = async function() {
     <div class="table-wrap">
       <div class="table-header">
         <h3>Facturas por Venta</h3>
-        ${puedeEscribir ? `<button class="btn btn-primary btn-sm" onclick="facturaForm()">+ Nueva Factura</button>` : ""}
+        ${puedeEscribir ? `<button class="btn btn-primary btn-sm" onclick="facturaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
 
       ${bannerHtml}
@@ -411,10 +411,10 @@ window.facturasDeVentaView = function(grupo) {
     <div class="table-wrap">
       <div class="table-header">
         <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn btn-ghost btn-sm" onclick="facturasView()">← Volver</button>
+          <button class="btn btn-ghost btn-sm" onclick="facturasView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
           <h3>Facturas &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
         </div>
-        ${esAuxiliar ? `<button class="btn btn-primary btn-sm" onclick="facturaForm(null,${grupo.id_venta})">+ Nueva Factura</button>` : ""}
+        ${esAuxiliar ? `<button class="btn btn-primary btn-sm" onclick="facturaForm(null,${grupo.id_venta})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
 
       <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:.88rem;display:flex;gap:24px;flex-wrap:wrap">

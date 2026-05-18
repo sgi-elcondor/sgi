@@ -7,8 +7,8 @@ window.ventasView = async function() {
   const modoSolicitud = AppState.can('ventas', 'solicitar') && !AppState.can('ventas', 'actualizar');
   const canCreate     = AppState.can('ventas', 'crear') || AppState.can('ventas', 'solicitar');
   const botonNueva    = !canCreate ? "" : modoSolicitud
-    ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()">+ Solicitar Venta</button>`
-    : `<button class="btn btn-primary btn-sm" onclick="ventaForm()">+ Nueva Venta</button>`;
+    ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Solicitar Venta</button>`
+    : `<button class="btn btn-primary btn-sm" onclick="ventaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Venta</button>`;
 
   // Build query from filter state
   async function _cargarVentas() {
@@ -542,7 +542,7 @@ function _htmlFormVenta(proyectos) {
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div id="f_lote_card_info" style="font-size:.85rem;line-height:1.6"></div>
             <button type="button" class="btn btn-ghost btn-sm"
-                    style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarLote()">✕</button>
+                    style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarLote()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
         </div>
         <div id="f_lote_search_wrap">
@@ -578,7 +578,7 @@ function _htmlFormVenta(proyectos) {
         <label style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span>Permutas / Abonos en especie</span>
           <button type="button" class="btn btn-ghost btn-sm" style="font-size:.78rem;padding:2px 8px"
-                  onclick="_agregarPermuta()">+ Agregar permuta</button>
+                  onclick="_agregarPermuta()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar permuta</button>
         </label>
         <div id="f_permutas_lista"></div>
         <div id="f_permutas_resumen" style="display:none;font-size:.82rem;color:var(--text-muted);margin-top:4px"></div>
@@ -648,9 +648,9 @@ function _htmlCompradorField() {
         <span>Comprador *</span>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-ghost btn-sm" id="btn_edit_comp"
-                  style="display:none;font-size:.78rem;padding:2px 8px" onclick="_editarComprador()">✎ Editar</button>
+                  style="display:none;padding:2px 8px" onclick="_editarComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar</button>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComprador()">+ Nuevo</button>
+                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
         </div>
       </label>
       <input type="hidden" id="f_comp"/>
@@ -659,7 +659,7 @@ function _htmlCompradorField() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div id="f_comp_card_info" style="font-size:.85rem;line-height:1.6"></div>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarComprador()">✕</button>
+                  style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarComprador()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
 
@@ -714,9 +714,9 @@ function _htmlComisionistaField() {
         <span>Comisionista</span>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-ghost btn-sm" id="btn_edit_comi"
-                  style="display:none;font-size:.78rem;padding:2px 8px" onclick="_editarComisionista()">✎ Editar</button>
+                  style="display:none;padding:2px 8px" onclick="_editarComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar</button>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComisionista()">+ Nuevo</button>
+                  style="font-size:.78rem;padding:2px 8px" onclick="_toggleNuevoComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
         </div>
       </label>
       <input type="hidden" id="f_comi"/>
@@ -725,7 +725,7 @@ function _htmlComisionistaField() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div id="f_comi_card_info" style="font-size:.85rem;line-height:1.6"></div>
           <button type="button" class="btn btn-ghost btn-sm"
-                  style="padding:2px 8px;font-size:.78rem;flex-shrink:0;margin-left:8px" onclick="_limpiarComisionista()">✕</button>
+                  style="padding:2px 8px;flex-shrink:0;margin-left:8px" onclick="_limpiarComisionista()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
 
@@ -937,7 +937,7 @@ function _renderPermutasLista() {
              oninput="_onMoneyInput(this);window._ventaPermutas[${i}].valor=_parseMiles(this.value);_actualizarCalculos()"
              style="flex:1;min-width:0"/>
       <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0"
-              onclick="_eliminarPermuta(${i})">✕</button>
+              onclick="_eliminarPermuta(${i})"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>`).join("");
   _actualizarPermutasResumen();
 }
@@ -1468,8 +1468,8 @@ _limpiarErrorVenta();
     ${_seccionResumen("Comisionista", comi ? `<b>${comi.nombres} ${comi.apellidos||""}</b> · CC ${comi.documento} · Comisión: ${UI.fmt(body.valor_comision)}` : "Sin comisionista")}
     ${body.observaciones ? _seccionResumen("Observaciones", body.observaciones) : ""}
     <div class="form-actions">
-      <button class="btn btn-ghost" onclick="_ocultarResumenVenta()">← Editar</button>
-      <button class="btn btn-primary" onclick="${fnConfirmar}">✓ Confirmar y crear</button>
+      <button class="btn btn-ghost" onclick="_ocultarResumenVenta()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Editar</button>
+      <button class="btn btn-primary" onclick="${fnConfirmar}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmar y crear</button>
     </div>`;
 
   document.getElementById("venta_form_wrap").style.display = "none";
@@ -1514,7 +1514,7 @@ window.ventaForm = async function() {
     `<div id="venta_form_wrap">` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarVenta()')">Revisar →</button>
+        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarVenta()')">Revisar <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
       </div>
     </div>
     <div id="venta_resumen_wrap" style="display:none"></div>`);
@@ -1621,7 +1621,7 @@ window.ventaFormSolicitud = async function() {
       ` + _htmlFormVenta(proyectos) + `
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarSolicitudVenta()')">Revisar →</button>
+        <button class="btn btn-primary" onclick="_mostrarResumenVenta('guardarSolicitudVenta()')">Revisar <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
       </div>
     </div>
     <div id="venta_resumen_wrap" style="display:none"></div>`);

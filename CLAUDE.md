@@ -2,6 +2,8 @@
 
 > Contexto de proyecto para Claude Code. Lee este archivo antes de cualquier tarea.
 
+Antes de empezar a hacer cualquier cosa dime brebemente que vas a hacer y esperame a aceptarlo para que continues.
+
 En supabase el schema en el que estamos trabajando es `condor`
 
 Antes de hacer algun cambio si cres que hay una forma mejor de hacerlo sugieremela.

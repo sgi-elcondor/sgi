@@ -14,7 +14,7 @@ const AvatarCropper = (function () {
       <div class="ac-modal">
         <div class="ac-header">
           <span class="ac-title">Ajusta tu foto de perfil</span>
-          <button class="ac-close" id="ac-close-btn" aria-label="Cerrar">&times;</button>
+          <button class="ac-close" id="ac-close-btn" aria-label="Cerrar"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="ac-crop-area">
           <img id="ac-img" src="" alt="preview" />
