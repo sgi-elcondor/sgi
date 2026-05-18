@@ -117,17 +117,169 @@
       </section>`;
   }
 
+
+
+
+
+    //  KPI de mora y alerta de escritura 30% ───────────────────────────
+
+  function _estadoNormalizado(v) {
+    return String(v?.estado || "").trim().toLowerCase();
+  }
+
+  function _estaEscriturado(v) {
+    return v?.escriturado === true || v?.escriturado === "true" || !!v?.fecha_escritura;
+  }
+
+  function _porcentajePagado(v) {
+    return Number(v?.porcentaje_pagado || 0);
+  }
+
+  function _cruzo30Reciente(fecha) {
+    if (!fecha) return false;
+
+    const fechaCruce = new Date(`${fecha}T12:00:00`);
+    if (Number.isNaN(fechaCruce.getTime())) return false;
+
+    const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+
+    const diffDias = Math.floor((hoy - fechaCruce) / 86_400_000);
+
+    return diffDias >= 0 && diffDias <= 7;
+  }
+
+  function _badgeEscritura(v) {
+    const reciente = _cruzo30Reciente(v.fecha_cruce_30);
+
+    return reciente
+      ? `<span class="badge" style="background:rgba(var(--success-rgb,34,197,94),.12);color:var(--success,#22c55e);border:1px solid rgba(var(--success-rgb,34,197,94),.22)">Nuevo</span>`
+      : `<span class="badge" style="background:rgba(var(--accent-rgb),.12);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.24)">Pendiente</span>`;
+  }
+
+function renderMoraEscritura(ventas = []) {
+  const lista = Array.isArray(ventas) ? ventas : [];
+
+  const listasParaEscritura = lista
+    .filter(v => _porcentajePagado(v) >= 30 && !_estaEscriturado(v))
+    .sort((a, b) => _porcentajePagado(b) - _porcentajePagado(a))
+    .slice(0, 6);
+
+  const rows = listasParaEscritura.length
+    ? listasParaEscritura.map(v => {
+      const pct = _porcentajePagado(v);
+      const reciente = _cruzo30Reciente(v.fecha_cruce_30);
+
+      return `
+        <article class="escritura-card">
+          <div class="escritura-card-top">
+            <div class="escritura-avatar">
+              ${(v.comprador || "C").trim().charAt(0).toUpperCase()}
+            </div>
+
+            <div class="escritura-main">
+              <div class="escritura-title-row">
+                <h4>${v.comprador || "Comprador sin nombre"}</h4>
+                <span class="escritura-badge ${reciente ? "is-new" : "is-pending"}">
+                  ${reciente ? "Nuevo" : "Pendiente"}
+                </span>
+              </div>
+
+              <p>
+                Lote <strong>${v.codigo_lote || "—"}</strong>
+                ${v.proyecto ? ` · ${v.proyecto}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div class="escritura-progress-head">
+            <span>Avance de pago</span>
+            <strong>${pct.toFixed(1)}%</strong>
+          </div>
+
+          <div class="escritura-progress">
+            <div style="width:${Math.min(100, Math.max(0, pct)).toFixed(1)}%"></div>
+          </div>
+
+          <div class="escritura-meta">
+            ${v.fecha_cruce_30
+              ? `Alcanzó el 30% el ${UI.date(v.fecha_cruce_30)}`
+              : "Cumple requisito de pago"
+            }
+          </div>
+
+          <div class="escritura-actions">
+            <button class="btn btn-ghost btn-sm" onclick="window._abrirVentaDesdeDashboard(${v.id_venta})">
+              Ver venta
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("")
+    : `
+      <div class="escritura-empty">
+        <div class="escritura-empty-icon">
+          ${window.SGIUI.icon("file-check")}
+        </div>
+        <strong>No hay ventas listas para escritura</strong>
+        <span>Cuando una venta alcance el 30% de pago y siga sin escriturar, aparecerá aquí.</span>
+      </div>
+    `;
+
+  return `
+    <section class="dashboard-block">
+      ${window.SGIUI.sectionHeader({
+        kicker: "Escrituración",
+        title: "Listas para escritura"
+      })}
+
+      <article class="panel-card escritura-panel">
+        <div class="escritura-panel-head">
+          <div>
+            <span class="section-kicker">Requisito 30%</span>
+            <h3 class="section-title">Ventas pendientes por escriturar</h3>
+          </div>
+
+          <span class="results-chip">${fmtN(listasParaEscritura.length)} venta(s)</span>
+        </div>
+
+        <div class="escritura-grid">
+          ${rows}
+        </div>
+      </article>
+    </section>
+  `;
+}
+
+  window._abrirVentaDesdeDashboard = function(idVenta) {
+    if (!idVenta) return;
+
+    if (typeof window.navigate === "function") {
+      window.navigate("ventas");
+    }
+
+    setTimeout(() => {
+      if (typeof window.verVenta === "function") {
+        window.verVenta(idVenta);
+      }
+    }, 250);
+  };
   // ── Widget registry ──────────────────────────────────────────────────────────
 
-  const WIDGETS = [
+    const WIDGETS = [
     {
       resource: "dashboard", action: "ver_operacion",
       fetch:  () => API.get("/reportes/panel"),
       render: renderKpiOperacion,
     },
     {
+      resource: "dashboard", action: "ver_operacion",
+      fetch:  () => API.get("/ventas/estado-financiero"),
+      render: renderMoraEscritura,
+    },
+    {
       resource: "dashboard", action: "ver_cartera",
-      fetch:  () => API.get("/reportes/cartera-hoy"),
+      fetch:  () => API.get("/reportes/cfunction renderMoraEscritura(ventas = []) {artera-hoy"),
       render: renderKpiCartera,
     },
     {

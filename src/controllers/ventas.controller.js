@@ -485,14 +485,157 @@ exports.create = (req, res) => crearVenta(req, res, null);
 exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
 
 exports.getEstadoFinanciero = async (req, res) => {
-  const { data, error } = await supabase
-    .schema(SCHEMA)
-    .from("v_aux_ventas_estado_financiero")
-    .select("*");
+  try {
+    const { data, error } = await supabase
+      .schema(SCHEMA)
+      .from("venta")
+      .select(`
+        id_venta,
+        fecha_venta,
+        estado,
+        valor_total,
+        cuota_inicial,
+        total_permutas,
+        escriturado,
+        fecha_escritura,
+        lote:id_lote (
+          codigo_lote,
+          manzana,
+          numero_lote,
+          proyecto:id_proyecto (
+            nombre
+          )
+        ),
+        venta_comprador (
+          porcentaje,
+          comprador:id_comprador (
+            nombres,
+            apellidos,
+            documento
+          )
+        ),
+        cuota (
+          id_cuota,
+          numero_cuota,
+          tipo,
+          fecha_vencimiento,
+          valor_cuota,
+          estado,
+          cuota_pago (
+            valor_aplicado,
+            pago:id_pago (
+              id_pago,
+              fecha_pago,
+              estado
+            )
+          )
+        )
+      `)
+      .order("id_venta", { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
-  res.json(data);
+    const resultado = (data || []).map((venta) => {
+      const cuotas = venta.cuota || [];
+      const compradorPrincipal = venta.venta_comprador?.[0]?.comprador || null;
+
+      const pagosAplicados = [];
+
+      let totalPagado = 0;
+
+      cuotas.forEach((cuota) => {
+        const pagosCuota = cuota.cuota_pago || [];
+
+        let pagadoEnCuota = 0;
+
+        pagosCuota.forEach((cp) => {
+          const estadoPago = cp.pago?.estado;
+
+          const pagoValido =
+            !estadoPago ||
+            estadoPago === "aceptado" ||
+            estadoPago === "pagado";
+
+          if (!pagoValido) return;
+
+          const valorAplicado = Number(cp.valor_aplicado) || 0;
+
+          pagadoEnCuota += valorAplicado;
+
+          pagosAplicados.push({
+            valor: valorAplicado,
+            fecha: cp.pago?.fecha_pago || cuota.fecha_vencimiento,
+          });
+        });
+
+        if (pagadoEnCuota === 0 && ["pagada", "pagado"].includes(cuota.estado)) {
+          pagadoEnCuota = Number(cuota.valor_cuota) || 0;
+
+          pagosAplicados.push({
+            valor: pagadoEnCuota,
+            fecha: cuota.fecha_vencimiento,          });
+        }
+
+        totalPagado += pagadoEnCuota;
+      });
+
+      const valorTotal = Number(venta.valor_total) || 0;
+      const porcentajePagado = valorTotal > 0
+        ? Number(((totalPagado / valorTotal) * 100).toFixed(2))
+        : 0;
+
+      const pagosOrdenados = pagosAplicados
+        .filter((p) => p.fecha)
+        .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      let acumulado = 0;
+      let fechaCruce30 = null;
+
+      for (const pago of pagosOrdenados) {
+        acumulado += Number(pago.valor) || 0;
+
+        if (valorTotal > 0 && acumulado >= valorTotal * 0.3) {
+          fechaCruce30 = pago.fecha;
+          break;
+        }
+      }
+
+      const nombreComprador = compradorPrincipal
+        ? `${compradorPrincipal.nombres || ""} ${compradorPrincipal.apellidos || ""}`.trim()
+        : "—";
+
+      return {
+        id_venta: venta.id_venta,
+        fecha_venta: venta.fecha_venta,
+        estado: venta.estado,
+
+        comprador: nombreComprador,
+        documento_comprador: compradorPrincipal?.documento || "",
+
+        proyecto: venta.lote?.proyecto?.nombre || "—",
+        codigo_lote: venta.lote?.codigo_lote || "—",
+        manzana: venta.lote?.manzana || "—",
+        numero_lote: venta.lote?.numero_lote || "—",
+
+        valor_total: valorTotal,
+        cuota_inicial: Number(venta.cuota_inicial) || 0,
+        total_permutas: Number(venta.total_permutas) || 0,
+        total_pagado: totalPagado,
+        porcentaje_pagado: porcentajePagado,
+
+        escriturado: venta.escriturado === true,
+        fecha_escritura: venta.fecha_escritura || null,
+
+        fecha_cruce_30: fechaCruce30,
+      };
+    });
+
+    res.json(resultado);
+  } catch (e) {
+    res.status(500).json({ error: e.message || "Error al consultar estado financiero de ventas" });
+  }
 };
 
 
