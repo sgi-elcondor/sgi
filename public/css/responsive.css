@@ -103,6 +103,10 @@ table {
    ========================================================= */
 
 @media (max-width: 57.5rem) {
+  .sidebar-brand .sidebar-toggle {
+    display: none !important;
+  }
+
   body {
     overflow-x: hidden;
   }

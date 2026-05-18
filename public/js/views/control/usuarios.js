@@ -61,6 +61,7 @@ async function cargarUsuariosTabla() {
         <table>
           <thead>
             <tr>
+              <th style="width:2.5rem"></th>
               <th>Email</th>
               <th>Rol</th>
               <th>Vinculado a</th>
@@ -101,7 +102,7 @@ function renderTablaUsuarios(usuarios) {
   if (!tbody) return;
 
   if (usuarios.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin resultados</td></tr>';
     return;
   }
 
@@ -112,11 +113,17 @@ function renderTablaUsuarios(usuarios) {
       ? `${u.comisionista.nombres} ${u.comisionista.apellidos}`
       : '<span style="color:var(--text-muted)">-</span>';
 
+    const initial = (u.email || "?")[0].toUpperCase();
+    const avatarCell = u.photo_url
+      ? `<img src="${u.photo_url}" class="user-avatar-sm" alt="foto" />`
+      : `<div class="user-avatar-icon">${initial}</div>`;
+
     const opcionesRol = _rolesCache.map(r =>
       `<option value="${r.id_rol}" ${u.roles?.id_rol === r.id_rol ? 'selected' : ''}>${r.nombre}</option>`
     ).join('');
 
     return `<tr>
+      <td>${avatarCell}</td>
       <td>${u.email}</td>
       <td>
         <select data-id="${u.id_usuario}" onchange="cambiarRolInline(this)"

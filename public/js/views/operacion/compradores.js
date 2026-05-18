@@ -13,13 +13,19 @@ window.compradoresView = async function() {
         ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()">+ Nuevo</button>` : ""}
       </div>
       <table>
-        <thead><tr><th>Documento</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th></tr></thead>
-        <tbody>${data.map(c=>`<tr>
-          <td>${c.documento}</td><td>${c.tipo_persona}</td>
-          <td>${c.nombres} ${c.apellidos||""}</td>
-          <td>${c.telefono||"—"}</td><td>${c.mail||"—"}</td>
-          <td>${UI.badge(c.estado)}</td>
-        </tr>`).join("")}</tbody>
+        <thead><tr><th style="width:2.5rem"></th><th>Documento</th><th>Tipo</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Estado</th></tr></thead>
+        <tbody>${data.map(c=>{
+          const av = c.photo_url
+            ? `<img src="${c.photo_url}" class="user-avatar-sm" alt="foto" />`
+            : `<div class="user-avatar-icon">${(c.nombres||"?")[0].toUpperCase()}</div>`;
+          return `<tr>
+            <td>${av}</td>
+            <td>${c.documento}</td><td>${c.tipo_persona}</td>
+            <td>${c.nombres} ${c.apellidos||""}</td>
+            <td>${c.telefono||"—"}</td><td>${c.mail||"—"}</td>
+            <td>${UI.badge(c.estado)}</td>
+          </tr>`;
+        }).join("")}</tbody>
       </table>
     </div>`;
 };

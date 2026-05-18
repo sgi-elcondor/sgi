@@ -2,9 +2,16 @@ const supabase = require("../config/supabase");
 const SCHEMA   = "condor";
 
 exports.getAll = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("comprador").select("*").order("nombres");
+  const [{ data: compradores, error }, { data: usuarios }] = await Promise.all([
+    supabase.schema(SCHEMA).from("comprador").select("*").order("nombres"),
+    supabase.schema(SCHEMA).from("usuarios").select("id_comprador, photo_url").not("id_comprador", "is", null),
+  ]);
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  const photoMap = {};
+  (usuarios || []).forEach(u => { if (u.id_comprador) photoMap[u.id_comprador] = u.photo_url; });
+
+  res.json((compradores || []).map(c => ({ ...c, photo_url: photoMap[c.id_comprador] || null })));
 };
 
 exports.getById = async (req, res) => {

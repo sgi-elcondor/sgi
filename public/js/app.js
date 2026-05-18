@@ -232,7 +232,7 @@ function renderSidebar(vistas) {
 
     html += '<div class="nav-group"><span class="nav-group-title">' + group.label + '</span>';
     visible.forEach(function(item) {
-      html += '<button type="button" class="nav-item" data-view="' + item.view + '">' +
+      html += '<button type="button" class="nav-item" data-view="' + item.view + '" data-label="' + item.label + '">' +
         '<span class="nav-icon"><i data-lucide="' + item.icon + '"></i></span>' +
         '<span>' + item.label + '</span>' +
         '</button>';
@@ -249,6 +249,32 @@ function renderSidebar(vistas) {
   });
 
   window.SGIUI?.hydrate();
+  initNavTooltips();
+}
+
+function initNavTooltips() {
+  var tip = document.getElementById("nav-tooltip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "nav-tooltip";
+    document.body.appendChild(tip);
+  }
+
+  document.querySelectorAll(".nav-item").forEach(function(item) {
+    item.addEventListener("mouseenter", function() {
+      if (!document.body.classList.contains("sidebar-collapsed")) return;
+      var label = item.dataset.label;
+      if (!label) return;
+      var rect = item.getBoundingClientRect();
+      tip.textContent = label;
+      tip.style.top  = Math.round(rect.top + rect.height / 2) + "px";
+      tip.style.left = Math.round(rect.right + 12) + "px";
+      tip.classList.add("visible");
+    });
+    item.addEventListener("mouseleave", function() {
+      tip.classList.remove("visible");
+    });
+  });
 }
 
 // â”€â”€ User menu panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -261,9 +287,25 @@ function initUserMenu(perfil) {
   const canEdit    = perfil.rol === "comprador" || perfil.rol === "comisionista";
   const savedTheme = localStorage.getItem(THEME_KEY) || "system";
 
+  const avatarPanelHtml = perfil.photo_url
+    ? '<img src="' + perfil.photo_url + '" class="ump-avatar-img" alt="foto" />'
+    : '<i data-lucide="user"></i>';
+
+  const avatarBtnHtml = perfil.photo_url
+    ? '<img src="' + perfil.photo_url + '" class="user-menu-btn-img" alt="foto" />'
+    : '<i data-lucide="user"></i>';
+
+  btn.innerHTML = avatarBtnHtml;
+  if (perfil.photo_url) {
+    btn.querySelector("img")?.addEventListener("error", function() {
+      btn.innerHTML = '<i data-lucide="user"></i>';
+      window.SGIUI?.hydrate();
+    });
+  }
+
   panel.innerHTML =
     '<div class="ump-header">' +
-    '<div class="ump-avatar"><i data-lucide="user"></i></div>' +
+    '<div class="ump-avatar">' + avatarPanelHtml + '</div>' +
     '<div class="ump-identity">' +
     '<span class="ump-email">' + perfil.email + '</span>' +
     '<span class="ump-role">' + humanizeRole(perfil.rol) + '</span>' +
@@ -417,10 +459,19 @@ function renderEditProfileView(perfil) {
   if (!vc) return;
   setActiveNav(""); setViewTitle("Editar perfil");
 
+  const epAvatarHtml = perfil.photo_url
+    ? '<img src="' + perfil.photo_url + '" class="ep-avatar" id="ep-avatar-img" alt="foto" />'
+    : '<div class="ep-avatar-icon"><i data-lucide="user"></i></div>';
+
   vc.innerHTML =
     '<div class="auth-card-wrap"><div class="auth-card">' +
     '<div class="auth-card-brand"><div class="auth-card-icon"><i data-lucide="user-pen"></i></div>' +
     '<div><div class="auth-card-title">Editar perfil</div><div class="auth-card-sub">' + perfil.email + '</div></div></div>' +
+    '<div class="ep-photo-section">' +
+    epAvatarHtml +
+    '<div class="ep-photo-info"><div class="ep-photo-label">Foto de perfil</div><div class="ep-photo-sub">JPG, PNG o WebP · máx. 5 MB</div></div>' +
+    '<button class="ep-photo-btn" id="ep-change-photo-btn">Cambiar foto</button>' +
+    '</div>' +
     '<div class="auth-card-grid-2">' +
     '<div class="auth-card-field"><label>Nombres <span style="color:var(--danger)">*</span></label><input type="text" id="ep-nombres" value="' + (perfil.nombres || "") + '" placeholder="Nombres" /></div>' +
     '<div class="auth-card-field"><label>Apellidos <span style="color:var(--danger)">*</span></label><input type="text" id="ep-apellidos" value="' + (perfil.apellidos || "") + '" placeholder="Apellidos" /></div>' +
@@ -433,6 +484,29 @@ function renderEditProfileView(perfil) {
     '</div></div>';
 
   window.SGIUI?.hydrate();
+
+  document.getElementById("ep-change-photo-btn")?.addEventListener("click", function() {
+    if (typeof AvatarCropper === "undefined") { return; }
+    AvatarCropper.open({ onSuccess: function(url) {
+      window.currentUser.photo_url = url;
+
+      const section = document.querySelector(".ep-photo-section");
+      if (section) {
+        const old = section.querySelector(".ep-avatar, .ep-avatar-icon");
+        if (old) {
+          const img = document.createElement("img");
+          img.src = url; img.className = "ep-avatar"; img.alt = "foto";
+          old.replaceWith(img);
+        }
+      }
+
+      const btn    = document.getElementById("userMenuBtn");
+      const panel  = document.getElementById("userMenuPanel");
+      const umpAv  = panel?.querySelector(".ump-avatar");
+      if (btn)   btn.innerHTML  = '<img src="' + url + '" class="user-menu-btn-img" alt="foto" />';
+      if (umpAv) umpAv.innerHTML = '<img src="' + url + '" class="ump-avatar-img" alt="foto" />';
+    }});
+  });
 
   document.getElementById("back-from-ep")?.addEventListener("click", function() { navigate(prev); });
 
@@ -466,7 +540,9 @@ function applySidebarState(collapsed) {
   if (!toggle) return;
   toggle.setAttribute("aria-pressed", String(collapsed));
   toggle.title = collapsed ? "Expandir barra lateral" : "Colapsar barra lateral";
-  toggle.innerHTML = collapsed ? '<i data-lucide="panel-left-open"></i>' : '<i data-lucide="panel-left-close"></i>';
+  toggle.innerHTML = collapsed
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
   window.SGIUI?.hydrate();
 }
 
@@ -530,9 +606,50 @@ function mostrarOnboarding(perfil, firebaseUser) {
     try {
       await API.post("/auth/completar-perfil", { nombres, apellidos, documento, telefono: telefono || undefined });
       overlay.remove();
+      if (perfil.rol === "comprador") mostrarPromptFoto();
     } catch (err) {
       errorEl.textContent = err.message || "Error al guardar."; errorEl.style.display = "block";
       btn.disabled = false; btn.textContent = "Guardar y continuar";
+    }
+  });
+}
+
+function mostrarPromptFoto() {
+  const overlay = document.createElement("div");
+  overlay.className = "photo-prompt-overlay";
+  overlay.innerHTML =
+    '<div class="photo-prompt-card">' +
+    '<svg class="photo-prompt-illustration" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="60" cy="60" r="58" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4" opacity="0.3"/>' +
+    '<circle cx="60" cy="44" r="20" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="2"/>' +
+    '<circle cx="60" cy="44" r="20" fill="currentColor" opacity="0.1"/>' +
+    '<ellipse cx="60" cy="96" rx="34" ry="18" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="2"/>' +
+    '<circle cx="53" cy="41" r="3" fill="currentColor" opacity="0.5"/>' +
+    '<circle cx="67" cy="41" r="3" fill="currentColor" opacity="0.5"/>' +
+    '<path d="M53 51 Q60 57 67 51" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
+    '<path d="M26 74 Q60 58 94 74" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>' +
+    '</svg>' +
+    '<h2>Agrega tu foto de perfil</h2>' +
+    '<p>Una foto de primer plano ayuda a identificarte fácilmente en el sistema. Debe mostrar claramente tu cara.</p>' +
+    '<div class="photo-prompt-actions">' +
+    '<button class="auth-card-btn auth-card-btn--primary" id="pp-upload-btn">Subir foto</button>' +
+    '<button class="auth-card-btn" id="pp-skip-btn">Omitir por ahora</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("pp-skip-btn").addEventListener("click", function() { overlay.remove(); });
+  document.getElementById("pp-upload-btn").addEventListener("click", function() {
+    overlay.remove();
+    if (typeof AvatarCropper !== "undefined") {
+      AvatarCropper.open({ onSuccess: function(url) {
+        window.currentUser.photo_url = url;
+        const btn   = document.getElementById("userMenuBtn");
+        const panel = document.getElementById("userMenuPanel");
+        const umpAv = panel?.querySelector(".ump-avatar");
+        if (btn)   btn.innerHTML   = '<img src="' + url + '" class="user-menu-btn-img" alt="foto" />';
+        if (umpAv) umpAv.innerHTML  = '<img src="' + url + '" class="ump-avatar-img" alt="foto" />';
+      }});
     }
   });
 }
