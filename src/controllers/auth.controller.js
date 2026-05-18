@@ -30,7 +30,14 @@ async function miPerfil(req, res) {
   }
 
   let profileData = {};
+  let photo_url   = null;
   try {
+    const { data: uData } = await supabase.schema('condor').from('usuarios')
+      .select('photo_url')
+      .eq('email', email)
+      .single();
+    photo_url = uData?.photo_url || null;
+
     if (rol === 'comprador' && id_comprador) {
       const { data } = await supabase.schema('condor').from('comprador')
         .select('nombres, apellidos, telefono')
@@ -46,7 +53,7 @@ async function miPerfil(req, res) {
     }
   } catch (_) {}
 
-  return res.json({ email, rol, id_comprador, id_comisionista, vistas, can, ...profileData });
+  return res.json({ email, rol, id_comprador, id_comisionista, vistas, can, photo_url, ...profileData });
 }
 
 async function completarPerfil(req, res) {
@@ -137,8 +144,8 @@ async function completarPerfil(req, res) {
 }
 
 async function actualizarMiPerfil(req, res) {
-  const { rol, id_comprador, id_comisionista } = req.usuario;
-  const { nombres, apellidos, telefono } = req.body;
+  const { rol, id_comprador, id_comisionista, email } = req.usuario;
+  const { nombres, apellidos, telefono, photo_url } = req.body;
 
   if (rol !== 'comprador' && rol !== 'comisionista') {
     return res.status(403).json({ error: 'Solo compradores y comisionistas pueden editar su perfil' });
@@ -162,10 +169,32 @@ async function actualizarMiPerfil(req, res) {
     } else {
       return res.status(400).json({ error: 'No se encontro un perfil vinculado' });
     }
+
+    if (photo_url !== undefined) {
+      await supabase.schema('condor').from('usuarios')
+        .update({ photo_url: photo_url || null })
+        .eq('email', email);
+    }
+
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil };
+async function actualizarAvatar(req, res) {
+  const { email } = req.usuario;
+  const { photo_url } = req.body;
+
+  try {
+    const { error } = await supabase.schema('condor').from('usuarios')
+      .update({ photo_url: photo_url || null })
+      .eq('email', email);
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar };

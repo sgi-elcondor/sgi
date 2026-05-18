@@ -32,7 +32,7 @@ window.cuotasView = async function() {
       <td>${c.dias_atraso > 0
         ? `<span style="color:var(--danger)">${c.dias_atraso} días atraso</span>`
         : c.dias_atraso === 0
-          ? `<span style="color:var(--warning,#f59e0b)">Hoy</span>`
+          ? `<span style="color:var(--warning,#e8570c)">Hoy</span>`
           : `<span style="color:var(--success,#22c55e)">en ${Math.abs(c.dias_atraso)} días</span>`
       }</td>
       <td>${UI.fmt(c.valor_cuota)}</td>
@@ -56,7 +56,7 @@ window.cuotasView = async function() {
       <td>${c.dias_atraso > 0
         ? `<span style="color:var(--danger)">${c.dias_atraso} días</span>`
         : c.dias_atraso === 0
-          ? `<span style="color:var(--warning,#f59e0b)">Hoy</span>`
+          ? `<span style="color:var(--warning,#e8570c)">Hoy</span>`
           : `<span style="color:var(--success,#22c55e)">en ${Math.abs(c.dias_atraso)} días</span>`
       }</td>
       <td><input type="text" inputmode="numeric" class="cuota-input-valor" value="${fmtMiles(c.valor_cuota)}" style="width:130px"></td>
@@ -81,8 +81,8 @@ window.cuotasView = async function() {
     <div class="table-wrap">
       <div class="table-header"><h3>Cuotas Pendientes</h3></div>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 0 16px">
-        <select id="f-proyecto" style="flex:1;min-width:150px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
+      <div class="table-filters"> 
+        <select id="f-proyecto" class="select-sm" style="flex:1;min-width:150px;">
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
@@ -90,7 +90,7 @@ window.cuotasView = async function() {
           style="flex:1;min-width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
         <input id="f-comprador" type="text" placeholder="Buscar comprador..."
           style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
-        <select id="f-estado" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
+        <select id="f-estado" class="select-sm" style="flex:1;min-width:140px;">
           <option value="">Todos los estados</option>
           ${optsEstado}
         </select>

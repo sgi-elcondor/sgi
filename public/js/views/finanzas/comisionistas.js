@@ -24,7 +24,7 @@ window.comisionistasView = async function() {
     ${SGIUI.pageHeader({
       kicker:  "Finanzas",
       title:   "Comisionistas",
-      actions: canCreate ? `<button class="btn btn-primary btn-sm" onclick="comisionistaForm()">+ Nuevo</button>` : "",
+      actions: canCreate ? `<button class="btn btn-primary btn-sm" onclick="comisionistaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>` : "",
     })}
 
     <div class="table-wrap" style="margin-bottom:1.25rem">
@@ -224,7 +224,7 @@ function _renderComisionCard(vc) {
             <button class="btn btn-ghost btn-sm"
               style="font-size:.78rem;padding:.2rem .55rem"
               onclick="abrirFormMicropago(${ventaId})">
-              + Agregar
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar
             </button>
           </div>
 

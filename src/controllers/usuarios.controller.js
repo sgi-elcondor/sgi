@@ -5,7 +5,7 @@ async function listarUsuarios(req, res) {
     .schema('condor')
     .from('usuarios')
     .select(`
-      id_usuario, firebase_uid, email, activo, fecha_creacion,
+      id_usuario, firebase_uid, email, activo, fecha_creacion, photo_url,
       roles:id_rol ( id_rol, nombre ),
       comprador:id_comprador ( id_comprador, nombres, apellidos ),
       comisionista:id_comisionista ( id_comisionista, nombres, apellidos )
