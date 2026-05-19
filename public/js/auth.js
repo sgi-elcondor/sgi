@@ -8,7 +8,7 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const res = await fetch('/api/firebase-config');
+const res = await fetch('/api/v1/firebase-config');
 const firebaseConfig = await res.json();
 
 const app      = initializeApp(firebaseConfig);

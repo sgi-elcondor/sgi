@@ -133,7 +133,7 @@
           if (!uploadedUrl) {
             const fd = new FormData();
             fd.append("baucher", baucherFile);
-            const res = await fetch("/api/uploads/baucher", {
+            const res = await fetch("/api/v1/uploads/baucher", {
               method: "POST",
               headers: { Authorization: `Bearer ${localStorage.getItem("fb_token") || ""}` },
               body: fd,

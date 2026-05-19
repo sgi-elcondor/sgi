@@ -51,7 +51,7 @@ async function apiFetch(endpoint, options = {}) {
 }
 
 const API = {
-  base: "/api",
+  base: "/api/v1",
 
   async request(path, options = {}) {
     const response = await apiFetch(this.base + path, {
