@@ -55,15 +55,21 @@ src/controllers/      ← Lógica de negocio por módulo (uno por entidad)
 src/routes/           ← Mapeo de URLs a controllers
 src/services/         ← Lógica compartida entre controllers
 
-public/index.html     ← SPA principal (única página)
-public/login.html     ← Página de login separada
-public/js/app.js      ← Router del frontend (hash-based navigation)
-public/js/api.js      ← Cliente HTTP centralizado (objeto global `API`)
-public/js/auth.js     ← Lógica de autenticación Firebase
-public/js/state.js    ← Estado global del usuario (vistas, permisos)
-public/js/ui.js       ← Utilidades de UI compartidas
-public/js/views/      ← Módulos de vista por dominio
-public/css/           ← Estilos organizados por capas
+public/index.html        ← SPA principal (única página)
+public/login.html        ← Página de login separada
+public/js/app.js         ← Router del frontend (hash-based navigation, VIEWS, tema, helpers)
+public/js/api.js         ← Cliente HTTP centralizado (objeto global `API`)
+public/js/auth.js        ← Lógica de autenticación Firebase
+public/js/state.js       ← Estado global del usuario (vistas, permisos)
+public/js/ui.js          ← Utilidades de UI compartidas
+public/js/sidebar.js     ← Renderizado del sidebar, navegación y tooltips
+public/js/user-menu.js   ← Menú de usuario, tema claro/oscuro y edición de perfil
+public/js/onboarding.js  ← Modal de bienvenida para nuevos usuarios
+public/js/role-switcher.js ← Selector de rol para que el admin simule otros roles
+public/js/views/         ← Módulos de vista por dominio
+public/css/              ← Estilos organizados por capas
+
+tests/                ← Pruebas automatizadas con Jest
 ```
 
 ---
@@ -72,8 +78,8 @@ public/css/           ← Estilos organizados por capas
 
 ```
 Request
-  └── ¿Es /api/auth? → sin autenticación → auth.routes.js
-  └── ¿Es /api/*?    → verificarToken → verificarPermiso → route específica
+  └── ¿Es /api/v1/auth? → sin autenticación → auth.routes.js
+  └── ¿Es /api/v1/*?    → verificarToken → verificarPermiso → route específica
   └── Cualquier otra → sirve public/index.html (SPA wildcard)
 ```
 
@@ -108,7 +114,7 @@ async function getAll(req, res) {
 ### Routes
 
 - Siguen REST estricto: `GET / POST / PUT / PATCH / DELETE`
-- Aplican middlewares: primero `auth.middleware`, luego `permisos.middleware` (ya están aplicados globalmente en `index.js` para todas las rutas `/api`)
+- Aplican middlewares: primero `auth.middleware`, luego `permisos.middleware` (ya están aplicados globalmente en `index.js` para todas las rutas `/api/v1`)
 - Rutas específicas antes que las paramétricas (`/mis-ventas` antes que `/:id`)
 - Archivo de referencia: `src/routes/ventas.routes.js`
 
@@ -121,7 +127,7 @@ router.get('/:id', ctrl.getById);                           // paramétrica al f
 ### Permissions
 
 - Cada nueva ruta debe registrarse en `src/config/permissions.js`
-- Formato: `'METHOD /api/ruta': { recurso: 'nombre', accion: 'leer|crear|editar|eliminar' }`
+- Formato: `'METHOD /api/v1/ruta': { recurso: 'nombre', accion: 'leer|crear|editar|eliminar' }`
 - El rol `admin` tiene bypass total; los demás roles necesitan entrada explícita
 
 ### Services
@@ -158,21 +164,38 @@ El frontend es una SPA de una sola página (`public/index.html`). La navegación
 
 ### API Client
 
-Usar **siempre** el objeto global `API` para llamadas al backend. Nunca usar `fetch()` directamente.
+Usar **siempre** el objeto global `API` para llamadas al backend. La única excepción son los uploads de archivos (multipart/form-data), que usan `fetch()` directo porque `API` solo maneja JSON.
 
 ```js
-// Correcto
+// Correcto — llamadas JSON
 const data = await API.get('/ventas');
 await API.post('/pagos', { id_cuota, valor });
 await API.patch('/ventas/123/financiero', { estado });
 
-// Incorrecto
-fetch('/api/ventas', { headers: { Authorization: ... } });
+// Correcto — upload de archivo (única excepción válida para fetch directo)
+const res = await fetch('/api/v1/uploads/baucher', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },
+  body: formData,
+});
+
+// Incorrecto — fetch directo para llamadas JSON
+fetch('/api/v1/ventas', { headers: { Authorization: ... } });
 ```
 
 `API` maneja automáticamente: token JWT, refresco de token en 401, y redirección a login.
 
-> Nota: `window.api` (minúscula) es un cliente de datos demo local (localStorage). No usarlo en producción.
+### Globals expuestos por app.js
+
+`app.js` expone las siguientes funciones al scope global al final del módulo, para que los archivos de script regulares puedan usarlas:
+
+```js
+window.navigate     = navigate;
+window.applyTheme   = applyTheme;
+window.humanizeRole = humanizeRole;
+window.setActiveNav = setActiveNav;
+window.setViewTitle = setViewTitle;
+```
 
 ### Estado Global
 
@@ -185,7 +208,7 @@ fetch('/api/ventas', { headers: { Authorization: ... } });
 Cada módulo tiene su vista en `public/js/views/`. Al crear un módulo nuevo:
 1. Crear el archivo en la subcarpeta correspondiente (`operacion/`, `finanzas/`, `control/`, `juridico/`, `mi-cuenta/`)
 2. Registrar la función en el objeto `VIEWS` de `app.js`
-3. Agregar el ítem al grupo correcto de `SIDEBAR_GROUPS` en `app.js`
+3. Agregar el ítem al grupo correcto de `SIDEBAR_GROUPS` en `sidebar.js`
 4. Agregar el subtítulo en `TOPBAR_SUBTITLES` en `app.js`
 
 ---
@@ -200,12 +223,31 @@ public/css/
 │   └── global.css      ← Estilos base del documento
 ├── components/         ← Componentes reutilizables (botones, modales, tablas, badges, etc.)
 ├── layout/             ← Estructura principal (sidebar, topbar, containers)
-└── views/              ← Estilos específicos de cada vista
+├── views/              ← Estilos específicos de cada vista
+└── responsive.css      ← Media queries globales — siempre cargado último en index.html
 ```
 
 - Los colores y medidas globales se definen en `tokens.css` como variables CSS (`--color-primary`, `--spacing-md`, etc.)
 - Los estilos de componentes nuevos van en `components/`, los específicos de vista en `views/`
 - El sistema de tema (claro/oscuro/sistema) se maneja con el atributo `data-theme` en el `<html>`
+- `responsive.css` se carga directamente en `index.html` después de `style.css` para garantizar que siempre sobreescribe al resto
+
+---
+
+## Pruebas Automatizadas
+
+El proyecto usa **Jest** para pruebas unitarias de los servicios del backend. Los tests están en la carpeta `tests/` en la raíz del proyecto.
+
+```
+tests/
+├── cuotas.service.test.js       ← sumarMeses, generarPlanDePago, marcarPagadaSiCubre, limpiarVentaCreada
+├── consecutivos.service.test.js ← next, nextPago, nextMicropago
+└── recibos.service.test.js      ← crearParaPago (idempotencia, consecutivo, recibo huérfano)
+```
+
+Para correr los tests: `npm test`
+
+Al agregar un service nuevo, agregar también su archivo de test correspondiente en `tests/`.
 
 ---
 
@@ -268,9 +310,10 @@ Los commits deben seguir los tipos convencionales: `feat:`, `fix:`, `refactor:`,
 2. **Para cambios en BD**, describir el ALTER TABLE o nueva tabla antes de ejecutar.
 3. **Nunca instanciar** un nuevo cliente Supabase; siempre importar desde `src/config/supabase.js`.
 4. **Siempre usar** `const SCHEMA = 'condor'` al inicio de cada controller y `.schema(SCHEMA)` en cada consulta.
-5. **Respetar los roles** al agregar endpoints: registrar la ruta en `permissions.js`.
+5. **Respetar los roles** al agregar endpoints: registrar la ruta en `permissions.js` con el prefijo `/api/v1/`.
 6. **Auditoría obligatoria** en operaciones: pagos, cambios de estado, devoluciones (usar `auditoria.service.js`).
-7. **Al crear un módulo nuevo**, seguir la estructura completa: `controller` + `route` + registrar en `permissions.js` + vista frontend + entrada en `VIEWS`, `SIDEBAR_GROUPS` y `TOPBAR_SUBTITLES` de `app.js`.
+7. **Al crear un módulo nuevo**, seguir la estructura completa: `controller` + `route` + registrar en `permissions.js` + vista frontend + entrada en `VIEWS` y `TOPBAR_SUBTITLES` de `app.js` + entrada en `SIDEBAR_GROUPS` de `sidebar.js`.
 8. **Rutas específicas siempre antes que paramétricas** en los routers.
 9. **Usar los services** existentes en lugar de replicar lógica de consecutivos, cuotas o recibos.
-10. Los commits sugeridos deben seguir los tipos convencionales definidos.
+10. **Al agregar un service nuevo**, crear también su archivo de test en `tests/`.
+11. Los commits sugeridos deben seguir los tipos convencionales definidos.

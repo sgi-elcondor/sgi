@@ -8,7 +8,7 @@
 
 El proyecto sigue una arquitectura cliente-servidor clásica:
 
-- **Backend**: Un servidor Node.js con Express que expone una API REST. Maneja la lógica de negocio, la autenticación y la comunicación con la base de datos.
+- **Backend**: Un servidor Node.js con Express que expone una API REST versionada (`/api/v1/`). Maneja la lógica de negocio, la autenticación y la comunicación con la base de datos.
 - **Frontend**: Una Single Page Application (SPA) construida en HTML, CSS y JavaScript puro, sin frameworks. Toda la aplicación vive en una sola página (`index.html`) y navega entre vistas usando el hash de la URL (`#ventas`, `#pagos`, etc.).
 - **Base de datos**: Supabase (PostgreSQL en la nube), usando el schema `condor` para todas las tablas del sistema.
 - **Autenticación**: Firebase Auth maneja el login del usuario. El backend verifica los tokens JWT que Firebase emite.
@@ -20,7 +20,7 @@ El proyecto sigue una arquitectura cliente-servidor clásica:
 
 | Archivo            | Qué hace                                                                 |
 | ------------------ | ------------------------------------------------------------------------ |
-| `package.json`     | Declara las dependencias del proyecto y los scripts de arranque (`npm run dev`, `npm start`) |
+| `package.json`     | Declara las dependencias del proyecto y los scripts de arranque (`npm run dev`, `npm start`, `npm test`) |
 | `nodemon.json`     | Configuración del servidor en modo desarrollo (recarga automática)       |
 | `.env`             | Variables de entorno con credenciales de Supabase, Firebase y Cloudinary. Nunca se sube al repositorio |
 | `.gitignore`       | Archivos y carpetas excluidos del repositorio (node_modules, .env, etc.) |
@@ -35,13 +35,12 @@ El proyecto sigue una arquitectura cliente-servidor clásica:
 
 ### Punto de entrada: `src/index.js`
 
-Es el archivo que arranca el servidor. Define el orden en que se aplican los middlewares y registra todas las rutas de la API.
+Es el archivo que arranca el servidor. Define el orden en que se aplican los middlewares y registra todas las rutas de la API bajo el prefijo `/api/v1/`.
 
 Lo más importante de entender aquí:
-- Las rutas que empiezan con `/api/auth` son **públicas**: no requieren que el usuario esté autenticado.
-- El resto de rutas `/api/*` pasan primero por dos filtros obligatorios: verificación del token de sesión (`verificarToken`) y luego validación de permisos (`verificarPermiso`).
+- Las rutas que empiezan con `/api/v1/auth` y `/api/v1/firebase-config` son **públicas**: no requieren que el usuario esté autenticado.
+- El resto de rutas `/api/v1/*` pasan primero por dos filtros obligatorios: verificación del token de sesión (`verificarToken`) y luego validación de permisos (`verificarPermiso`).
 - Si la URL no coincide con ninguna ruta de la API, el servidor devuelve `index.html` — así funciona la SPA.
-- En modo desarrollo, el servidor tiene live-reload activado para recargar el navegador automáticamente cuando se editan archivos del frontend.
 
 ---
 
@@ -57,9 +56,9 @@ Inicializa Firebase Admin SDK con las credenciales del servidor. Se usa en el mi
 Configura la conexión con Cloudinary para subir y gestionar las fotos de perfil de los usuarios.
 
 #### `permissions.js`
-Es uno de los archivos más importantes del sistema. Contiene un mapa que define qué permiso se necesita para acceder a cada ruta de la API. Cada entrada relaciona un método HTTP + una ruta con un recurso y una acción. Por ejemplo: `POST /api/ventas` requiere el permiso `ventas:crear`.
+Es uno de los archivos más importantes del sistema. Contiene un mapa que define qué permiso se necesita para acceder a cada ruta de la API. Cada entrada relaciona un método HTTP + una ruta con un recurso y una acción. Por ejemplo: `POST /api/v1/ventas` requiere el permiso `ventas:crear`.
 
-Cuando se agrega una ruta nueva, **siempre** hay que registrarla aquí.
+Cuando se agrega una ruta nueva, **siempre** hay que registrarla aquí con el prefijo `/api/v1/`.
 
 ---
 
@@ -76,7 +75,7 @@ Se ejecuta en cada solicitud protegida antes de llegar al controller. Su trabajo
 Si el token es inválido o el usuario está inactivo, responde con `401 Unauthorized` y la solicitud no llega al controller.
 
 #### `permisos.middleware.js`
-Se ejecuta justo después de `auth.middleware`. Revisa si el usuario tiene el permiso necesario para la ruta que está intentando acceder, consultando el mapa de `permissions.js`.
+Se ejecuta justo después de `auth.middleware`. Revisa si el usuario tiene el permiso necesario para la ruta que está intentando acceder, consultando el mapa de `permissions.js`. Usa `req.originalUrl` para comparar contra las claves del mapa.
 
 El rol `admin` tiene acceso total y no necesita tener permisos explícitos — pasa siempre.
 
@@ -90,7 +89,7 @@ Cada controller maneja la lógica de negocio de un módulo. Reciben la solicitud
 Gestiona todo lo relacionado con sesiones y perfiles de usuario:
 - Obtener y actualizar el perfil del usuario autenticado
 - Completar el perfil al primer inicio de sesión (onboarding para compradores y comisionistas)
-- Exponer la configuración de Firebase al frontend
+- Exponer la configuración de Firebase al frontend vía `/api/v1/firebase-config`
 
 #### `usuarios.controller.js`
 Administración de usuarios por parte del equipo interno:
@@ -183,7 +182,7 @@ Registro de gastos operativos:
 Gestión de archivos subidos:
 - Recibe imágenes via `multer`, las sube a Cloudinary
 - Devuelve la URL pública del archivo subido
-- Se usa principalmente para las fotos de perfil
+- Se usa principalmente para las fotos de perfil y comprobantes de pago
 
 ---
 
@@ -191,7 +190,7 @@ Gestión de archivos subidos:
 
 Hay un archivo de rutas por cada controller. Su único trabajo es mapear las URLs a las funciones del controller correspondiente. El patrón es siempre: rutas específicas primero, paramétricas al final.
 
-Los middlewares de autenticación y permisos **no** se definen aquí — ya están aplicados globalmente en `index.js` para todas las rutas `/api`.
+Los middlewares de autenticación y permisos **no** se definen aquí — ya están aplicados globalmente en `index.js` para todas las rutas `/api/v1`.
 
 ---
 
@@ -211,11 +210,11 @@ Contiene toda la lógica relacionada con el plan de pagos de una venta:
 
 #### `consecutivos.service.js`
 Genera los números únicos de documentos del sistema con el formato `PREFIJO-YYYYMM-00001`. Llama a una función de base de datos (`next_consecutivo_condor`) que garantiza que los números no se repitan aunque haya solicitudes simultáneas.
-- `nextPago()` — genera el número de pago y el número de recibo asociado
+- `nextPago()` — genera el número de pago y el número de recibo asociado en un mismo paso
 - `nextMicropago()` — genera el número de micropago de cuota inicial
 
 #### `recibos.service.js`
-Maneja la creación de recibos asociados a pagos. Si el recibo ya existe (por un fallo anterior que dejó datos a medias), lo reutiliza en lugar de crear uno duplicado.
+Maneja la creación de recibos asociados a pagos. Si el recibo ya existe (por un fallo anterior que dejó datos a medias), lo reutiliza en lugar de crear uno duplicado. Esto garantiza idempotencia en el proceso de emisión de recibos.
 
 ---
 
@@ -224,7 +223,7 @@ Maneja la creación de recibos asociados a pagos. Si el recibo ya existe (por un
 ### Páginas HTML
 
 #### `index.html`
-La aplicación principal. Es la única página real de la SPA — todo el contenido se carga dinámicamente dentro de ella. Contiene el layout base (sidebar, topbar, área de contenido) y carga todos los scripts JS del sistema.
+La aplicación principal. Es la única página real de la SPA — todo el contenido se carga dinámicamente dentro de ella. Contiene el layout base (sidebar, topbar, área de contenido) y carga todos los scripts JS del sistema. Los estilos se cargan a través de `style.css` (agregador) y `responsive.css` (siempre al final).
 
 #### `login.html`
 Página de inicio de sesión, completamente separada de la SPA. Permite autenticarse con correo y contraseña, o con Google. Una vez autenticado, redirige a `index.html`.
@@ -234,27 +233,60 @@ Página de inicio de sesión, completamente separada de la SPA. Permite autentic
 ### JavaScript Principal: `public/js/`
 
 #### `api.js`
-Es el cliente HTTP centralizado de toda la aplicación. Expone el objeto global `API` con métodos `get()`, `post()`, `put()`, `patch()` y `delete()`. Todas las vistas deben usar `API` para comunicarse con el backend — nunca `fetch()` directamente.
+Es el cliente HTTP centralizado de toda la aplicación. Expone el objeto global `API` con métodos `get()`, `post()`, `put()`, `patch()` y `delete()`. Todas las vistas deben usar `API` para comunicarse con el backend.
 
-Maneja automáticamente:
+La única excepción son los uploads de archivos (comprobantes, fotos de perfil), que usan `fetch()` directo porque manejan multipart/form-data en lugar de JSON.
+
+`API` maneja automáticamente:
 - Agregar el token de sesión a cada solicitud
 - Refrescar el token si el servidor responde con `401` (sesión expirada)
 - Redirigir al login si la sesión no se puede recuperar
 
-> Nota: también existe `window.api` (en minúscula), que es un cliente demo que usa `localStorage` para datos de prueba. No debe usarse en producción.
-
 #### `app.js`
 Es el corazón del frontend. Actúa como el router de la SPA y orquesta toda la navegación. Define:
 - El mapa `VIEWS` con todas las vistas disponibles y su función de renderizado
-- Los grupos del sidebar (`SIDEBAR_GROUPS`) con iconos y etiquetas
-- Los subtítulos de la barra superior para cada vista
+- Los subtítulos de la barra superior para cada vista (`TOPBAR_SUBTITLES`)
 - La función `navigate('nombre-vista')` que cambia la vista activa
-- El menú de usuario (avatar, tema, cerrar sesión, editar perfil)
-- El onboarding modal para compradores y comisionistas que inician sesión por primera vez
-- El selector de rol para que el admin pueda ver la aplicación como si fuera otro rol
+- El sistema de temas claro/oscuro/sistema (`applyTheme`, `initTheme`)
+- La función `iniciarApp()` que arranca toda la aplicación tras confirmar la sesión Firebase
+
+Al final del módulo expone las funciones clave al scope global (`window.navigate`, `window.applyTheme`, `window.humanizeRole`, `window.setActiveNav`, `window.setViewTitle`) para que los archivos de script regulares puedan usarlas.
+
+#### `sidebar.js`
+Maneja todo lo relacionado con la barra de navegación lateral:
+- `SIDEBAR_GROUPS` — define los grupos de navegación con sus ítems, iconos y etiquetas
+- `renderSidebar(vistas)` — construye el HTML del sidebar filtrando según las vistas permitidas del usuario
+- `initSidebarToggle()` — lógica del botón para colapsar/expandir el sidebar
+- `applySidebarState(collapsed)` — aplica el estado colapsado (persistido en localStorage)
+- `initNavTooltips()` — muestra tooltips en los ítems cuando el sidebar está colapsado
+- Drawer móvil — lógica de apertura y cierre del sidebar en pantallas pequeñas
+
+Al agregar una vista nueva, el ítem del menú debe registrarse en `SIDEBAR_GROUPS` de este archivo.
+
+#### `user-menu.js`
+Maneja el menú desplegable del usuario en la barra superior:
+- `initUserMenu(perfil)` — inicializa el avatar, nombre, rol y las opciones del menú
+- Selector de tema claro/oscuro/sistema
+- Acceso rápido a "Editar perfil" y "Cambiar contraseña"
+- `renderEditProfileView(perfil)` — vista de edición de perfil personal
+- `renderChangePasswordView()` — vista de cambio de contraseña
+
+#### `onboarding.js`
+Gestiona el flujo de bienvenida para usuarios que inician sesión por primera vez:
+- `mostrarOnboarding(perfil, firebaseUser)` — muestra el modal de bienvenida según el rol del usuario (comprador o comisionista), solicitando datos adicionales necesarios para completar el perfil
+- `mostrarPromptFoto()` — invita al usuario a subir su foto de perfil tras completar el onboarding
+
+#### `role-switcher.js`
+Permite al administrador ver la aplicación como si fuera otro rol, para verificar que los permisos estén configurados correctamente:
+- `initRoleViewSwitcher(perfil)` — inicializa el selector de rol en la interfaz del admin
+- `applyAdminView()` — restaura la vista normal del admin
+- `applyRoleView(idRol, rolNombre)` — cambia la vista para simular un rol específico
+- `showLinkProfileModal(tipo, onSuccess, onCancel)` — modal para vincular el admin a un perfil de comprador o comisionista al simular esos roles
 
 #### `auth.js`
-Gestiona el ciclo de vida de la autenticación con Firebase en el frontend: escucha cambios de sesión, expone el estado del usuario autenticado y provee la función `esperarAuthListo()` que `app.js` usa para arrancar la aplicación solo cuando Firebase confirmó el estado de sesión.
+Gestiona el ciclo de vida de la autenticación con Firebase en el frontend: escucha cambios de sesión, expone el estado del usuario autenticado (`window._firebaseAuth`, `window._authReady`) y provee funciones de login, logout y recuperación de contraseña.
+
+También es responsable de obtener la configuración de Firebase desde el backend (`/api/v1/firebase-config`) antes de inicializar el SDK, lo que permite mantener las claves fuera del código fuente del frontend.
 
 #### `state.js`
 Gestiona el estado global del usuario en el frontend a través del objeto `AppState`. Guarda qué vistas tiene habilitadas el usuario y qué acciones puede realizar. El sidebar se filtra según este estado — si un usuario no tiene acceso a una vista, no aparece en el menú.
@@ -263,7 +295,7 @@ Gestiona el estado global del usuario en el frontend a través del objeto `AppSt
 Funciones de interfaz de usuario reutilizables: mostrar notificaciones toast, abrir y cerrar modales, formatear fechas y montos, etc. Disponible globalmente como `window.SGIUI` o `window.SGI`.
 
 #### `components/avatar-cropper.js`
-Componente para recortar y subir fotos de perfil. Abre un editor donde el usuario puede seleccionar un área de la imagen antes de subirla a Cloudinary.
+Componente para recortar y subir fotos de perfil. Abre un editor donde el usuario puede seleccionar un área de la imagen antes de subirla a Cloudinary. Usa `fetch()` directo (no el objeto `API`) porque envía los datos como multipart/form-data.
 
 ---
 
@@ -313,7 +345,7 @@ Vistas personales para compradores y comisionistas:
 
 ### CSS: `public/css/`
 
-Los estilos están organizados en capas para mantener el orden a medida que el proyecto crece:
+Los estilos están organizados en capas para mantener el orden a medida que el proyecto crece. El archivo `style.css` actúa como agregador que importa todos los demás. El archivo `responsive.css` se carga directamente en `index.html` al final, después de `style.css`, para garantizar que las reglas responsivas siempre tengan mayor prioridad.
 
 #### `base/`
 - `tokens.css` — define todas las variables CSS del sistema: colores, tipografía, espaciados, bordes, sombras, y las variantes de tema claro y oscuro. Es la única fuente de verdad para los valores de diseño.
@@ -341,6 +373,25 @@ Estructura del layout principal de la aplicación:
 Estilos específicos de cada módulo que no aplican en otros contextos:
 - `dashboard.css`, `ventas.css`, `lotes.css`, `comprador.css`, `reportes.css`, `login.css`, `profile.css`, `bank_transactions.css`
 
+#### `responsive.css`
+Media queries globales que adaptan el layout a tablets, móviles y pantallas pequeñas. Se carga siempre al final en `index.html` para que sus reglas sobreescriban cualquier estilo de los módulos.
+
+---
+
+## Pruebas Automatizadas — `/tests`
+
+El proyecto usa **Jest** para pruebas unitarias de los servicios del backend. Los tests están en la carpeta `tests/` en la raíz y se corren con `npm test`.
+
+Cada archivo de test mockea el cliente Supabase (`src/config/supabase`) para probar la lógica del servicio de forma aislada, sin necesitar una conexión real a la base de datos.
+
+| Archivo                          | Qué prueba                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| `cuotas.service.test.js`         | `sumarMeses`, `generarPlanDePago`, `marcarPagadaSiCubre`, `limpiarVentaCreada` |
+| `consecutivos.service.test.js`   | `next`, `nextPago`, `nextMicropago` — formato, padding, llamada RPC y errores |
+| `recibos.service.test.js`        | `crearParaPago` — idempotencia, generación de consecutivo, reutilización de recibo huérfano |
+
+Al agregar un service nuevo, se debe agregar también su archivo de test correspondiente.
+
 ---
 
 ## Sistema de Autenticación y Permisos
@@ -363,7 +414,7 @@ En el frontend, el sidebar y las vistas disponibles se filtran automáticamente 
 
 ### El admin y el simulador de roles
 
-El rol `admin` tiene acceso a todo sin restricciones. Adicionalmente, el admin tiene un selector especial en la interfaz que le permite ver la aplicación como si fuera otro rol — útil para verificar que los permisos estén configurados correctamente.
+El rol `admin` tiene acceso a todo sin restricciones. Adicionalmente, el admin tiene un selector especial en la interfaz (gestionado por `role-switcher.js`) que le permite ver la aplicación como si fuera otro rol — útil para verificar que los permisos estén configurados correctamente.
 
 ---
 
@@ -384,6 +435,6 @@ El archivo `.env` nunca debe subirse al repositorio. Contiene:
 
 - **Supabase**: URL del proyecto y clave de servicio para el backend
 - **Firebase Admin**: credenciales del service account para verificar tokens en el servidor
-- **Firebase Client**: claves públicas que el servidor expone al frontend via `/api/firebase-config`
+- **Firebase Client**: claves públicas que el servidor expone al frontend via `/api/v1/firebase-config`
 - **Cloudinary**: credenciales para subir imágenes
 - **PORT**: puerto del servidor (por defecto 3000)
