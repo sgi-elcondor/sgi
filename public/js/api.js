@@ -33,13 +33,13 @@ async function apiFetch(endpoint, options = {}) {
         config.headers.Authorization = `Bearer ${newToken}`;
         response = await fetch(endpoint, config);
       } else {
-        // Solo redirige si Firebase confirma que no hay sesión activa
+        // Only redirect if Firebase confirms there is no active session
         localStorage.removeItem("fb_token");
         window.location.href = "/login.html";
         return;
       }
     } catch {
-      // Error al refrescar token — redirige solo si no hay sesión
+      // Token refresh error — only redirect if there is no active session
       if (!window._firebaseAuth?.currentUser) {
         window.location.href = "/login.html";
         return;

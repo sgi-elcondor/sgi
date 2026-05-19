@@ -66,13 +66,13 @@ async function logout() {
   window.location.href = '/login.html';
 }
 
-// Espera a Firebase — usada en login.html para detectar sesión activa
+// Waits for Firebase — used in login.html to detect an active session
 function esperarAuthListo() {
   return window._authReady;
 }
 
 // ─────────────────────────────────────────────────────────
-// Registro con email y contraseña
+// Sign up with email and password
 // ─────────────────────────────────────────────────────────
 async function registerEmail(email, password) {
   const { createUserWithEmailAndPassword } = await import(
@@ -85,7 +85,7 @@ async function registerEmail(email, password) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Recuperación de contraseña
+// Password recovery
 // ─────────────────────────────────────────────────────────
 async function resetPassword(email) {
   const { sendPasswordResetEmail } = await import(

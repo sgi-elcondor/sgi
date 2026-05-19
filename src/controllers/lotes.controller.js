@@ -14,8 +14,8 @@ exports.getDisponibles = async (req, res) => {
     .from("venta").select("id_lote, estado");
   if (ev) return res.status(500).json({ error: ev.message });
 
-  // Filtra en JS: un lote está ocupado si tiene venta que no sea cancelada/anulada
-  // Solo "cancelada" devuelve el lote al inventario disponible
+  // Filter in JS: a lot is occupied if it has a non-cancelled/voided sale
+  // Only "cancelada" returns the lot to the available inventory
   const estadosLibres = new Set(["cancelada"]);
   const idsOcupados = new Set(
     (todasVentas || []).filter(v => !estadosLibres.has(v.estado)).map(v => v.id_lote)

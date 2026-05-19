@@ -69,7 +69,7 @@ window.cuotasView = async function() {
     </tr>`;
   }
 
-  // Opciones únicas para los selects de filtro
+  // Unique options for the filter selects
   const proyectos = [...new Set(data.map(c => c.proyecto))].sort();
   const estados   = [...new Set(data.map(c => c.estado))].sort();
 
