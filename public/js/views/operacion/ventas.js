@@ -513,7 +513,7 @@ function _normalizar(str) {
   return String(str || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-// ─── Proyectos únicos desde lista de lotes ───
+// ─── Unique projects from lot list ───
 function _proyectosDesdeIotes(lotes) {
   if (!Array.isArray(lotes) || lotes.length === 0) return [];
   const vistos = new Set();
@@ -779,7 +779,7 @@ function _bodyVenta() {
   const fechaPrimeraCuota = (() => {
     if (!mesInicio || !dia) return "";
     const [yr, mo] = mesInicio.split("-").map(Number);
-    const maxDia = new Date(yr, mo, 0).getDate(); // último día del mes
+    const maxDia = new Date(yr, mo, 0).getDate(); // last day of the month
     return `${mesInicio}-${String(Math.min(dia, maxDia)).padStart(2, "0")}`;
   })();
 
@@ -813,7 +813,7 @@ function _bodyVenta() {
   };
 }
 
-// ─── Selección de lote ───
+// ─── Lot selection ───
 window._filtrarLotesPorProyecto = function() {
   const nombreProy = document.getElementById("f_proy").value;
   const lotes = window._ventaLotes || [];
@@ -954,7 +954,7 @@ function _totalPermutas() {
   return (window._ventaPermutas || []).reduce((s, p) => s + (Number(p.valor) || 0), 0);
 }
 
-// ─── Cálculo financiero reactivo ───
+// ─── Reactive financial calculation ───
 function _actualizarCalculos() {
   const vt    = _parseMiles(document.getElementById("f_vt")?.value || "0");
   const ci    = _parseMiles(document.getElementById("f_ci")?.value || "0");
@@ -990,10 +990,10 @@ function _renderResumenFinanciero(vt, ci, tp, saldo, nc) {
 
 window._renderMicroCuotas = function(raw) {
   const parsed = parseInt(raw, 10);
-  if (isNaN(parsed) || parsed < 1) return; // campo vacío o en proceso de escritura
+  if (isNaN(parsed) || parsed < 1) return; // empty field or mid-typing
   const n = Math.min(24, parsed);
   const inp = document.getElementById("f_nci");
-  if (inp && +inp.value !== n) inp.value = n; // solo corrige si excedió el máximo
+  if (inp && +inp.value !== n) inp.value = n; // only corrects if the value exceeded the max
 
   const div = document.getElementById("f_microcuotas_wrap");
   if (!div) return;
@@ -1085,7 +1085,7 @@ function _renderPreviewCuotas(saldo, nc) {
     </div>`;
 }
 
-// ─── Búsqueda y selección de comprador ───
+// ─── Buyer search and selection ───
 window._buscarComprador = function(texto) {
   const qn = _normalizar(texto);
   const todos = window._ventaCompradores || [];
@@ -1187,7 +1187,7 @@ window._guardarEdicionComprador = async function() {
   } catch(e) { UI.toast(e.message, "error"); }
 };
 
-// ─── Búsqueda y selección de comisionista ───
+// ─── Commission agent search and selection ───
 window._buscarComisionista = function(texto) {
   const qn = _normalizar(texto);
   const todos = window._ventaComisionistas || [];
@@ -1286,7 +1286,7 @@ window._guardarEdicionComisionista = async function() {
   } catch(e) { UI.toast(e.message, "error"); }
 };
 
-// ─── Creación rápida ───
+// ─── Quick creation ───
 window._toggleNuevoComprador = function() {
   const div = document.getElementById("f_comp_nuevo");
   div.style.display = div.style.display === "none" ? "block" : "none";
@@ -1340,7 +1340,7 @@ window._crearComisionistaRapido = async function() {
   } catch(e) { UI.toast(e.message, "error"); }
 };
 
-// ─── Resumen previo a la confirmación ───
+// ─── Pre-confirmation summary ───
 function _seccionResumen(titulo, contenido) {
   return `
     <div style="margin-bottom:8px;padding:8px 12px;background:var(--surface-2,#f0f4f8);border-radius:6px">
@@ -1478,7 +1478,7 @@ _limpiarErrorVenta();
   wrap.style.display = "block";
 };
 
-// ─── Inicialización de la sección dinámica del formulario ───
+// ─── Dynamic form section initialization ───
 function _iniciarFormularioDinamico() {
   window._ventaPermutas = [];
   window._loteSeleccionado = null;
@@ -1488,7 +1488,7 @@ function _iniciarFormularioDinamico() {
   if (fechaInput) fechaInput.value = new Date().toISOString().split("T")[0];
 }
 
-// ─── Formulario estándar (admin / auxiliar_contable) ───
+// ─── Standard form (admin / auxiliar_contable) ───
 window.ventaForm = async function() {
   let lotes, compradores, comisionistas;
   try {
@@ -1538,7 +1538,7 @@ function _validarBodyVenta(body) {
     return "Ingrese el mes de inicio y día de pago de las cuotas regulares";
   if (body.cuota_inicial > 0 && !body.fecha_primera_cuota_inicial)
     return "Ingrese la fecha de al menos la primera micro-cuota inicial";
-  // Micro-cuotas: si el usuario llenó valores, deben cuadrar con la cuota inicial
+  // Micro-installments: if the user filled in values, they must match the initial installment total
   if (body.cuota_inicial > 0 && Array.isArray(body.microcuotas)) {
     const algunoLleno = body.microcuotas.some(mc => mc.valor > 0);
     if (algunoLleno) {

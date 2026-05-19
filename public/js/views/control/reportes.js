@@ -269,7 +269,7 @@ function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
     y: { ticks: { color: tickColor, font: { family: fontFamily }, callback: fmtCOP }, grid: { color: gridColor } },
   });
 
-  // ── Chart 1: Recaudo mensual (últimos 12 meses) ──────────────────
+  // ── Chart 1: Monthly revenue (last 12 months) ────────────────────
   const c1 = document.getElementById("repChartRecaudo");
   if (c1) {
     const months = [];

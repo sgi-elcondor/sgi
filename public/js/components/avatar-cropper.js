@@ -99,7 +99,7 @@ const AvatarCropper = (function () {
 
         try {
           const token = localStorage.getItem('fb_token');
-          const res = await fetch('/api/uploads/avatar', {
+          const res = await fetch('/api/v1/uploads/avatar', {
             method:  'POST',
             headers: token ? { Authorization: 'Bearer ' + token } : {},
             body:    form,
@@ -107,7 +107,7 @@ const AvatarCropper = (function () {
           const json = await res.json();
           if (!res.ok) throw new Error(json.error || 'Error al subir');
 
-          await fetch('/api/auth/avatar', {
+          await fetch('/api/v1/auth/avatar', {
             method:  'PUT',
             headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
             body:    JSON.stringify({ photo_url: json.url }),

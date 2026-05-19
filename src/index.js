@@ -9,13 +9,6 @@ const PORT = process.env.PORT || 3000;
 const { verificarToken }   = require('./middlewares/auth.middleware');
 const { verificarPermiso } = require('./middlewares/permisos.middleware');
 
-if (process.env.NODE_ENV === 'development') {
-  const livereload = require('livereload');
-  const connectLivereload = require('connect-livereload');
-  const lrServer = livereload.createServer();
-  lrServer.watch(path.join(__dirname, '..', 'public'));
-  app.use(connectLivereload());
-}
 
 // â”€â”€ Middlewares globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(cors());
@@ -28,9 +21,9 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 // â”€â”€ Rutas de autenticaciÃ³n (sin verificarToken) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/v1/auth', require('./routes/auth.routes'));
 
-app.get('/api/firebase-config', (req, res) => {
+app.get('/api/v1/firebase-config', (req, res) => {
   res.json({
     apiKey:            process.env.FIREBASE_API_KEY,
     authDomain:        process.env.FIREBASE_AUTH_DOMAIN,
@@ -43,24 +36,24 @@ app.get('/api/firebase-config', (req, res) => {
 });
 
 // â”€â”€ Todas las demÃ¡s rutas requieren token y permisos â”€â”€â”€â”€â”€
-app.use('/api', verificarToken, verificarPermiso);
+app.use('/api/v1', verificarToken, verificarPermiso);
 
-app.use('/api/proyectos',      require('./routes/proyectos.routes'));
-app.use('/api/lotes',          require('./routes/lotes.routes'));
-app.use('/api/compradores',    require('./routes/compradores.routes'));
-app.use('/api/ventas',         require('./routes/ventas.routes'));
-app.use('/api/cuotas',         require('./routes/cuotas.routes'));
-app.use('/api/pagos',          require('./routes/pagos.routes'));
-app.use('/api/comisionistas',  require('./routes/comisionistas.routes'));
-app.use('/api/facturas',       require('./routes/facturas.routes'));
-app.use('/api/recibos',        require('./routes/recibos.routes'));
-app.use('/api/reportes',       require('./routes/reportes.routes'));
-app.use('/api/usuarios',       require('./routes/usuarios.routes'));
-app.use('/api/roles',          require('./routes/roles.routes'));
-app.use('/api/uploads',            require('./routes/uploads.routes'));
-app.use('/api/bank-transactions',  require('./routes/bank_transactions.routes'));
-app.use('/api/juridico',       require('./routes/juridico.routes'));
-app.use('/api/gastos',         require('./routes/gastos.routes'));
+app.use('/api/v1/proyectos',      require('./routes/proyectos.routes'));
+app.use('/api/v1/lotes',          require('./routes/lotes.routes'));
+app.use('/api/v1/compradores',    require('./routes/compradores.routes'));
+app.use('/api/v1/ventas',         require('./routes/ventas.routes'));
+app.use('/api/v1/cuotas',         require('./routes/cuotas.routes'));
+app.use('/api/v1/pagos',          require('./routes/pagos.routes'));
+app.use('/api/v1/comisionistas',  require('./routes/comisionistas.routes'));
+app.use('/api/v1/facturas',       require('./routes/facturas.routes'));
+app.use('/api/v1/recibos',        require('./routes/recibos.routes'));
+app.use('/api/v1/reportes',       require('./routes/reportes.routes'));
+app.use('/api/v1/usuarios',       require('./routes/usuarios.routes'));
+app.use('/api/v1/roles',          require('./routes/roles.routes'));
+app.use('/api/v1/uploads',            require('./routes/uploads.routes'));
+app.use('/api/v1/bank-transactions',  require('./routes/bank_transactions.routes'));
+app.use('/api/v1/juridico',       require('./routes/juridico.routes'));
+app.use('/api/v1/gastos',         require('./routes/gastos.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.get("*", (req, res) => {

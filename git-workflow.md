@@ -26,6 +26,8 @@ main        <- Producción estable (solo merge al cerrar Sprint)
 
 ### 1. Antes de arrancar (siempre)
 
+Si se esta usando claude code, que lea primero "claude.md"
+
 ```bash
 git checkout develop
 git pull origin develop

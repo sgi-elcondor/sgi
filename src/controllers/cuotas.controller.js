@@ -65,7 +65,7 @@ exports.updateValores = async (req, res) => {
     return res.status(400).json({ error: 'No se puede editar una cuota pagada' });
   }
 
-  // Registrar en auditoría antes de actualizar (un registro por campo modificado)
+  // Log to audit before updating (one entry per modified field)
   const registros = [];
   if (valor_cuota !== undefined && valor_cuota !== actual.valor_cuota) {
     registros.push({

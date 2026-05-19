@@ -494,7 +494,7 @@ window._gastosSubmit = async function() {
       const formData = new FormData();
       formData.append("baucher", fileInput.files[0]);
       const token = localStorage.getItem("fb_token");
-      const res = await fetch("/api/uploads/baucher", {
+      const res = await fetch("/api/v1/uploads/baucher", {
         method:  "POST",
         headers: { Authorization: `Bearer ${token}` },
         body:    formData,
