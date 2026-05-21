@@ -364,7 +364,15 @@ function renderMoraEscritura(ventas = []) {
     }
 
     function buildAlerta(cuota) {
-      if (!cuota) return "";
+      if (!cuota) return `
+        <div class="cuota-alert alert-success">
+          <div class="cuota-alert-icon">${window.SGIUI?.icon("check-circle") ?? ""}</div>
+          <div class="cuota-alert-body">
+            <div class="cuota-alert-title">Al dia con tus pagos</div>
+            <div class="cuota-alert-text">Todas tus cuotas estan al dia. Puedes revisar tu historial completo en Mis Pagos.</div>
+            <div class="cuota-alert-actions"><button class="btn btn-ghost btn-sm" onclick="navigate('mis-recibos')">Ver Mis Pagos</button></div>
+          </div>
+        </div>`;
       const dias = cuota.dias_restantes;
       let tone, icn, title, text, urgent = false;
       if (dias < 0) {
@@ -450,9 +458,9 @@ function renderMoraEscritura(ventas = []) {
             </div>
           </div>
           <div class="comprador-actions">
+            <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar") ?? ""} Mis Cuotas</button>
             <button class="btn btn-primary" id="dash-btn-pagar-cuota">${window.SGIUI?.icon("wallet") ?? ""} Pagar cuota</button>
-            <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar") ?? ""} Ver cuotas</button>
-            <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Mis pagos</button>
+            <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Mis Pagos</button>
           </div>
         </section>`;
 

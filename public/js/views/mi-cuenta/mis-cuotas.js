@@ -342,6 +342,10 @@
             meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
           }) ?? ""}
           ${buildLoteSelector(idx)}
+          <div class="flow-context-hint">
+            ${window.SGIUI?.icon("info") ?? ""}
+            <span>Para pagar una cuota, el equipo contable debe emitir su factura. Cuando este lista, aparece el boton <strong>Pagar</strong>.</span>
+          </div>
           <section class="table-wrap">
             <div style="padding:1rem 1.25rem">
               <div class="cuotas-progress-header">
@@ -352,6 +356,9 @@
             </div>
           </section>
           <section class="cuotas-comprador">${cuotasHtml || `<p style="color:var(--text-muted);padding:1.25rem">No hay cuotas registradas.</p>`}</section>
+          <div style="padding:1rem 0.25rem;text-align:center">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Ver historial de pagos y recibos</button>
+          </div>
         </section>`;
 
       window.SGIUI?.hydrate();
