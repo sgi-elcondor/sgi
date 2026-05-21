@@ -320,7 +320,7 @@
 
 /* Responsive */
 
-@media (max-width: 900px) {
+@media (max-width: 56.25rem) {
   .view-container {
     padding: 1.1rem;
   }
@@ -341,7 +341,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
   .page-title {
     font-size: 2rem;
   }

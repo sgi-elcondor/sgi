@@ -101,5 +101,12 @@
 .table-header .btn, .section-head .btn { min-width: auto; }
 
 .lotes-intro-body {
-  padding: 1rem; 
+  padding: 1rem;
+}
+
+@media (max-width: 30rem) {
+  .filter-field {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
 }

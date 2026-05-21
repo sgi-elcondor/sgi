@@ -1,15 +1,15 @@
-﻿.auth-card-wrap {
+.auth-card-wrap {
   display: flex;
   justify-content: center;
-  padding: 5% 0 24px;
+  padding: 5% 0 1.5rem;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 460px;
-  padding: 32px;
+  max-width: 28.75rem;
+  padding: 2rem;
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: 1.5rem;
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
   box-shadow: var(--shadow);
   animation: auth-card-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -18,7 +18,7 @@
 @keyframes auth-card-in {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(0.875rem);
   }
   to {
     opacity: 1;
@@ -29,14 +29,14 @@
 .auth-card-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 0.875rem;
+  margin-bottom: 1.5rem;
 }
 
 .auth-card-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
   background: var(--accent-soft);
   display: grid;
   place-items: center;
@@ -45,8 +45,8 @@
 }
 
 .auth-card-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .auth-card-title {
@@ -59,19 +59,19 @@
 .auth-card-sub {
   font-size: 0.88rem;
   color: var(--text-muted);
-  margin-top: 3px;
+  margin-top: 0.1875rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .auth-card-field {
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
 }
 
 .auth-card-field label {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 0.4375rem;
   color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 700;
@@ -81,8 +81,8 @@
 
 .auth-card-field input {
   width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 3rem;
+  padding: 0 0.875rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -119,10 +119,10 @@
   border: 1px solid rgba(220, 77, 77, 0.2);
   color: var(--danger);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 0.625rem 0.75rem;
   font-size: 0.86rem;
   line-height: 1.45;
-  margin-bottom: 14px;
+  margin-bottom: 0.875rem;
 }
 
 .auth-card-success {
@@ -131,20 +131,20 @@
   border: 1px solid rgba(47, 165, 109, 0.22);
   color: var(--success);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 0.625rem 0.75rem;
   font-size: 0.86rem;
   line-height: 1.45;
-  margin-bottom: 14px;
+  margin-bottom: 0.875rem;
 }
 
 .auth-card-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 0.5rem;
   width: 100%;
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 3rem;
+  padding: 0 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface-2);
@@ -153,7 +153,7 @@
   font-size: 0.94rem;
   font-weight: 700;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 0.625rem;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
@@ -190,8 +190,8 @@
 .auth-card-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .auth-card-grid-2 .auth-card-field {
@@ -199,10 +199,10 @@
 }
 
 .pwd-rules {
-  margin-top: 10px;
+  margin-top: 0.625rem;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .pwd-rule {
@@ -210,7 +210,7 @@
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 0.4375rem;
   transition: color var(--transition);
 }
 
