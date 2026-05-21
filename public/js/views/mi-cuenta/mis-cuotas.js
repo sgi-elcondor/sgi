@@ -273,9 +273,15 @@
       window.SGIUI?.hydrate(); return;
     }
 
-    const venta  = ventas[0];
-    const cuotas = venta.cuotas || [];
-    const indexActual = cuotas.findIndex(c => c.estado !== "pagada");
+    function buildLoteSelector(idx) {
+      if (ventas.length <= 1) return "";
+      return `<div class="lote-selector">
+        ${ventas.map((vt, i) => {
+          const label = `${vt.lote?.proyecto?.nombre || "Proyecto"} · Lote ${vt.lote?.codigo_lote || "—"}`;
+          return `<button class="lote-tab ${i === idx ? "active" : ""}" data-idx="${i}">${label}</button>`;
+        }).join("")}
+      </div>`;
+    }
 
     function diasLabel(c) {
       const d = c.dias_restantes;
@@ -286,70 +292,89 @@
       return { text: fmtDateShort(c.fecha_vencimiento), cls: "success" };
     }
 
-    const cuotasHtml = cuotas.map((c, idx) => {
-      const isCurrent = idx === indexActual;
-      const isPagada  = c.estado === "pagada";
-      const isVencida = c.dias_restantes < 0 && !isPagada;
-      const dl  = diasLabel(c);
-      const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
-      const canPay = isCurrent && !isPagada && c.tiene_factura;
-      return `
-        <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
-          <div class="cuota-card-left">
-            <div class="cuota-card-num">Cuota #${c.numero_cuota}${c.es_extraordinaria?'<span class="badge badge-info" style="margin-left:6px">Extraordinaria</span>':""}${c.tipo==="inicial"?'<span class="badge badge-muted" style="margin-left:6px">Inicial</span>':""}</div>
-            <div class="cuota-card-fecha">${fmtDate(c.fecha_vencimiento)}</div>
-            <div class="cuota-card-dias ${dl.cls}">${dl.text}</div>
-          </div>
-          <div class="cuota-card-center">
-            <div class="cuota-card-valor">${fmt(c.valor_cuota)}</div>
-            ${c.valor_pagado > 0 && !isPagada ? `
-              <div class="cuota-card-pendiente">Pagado: ${fmt(c.valor_pagado)}</div>
-              <div class="cuota-card-pendiente">Pendiente: ${fmt(c.valor_pendiente)}</div>
-              <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>` : ""}
-            ${c.valor_en_revision > 0 ? `<div class="cuota-card-revision">En revision: ${fmt(c.valor_en_revision)}</div>` : ""}
-          </div>
-          <div class="cuota-card-right">
-            ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
-            ${canPay
-              ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>`
-              : isCurrent && !isPagada
-                ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
-                : ""}
-          </div>
-        </div>`;
-    }).join("");
+    let selectedIdx = 0;
 
-    vc.innerHTML = `
-      <section class="page-shell">
-        ${window.SGIUI?.pageHeader({
-          kicker: "Mis cuotas", title: "Plan de pago",
-          subtitle: `${venta.lote?.proyecto?.nombre || ""} · Lote ${venta.lote?.codigo_lote || ""}`,
-          actions: `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>`,
-          meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
-        }) ?? ""}
-        <section class="table-wrap">
-          <div style="padding:16px 20px">
-            <div class="cuotas-progress-header">
-              <span style="font-size:13px;color:var(--text-muted)">Progreso general</span>
-              <strong>${(venta.porcentaje_pagado||0).toFixed(1)}%</strong>
+    function render(idx) {
+      const venta = ventas[idx];
+      const cuotas = venta.cuotas || [];
+      const indexActual = cuotas.findIndex(c => c.estado !== "pagada");
+
+      const cuotasHtml = cuotas.map((c, i) => {
+        const isCurrent = i === indexActual;
+        const isPagada  = c.estado === "pagada";
+        const isVencida = c.dias_restantes < 0 && !isPagada;
+        const dl  = diasLabel(c);
+        const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
+        const canPay = isCurrent && !isPagada && c.tiene_factura;
+        return `
+          <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
+            <div class="cuota-card-left">
+              <div class="cuota-card-num">Cuota #${c.numero_cuota}${c.es_extraordinaria?'<span class="badge badge-info" style="margin-left:6px">Extraordinaria</span>':""}${c.tipo==="inicial"?'<span class="badge badge-muted" style="margin-left:6px">Inicial</span>':""}</div>
+              <div class="cuota-card-fecha">${fmtDate(c.fecha_vencimiento)}</div>
+              <div class="cuota-card-dias ${dl.cls}">${dl.text}</div>
             </div>
-            <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.min(100,venta.porcentaje_pagado||0)}%"></div></div>
-          </div>
-        </section>
-        <section class="cuotas-comprador">${cuotasHtml || `<p style="color:var(--text-muted);padding:20px">No hay cuotas registradas.</p>`}</section>
-      </section>`;
+            <div class="cuota-card-center">
+              <div class="cuota-card-valor">${fmt(c.valor_cuota)}</div>
+              ${c.valor_pagado > 0 && !isPagada ? `
+                <div class="cuota-card-pendiente">Pagado: ${fmt(c.valor_pagado)}</div>
+                <div class="cuota-card-pendiente">Pendiente: ${fmt(c.valor_pendiente)}</div>
+                <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>` : ""}
+              ${c.valor_en_revision > 0 ? `<div class="cuota-card-revision">En revision: ${fmt(c.valor_en_revision)}</div>` : ""}
+            </div>
+            <div class="cuota-card-right">
+              ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
+              ${canPay
+                ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>`
+                : isCurrent && !isPagada
+                  ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
+                  : ""}
+            </div>
+          </div>`;
+      }).join("");
 
-    window.SGIUI?.hydrate();
+      vc.innerHTML = `
+        <section class="page-shell">
+          ${window.SGIUI?.pageHeader({
+            kicker: "Mis cuotas",
+            title: `${venta.lote?.proyecto?.nombre || "Mi inmueble"}`,
+            subtitle: `Lote ${venta.lote?.codigo_lote || "—"}${venta.lote?.manzana ? " · Manzana " + venta.lote.manzana : ""}`,
+            actions: `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>`,
+            meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
+          }) ?? ""}
+          ${buildLoteSelector(idx)}
+          <section class="table-wrap">
+            <div style="padding:1rem 1.25rem">
+              <div class="cuotas-progress-header">
+                <span style="font-size:0.8125rem;color:var(--text-muted)">Progreso general</span>
+                <strong>${(venta.porcentaje_pagado||0).toFixed(1)}%</strong>
+              </div>
+              <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.min(100,venta.porcentaje_pagado||0)}%"></div></div>
+            </div>
+          </section>
+          <section class="cuotas-comprador">${cuotasHtml || `<p style="color:var(--text-muted);padding:1.25rem">No hay cuotas registradas.</p>`}</section>
+        </section>`;
 
-    document.getElementById("btn-amortizacion")?.addEventListener("click", () =>
-      abrirModalPago({ idVenta: venta.id_venta, soloAmortizacion: true })
-    );
-    document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
-      btn.addEventListener("click", () => abrirModalPago({
-        idVenta: Number(btn.dataset.venta), idCuota: Number(btn.dataset.id),
-        valorCuota: Number(btn.dataset.valor), numeroCuota: Number(btn.dataset.num),
-      }));
-    });
+      window.SGIUI?.hydrate();
+
+      vc.querySelectorAll(".lote-tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedIdx = Number(btn.dataset.idx);
+          render(selectedIdx);
+        });
+      });
+
+      document.getElementById("btn-amortizacion")?.addEventListener("click", () =>
+        abrirModalPago({ idVenta: venta.id_venta, soloAmortizacion: true })
+      );
+      document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
+        btn.addEventListener("click", () => abrirModalPago({
+          idVenta: Number(btn.dataset.venta), idCuota: Number(btn.dataset.id),
+          valorCuota: Number(btn.dataset.valor), numeroCuota: Number(btn.dataset.num),
+        }));
+      });
+    }
+
+    render(selectedIdx);
   };
 
   window._abrirModalPago = abrirModalPago;
