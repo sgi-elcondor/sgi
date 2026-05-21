@@ -3,6 +3,7 @@ const SIDEBAR_GROUPS = [
     { view: "dashboard", icon: "layout-dashboard", label: "Panel" },
   ]},
   { label: "Operacion", items: [
+    { view: "el-proyecto", icon: "building-2", label: "El Proyecto" },
     { view: "proyectos",   icon: "building-2", label: "Proyectos" },
     { view: "lotes",       icon: "map",        label: "Lotes" },
     { view: "compradores", icon: "users",      label: "Compradores" },
