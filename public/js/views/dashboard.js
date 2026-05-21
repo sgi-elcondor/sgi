@@ -279,7 +279,7 @@ function renderMoraEscritura(ventas = []) {
     },
     {
       resource: "dashboard", action: "ver_cartera",
-      fetch:  () => API.get("/reportes/cfunction renderMoraEscritura(ventas = []) {artera-hoy"),
+      fetch:  () => API.get("/reportes/cartera-hoy"),
       render: renderKpiCartera,
     },
     {

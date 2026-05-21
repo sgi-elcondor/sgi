@@ -147,6 +147,26 @@
 .lote-disponible-meta   { font-size: 0.75rem; color: var(--text-muted); }
 .lote-disponible-precio { font-size: 0.875rem; font-weight: 700; color: var(--success); margin-top: 0.25rem; }
 
+/* ── Mis Facturas ─────────────────────────────────────────────────────────── */
+.facturas-grid { display: flex; flex-direction: column; gap: 0.875rem; }
+
+.factura-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.125rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; transition: border-color 0.2s; }
+.factura-card.urgente { border-color: color-mix(in srgb, var(--warning) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning) 25%, transparent); }
+.factura-card-top  { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-mid  { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-num  { font-size: 0.6875rem; color: var(--text-muted); font-family: monospace; font-weight: 600; letter-spacing: 0.03em; }
+.factura-card-lote { font-size: 0.75rem; color: var(--text-muted); }
+.factura-card-cuota { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.factura-card-vence { font-size: 0.8125rem; font-weight: 600; }
+.factura-card-vence.danger  { color: var(--danger); }
+.factura-card-vence.warning { color: var(--warning); }
+.factura-card-vence.success { color: var(--success); }
+.factura-card-vence.muted   { color: var(--text-muted); }
+.factura-card-valor { font-size: 1.125rem; font-weight: 700; color: var(--text); }
+
+.factura-empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--text-muted); }
+
 .recibo-list-item { display: flex; align-items: center; gap: 1rem; padding: 1.125rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
 .recibo-list-item:last-child { border-bottom: none; }
 .recibo-list-item:hover { background: var(--surface-2); }

@@ -21,8 +21,9 @@ const SIDEBAR_GROUPS = [
   ]},
   { label: "Mi cuenta", items: [
     { view: "dashboard",   icon: "home",     label: "Mi Lote" },
-    { view: "mis-cuotas",  icon: "calendar", label: "Mis Cuotas" },
-    { view: "mis-recibos", icon: "wallet",   label: "Mis Pagos" },
+    { view: "mis-cuotas",   icon: "calendar",  label: "Mis Cuotas" },
+    { view: "mis-facturas", icon: "file-text", label: "Mis Facturas" },
+    { view: "mis-recibos",  icon: "wallet",    label: "Mis Pagos" },
   ]},
   { label: "Control", items: [
     { view: "reportes",  icon: "bar-chart-3",    label: "Reportes" },

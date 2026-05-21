@@ -357,7 +357,7 @@
           </section>
           <section class="cuotas-comprador">${cuotasHtml || `<p style="color:var(--text-muted);padding:1.25rem">No hay cuotas registradas.</p>`}</section>
           <div style="padding:1rem 0.25rem;text-align:center">
-            <button class="btn btn-ghost btn-sm" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Ver historial de pagos y recibos</button>
+            <button class="btn btn-ghost btn-sm" onclick="navigate('mis-facturas')">${window.SGIUI?.icon("receipt") ?? ""} Ver mis facturas</button>
           </div>
         </section>`;
 
