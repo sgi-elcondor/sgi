@@ -669,4 +669,19 @@ table {
   .empty-state-title {
     font-size: 1.125rem;
   }
+
+  .role-view-switcher {
+    height: 2.35rem;
+    padding: 0 0.5rem;
+  }
+
+  .rvs-icon {
+    display: none;
+  }
+
+  .rvs-select {
+    min-width: 5rem;
+    max-width: 8rem;
+    font-size: 0.75rem;
+  }
 }

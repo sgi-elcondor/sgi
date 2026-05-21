@@ -1,7 +1,7 @@
 ﻿.modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 9500;
   display: none;
   align-items: center;
   justify-content: center;
@@ -62,7 +62,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.875rem 1.5rem;
-  background: var(--surface2);
+  background: var(--surface-2);
   border-top: 1px solid var(--border);
   border-radius: 0 0 1rem 1rem;
   animation: modal-confirm-in 0.15s ease;

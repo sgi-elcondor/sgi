@@ -14,7 +14,6 @@
 .navbar,
 .main-header,
 .dashboard-header {
-  z-index: 100000 !important;
   overflow: visible !important;
 }
 
