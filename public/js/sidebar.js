@@ -3,6 +3,7 @@ const SIDEBAR_GROUPS = [
     { view: "dashboard", icon: "layout-dashboard", label: "Panel" },
   ]},
   { label: "Operacion", items: [
+    { view: "el-proyecto", icon: "building-2", label: "El Proyecto" },
     { view: "proyectos",   icon: "building-2", label: "Proyectos" },
     { view: "lotes",       icon: "map",        label: "Lotes" },
     { view: "compradores", icon: "users",      label: "Compradores" },
@@ -19,8 +20,10 @@ const SIDEBAR_GROUPS = [
     { view: "gastos",             icon: "trending-down", label: "Gastos" },
   ]},
   { label: "Mi cuenta", items: [
-    { view: "mis-cuotas",  icon: "calendar", label: "Mis Cuotas" },
-    { view: "mis-recibos", icon: "receipt",  label: "Mis Recibos" },
+    { view: "dashboard",   icon: "home",     label: "Mi Lote" },
+    { view: "mis-cuotas",   icon: "calendar",  label: "Mis Cuotas" },
+    { view: "mis-facturas", icon: "file-text", label: "Mis Facturas" },
+    { view: "mis-recibos",  icon: "wallet",    label: "Mis Pagos" },
   ]},
   { label: "Control", items: [
     { view: "reportes",  icon: "bar-chart-3",    label: "Reportes" },
@@ -39,13 +42,21 @@ function renderSidebar(vistas) {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
-  const allowed = new Set(vistas || []);
+  const allowed    = new Set(vistas || []);
+  const rendered   = new Set();
+  const isComprador = window.currentUser?.rol === "comprador";
   let html = "";
   let firstGroup = true;
 
   SIDEBAR_GROUPS.forEach(function(group) {
-    const visible = group.items.filter(function(item) { return allowed.has(item.view); });
+    const visible = group.items.filter(function(item) {
+      if (!allowed.has(item.view)) return false;
+      if (rendered.has(item.view)) return false;
+      if (isComprador && group.label === "General" && item.view === "dashboard") return false;
+      return true;
+    });
     if (!visible.length) return;
+    visible.forEach(function(item) { rendered.add(item.view); });
 
     if (!firstGroup) html += '<div class="nav-divider"></div>';
     firstGroup = false;

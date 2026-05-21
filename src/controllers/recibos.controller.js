@@ -148,7 +148,7 @@ exports.getMisRecibos = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado,
+      id_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, id_venta,
       recibo_pago(
         recibo:id_recibo(id_recibo, numero_recibo, fecha_emision, emitido_por, observaciones)
       ),
@@ -190,7 +190,7 @@ exports.getMisRecibos = async (req, res) => {
       metodo_pago:    p.metodo_pago,
       referencia:     p.referencia,
       estado_pago:    p.estado,
-      id_venta:       venta?.id_venta         ?? null,
+      id_venta:       venta?.id_venta         ?? p.id_venta ?? null,
       numero_cuota:   cuota?.numero_cuota     ?? null,
       id_factura:     factura?.id_factura     ?? null,
       numero_factura: factura?.numero_factura ?? null,
