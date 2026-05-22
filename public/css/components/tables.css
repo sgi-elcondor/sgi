@@ -34,6 +34,12 @@
   font: 1.125rem var(--font-serif);
 }
 
+.table-wrap .table-header h3 svg {
+  height: 1.6rem;
+  width: 1.6rem;  
+  margin-bottom: -.4rem;
+}
+
 .table-wrap table {
   width: 100%;
   min-width: 47.5rem;

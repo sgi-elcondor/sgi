@@ -544,10 +544,7 @@
     numeroInput.addEventListener("input", sgiAutoGenerarCodigo);
 
     const precioInput = document.getElementById("lotePrecio");
-    precioInput.addEventListener("input", () => {
-      const digits = precioInput.value.replace(/\D/g, "");
-      precioInput.value = digits ? Number(digits).toLocaleString("es-CO") : "";
-    });
+    MoneyInput.init(precioInput);
 
     let dimensionesTouched = false;
     dimensionesInput.addEventListener("input", () => { dimensionesTouched = true; });

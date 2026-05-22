@@ -10,6 +10,32 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
+  function _abrirBaucherModal(url) {
+    const existing = document.getElementById("baucher-lightbox");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "baucher-lightbox";
+    overlay.className = "baucher-lightbox-overlay";
+    overlay.innerHTML = `
+      <div class="baucher-lightbox-box">
+        <button class="baucher-lightbox-close" id="bl-close" title="Cerrar">${window.SGIUI?.icon("x") ?? "✕"}</button>
+        <img class="baucher-lightbox-img" src="${url}" alt="Baucher" />
+      </div>`;
+
+    document.body.appendChild(overlay);
+    window.SGIUI?.hydrate();
+
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById("bl-close")?.addEventListener("click", () => overlay.remove());
+
+    const escHandler = e => {
+      if (e.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", escHandler); }
+    };
+    document.addEventListener("keydown", escHandler);
+  }
+  window._abrirBaucherModal = _abrirBaucherModal;
+
   // ── Comprador recibos view ─────────────────────────────────────────────────
   window.compradorRecibosView = async function (container) {
     const vc = container || document.getElementById("viewContainer");
@@ -64,14 +90,16 @@
     function pagoCard(p) {
       return `
         <div class="pago-card">
-          <div class="pago-card-left">
-            <div><span class="badge badge-${METODO_BADGE[p.metodo_pago] || "muted"}">${METODO_LABEL[p.metodo_pago] || p.metodo_pago}</span></div>
-            <div class="pago-card-meta">Fecha: ${fmtDateShort(p.fecha_pago?.split("T")[0])}</div>
-            ${p.url_baucher ? `<a href="${p.url_baucher}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:4px">${window.SGIUI?.icon("image") ?? ""} Ver baucher</a>` : ""}
-          </div>
-          <div class="pago-card-right">
-            <div class="pago-card-valor">${fmt(p.valor_pago)}</div>
-            ${UI.badge(p.estado)}
+          ${p.url_baucher ? `<div class="pago-card-baucher" onclick="_abrirBaucherModal(this.dataset.url)" data-url="${p.url_baucher}" title="Ver baucher"><img class="baucher-thumb-img" src="${p.url_baucher}" alt="Baucher" loading="lazy" /></div>` : ""}
+          <div class="pago-card-body">
+            <div class="pago-card-left">
+              <div><span class="badge badge-${METODO_BADGE[p.metodo_pago] || "muted"}">${METODO_LABEL[p.metodo_pago] || p.metodo_pago}</span></div>
+              <div class="pago-card-meta">Fecha: ${fmtDateShort(p.fecha_pago?.split("T")[0])}</div>
+            </div>
+            <div class="pago-card-right">
+              <div class="pago-card-valor">${fmt(p.valor_pago)}</div>
+              ${UI.badge(p.estado)}
+            </div>
           </div>
         </div>`;
     }

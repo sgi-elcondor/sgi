@@ -2,13 +2,8 @@
 
 let _currentComisiones = [];
 
-function _fmtMoneyInput(el) {
-  const raw = el.value.replace(/\D/g, "");
-  el.value  = raw ? Number(raw).toLocaleString("es-CO") : "";
-}
-
 function _parseMoney(value) {
-  return Number(String(value).replace(/\./g, "")) || 0;
+  return MoneyInput.parse(value);
 }
 
 // ─── Main view ────────────────────────────────────────────────────────────────
@@ -258,7 +253,7 @@ function _renderComisionCard(vc) {
               <div class="form-group" style="margin:0">
                 <label style="font-size:.78rem">Valor *</label>
                 <input type="text" id="mp_valor_${ventaId}" inputmode="numeric"
-                  placeholder="0" oninput="_fmtMoneyInput(this)" style="font-size:.85rem"/>
+                  placeholder="0" style="font-size:.85rem"/>
               </div>
               <div class="form-group" style="margin:0">
                 <label style="font-size:.78rem">Fecha *</label>
@@ -300,6 +295,13 @@ function _toggleComisionCard(ventaId) {
 window.abrirFormMicropago = function(ventaId) {
   const el = document.getElementById(`micropago_form_${ventaId}`);
   if (el) el.style.display = "block";
+  const inp = document.getElementById(`mp_valor_${ventaId}`);
+  if (inp) {
+    const vc = _currentComisiones.find(c => c.id_venta === ventaId);
+    MoneyInput.init(inp, {
+      dependsOn: vc ? () => Number(vc.valor_comision) : null,
+    });
+  }
 };
 
 window.cerrarFormMicropago = function(ventaId) {
@@ -562,6 +564,5 @@ window.guardarComisionista = async function() {
 
 window._toggleComisionCard  = _toggleComisionCard;
 window._verReciboMicropago  = _verReciboMicropago;
-window._fmtMoneyInput       = _fmtMoneyInput;
 
 })();
