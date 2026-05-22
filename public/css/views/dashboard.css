@@ -828,7 +828,97 @@ main,
 
 
 /* =========================================================
-   8. ANIMACIONES
+   8. ÚLTIMOS MOVIMIENTOS
+   ========================================================= */
+
+.mov-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.mov-item-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+
+.mov-tabla-chip {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+
+.mov-tabla-chip.pago  { color: var(--success); }
+.mov-tabla-chip.venta { color: var(--info); }
+
+.mov-campo {
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.mov-change {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.mov-pill {
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.mov-pill.danger {
+  color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.08);
+}
+
+.mov-pill.success {
+  color: var(--success);
+  background: rgba(var(--success-rgb), 0.08);
+}
+
+.mov-insert-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem 1.25rem;
+  margin-bottom: 0.375rem;
+}
+
+.mov-insert-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.mov-insert-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
+}
+
+.mov-update-row {
+  margin-bottom: 0.375rem;
+}
+
+.mov-user {
+  color: var(--text-soft);
+  font-size: 0.75rem;
+}
+
+
+/* =========================================================
+   9. ANIMACIONES
    ========================================================= */
 
 .dashboard-block,

@@ -121,6 +121,271 @@
 
 
 
+  // ── New widget renderers ─────────────────────────────────────────────────────
+
+  function renderWidgetError(msg) {
+    return `
+      <section class="dashboard-block">
+        <article class="panel-card">
+          <div style="display:flex;align-items:center;gap:0.75rem;color:var(--danger)">
+            ${window.SGIUI.icon("alert-triangle")}
+            <span>Error al cargar: ${msg}</span>
+          </div>
+        </article>
+      </section>`;
+  }
+
+  function renderCuotasPendientes(cuotas) {
+    const all = Array.isArray(cuotas) ? cuotas : [];
+
+    const proximas = all
+      .filter(c => c.dias_atraso <= 0)
+      .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
+      .slice(0, 10);
+
+    const vencidas = all
+      .filter(c => c.dias_atraso > 0)
+      .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
+      .slice(0, 10);
+
+    const fmtFecha = d => d
+      ? new Date(`${d}T12:00:00`).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })
+      : "—";
+
+    const TH = label => `<th style="padding:.625rem 1rem;font-weight:600;color:var(--text-muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em">${label}</th>`;
+
+    const buildTable = rows => `
+      <article class="panel-card" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+          <thead>
+            <tr style="background:var(--surface-2,var(--bg-alt));text-align:left">
+              ${TH("#")}${TH("Comprador")}${TH("Lote")}${TH("Valor")}${TH("Vencimiento")}${TH("Días")}
+              <th style="padding:.625rem 1rem"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((c, idx) => `
+              <tr style="border-top:1px solid var(--border);${idx % 2 === 1 ? "background:var(--surface-1,var(--bg-alt))" : ""}">
+                <td style="padding:.75rem 1rem;color:var(--text-muted)">${c.numero_cuota}</td>
+                <td style="padding:.75rem 1rem;font-weight:500">${c.comprador}</td>
+                <td style="padding:.75rem 1rem;color:var(--text-muted);font-size:.8125rem">${c.codigo_lote} · ${c.proyecto}</td>
+                <td style="padding:.75rem 1rem;font-weight:600">${fmtM(c.valor_cuota)}</td>
+                <td style="padding:.75rem 1rem">${fmtFecha(c.fecha_vencimiento)}</td>
+                <td style="padding:.75rem 1rem">${diasLabel(c)}</td>
+                <td style="padding:.75rem 1rem">
+                  <button class="btn btn-ghost btn-sm" onclick="window._abrirVentaDesdeDashboard(${c.id_venta})">
+                    Ver venta
+                  </button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </article>`;
+
+    const emptyCard = msg => `<article class="panel-card"><p style="color:var(--text-muted)">${msg}</p></article>`;
+
+    const diasLabel = c => {
+      if (c.dias_atraso === 0) return `<span style="color:var(--warning);font-size:.8125rem;font-weight:600">Vence hoy</span>`;
+      if (c.dias_atraso < 0)  return `<span style="color:var(--text-muted);font-size:.8125rem">${Math.abs(c.dias_atraso)}d restantes</span>`;
+      return `<span style="color:var(--danger);font-size:.8125rem;font-weight:600">${c.dias_atraso}d vencida</span>`;
+    };
+
+    const countPill = (n, color) =>
+      `<span style="font-size:.75rem;font-weight:600;padding:.2rem .7rem;border-radius:99px;background:rgba(var(--${color}-rgb),.12);color:var(--${color})">${n} cuota${n !== 1 ? "s" : ""}</span>`;
+
+    return `
+      <section class="dashboard-block">
+        ${window.SGIUI.sectionHeader({ kicker: "Próximas a vencer", title: "Cuotas por vencer", actions: proximas.length ? countPill(proximas.length, "accent") : "" })}
+        ${proximas.length ? buildTable(proximas) : emptyCard("No hay cuotas próximas a vencer.")}
+      </section>
+      <section class="dashboard-block">
+        ${window.SGIUI.sectionHeader({ kicker: "Vencidas sin pagar", title: "Cuotas en mora", actions: vencidas.length ? countPill(vencidas.length, "danger") : "" })}
+        ${vencidas.length ? buildTable(vencidas) : emptyCard("No hay cuotas vencidas pendientes.")}
+      </section>`;
+  }
+
+  function renderUltimosMovimientos(movimientos) {
+    const OPERATIONAL_TABLES = ["cuota", "pago", "venta", "factura", "recibo", "comprador"];
+
+    const TABLE_LABELS = {
+      cuota: "Cuota", pago: "Pago", venta: "Venta",
+      factura: "Factura", recibo: "Recibo", comprador: "Comprador",
+    };
+
+    const FIELD_LABELS = {
+      numero_cuota:      "Número de cuota",
+      valor_cuota:       "Valor de cuota",
+      fecha_vencimiento: "Fecha de vencimiento",
+      es_extraordinaria: "Cuota extraordinaria",
+      estado:            "Estado",
+      fecha_pago:        "Fecha de pago",
+      metodo_pago:       "Método de pago",
+      valor_total:       "Valor total",
+      fecha_venta:       "Fecha de venta",
+    };
+
+    const KEY_INSERT_CAMPOS = ["fecha_vencimiento", "numero_cuota", "estado", "valor_cuota", "valor_total"];
+
+    const fmtTs = ts => {
+      if (!ts) return "—";
+      const d    = new Date(ts);
+      const fecha = d.toLocaleDateString("es-CO", { day: "2-digit", month: "short" });
+      const hora  = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false });
+      return `${fecha} · ${hora}`;
+    };
+
+    const fmtValue = v => {
+      if (!v || v === "null") return null;
+      if (v === "true")  return "Sí";
+      if (v === "false") return "No";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v))
+        return new Date(`${v}T12:00:00`).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+      const n = Number(v);
+      if (!isNaN(n) && n > 999) return fmtM(n);
+      return v;
+    };
+
+    const dotColor = tabla => {
+      if (tabla === "pago")  return "var(--success)";
+      if (tabla === "cuota") return "var(--accent)";
+      if (tabla === "venta") return "var(--info)";
+      return "var(--text-muted)";
+    };
+
+    const labelCampo = campo =>
+      FIELD_LABELS[campo] || (campo || "—").replace(/_/g, " ");
+
+    const fmtUsuario = u => (!u || u === "postgres") ? "Sistema" : u;
+
+    // Group changes of the same record within the same minute into one event
+    const groups = new Map();
+    (Array.isArray(movimientos) ? movimientos : [])
+      .filter(m => OPERATIONAL_TABLES.includes((m.tabla_afectada || "").toLowerCase()))
+      .forEach(m => {
+        const key = `${m.tabla_afectada}|${m.id_registro}|${(m.fecha_cambio || "").slice(0, 16)}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            tabla_afectada: m.tabla_afectada,
+            operacion:      m.operacion,
+            fecha_cambio:   m.fecha_cambio,
+            usuario:        m.usuario,
+            comprador:      m.comprador,
+            codigo_lote:    m.codigo_lote,
+            proyecto:       m.proyecto,
+            campos:         [],
+          });
+        }
+        groups.get(key).campos.push({
+          campo:          m.campo,
+          valor_anterior: m.valor_anterior,
+          valor_nuevo:    m.valor_nuevo,
+        });
+      });
+
+    const getNumero = g => {
+      const c = g.campos.find(f => f.campo === 'numero_cuota');
+      return c ? Number(c.valor_nuevo) : Infinity;
+    };
+
+    const getTipo = g => {
+      const c = g.campos.find(f => f.campo === 'tipo');
+      return c?.valor_nuevo || '';
+    };
+
+    const items = [...groups.values()]
+      .sort((a, b) => {
+        const timeDiff = new Date(b.fecha_cambio) - new Date(a.fecha_cambio);
+        if (timeDiff !== 0) return timeDiff;
+        const aInicial = getTipo(a) === 'inicial';
+        const bInicial = getTipo(b) === 'inicial';
+        if (aInicial && !bInicial) return -1;
+        if (!aInicial && bInicial) return 1;
+        return getNumero(a) - getNumero(b);
+      })
+      .slice(0, 5);
+
+    if (!items.length) return `
+      <section class="dashboard-block">
+        ${window.SGIUI.sectionHeader({ kicker: "Actividad reciente", title: "Últimos movimientos" })}
+        <article class="panel-card"><p>Sin movimientos recientes.</p></article>
+      </section>`;
+
+    const OP_LABELS_BY_TABLE = {
+      cuota:     { INSERT: "registrada",  UPDATE: "actualizada",  DELETE: "eliminada"  },
+      pago:      { INSERT: "registrado",  UPDATE: "actualizado",  DELETE: "eliminado"  },
+      venta:     { INSERT: "registrada",  UPDATE: "actualizada",  DELETE: "eliminada"  },
+      factura:   { INSERT: "generada",    UPDATE: "actualizada",  DELETE: "eliminada"  },
+      recibo:    { INSERT: "generado",    UPDATE: "actualizado",  DELETE: "eliminado"  },
+      comprador: { INSERT: "registrado",  UPDATE: "actualizado",  DELETE: "eliminado"  },
+    };
+
+    const OP_COLOR = { INSERT: "var(--success)", UPDATE: "var(--accent)", DELETE: "var(--danger)" };
+
+    const renderContent = g => {
+      if (g.operacion === "INSERT") {
+        const relevant = g.campos
+          .filter(c => KEY_INSERT_CAMPOS.includes(c.campo) && c.valor_nuevo != null)
+          .sort((a, b) => KEY_INSERT_CAMPOS.indexOf(a.campo) - KEY_INSERT_CAMPOS.indexOf(b.campo));
+        if (!relevant.length) return "";
+        return `
+          <div class="mov-insert-grid">
+            ${relevant.map(c => `
+              <div class="mov-insert-field">
+                <span class="mov-insert-label">${labelCampo(c.campo)}</span>
+                <span class="mov-pill success">${fmtValue(c.valor_nuevo) || c.valor_nuevo}</span>
+              </div>
+            `).join("")}
+          </div>`;
+      }
+      return g.campos.map(c => {
+        const a = fmtValue(c.valor_anterior);
+        const n = fmtValue(c.valor_nuevo);
+        return `
+          <div class="mov-update-row">
+            <span class="mov-insert-label">${labelCampo(c.campo)}</span>
+            <div class="mov-change">
+              ${a ? `<span class="mov-pill danger">${a}</span>${window.SGIUI.icon("arrow-right")}` : ""}
+              <span class="mov-pill success">${n || "—"}</span>
+            </div>
+          </div>`;
+      }).join("");
+    };
+
+    return `
+      <section class="dashboard-block">
+        ${window.SGIUI.sectionHeader({ kicker: "Actividad reciente", title: "Últimos movimientos", actions: `<span style="font-size:.75rem;font-weight:500;color:var(--text-muted)">Últimas ${items.length}</span>` })}
+        <article class="panel-card" style="padding:1rem">
+          <div class="activity-list">
+            ${items.map(g => {
+              const tablaLabel = TABLE_LABELS[g.tabla_afectada] || g.tabla_afectada;
+              const opLabel    = (OP_LABELS_BY_TABLE[g.tabla_afectada] || {})[g.operacion] || "cambiado";
+              const opColor    = OP_COLOR[g.operacion] || "var(--text-muted)";
+              const ctx        = g.comprador
+                ? [g.comprador, g.codigo_lote, g.proyecto].filter(Boolean).join(" · ")
+                : "";
+              return `
+                <div class="activity-item">
+                  <span class="activity-dot" style="background:${dotColor(g.tabla_afectada)};flex-shrink:0;align-self:flex-start;margin-top:.3rem"></span>
+                  <div style="flex:1;min-width:0">
+                    <div class="mov-item-header">
+                      <span class="mov-campo">
+                        <span style="color:${opColor}">${tablaLabel}</span>
+                        <span style="color:var(--text-muted);font-weight:400"> ${opLabel}</span>
+                      </span>
+                      <span class="activity-time">${fmtTs(g.fecha_cambio)}</span>
+                    </div>
+                    ${ctx ? `<span class="mov-tabla-chip" style="display:block;margin-bottom:.4rem">${ctx}</span>` : ""}
+                    ${renderContent(g)}
+                    <span class="mov-user" style="margin-top:.25rem;display:block">${fmtUsuario(g.usuario)}</span>
+                  </div>
+                </div>`;
+            }).join("")}
+          </div>
+        </article>
+      </section>`;
+  }
+
     //  KPI de mora y alerta de escritura 30% ───────────────────────────
 
   function _estadoNormalizado(v) {
@@ -292,6 +557,16 @@ function renderMoraEscritura(ventas = []) {
       fetch:  () => API.get("/reportes/alertas"),
       render: renderAlertasJuridicas,
     },
+    {
+      resource: "cuotas", action: "leer",
+      fetch:  () => API.get("/cuotas/pendientes"),
+      render: renderCuotasPendientes,
+    },
+    {
+      resource: "dashboard", action: "ver_operacion",
+      fetch:  () => API.get("/reportes/auditoria"),
+      render: renderUltimosMovimientos,
+    },
   ];
 
   // ── Operational dashboard ────────────────────────────────────────────────────
@@ -309,14 +584,7 @@ function renderMoraEscritura(ventas = []) {
       return;
     }
 
-    const results = await Promise.allSettled(visible.map(w => w.fetch()));
-
-    const blocks = visible.map((w, i) => {
-      const result = results[i];
-      if (result.status === "rejected") return "";
-      try { return w.render(result.value); }
-      catch (_) { return ""; }
-    }).join("");
+    const slotId = i => `dash-slot-${i}`;
 
     vc.innerHTML = `
       <section class="page-shell dashboard-page">
@@ -325,10 +593,32 @@ function renderMoraEscritura(ventas = []) {
           title:    "Centro de operacion",
           subtitle: "Estado de ventas, cartera, pagos, cuotas y comisiones.",
         })}
-        ${blocks}
+        ${visible.map((_, i) => `
+          <div id="${slotId(i)}">
+            <section class="dashboard-block">
+              <div style="padding:1.5rem;color:var(--text-muted)">Cargando...</div>
+            </section>
+          </div>
+        `).join("")}
       </section>`;
 
-    window.SGIUI?.hydrate();
+    let settled = 0;
+    visible.forEach((w, i) => {
+      const slot = document.getElementById(slotId(i));
+      w.fetch()
+        .then(data => {
+          if (!slot) return;
+          try { slot.innerHTML = w.render(data); }
+          catch (_) { slot.innerHTML = renderWidgetError("No se pudo procesar la respuesta."); }
+        })
+        .catch(err => {
+          if (slot) slot.innerHTML = renderWidgetError(err?.message || "Error de conexión");
+        })
+        .finally(() => {
+          settled++;
+          if (settled === visible.length) window.SGIUI?.hydrate();
+        });
+    });
   }
 
   // ── Comprador dashboard ──────────────────────────────────────────────────────
@@ -458,11 +748,12 @@ function renderMoraEscritura(ventas = []) {
             </div>
           </div>
           <div class="comprador-actions">
-            <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar") ?? ""} Mis Cuotas</button>
             <button class="btn btn-primary" id="dash-btn-pagar-cuota">${window.SGIUI?.icon("wallet") ?? ""} Pagar cuota</button>
-            <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Mis Pagos</button>
+            <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar") ?? ""} Ver cuotas</button>
+            <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Mis pagos</button>
           </div>
         </section>`;
+
 
       window.SGIUI?.hydrate();
 
