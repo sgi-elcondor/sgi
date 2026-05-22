@@ -10,7 +10,9 @@ window.cuotasView = async function() {
   });
   if (!data) return;
 
-  const esAuxiliar = AppState.can('cuotas', 'editar_valores');
+  const esAuxiliar      = AppState.can('cuotas', 'editar_valores');
+  const canPagar        = AppState.can('pagos', 'crear');
+  const mostrarAcciones = esAuxiliar || canPagar;
 
   const cuotasMap = {};
   data.forEach(c => { cuotasMap[c.id_cuota] = c; });
@@ -19,9 +21,20 @@ window.cuotasView = async function() {
     return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
 
+  function diasCell(dias) {
+    if (dias > 0)   return `<span class="badge badge-danger">${dias} días atraso</span>`;
+    if (dias === 0) return `<span class="badge badge-warning">Vence hoy</span>`;
+    return `<span class="badge badge-success">En ${Math.abs(dias)} días</span>`;
+  }
+
   function filaVista(c) {
-    const btnEditar = (esAuxiliar && c.estado !== "pagada")
-      ? `<button class="btn btn-ghost btn-sm btn-cuota-editar" data-id="${c.id_cuota}">Editar</button>`
+    const acciones = [];
+    if (esAuxiliar && c.estado !== "pagada")
+      acciones.push(`<button class="btn btn-ghost btn-sm btn-cuota-editar" data-id="${c.id_cuota}">Editar</button>`);
+    if (canPagar)
+      acciones.push(`<button class="btn btn-primary btn-sm btn-cuota-pagar" data-id="${c.id_cuota}">Pagar</button>`);
+    const accionesCell = mostrarAcciones
+      ? `<td style="white-space:nowrap">${acciones.join(" ")}</td>`
       : "";
     return `<tr data-id="${c.id_cuota}">
       <td>${c.proyecto}</td>
@@ -29,16 +42,11 @@ window.cuotasView = async function() {
       <td>${c.comprador}</td>
       <td>${c.numero_cuota}</td>
       <td>${UI.date(c.fecha_vencimiento)}</td>
-      <td>${c.dias_atraso > 0
-        ? `<span style="color:var(--danger)">${c.dias_atraso} días atraso</span>`
-        : c.dias_atraso === 0
-          ? `<span style="color:var(--warning,#e8570c)">Hoy</span>`
-          : `<span style="color:var(--success,#22c55e)">en ${Math.abs(c.dias_atraso)} días</span>`
-      }</td>
+      <td>${diasCell(c.dias_atraso)}</td>
       <td>${UI.fmt(c.valor_cuota)}</td>
       <td>${UI.fmt(c.valor_pendiente)}</td>
       <td>${UI.badge(c.estado)}</td>
-      ${esAuxiliar ? `<td>${btnEditar}</td>` : ""}
+      ${accionesCell}
     </tr>`;
   }
 
@@ -53,12 +61,7 @@ window.cuotasView = async function() {
       <td>${c.comprador}</td>
       <td>${c.numero_cuota}</td>
       <td><input type="date" class="cuota-input-fecha" value="${c.fecha_vencimiento}" style="width:140px"></td>
-      <td>${c.dias_atraso > 0
-        ? `<span style="color:var(--danger)">${c.dias_atraso} días</span>`
-        : c.dias_atraso === 0
-          ? `<span style="color:var(--warning,#e8570c)">Hoy</span>`
-          : `<span style="color:var(--success,#22c55e)">en ${Math.abs(c.dias_atraso)} días</span>`
-      }</td>
+      <td>${diasCell(c.dias_atraso)}</td>
       <td><input type="text" inputmode="numeric" class="cuota-input-valor" value="${fmtMiles(c.valor_cuota)}" style="width:130px"></td>
       <td>${UI.fmt(c.valor_pendiente)}</td>
       <td>${UI.badge(c.estado)}</td>
@@ -76,21 +79,26 @@ window.cuotasView = async function() {
   const optsProyecto = proyectos.map(p => `<option value="${p}">${p}</option>`).join("");
   const optsEstado   = estados.map(s => `<option value="${s}">${s}</option>`).join("");
 
-  const thAcciones = esAuxiliar ? "<th>Acciones</th>" : "";
+  const thAcciones = mostrarAcciones ? "<th>Acciones</th>" : "";
   vc.innerHTML = `
     <div class="table-wrap">
-      <div class="table-header"><h3>Cuotas Pendientes</h3></div>
+      <div class="table-header">
+        <div class="table-header-titles">
+          <h3>Cuotas Pendientes</h3>
+          <span class="count-chip" id="cuotas-count">${data.length} ${data.length === 1 ? "cuota" : "cuotas"}</span>
+        </div>
+      </div>
 
-      <div class="table-filters"> 
-        <select id="f-proyecto" class="select-sm" style="flex:1;min-width:150px;">
+      <div class="table-filters">
+        <select id="f-proyecto" class="select-sm" style="flex:1;min-width:9.5rem">
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
-        <input id="f-lote" type="text" placeholder="Buscar lote..."
-          style="flex:1;min-width:130px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
-        <input id="f-comprador" type="text" placeholder="Buscar comprador..."
-          style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px">
-        <select id="f-estado" class="select-sm" style="flex:1;min-width:140px;">
+        <input id="f-lote" type="text" class="filter-input" placeholder="Buscar lote..."
+          style="flex:1;min-width:8rem">
+        <input id="f-comprador" type="text" class="filter-input" placeholder="Buscar comprador..."
+          style="flex:2;min-width:11rem">
+        <select id="f-estado" class="select-sm" style="flex:1;min-width:8.75rem">
           <option value="">Todos los estados</option>
           ${optsEstado}
         </select>
@@ -109,7 +117,8 @@ window.cuotasView = async function() {
       </p>
     </div>`;
 
-  const tbody = document.getElementById("cuotas-tbody");
+  const tbody     = document.getElementById("cuotas-tbody");
+  const countChip = document.getElementById("cuotas-count");
 
   function aplicarFiltros() {
     const fProyecto  = document.getElementById("f-proyecto").value;
@@ -127,6 +136,7 @@ window.cuotasView = async function() {
 
     tbody.innerHTML = visibles.map(filaVista).join("");
     document.getElementById("cuotas-empty").style.display = visibles.length ? "none" : "block";
+    countChip.textContent = `${visibles.length} ${visibles.length === 1 ? "cuota" : "cuotas"}`;
   }
 
   ["f-proyecto", "f-estado"].forEach(id =>
@@ -140,7 +150,15 @@ window.cuotasView = async function() {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    const id   = btn.dataset.id;
+    const id = btn.dataset.id;
+
+    // ── Pagar ──
+    if (btn.classList.contains("btn-cuota-pagar")) {
+      const c = cuotasMap[id];
+      if (c) window.pagoForm(c.id_venta, c);
+      return;
+    }
+
     const fila = tbody.querySelector(`tr[data-id="${id}"]`);
     if (!fila) return;
 

@@ -28,6 +28,55 @@
   fmt(n) { return n != null ? Number(n).toLocaleString("es-CO", { style:"currency", currency:"COP", maximumFractionDigits:0 }) : "—"; },
   date(d) { return d ? new Date(d).toLocaleDateString("es-CO") : "—"; },
   loader() { return `<div class="loader">Cargando...</div>`; },
+  confirm(opts = {}) {
+    const o = typeof opts === "string" ? { message: opts } : opts;
+    const {
+      title       = "¿Confirmar acción?",
+      message     = "",
+      confirmText = "Aceptar",
+      cancelText  = "Cancelar",
+      danger      = false,
+    } = o;
+
+    return new Promise(resolve => {
+      let ov = document.getElementById("confirmOverlay");
+      if (!ov) {
+        ov = document.createElement("div");
+        ov.id = "confirmOverlay";
+        ov.className = "confirm-overlay";
+        document.body.appendChild(ov);
+      }
+      ov.innerHTML = `
+        <div class="confirm-dialog" role="alertdialog" aria-modal="true">
+          <div class="confirm-icon ${danger ? "confirm-icon-danger" : ""}">
+            <i data-lucide="${danger ? "alert-triangle" : "help-circle"}"></i>
+          </div>
+          <h3 class="confirm-title">${title}</h3>
+          ${message ? `<p class="confirm-message">${message}</p>` : ""}
+          <div class="confirm-actions">
+            <button class="btn btn-ghost" data-confirm="cancel">${cancelText}</button>
+            <button class="btn ${danger ? "btn-danger" : "btn-primary"}" data-confirm="ok">${confirmText}</button>
+          </div>
+        </div>`;
+      ov.classList.add("show");
+      window.SGIUI?.hydrate?.();
+
+      const cleanup = () => {
+        ov.classList.remove("show");
+        ov.removeEventListener("click", onClick);
+        document.removeEventListener("keydown", onKey);
+      };
+      const onClick = e => {
+        const action = e.target.closest("[data-confirm]")?.dataset.confirm;
+        if (action === "ok") { cleanup(); resolve(true); }
+        else if (action === "cancel" || e.target === ov) { cleanup(); resolve(false); }
+      };
+      const onKey = e => { if (e.key === "Escape") { cleanup(); resolve(false); } };
+
+      ov.addEventListener("click", onClick);
+      document.addEventListener("keydown", onKey);
+    });
+  },
   toast(msg, type="info") {
     const t = document.createElement("div");
     t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border);

@@ -1,0 +1,90 @@
+/* Banner: cuotas vencidas sin factura */
+.facturas-sin-banner {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.fsb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(var(--warning-rgb), 0.07);
+}
+
+.fsb-head-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fsb-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  background: rgba(var(--warning-rgb), 0.16);
+  color: var(--warning);
+}
+
+.fsb-title {
+  display: block;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.fsb-sub {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.fsb-table-wrap {
+  overflow-x: auto;
+}
+
+.fsb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.fsb-table thead th {
+  padding: 0.5rem 0.875rem;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.fsb-table tbody td {
+  padding: 0.5rem 0.875rem;
+  color: var(--text);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.fsb-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.fsb-table tbody tr:hover {
+  background: rgba(var(--accent-rgb), 0.04);
+}
+
+.fsb-center { text-align: center; }
+.fsb-right  { text-align: right; }
