@@ -460,12 +460,12 @@ window._editarFinanciero = function(id, vtActual, ciActual) {
       <div class="form-group">
         <label style="font-size:.8rem">Valor total *</label>
         <input id="ef_vt" type="text" inputmode="numeric" value="${_fmtMiles(vtActual)}"
-               oninput="_onMoneyInput(this)" style="padding:5px 8px"/>
+               style="padding:5px 8px"/>
       </div>
       <div class="form-group">
         <label style="font-size:.8rem">Cuota inicial</label>
         <input id="ef_ci" type="text" inputmode="numeric" value="${_fmtMiles(ciActual)}"
-               oninput="_onMoneyInput(this)" style="padding:5px 8px"/>
+               style="padding:5px 8px"/>
       </div>
       <div class="form-group" style="grid-column:1/-1">
         <label style="font-size:.8rem">Motivo del cambio *
@@ -479,6 +479,13 @@ window._editarFinanciero = function(id, vtActual, ciActual) {
       <button class="btn btn-primary btn-sm" onclick="_guardarFinanciero(${id})">Guardar</button>
       <button class="btn btn-ghost btn-sm"   onclick="verVenta(${id})">Cancelar</button>
     </div>`;
+
+  const efVt = document.getElementById("ef_vt");
+  const efCi = document.getElementById("ef_ci");
+  if (efVt) MoneyInput.init(efVt);
+  if (efCi) MoneyInput.init(efCi, {
+    dependsOn: () => MoneyInput.parse(document.getElementById("ef_vt")?.value || "0"),
+  });
 };
 
 window._guardarFinanciero = async function(id) {
@@ -495,17 +502,8 @@ window._guardarFinanciero = async function(id) {
   } catch(e) { UI.toast(e.message, "error"); }
 };
 
-// ─── Formato de miles (separador punto) ───
-function _fmtMiles(val) {
-  const d = String(val).replace(/[^\d]/g, "");
-  return d ? d.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
-}
-function _parseMiles(str) {
-  return Number(String(str).replace(/\./g, "")) || 0;
-}
-window._onMoneyInput = function(el) {
-  el.value = _fmtMiles(el.value);
-};
+function _fmtMiles(val) { return MoneyInput.format(val); }
+function _parseMiles(str) { return MoneyInput.parse(str); }
 function _validarEmail(mail) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
 }
@@ -555,13 +553,11 @@ function _htmlFormVenta(proyectos) {
 
       <div class="form-group">
         <label>Valor Total *</label>
-        <input id="f_vt" type="text" inputmode="numeric" placeholder="0"
-               oninput="_onMoneyInput(this);_actualizarCalculos()"/>
+        <input id="f_vt" type="text" inputmode="numeric" placeholder="0"/>
       </div>
       <div class="form-group">
         <label>Cuota Inicial</label>
-        <input id="f_ci" type="text" inputmode="numeric" placeholder="0" value="0"
-               oninput="_onMoneyInput(this);_actualizarCalculos()"/>
+        <input id="f_ci" type="text" inputmode="numeric" placeholder="0" value="0"/>
       </div>
 
       <div class="form-group">
@@ -767,7 +763,7 @@ function _htmlComisionistaField() {
     </div>
     <div class="form-group">
       <label>Comisión ($)</label>
-      <input id="f_pcom" type="text" inputmode="numeric" placeholder="0" value="0" oninput="_onMoneyInput(this)"/>
+      <input id="f_pcom" type="text" inputmode="numeric" placeholder="0" value="0"/>
     </div>`;
 }
 
@@ -934,12 +930,21 @@ function _renderPermutasLista() {
              style="flex:2;min-width:0"/>
       <input type="text" inputmode="numeric" placeholder="0"
              value="${p.valor > 0 ? _fmtMiles(p.valor) : ""}"
-             oninput="_onMoneyInput(this);window._ventaPermutas[${i}].valor=_parseMiles(this.value);_actualizarCalculos()"
              style="flex:1;min-width:0"/>
       <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 8px;flex-shrink:0"
               onclick="_eliminarPermuta(${i})"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>`).join("");
   _actualizarPermutasResumen();
+
+  div.querySelectorAll("input[inputmode='numeric']").forEach((inp, idx) => {
+    MoneyInput.init(inp, {
+      dependsOn: () => MoneyInput.parse(document.getElementById("f_vt")?.value || "0"),
+      onChange: () => {
+        window._ventaPermutas[idx].valor = MoneyInput.parse(inp.value);
+        _actualizarCalculos();
+      },
+    });
+  });
 }
 
 function _actualizarPermutasResumen() {
@@ -1011,13 +1016,20 @@ window._renderMicroCuotas = function(raw) {
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
       <span style="font-size:.8rem;color:var(--text-muted);width:90px;flex-shrink:0">Micro-cuota ${i + 1}</span>
       <input type="text" id="f_mc_val_${i}" inputmode="numeric" placeholder="0"
-             value="${prev[i]?.val || ""}" style="flex:1;min-width:110px"
-             oninput="_onMoneyInput(this);_actualizarResumenInicial()"/>
+             value="${prev[i]?.val || ""}" style="flex:1;min-width:110px"/>
       <input type="date" id="f_mc_fecha_${i}"
              value="${prev[i]?.fecha || ""}" style="flex:1;min-width:140px"/>
     </div>`).join("");
 
   _actualizarResumenInicial();
+
+  for (let j = 0; j < n; j++) {
+    const inp = document.getElementById(`f_mc_val_${j}`);
+    if (inp) MoneyInput.init(inp, {
+      dependsOn: () => MoneyInput.parse(document.getElementById("f_ci")?.value || "0"),
+      onChange: _actualizarResumenInicial,
+    });
+  }
 };
 
 window._actualizarResumenInicial = function() {
@@ -1486,6 +1498,16 @@ function _iniciarFormularioDinamico() {
   _actualizarCalculos();
   const fechaInput = document.getElementById("f_fecha_venta");
   if (fechaInput) fechaInput.value = new Date().toISOString().split("T")[0];
+
+  const vtEl   = document.getElementById("f_vt");
+  const ciEl   = document.getElementById("f_ci");
+  const pcomEl = document.getElementById("f_pcom");
+  if (vtEl) MoneyInput.init(vtEl, { onChange: _actualizarCalculos });
+  if (ciEl) MoneyInput.init(ciEl, {
+    dependsOn: () => MoneyInput.parse(document.getElementById("f_vt")?.value || "0"),
+    onChange: _actualizarCalculos,
+  });
+  if (pcomEl) MoneyInput.init(pcomEl);
 }
 
 // ─── Standard form (admin / auxiliar_contable) ───
@@ -1663,8 +1685,6 @@ window.guardarSolicitudVenta = async function() {
   }
 };
 
-// Helpers called from inline oninput handlers in the sale form
-window._actualizarCalculos   = _actualizarCalculos;
-window._onMoneyInput         = _onMoneyInput;
+window._actualizarCalculos = _actualizarCalculos;
 
 })();

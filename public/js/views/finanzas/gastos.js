@@ -1,12 +1,7 @@
 (function () {
 
-function _gastosFormatInput(el) {
-  const raw = el.value.replace(/\D/g, "");
-  el.value  = raw ? Number(raw).toLocaleString("es-CO") : "";
-}
-
 function _gastosParseInput(val) {
-  return Number(String(val).replace(/\./g, "").replace(/,/g, "")) || 0;
+  return MoneyInput.parse(val);
 }
 
 const CATEGORIA_LABELS = {
@@ -379,8 +374,7 @@ function _gastosFormHTML(gasto) {
           <label>Valor <span style="color:var(--danger)">*</span></label>
           <input type="text" id="gasto_valor"
             placeholder="Ej: 290.000"
-            oninput="_gastosFormatInput(this)"
-            value="${gasto ? Math.abs(Number(gasto.valor)).toLocaleString("es-CO") : ""}">
+            value="${gasto ? MoneyInput.format(Math.abs(Number(gasto.valor))) : ""}">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
@@ -443,6 +437,8 @@ window.gastosOpenCreate = function() {
   _gastosComprobanteUrl = null;
   UI.openModal("Nuevo gasto operativo", _gastosFormHTML(null));
   SGIUI.hydrate();
+  const valorEl = document.getElementById("gasto_valor");
+  if (valorEl) MoneyInput.init(valorEl);
 };
 
 window.gastosOpenEdit = function(id) {
@@ -452,6 +448,8 @@ window.gastosOpenEdit = function(id) {
   _gastosComprobanteUrl = gasto.comprobante_url || null;
   UI.openModal("Editar gasto", _gastosFormHTML(gasto));
   SGIUI.hydrate();
+  const valorEl = document.getElementById("gasto_valor");
+  if (valorEl) MoneyInput.init(valorEl);
 };
 
 window._gastosSubmit = async function() {
@@ -547,6 +545,5 @@ window._gastosSubmit = async function() {
   }
 };
 
-window._gastosFormatInput = _gastosFormatInput;
 
 })();

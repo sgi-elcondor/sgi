@@ -167,15 +167,7 @@ window.cuotasView = async function() {
       fila.outerHTML = filaEdicion(cuotasMap[id]);
       const nuevaFila = tbody.querySelector(`tr[data-id="${id}"]`);
       const inputV = nuevaFila?.querySelector(".cuota-input-valor");
-      if (inputV) {
-        inputV.addEventListener("input", () => {
-          const raw = inputV.value.replace(/\D/g, "");
-          const cur = inputV.selectionStart;
-          const prevLen = inputV.value.length;
-          inputV.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-          inputV.selectionStart = inputV.selectionEnd = cur + (inputV.value.length - prevLen);
-        });
-      }
+      if (inputV) MoneyInput.init(inputV);
       return;
     }
 

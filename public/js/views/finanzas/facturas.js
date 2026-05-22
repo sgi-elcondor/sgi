@@ -8,9 +8,7 @@ function _fNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
 }
 
-function _fmtMiles(n) {
-  return String(n ?? "").replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
+function _fmtMiles(n) { return MoneyInput.format(n); }
 
 function _fmtNumFactura(v) {
   if (!v) return "—";
@@ -541,15 +539,7 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
   }
 
   const vf = document.getElementById("f_vf");
-  if (vf) {
-    vf.addEventListener("input", () => {
-      const raw     = vf.value.replace(/\D/g, "");
-      const cur     = vf.selectionStart;
-      const prevLen = vf.value.length;
-      vf.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      vf.selectionStart = vf.selectionEnd = cur + (vf.value.length - prevLen);
-    });
-  }
+  if (vf) MoneyInput.init(vf);
 };
 
 window.guardarFactura = async function() {
