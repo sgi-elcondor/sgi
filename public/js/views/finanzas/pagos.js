@@ -1,5 +1,8 @@
 (function () {
 
+  // Tracks which view opened the payment modal, to refresh the right one afterwards
+  let pagoOrigen = "pagos";
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
   function norm(s) {
@@ -251,22 +254,57 @@
 
   // ── Payment form ──────────────────────────────────────────────────────────────
 
-  window.pagoForm = async function(idVentaCtx = null) {
+  window.pagoForm = async function(idVentaCtx = null, cuotaCtx = null) {
     let facturas = [];
     try {
       const todas = await API.get("/facturas");
       facturas = todas.filter(f => f.estado === "emitida");
       if (idVentaCtx) facturas = facturas.filter(f => f.id_venta === idVentaCtx);
     } catch (e) { facturas = []; }
+
+    let cuotaFactura = null;
+    if (cuotaCtx) {
+      cuotaFactura = facturas.find(f => f.id_cuota === cuotaCtx.id_cuota);
+      if (!cuotaFactura) {
+        const emitir = await UI.confirm({
+          title:       "¿Emitir la factura ahora?",
+          message:     "Esta cuota no tiene una factura emitida y no se puede pagar sin ella.",
+          confirmText: "Emitir factura",
+          cancelText:  "Cancelar",
+        });
+        if (emitir && typeof window.facturaForm === "function") {
+          window.facturaForm(cuotaCtx, null, true);
+        }
+        return;
+      }
+      facturas = [cuotaFactura];
+    }
+
+    pagoOrigen = cuotaCtx ? "cuotas" : "pagos";
     window._pagoFacturas = facturas;
 
     const ctxLabel = idVentaCtx
       ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta #${idVentaCtx}</span>`
       : "";
 
-    UI.openModal("Registrar Pago", `
-      <div class="form-grid">
-        <div class="form-group" style="grid-column:1/-1">
+    const facturaSelectorHTML = cuotaFactura
+      ? `<div class="form-group" style="grid-column:1/-1">
+          <label>Factura de la cuota</label>
+          <div class="summary-card">
+            <div class="summary-card-head">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Factura ${fmtFactNum(cuotaFactura.numero_factura)}
+            </div>
+            <div class="summary-card-grid">
+              <div class="summary-item"><span class="summary-item-label">Comprador</span><span class="summary-item-value">${cuotaFactura.comprador}</span></div>
+              <div class="summary-item"><span class="summary-item-label">Proyecto</span><span class="summary-item-value">${cuotaFactura.proyecto}</span></div>
+              <div class="summary-item"><span class="summary-item-label">Lote</span><span class="summary-item-value">${cuotaFactura.codigo_lote}</span></div>
+              <div class="summary-item"><span class="summary-item-label">Cuota</span><span class="summary-item-value">#${cuotaFactura.numero_cuota ?? "—"}</span></div>
+            </div>
+          </div>
+          <input type="hidden" id="pf_id_factura" value="${cuotaFactura.id_factura}">
+        </div>`
+      : `<div class="form-group" style="grid-column:1/-1">
           <label>Factura a pagar *${ctxLabel}</label>
           <input type="text" id="pf_factura_buscar" placeholder="Filtrar por comprador o lote..."
                  oninput="_filtrarFacturasPago()" autocomplete="off" style="margin-bottom:6px">
@@ -275,7 +313,11 @@
                style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px">
             ${facturasListaHTML(facturas, "")}
           </div>
-        </div>
+        </div>`;
+
+    UI.openModal(cuotaCtx ? `Pagar Cuota #${cuotaCtx.numero_cuota ?? ""}`.trim() : "Registrar Pago", `
+      <div class="form-grid">
+        ${facturaSelectorHTML}
         <div class="form-group">
           <label>Fecha *</label>
           <input id="pf_fecha" type="date" value="${new Date().toISOString().split("T")[0]}">
@@ -295,7 +337,7 @@
         <div class="form-group" style="grid-column:1/-1">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border)">
             <span style="color:var(--text-muted)">Valor a pagar:</span>
-            <strong id="pf_valor" style="font-size:1.1rem">—</strong>
+            <strong id="pf_valor" style="font-size:1.1rem">${cuotaFactura ? UI.fmt(cuotaFactura.valor_facturado) : "—"}</strong>
           </div>
         </div>
       </div>
@@ -304,11 +346,13 @@
         <button id="pf_btn_guardar" class="btn btn-primary" onclick="guardarPago()">Guardar</button>
       </div>`);
 
-    document.getElementById("pf_factura_lista")?.addEventListener("change", e => {
-      if (e.target.type !== "radio") return;
-      document.getElementById("pf_id_factura").value  = e.target.value;
-      document.getElementById("pf_valor").textContent = UI.fmt(+e.target.dataset.valor);
-    });
+    if (!cuotaFactura) {
+      document.getElementById("pf_factura_lista")?.addEventListener("change", e => {
+        if (e.target.type !== "radio") return;
+        document.getElementById("pf_id_factura").value  = e.target.value;
+        document.getElementById("pf_valor").textContent = UI.fmt(+e.target.dataset.valor);
+      });
+    }
   };
 
   window.guardarPago = async function() {
@@ -328,7 +372,11 @@
       await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, id_factura: +id_factura });
       UI.closeModal();
       UI.toast("Pago registrado. Recibo generado automáticamente.", "ok");
-      loadPagosView();
+      if (pagoOrigen === "cuotas" && typeof window.cuotasView === "function") {
+        window.cuotasView();
+      } else {
+        loadPagosView();
+      }
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
       UI.toast(e.message || "Error al registrar el pago.", "error");

@@ -1,7 +1,15 @@
 (function () {
 
+// When set, the invoice form was opened from the "pay cuota" flow;
+// after saving, the payment modal is resumed for this cuota.
+let facturaPagoCuota = null;
+
 function _fNorm(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-͟]/g, "");
+}
+
+function _fmtMiles(n) {
+  return String(n ?? "").replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 function _fmtNumFactura(v) {
@@ -232,10 +240,10 @@ window.facturasView = async function() {
     const anuladas = g.facturas.filter(f => f.estado === "anulada").length;
     const total    = g.facturas.reduce((s, f) => s + Number(f.valor_facturado || 0), 0);
     const badges   = [
-      emitidas ? `<span style="background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:10px;font-size:.75rem;font-weight:600;margin-right:3px">${emitidas} emitida${emitidas>1?"s":""}</span>` : "",
-      pagadas  ? `<span style="background:#dcfce7;color:#166534;padding:2px 7px;border-radius:10px;font-size:.75rem;font-weight:600;margin-right:3px">${pagadas} pagada${pagadas>1?"s":""}</span>`   : "",
-      anuladas ? `<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:10px;font-size:.75rem;font-weight:600">${anuladas} anulada${anuladas>1?"s":""}</span>` : "",
-    ].join("");
+      emitidas ? `<span class="badge badge-info">${emitidas} emitida${emitidas>1?"s":""}</span>` : "",
+      pagadas  ? `<span class="badge badge-success">${pagadas} pagada${pagadas>1?"s":""}</span>` : "",
+      anuladas ? `<span class="badge badge-danger">${anuladas} anulada${anuladas>1?"s":""}</span>` : "",
+    ].filter(Boolean).join(" ");
     return `<tr data-grupo-key="${g.id_venta ?? "none"}" style="cursor:pointer">
       <td>${g.id_venta ? `<strong>#${g.id_venta}</strong>` : "—"}</td>
       <td>${g.comprador}</td>
@@ -248,43 +256,43 @@ window.facturasView = async function() {
   }
 
   const bannerHtml = sinFactura.length
-    ? `<div class="facturas-sin-banner" style="background:rgba(245,158,11,.08);border:1px solid var(--warning,#e8570c);border-radius:8px;padding:12px 16px;margin-bottom:1rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
-          <strong style="font-size:.9rem">
-            ${sinFactura.length} cuota${sinFactura.length>1?"s":""} vencida${sinFactura.length>1?"s":""} sin factura
-          </strong>
-          ${puedeEscribir ? `<button class="btn btn-sm btn-generar-todas"
-            style="background:var(--warning,#e8570c);color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:.8rem;font-weight:600">
-            Generar todas
-          </button>` : ""}
+    ? `<div class="facturas-sin-banner">
+        <div class="fsb-head">
+          <div class="fsb-head-info">
+            <span class="fsb-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <div>
+              <strong class="fsb-title">${sinFactura.length} cuota${sinFactura.length>1?"s":""} vencida${sinFactura.length>1?"s":""} sin factura</strong>
+              <span class="fsb-sub">Emite sus facturas para poder registrar el pago.</span>
+            </div>
+          </div>
+          ${puedeEscribir ? `<button class="btn btn-primary btn-sm btn-generar-todas">Generar todas</button>` : ""}
         </div>
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+        <div class="fsb-table-wrap">
+          <table class="fsb-table">
             <thead>
-              <tr style="border-bottom:1px solid var(--border)">
-                <th style="text-align:left;padding:4px 12px 4px 0;font-weight:600">Comprador</th>
-                <th style="text-align:left;padding:4px 12px;font-weight:600">Proyecto / Lote</th>
-                <th style="text-align:center;padding:4px 8px;font-weight:600">Cuota #</th>
-                <th style="text-align:left;padding:4px 12px;font-weight:600">Vencimiento</th>
-                <th style="text-align:right;padding:4px 12px;font-weight:600">Valor</th>
-                <th style="text-align:left;padding:4px 0 4px 12px;font-weight:600">Estado</th>
+              <tr>
+                <th>Comprador</th>
+                <th>Proyecto / Lote</th>
+                <th class="fsb-center">Cuota #</th>
+                <th>Vencimiento</th>
+                <th class="fsb-right">Valor</th>
+                <th>Estado</th>
                 ${puedeEscribir ? `<th></th>` : ""}
               </tr>
             </thead>
             <tbody>
               ${sinFactura.map(c => `
                 <tr data-cuota="${encodeURIComponent(JSON.stringify(c))}">
-                  <td style="padding:5px 12px 5px 0">${c.comprador}</td>
-                  <td style="padding:5px 12px">${c.proyecto} · <strong>${c.codigo_lote}</strong></td>
-                  <td style="padding:5px 8px;text-align:center">${c.numero_cuota}</td>
-                  <td style="padding:5px 12px">${UI.date(c.fecha_vencimiento)}</td>
-                  <td style="padding:5px 12px;text-align:right">${UI.fmt(c.valor_cuota)}</td>
-                  <td style="padding:5px 0 5px 12px">${UI.badge(c.estado)}</td>
-                  ${puedeEscribir ? `<td style="padding:5px 0 5px 8px;white-space:nowrap">
-                    <button class="btn btn-sm btn-generar-factura"
-                      style="background:var(--warning,#e8570c);color:#fff;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:600">
-                      Generar
-                    </button>
+                  <td>${c.comprador}</td>
+                  <td>${c.proyecto} · <strong>${c.codigo_lote}</strong></td>
+                  <td class="fsb-center">${c.numero_cuota}</td>
+                  <td>${UI.date(c.fecha_vencimiento)}</td>
+                  <td class="fsb-right">${UI.fmt(c.valor_cuota)}</td>
+                  <td>${UI.badge(c.estado)}</td>
+                  ${puedeEscribir ? `<td class="fsb-right">
+                    <button class="btn btn-ghost btn-sm btn-generar-factura">Generar</button>
                   </td>` : ""}
                 </tr>`).join("")}
             </tbody>
@@ -296,7 +304,10 @@ window.facturasView = async function() {
   vc.innerHTML = `
     <div class="table-wrap">
       <div class="table-header">
-        <h3>Facturas por Venta</h3>
+        <div class="table-header-titles">
+          <h3>Facturas por Venta</h3>
+          <span class="count-chip">${data.length} factura${data.length === 1 ? "" : "s"}</span>
+        </div>
         ${puedeEscribir ? `<button class="btn btn-primary btn-sm" onclick="facturaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
 
@@ -307,8 +318,8 @@ window.facturasView = async function() {
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
-        <input id="ff-comprador" type="text" placeholder="Buscar comprador..."
-          style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
+        <input id="ff-comprador" type="text" class="filter-input" placeholder="Buscar comprador..."
+          style="flex:2;min-width:11rem">
       </div>
 
       <div style="overflow-x:auto">
@@ -462,7 +473,8 @@ window.anularFacturaDetalle = async function(id) {
 };
 
 // ── Formulario ────────────────────────────────────────────────────────────────
-window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
+window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resumePago = false) {
+  facturaPagoCuota = resumePago ? cuotaPresel : null;
   const hoy = new Date().toISOString().split("T")[0];
 
   let cuotas = [];
@@ -479,11 +491,17 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
   const cuotaSection = cuotaPresel
     ? `<div class="form-group" style="grid-column:1/-1">
          <label>Cuota</label>
-         <div style="background:var(--surface-2,#f0f4f8);border-radius:6px;padding:8px 12px;font-size:.85rem;line-height:1.6">
-           <div style="font-weight:600">${cuotaPresel.comprador}</div>
-           <div style="color:var(--text-muted)">
-             ${cuotaPresel.proyecto} · <strong>${cuotaPresel.codigo_lote}</strong> &mdash;
-             Cuota #${cuotaPresel.numero_cuota} &bull; Vence: ${UI.date(cuotaPresel.fecha_vencimiento)} &bull; ${UI.fmt(cuotaPresel.valor_cuota)}
+         <div class="summary-card">
+           <div class="summary-card-head">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+             ${cuotaPresel.comprador}
+           </div>
+           <div class="summary-card-grid">
+             <div class="summary-item"><span class="summary-item-label">Proyecto</span><span class="summary-item-value">${cuotaPresel.proyecto}</span></div>
+             <div class="summary-item"><span class="summary-item-label">Lote</span><span class="summary-item-value">${cuotaPresel.codigo_lote}</span></div>
+             <div class="summary-item"><span class="summary-item-label">Cuota</span><span class="summary-item-value">#${cuotaPresel.numero_cuota}</span></div>
+             <div class="summary-item"><span class="summary-item-label">Vence</span><span class="summary-item-value">${UI.date(cuotaPresel.fecha_vencimiento)}</span></div>
+             <div class="summary-item"><span class="summary-item-label">Valor</span><span class="summary-item-value">${UI.fmt(cuotaPresel.valor_cuota)}</span></div>
            </div>
          </div>
          <input type="hidden" id="f_id_cuota" value="${cuotaPresel.id_cuota}">
@@ -503,7 +521,7 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
     <div class="form-grid">
       ${cuotaSection}
       <div class="form-group"><label>Fecha de Emisión *</label><input id="f_fe" type="date" value="${hoy}"/></div>
-      <div class="form-group"><label>Valor *</label><input id="f_vf" type="number" value="${cuotaPresel?.valor_cuota || ""}"/></div>
+      <div class="form-group"><label>Valor *</label><input id="f_vf" type="text" inputmode="numeric" value="${cuotaPresel ? _fmtMiles(cuotaPresel.valor_cuota) : ""}"/></div>
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label><textarea id="f_obs" rows="2"></textarea></div>
     </div>
     <div class="form-actions">
@@ -517,16 +535,27 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null) {
       lista.addEventListener("change", e => {
         if (e.target.type !== "radio") return;
         document.getElementById("f_id_cuota").value = e.target.value;
-        document.getElementById("f_vf").value       = e.target.dataset.valor;
+        document.getElementById("f_vf").value       = _fmtMiles(e.target.dataset.valor);
       });
     }
+  }
+
+  const vf = document.getElementById("f_vf");
+  if (vf) {
+    vf.addEventListener("input", () => {
+      const raw     = vf.value.replace(/\D/g, "");
+      const cur     = vf.selectionStart;
+      const prevLen = vf.value.length;
+      vf.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      vf.selectionStart = vf.selectionEnd = cur + (vf.value.length - prevLen);
+    });
   }
 };
 
 window.guardarFactura = async function() {
   const id_cuota_str    = document.getElementById("f_id_cuota")?.value;
   const fecha_emision   = document.getElementById("f_fe").value;
-  const valor_facturado = +document.getElementById("f_vf").value;
+  const valor_facturado = Number((document.getElementById("f_vf").value || "").replace(/\./g, ""));
   const observaciones   = document.getElementById("f_obs").value;
 
   if (!id_cuota_str)                            return UI.toast("Seleccione una cuota", "error");
@@ -538,7 +567,13 @@ window.guardarFactura = async function() {
     await API.post("/facturas", body);
     UI.closeModal();
     UI.toast("Factura creada", "ok");
-    facturasView();
+    if (facturaPagoCuota && typeof window.pagoForm === "function") {
+      const cuota = facturaPagoCuota;
+      facturaPagoCuota = null;
+      window.pagoForm(cuota.id_venta, cuota);
+    } else {
+      facturasView();
+    }
   } catch(e) {
     UI.toast(e.message, "error");
   }
