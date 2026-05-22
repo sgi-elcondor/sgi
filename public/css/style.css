@@ -14,8 +14,10 @@
 @import url("./components/modal.css");
 @import url("./components/alerts.css");
 @import url("./components/toast.css");
+@import url("./components/loading-overlay.css");
 
 @import url("./views/dashboard.css");
+@import url("./views/compradores.css");
 @import url("./views/lotes.css");
 @import url("./views/reportes.css");
 @import url("./views/profile.css");

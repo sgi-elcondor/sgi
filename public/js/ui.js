@@ -32,12 +32,49 @@
     const t = document.createElement("div");
     t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border);
       border-left:3px solid var(--${type==="error"?"danger":type==="ok"?"success":"accent"});
-      padding:12px 20px;border-radius:8px;font-size:13px;z-index:999;color:var(--text);box-shadow:var(--shadow);`;
+      padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999;color:var(--text);box-shadow:var(--shadow);`;
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
+  },
+  _loadCount: 0,
+  _loadTimer: null,
+  _loadingOverlay() {
+    let ov = document.getElementById("globalLoading");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.id = "globalLoading";
+      ov.className = "global-loading";
+      ov.setAttribute("aria-hidden", "true");
+      ov.innerHTML = `
+        <div class="global-loading-box" role="status" aria-live="polite">
+          <div class="global-loading-spinner"></div>
+          <span class="global-loading-text">Procesando…</span>
+        </div>`;
+      document.body.appendChild(ov);
+    }
+    return ov;
+  },
+  showGlobalLoading() {
+    this._loadCount++;
+    if (this._loadCount > 1 || this._loadTimer) return;
+    this._loadTimer = setTimeout(() => {
+      this._loadTimer = null;
+      this._loadingOverlay().classList.add("show");
+    }, 150);
+  },
+  hideGlobalLoading() {
+    this._loadCount = Math.max(0, this._loadCount - 1);
+    if (this._loadCount > 0) return;
+    if (this._loadTimer) {
+      clearTimeout(this._loadTimer);
+      this._loadTimer = null;
+    }
+    document.getElementById("globalLoading")?.classList.remove("show");
   }
 };
+
+window.UI = UI;
 
 (() => {
   function icon(name, className = "") {

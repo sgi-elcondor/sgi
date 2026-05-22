@@ -21,16 +21,36 @@ exports.getById = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { tipo_persona, documento, nombres, apellidos, telefono, mail, estado } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("comprador").insert([{ tipo_persona, documento, nombres, apellidos, telefono, mail, estado: estado || "activo" }]).select().single();
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
+
+  const { data: existentes, error: dupError } = await supabase.schema(SCHEMA)
+    .from("comprador").select("id_comprador").eq("documento", documento).limit(1);
+  if (dupError) return res.status(500).json({ error: dupError.message });
+  if (existentes && existentes.length)
+    return res.status(409).json({ error: "Ya existe un comprador registrado con ese documento." });
+
+  const { data, error } = await supabase.schema(SCHEMA).from("comprador")
+    .insert([{ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado: estado || "activo" }])
+    .select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 };
 
 exports.update = async (req, res) => {
-  const campos = (({ tipo_persona, documento, nombres, apellidos, telefono, mail, estado }) =>
-    ({ tipo_persona, documento, nombres, apellidos, telefono, mail, estado }))(req.body);
-  const { data, error } = await supabase.schema(SCHEMA).from("comprador").update(campos).eq("id_comprador", req.params.id).select().single();
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
+
+  if (documento !== undefined) {
+    const { data: existentes, error: dupError } = await supabase.schema(SCHEMA)
+      .from("comprador").select("id_comprador")
+      .eq("documento", documento).neq("id_comprador", req.params.id).limit(1);
+    if (dupError) return res.status(500).json({ error: dupError.message });
+    if (existentes && existentes.length)
+      return res.status(409).json({ error: "Ya existe otro comprador registrado con ese documento." });
+  }
+
+  const { data, error } = await supabase.schema(SCHEMA).from("comprador")
+    .update({ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado })
+    .eq("id_comprador", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 };

@@ -54,24 +54,33 @@ const API = {
   base: "/api/v1",
 
   async request(path, options = {}) {
-    const response = await apiFetch(this.base + path, {
-      method: options.method || "GET",
-      ...options,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+    const method     = options.method || "GET";
+    const isMutation = method !== "GET";
 
-    if (!response) return null;
+    if (isMutation) window.UI?.showGlobalLoading();
 
-    let data = null;
     try {
-      data = await response.json();
-    } catch {}
+      const response = await apiFetch(this.base + path, {
+        method,
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
 
-    if (!response.ok) {
-      throw new Error(data?.error || response.statusText || "Error en la solicitud");
+      if (!response) return null;
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch {}
+
+      if (!response.ok) {
+        throw new Error(data?.error || response.statusText || "Error en la solicitud");
+      }
+
+      return data;
+    } finally {
+      if (isMutation) window.UI?.hideGlobalLoading();
     }
-
-    return data;
   },
 
   get(path) {
