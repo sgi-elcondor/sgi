@@ -1020,7 +1020,7 @@ window._renderMicroCuotas = function(raw) {
   _actualizarResumenInicial();
 };
 
-function _actualizarResumenInicial() {
+window._actualizarResumenInicial = function() {
   const ci  = _parseMiles(document.getElementById("f_ci")?.value || "0");
   const n   = +document.getElementById("f_nci")?.value || 1;
   const div = document.getElementById("f_microcuotas_resumen");
@@ -1041,7 +1041,7 @@ function _actualizarResumenInicial() {
       Total asignado: <b>${UI.fmt(total)}</b> de <b>${UI.fmt(ci)}</b>
       — <span style="color:${color};font-weight:600">${msg}</span>
     </div>`;
-}
+};
 
 function _renderPreviewCuotas(saldo, nc) {
   const div = document.getElementById("f_cuotas_preview");
