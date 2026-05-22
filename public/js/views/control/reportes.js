@@ -19,7 +19,7 @@ window.reportesView = async function () {
   try {
     const mesActual = new Date().toISOString().slice(0, 7);
 
-    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesJefe] = await Promise.all([
+    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesJefe, proyeccion] = await Promise.all([
       API.get("/cuotas/vencidas").catch(() => []),
       API.get("/cuotas/pendientes").catch(() => []),
       API.get("/pagos").catch(() => []),
@@ -29,6 +29,7 @@ window.reportesView = async function () {
       API.get("/lotes").catch(() => []),
       API.get("/reportes/comisiones").catch(() => null),
       API.get("/reportes/comisiones-jefe").catch(() => []),
+      API.get("/reportes/proyeccion-ingresos").catch(() => []),
     ]);
 
     _repComisionesAll = comisionesJefe || [];
@@ -235,6 +236,7 @@ window.reportesView = async function () {
             </article>`).join("")}
         </div>
 
+        ${_renderSeccionProyeccion(proyeccion || [])}
         ${_renderSeccionComisiones(comisionesJefe || [])}
       </section>
     `;
@@ -450,6 +452,73 @@ function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
       },
     });
   }
+}
+
+function _renderSeccionProyeccion(rows) {
+  if (!rows || !rows.length) return "";
+
+  const today         = new Date().toISOString().slice(0, 7);
+  const totalEsperado = rows.reduce((s, r) => s + r.total_esperado, 0);
+  const totalCuotas   = rows.reduce((s, r) => s + r.cantidad_cuotas, 0);
+
+  const STATUS = {
+    vencido: { label: "Vencido",  color: "var(--danger)",  bg: "rgba(239,68,68,.12)"  },
+    en_curso: { label: "En curso", color: "var(--warning)", bg: "rgba(234,179,8,.12)"  },
+    proximo:  { label: "Proximo",  color: "var(--primary)", bg: "rgba(59,130,246,.12)" },
+  };
+
+  const rowsHTML = rows.map(r => {
+    const key    = r.mes < today ? "vencido" : r.mes === today ? "en_curso" : "proximo";
+    const status = STATUS[key];
+    const [y, m] = r.mes.split("-");
+    const label  = new Date(+y, +m - 1).toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+    const faded  = r.total_esperado === 0 ? ' style="opacity:.5"' : "";
+
+    return `<tr${faded}>
+      <td style="white-space:nowrap">${label.charAt(0).toUpperCase() + label.slice(1)}</td>
+      <td style="text-align:right">${r.cantidad_cuotas}</td>
+      <td style="text-align:right;font-weight:${r.total_esperado > 0 ? "600" : "400"}">${UI.fmt(r.total_esperado)}</td>
+      <td><span style="display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;background:${status.bg};color:${status.color}">${status.label}</span></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="rep-section-label" style="margin-top:.5rem">Proyeccion de ingresos &mdash; proximos 12 meses</div>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <article class="rep-kpi-card" style="flex:1;min-width:12rem;align-items:flex-start">
+        <div class="rep-kpi-icon" style="background:rgba(59,130,246,.08);color:var(--primary);flex-shrink:0">
+          <i data-lucide="calendar-range"></i>
+        </div>
+        <div class="rep-kpi-body">
+          <div class="rep-kpi-label">Total esperado</div>
+          <div class="rep-kpi-value" style="color:var(--primary)">${UI.fmt(totalEsperado)}</div>
+          <div class="rep-kpi-meta">en cuotas pendientes de los proximos 12 meses</div>
+        </div>
+      </article>
+      <article class="rep-kpi-card" style="flex:1;min-width:12rem;align-items:flex-start">
+        <div class="rep-kpi-icon" style="background:rgba(234,179,8,.08);color:var(--warning);flex-shrink:0">
+          <i data-lucide="receipt"></i>
+        </div>
+        <div class="rep-kpi-body">
+          <div class="rep-kpi-label">Cuotas pendientes</div>
+          <div class="rep-kpi-value" style="color:var(--warning)">${totalCuotas}</div>
+          <div class="rep-kpi-meta">distribuidas en el periodo de proyeccion</div>
+        </div>
+      </article>
+    </div>
+    <div class="table-wrap" style="margin-bottom:2rem">
+      <table>
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th style="text-align:right">Cuotas</th>
+            <th style="text-align:right">Ingreso esperado</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+    </div>`;
 }
 
 function _renderSeccionComisiones(rows) {

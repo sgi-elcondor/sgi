@@ -8,5 +8,6 @@ router.get("/recaudo",   ctrl.getRecaudoHistorico);
 router.get("/comisiones",ctrl.getComisionesResumen);
 router.get("/juridico",  ctrl.getCarteraJuridica);
 router.get("/auditoria",       ctrl.getAuditoria);
-router.get("/comisiones-jefe", ctrl.getComisionesJefe);
+router.get("/proyeccion-ingresos", ctrl.getProyeccionIngresos);
+router.get("/comisiones-jefe",    ctrl.getComisionesJefe);
 module.exports = router;
