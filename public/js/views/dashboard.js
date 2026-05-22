@@ -544,7 +544,7 @@ function renderMoraEscritura(ventas = []) {
     },
     {
       resource: "dashboard", action: "ver_cartera",
-      fetch:  () => API.get("/reportes/cfunction renderMoraEscritura(ventas = []) {artera-hoy"),
+      fetch:  () => API.get("/reportes/cartera-hoy"),
       render: renderKpiCartera,
     },
     {
@@ -640,17 +640,29 @@ function renderMoraEscritura(ventas = []) {
       return;
     }
 
-    const v          = ventas[0];
-    const cuotaActual = v.cuota_actual;
-    const pct        = Math.min(100, v.porcentaje_pagado || 0);
-    const fmtC       = n => n != null ? Number(n).toLocaleString("es-CO", { style:"currency", currency:"COP", maximumFractionDigits:0 }) : "—";
-    const fmtD       = d => d ? new Date(d+"T12:00:00").toLocaleDateString("es-CO", { year:"numeric", month:"long", day:"numeric" }) : "—";
+    const fmtC = n => n != null ? Number(n).toLocaleString("es-CO", { style:"currency", currency:"COP", maximumFractionDigits:0 }) : "—";
+    const fmtD = d => d ? new Date(d+"T12:00:00").toLocaleDateString("es-CO", { year:"numeric", month:"long", day:"numeric" }) : "—";
 
-    const totalAbonoExtraordinario = Number(v.total_abonado_extraordinario || 0);
-    const saldoPendienteReal       = Number(v.saldo_pendiente_real ?? v.saldo_pendiente ?? 0);
+    function buildLoteSelector(idx) {
+      if (ventas.length <= 1) return "";
+      return `<div class="lote-selector">
+        ${ventas.map((vt, i) => {
+          const label = `${vt.lote?.proyecto?.nombre || "Proyecto"} · Lote ${vt.lote?.codigo_lote || "—"}`;
+          return `<button class="lote-tab ${i === idx ? "active" : ""}" data-idx="${i}">${label}</button>`;
+        }).join("")}
+      </div>`;
+    }
 
     function buildAlerta(cuota) {
-      if (!cuota) return "";
+      if (!cuota) return `
+        <div class="cuota-alert alert-success">
+          <div class="cuota-alert-icon">${window.SGIUI?.icon("check-circle") ?? ""}</div>
+          <div class="cuota-alert-body">
+            <div class="cuota-alert-title">Al dia con tus pagos</div>
+            <div class="cuota-alert-text">Todas tus cuotas estan al dia. Puedes revisar tu historial completo en Mis Pagos.</div>
+            <div class="cuota-alert-actions"><button class="btn btn-ghost btn-sm" onclick="navigate('mis-recibos')">Ver Mis Pagos</button></div>
+          </div>
+        </div>`;
       const dias = cuota.dias_restantes;
       let tone, icn, title, text, urgent = false;
       if (dias < 0) {
@@ -688,71 +700,76 @@ function renderMoraEscritura(ventas = []) {
       </div>`;
     }
 
-    vc.innerHTML = `
-      <section class="page-shell comprador-dashboard">
-        ${window.SGIUI?.pageHeader({kicker:"Mi cuenta",title:"Panel de comprador",subtitle:`Seguimiento · ${v.lote?.proyecto?.nombre||""}`})??""}
-        ${buildAlerta(cuotaActual)}
-        ${v.escritura_disponible ? `
-          <div class="cuota-alert alert-success">
-            <div class="cuota-alert-icon">${window.SGIUI?.icon("award")??""}</div>
-            <div class="cuota-alert-body">
-              <div class="cuota-alert-title">La escritura de tu inmueble esta disponible</div>
-              <div class="cuota-alert-text">Has pagado el ${(v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
+    let selectedIdx = 0;
+
+    function render(idx) {
+      const v = ventas[idx];
+      const cuotaActual = v.cuota_actual;
+      const pct = Math.min(100, v.porcentaje_pagado || 0);
+      const totalAbonoExtraordinario = Number(v.total_abonado_extraordinario || 0);
+      const saldoPendienteReal = Number(v.saldo_pendiente_real ?? v.saldo_pendiente ?? 0);
+
+      vc.innerHTML = `
+        <section class="page-shell comprador-dashboard">
+          ${window.SGIUI?.pageHeader({
+            kicker: "Mi cuenta",
+            title: `${v.lote?.proyecto?.nombre || "Mi inmueble"}`,
+            subtitle: `Lote ${v.lote?.codigo_lote || "—"}${v.lote?.manzana ? " · Manzana " + v.lote.manzana : ""}`,
+          }) ?? ""}
+          ${buildLoteSelector(idx)}
+          ${buildAlerta(cuotaActual)}
+          ${v.escritura_disponible ? `
+            <div class="cuota-alert alert-success">
+              <div class="cuota-alert-icon">${window.SGIUI?.icon("award")??""}</div>
+              <div class="cuota-alert-body">
+                <div class="cuota-alert-title">La escritura de tu inmueble esta disponible</div>
+                <div class="cuota-alert-text">Has pagado el ${(v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
+              </div>
+            </div>` : ""}
+          <div class="sale-hero">
+            <div class="sale-hero-top"><div class="sale-hero-info">
+              <div class="sale-hero-proyecto">${v.lote?.proyecto?.nombre || "Proyecto"}</div>
+              <div class="sale-hero-lote">Lote ${v.lote?.codigo_lote || "—"}${v.lote?.manzana ? " · Mz " + v.lote.manzana : ""}</div>
+              <div class="sale-hero-estado">${UI.badge(v.estado)}</div>
+            </div></div>
+            <div class="progress-block">
+              <div class="progress-labels">
+                <span class="progress-label-left">Avance de pago</span>
+                <span class="progress-label-right">${(v.porcentaje_pagado||0).toFixed(1)}%</span>
+              </div>
+              <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
             </div>
-          </div>` : ""}
-        <div class="sale-hero">
-          <div class="sale-hero-top"><div class="sale-hero-info">
-            <div class="sale-hero-proyecto">${v.lote?.proyecto?.nombre||"Proyecto"}</div>
-            <div class="sale-hero-lote">Lote ${v.lote?.codigo_lote||"—"}${v.lote?.manzana?" · Mz "+v.lote.manzana:""}</div>
-            <div class="sale-hero-estado">${UI.badge(v.estado)}</div>
-          </div></div>
-          <div class="progress-block">
-            <div class="progress-labels">
-              <span class="progress-label-left">Avance de pago</span>
-              <span class="progress-label-right">${(v.porcentaje_pagado||0).toFixed(1)}%</span>
+            <div class="finance-grid">
+              <div class="finance-item"><div class="finance-item-label">Valor total</div><div class="finance-item-value">${fmtC(v.valor_total)}</div></div>
+              <div class="finance-item"><div class="finance-item-label">Pagado total</div><div class="finance-item-value success">${fmtC(v.total_pagado)}</div></div>
+              ${totalAbonoExtraordinario > 0 ? `<div class="finance-item"><div class="finance-item-label">Abono al total</div><div class="finance-item-value success">${fmtC(totalAbonoExtraordinario)}</div></div>` : ""}
+              <div class="finance-item"><div class="finance-item-label">Saldo pendiente real</div><div class="finance-item-value warning">${fmtC(saldoPendienteReal)}</div></div>
+              <div class="finance-item"><div class="finance-item-label">Cuotas</div><div class="finance-item-value accent">${v.cuotas_pagadas} / ${v.total_cuotas}</div></div>
             </div>
-            <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
           </div>
-          <div class="finance-grid">
-        <div class="finance-item">
-          <div class="finance-item-label">Valor total</div>
-          <div class="finance-item-value">${fmtC(v.valor_total)}</div>
-        </div>
-
-        <div class="finance-item">
-          <div class="finance-item-label">Pagado total</div>
-          <div class="finance-item-value success">${fmtC(v.total_pagado)}</div>
-        </div>
-
-        ${totalAbonoExtraordinario > 0 ? `
-          <div class="finance-item">
-            <div class="finance-item-label">Abono al total</div>
-            <div class="finance-item-value success">${fmtC(totalAbonoExtraordinario)}</div>
+          <div class="comprador-actions">
+            <button class="btn btn-primary" id="dash-btn-pagar-cuota">${window.SGIUI?.icon("wallet") ?? ""} Pagar cuota</button>
+            <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar") ?? ""} Ver cuotas</button>
+            <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text") ?? ""} Mis pagos</button>
           </div>
-        ` : ""}
+        </section>`;
 
-        <div class="finance-item">
-          <div class="finance-item-label">Saldo pendiente real</div>
-          <div class="finance-item-value warning">${fmtC(saldoPendienteReal)}</div>
-        </div>
 
-        <div class="finance-item">
-          <div class="finance-item-label">Cuotas</div>
-          <div class="finance-item-value accent">${v.cuotas_pagadas} / ${v.total_cuotas}</div>
-        </div>
-      </div>
-        </div>
-        <div class="comprador-actions">
-          <button class="btn btn-primary" id="dash-btn-pagar-cuota">${window.SGIUI?.icon("wallet")??""} Pagar cuota</button>
-          <button class="btn btn-ghost" onclick="navigate('mis-cuotas')">${window.SGIUI?.icon("calendar")??""} Ver cuotas</button>
-          <button class="btn btn-ghost" onclick="navigate('mis-recibos')">${window.SGIUI?.icon("file-text")??""} Mis pagos</button>
-        </div>
-      </section>`;
+      window.SGIUI?.hydrate();
 
-    window.SGIUI?.hydrate();
-    const onPagar = () => navigate("mis-cuotas");
-    document.getElementById("dash-btn-pagar")?.addEventListener("click", onPagar);
-    document.getElementById("dash-btn-pagar-cuota")?.addEventListener("click", onPagar);
+      vc.querySelectorAll(".lote-tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedIdx = Number(btn.dataset.idx);
+          render(selectedIdx);
+        });
+      });
+
+      const onPagar = () => navigate("mis-cuotas");
+      document.getElementById("dash-btn-pagar")?.addEventListener("click", onPagar);
+      document.getElementById("dash-btn-pagar-cuota")?.addEventListener("click", onPagar);
+    }
+
+    render(selectedIdx);
   }
 
   // ── Entry point ──────────────────────────────────────────────────────────────

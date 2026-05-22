@@ -88,9 +88,84 @@
 
 .info-method-box { background: color-mix(in srgb, var(--info, #3b82f6) 8%, transparent); border: 1px solid color-mix(in srgb, var(--info, #3b82f6) 30%, transparent); border-radius: 0.625rem; padding: 1rem 1.125rem; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; }
 
+.flow-context-hint { display: flex; align-items: flex-start; gap: 0.625rem; padding: 0.75rem 1rem; background: color-mix(in srgb, var(--info, #3b82f6) 8%, transparent); border: 1px solid color-mix(in srgb, var(--info, #3b82f6) 22%, transparent); border-radius: 0.625rem; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.55; }
+.flow-context-hint i { flex-shrink: 0; width: 1rem; height: 1rem; margin-top: 0.0625rem; color: var(--info, #3b82f6); opacity: 0.8; }
+.flow-context-hint strong { color: var(--text); }
+
+.lote-selector { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.125rem 0; }
+.lote-tab { padding: 0.4375rem 1rem; border: 1px solid var(--border); border-radius: 2rem; font-size: 0.8125rem; font-weight: 500; background: var(--surface-2); color: var(--text-muted); cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s; white-space: nowrap; }
+.lote-tab.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 700; }
+.lote-tab:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
 .no-venta-state { text-align: center; padding: 3.75rem 1.5rem; color: var(--text-muted); }
 .no-venta-state i { width: 3rem; height: 3rem; margin-bottom: 1rem; color: var(--border); }
 .no-venta-state h3 { font-size: 1.125rem; color: var(--text); margin-bottom: 0.5rem; }
+
+/* ── El Proyecto ─────────────────────────────────────────────────────────── */
+.proyecto-descripcion { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; padding: 0.5rem 0; }
+
+.proyecto-stats-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.proyecto-stat { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.625rem; padding: 0.875rem 1rem; min-width: 5rem; flex: 1; }
+.proyecto-stat-val { font-size: 1.375rem; font-weight: 700; color: var(--text); line-height: 1.1; }
+.proyecto-stat-label { font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.proyecto-stat.success .proyecto-stat-val { color: var(--success); }
+.proyecto-stat.accent  .proyecto-stat-val { color: var(--accent); }
+.proyecto-stat.info    .proyecto-stat-val { color: var(--info, #3b82f6); }
+
+.lote-grid-leyenda { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.75rem; color: var(--text-muted); }
+.leyenda-item { display: flex; align-items: center; gap: 0.375rem; }
+.leyenda-dot { width: 0.75rem; height: 0.75rem; border-radius: 0.1875rem; display: inline-block; flex-shrink: 0; }
+.leyenda-dot.disponible { background: color-mix(in srgb, var(--success) 70%, transparent); }
+.leyenda-dot.vendido    { background: color-mix(in srgb, var(--accent)  70%, transparent); }
+.leyenda-dot.entregado  { background: color-mix(in srgb, var(--info, #3b82f6) 70%, transparent); }
+.leyenda-dot.mine       { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+.lote-mapa-container { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.manzana-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.manzana-label { font-size: 0.6875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.manzana-grid  { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+
+.lote-cell { min-width: 3.25rem; height: 2.75rem; padding: 0 0.375rem; border-radius: 0.375rem; border: 1.5px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; position: relative; background: transparent; }
+.lote-cell:hover  { transform: scale(1.1); z-index: 1; }
+.lote-cell.selected { box-shadow: 0 0 0 2.5px var(--accent); transform: scale(1.1); z-index: 1; }
+.lote-cell-disponible { background: color-mix(in srgb, var(--success) 14%, transparent); border-color: color-mix(in srgb, var(--success) 45%, transparent); color: var(--success); }
+.lote-cell-vendido    { background: color-mix(in srgb, var(--accent)  12%, transparent); border-color: color-mix(in srgb, var(--accent)  38%, transparent); color: var(--accent); }
+.lote-cell-entregado  { background: color-mix(in srgb, var(--info, #3b82f6) 12%, transparent); border-color: color-mix(in srgb, var(--info, #3b82f6) 38%, transparent); color: var(--info, #3b82f6); }
+.lote-cell.is-mine { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
+.lote-cell-code { font-size: 0.5625rem; font-weight: 700; text-align: center; line-height: 1.2; letter-spacing: 0.02em; }
+.lote-cell-mine-dot { width: 0.375rem; height: 0.375rem; background: var(--accent); border-radius: 50%; position: absolute; top: 0.1875rem; right: 0.1875rem; }
+
+.lote-detail-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 1rem; padding: 1rem 1.25rem; }
+.lote-detail-field { display: flex; flex-direction: column; gap: 0.1875rem; }
+.lote-detail-label { font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.lote-detail-value { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+
+.lotes-disponibles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.75rem; padding: 1rem 1.25rem; }
+.lote-disponible-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.625rem; padding: 0.875rem; display: flex; flex-direction: column; gap: 0.25rem; transition: border-color 0.15s; }
+.lote-disponible-card:hover { border-color: var(--success); }
+.lote-disponible-code   { font-size: 0.875rem; font-weight: 700; color: var(--text); }
+.lote-disponible-meta   { font-size: 0.75rem; color: var(--text-muted); }
+.lote-disponible-precio { font-size: 0.875rem; font-weight: 700; color: var(--success); margin-top: 0.25rem; }
+
+/* ── Mis Facturas ─────────────────────────────────────────────────────────── */
+.facturas-grid { display: flex; flex-direction: column; gap: 0.875rem; }
+
+.factura-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.125rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; transition: border-color 0.2s; }
+.factura-card.urgente { border-color: color-mix(in srgb, var(--warning) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning) 25%, transparent); }
+.factura-card-top  { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-mid  { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.factura-card-num  { font-size: 0.6875rem; color: var(--text-muted); font-family: monospace; font-weight: 600; letter-spacing: 0.03em; }
+.factura-card-lote { font-size: 0.75rem; color: var(--text-muted); }
+.factura-card-cuota { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.factura-card-vence { font-size: 0.8125rem; font-weight: 600; }
+.factura-card-vence.danger  { color: var(--danger); }
+.factura-card-vence.warning { color: var(--warning); }
+.factura-card-vence.success { color: var(--success); }
+.factura-card-vence.muted   { color: var(--text-muted); }
+.factura-card-valor { font-size: 1.125rem; font-weight: 700; color: var(--text); }
+
+.factura-empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--text-muted); }
 
 .recibo-list-item { display: flex; align-items: center; gap: 1rem; padding: 1.125rem 1.25rem; border-bottom: 1px solid var(--border); transition: background 0.15s; }
 .recibo-list-item:last-child { border-bottom: none; }
