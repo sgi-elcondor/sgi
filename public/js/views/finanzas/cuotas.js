@@ -39,11 +39,17 @@ window.cuotasView = async function() {
     const accionesCell = mostrarAcciones
       ? `<td style="white-space:nowrap">${acciones.join(" ")}</td>`
       : "";
+    const fracBadge = c.tiene_fracciones
+      ? `<button class="badge badge-info btn-cuota-ver-fracciones" data-id="${c.id_cuota}"
+           style="margin-left:.375rem;font-size:.7rem;cursor:pointer;border:none;padding:.2rem .45rem">
+           Subdividida ↗
+         </button>`
+      : "";
     return `<tr data-id="${c.id_cuota}">
       <td>${c.proyecto}</td>
       <td>${c.codigo_lote}</td>
       <td>${c.comprador}</td>
-      <td>${c.numero_cuota}</td>
+      <td>${c.numero_cuota}${fracBadge}</td>
       <td>${UI.date(c.fecha_vencimiento)}</td>
       <td>${diasCell(c.dias_atraso)}</td>
       <td>${UI.fmt(c.valor_cuota)}</td>
@@ -105,6 +111,10 @@ window.cuotasView = async function() {
           <option value="">Todos los estados</option>
           ${optsEstado}
         </select>
+        <label style="display:flex;align-items:center;gap:.375rem;font-size:.85rem;white-space:nowrap;cursor:pointer;user-select:none">
+          <input type="checkbox" id="f-subdivididas" style="width:1rem;height:1rem;cursor:pointer">
+          Solo subdivididas
+        </label>
       </div>
 
       <table>
@@ -124,16 +134,18 @@ window.cuotasView = async function() {
   const countChip = document.getElementById("cuotas-count");
 
   function aplicarFiltros() {
-    const fProyecto  = document.getElementById("f-proyecto").value;
-    const fLote      = norm(document.getElementById("f-lote").value);
-    const fComprador = norm(document.getElementById("f-comprador").value);
-    const fEstado    = document.getElementById("f-estado").value;
+    const fProyecto     = document.getElementById("f-proyecto").value;
+    const fLote         = norm(document.getElementById("f-lote").value);
+    const fComprador    = norm(document.getElementById("f-comprador").value);
+    const fEstado       = document.getElementById("f-estado").value;
+    const fSubdivididas = document.getElementById("f-subdivididas").checked;
 
     const visibles = data.filter(c => {
-      if (fProyecto  && c.proyecto    !== fProyecto)                    return false;
-      if (fLote      && !norm(c.codigo_lote).includes(fLote))           return false;
-      if (fComprador && !norm(c.comprador).includes(fComprador))        return false;
-      if (fEstado    && c.estado      !== fEstado)                      return false;
+      if (fProyecto     && c.proyecto    !== fProyecto)                    return false;
+      if (fLote         && !norm(c.codigo_lote).includes(fLote))           return false;
+      if (fComprador    && !norm(c.comprador).includes(fComprador))        return false;
+      if (fEstado       && c.estado      !== fEstado)                      return false;
+      if (fSubdivididas && !c.tiene_fracciones)                            return false;
       return true;
     });
 
@@ -148,12 +160,19 @@ window.cuotasView = async function() {
   ["f-lote", "f-comprador"].forEach(id =>
     document.getElementById(id).addEventListener("input", aplicarFiltros)
   );
+  document.getElementById("f-subdivididas").addEventListener("change", aplicarFiltros);
 
   tbody.addEventListener("click", async e => {
     const btn = e.target.closest("button");
     if (!btn) return;
 
     const id = btn.dataset.id;
+
+    // ── Ver fracciones ──
+    if (btn.classList.contains("btn-cuota-ver-fracciones")) {
+      verFracciones(cuotasMap[id]);
+      return;
+    }
 
     // ── Pagar ──
     if (btn.classList.contains("btn-cuota-pagar")) {
@@ -272,6 +291,61 @@ window.cuotasView = async function() {
       };
     }
   });
+
+  // ── Ver fracciones (read-only) ────────────────────────────────────────────────
+
+  async function verFracciones(cuota) {
+    UI.openModal(`Subdivisiones — Cuota #${cuota.numero_cuota}`, UI.loader());
+
+    let fracs = [];
+    try { fracs = await API.get(`/cuotas/${cuota.id_cuota}/fracciones`); } catch (_) {}
+
+    const filas = fracs.map(f => `
+      <tr>
+        <td style="text-align:center">${f.numero_fraccion}</td>
+        <td style="text-align:right;font-weight:600">${UI.fmt(f.valor_fraccion)}</td>
+        <td style="text-align:center">${f.fecha_propuesta ? UI.date(f.fecha_propuesta) : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td style="color:var(--text-muted);font-size:.83rem">${f.notas || '—'}</td>
+      </tr>`).join("");
+
+    const total = fracs.reduce((s, f) => s + Number(f.valor_fraccion), 0);
+
+    window._editarFraccionesDesdeVista = function() {
+      UI.closeModal();
+      setTimeout(() => abrirModalFracciones(cuota), 150);
+    };
+
+    document.getElementById("modalBody").innerHTML = `
+      <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.625rem .875rem;margin-bottom:1rem;font-size:.84rem">
+        <b>Cuota #${cuota.numero_cuota}</b> · ${UI.fmt(cuota.valor_cuota)} · ${cuota.proyecto} · Lote ${cuota.codigo_lote}<br>
+        <span style="color:var(--text-muted);font-size:.8rem">${cuota.comprador}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+        <thead>
+          <tr style="font-size:.75rem;color:var(--text-muted);border-bottom:1px solid var(--border)">
+            <th style="padding:0 .75rem .5rem 0;text-align:center;font-weight:500">Nro.</th>
+            <th style="padding:0 .75rem .5rem 0;text-align:right;font-weight:500">Valor</th>
+            <th style="padding:0 .75rem .5rem 0;text-align:center;font-weight:500">Fecha propuesta</th>
+            <th style="padding:0 0 .5rem;text-align:left;font-weight:500">Notas</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+        <tfoot>
+          <tr style="border-top:1px solid var(--border);font-weight:600">
+            <td style="padding:.5rem .75rem 0 0;text-align:center">Total</td>
+            <td style="padding:.5rem .75rem 0 0;text-align:right">${UI.fmt(total)}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;gap:.5rem;margin-top:1.25rem">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cerrar</button>
+        ${esAuxiliar && cuota.estado !== 'pagada' ? `
+          <button class="btn btn-primary" onclick="_editarFraccionesDesdeVista()">
+            Editar subdivisión
+          </button>` : ''}
+      </div>`;
+  }
 
   // ── Edit justification modal ──────────────────────────────────────────────────
 
@@ -474,6 +548,9 @@ window.cuotasView = async function() {
       try {
         await API.delete(`/cuotas/${idCuota}/fracciones`);
         UI.closeModal();
+        cuotasMap[idCuota].tiene_fracciones = false;
+        const fila = tbody.querySelector(`tr[data-id="${idCuota}"]`);
+        if (fila) fila.outerHTML = filaVista(cuotasMap[idCuota]);
         window.SGIUI?.toast("Subdivisiones eliminadas.", "success", "Listo");
       } catch (e) {
         window.SGIUI?.toast(e.message || "Error al eliminar.", "error", "Error");
@@ -492,6 +569,9 @@ window.cuotasView = async function() {
           })),
         });
         UI.closeModal();
+        cuotasMap[idCuota].tiene_fracciones = true;
+        const fila = tbody.querySelector(`tr[data-id="${idCuota}"]`);
+        if (fila) fila.outerHTML = filaVista(cuotasMap[idCuota]);
         window.SGIUI?.toast("Subdivisión guardada correctamente.", "success", "Listo");
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = "Guardar subdivisión"; }

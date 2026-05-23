@@ -116,7 +116,7 @@ exports.getPendientes = async (req, res) => {
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento, rango_pago)))")
+    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento, rango_pago))), cuota_fraccion(id_fraccion)")
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
   if (error) return res.status(500).json({ error: error.message });
@@ -140,6 +140,7 @@ exports.getPendientes = async (req, res) => {
       valor_cuota:       c.valor_cuota,
       valor_pendiente:   c.valor_cuota,
       estado:            c.estado,
+      tiene_fracciones:  (c.cuota_fraccion?.length || 0) > 0,
     };
   });
 
