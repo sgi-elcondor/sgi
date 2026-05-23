@@ -70,8 +70,12 @@
             '<div class="form-grid">' +
             '<div class="form-group" style="grid-column:1/-1"><label>Nombre del proyecto *</label>' +
             '<input type="text" id="np-nombre" placeholder="Ej: Urbanizacion El Condor Fase 1" /></div>' +
+            '<div class="form-group"><label>Sigla</label>' +
+            '<input type="text" id="np-sigla" maxlength="3" placeholder="Ej: EC1" style="text-transform:uppercase" /></div>' +
+            '<div class="form-group"><label>Ubicacion</label>' +
+            '<input type="text" id="np-ubicacion" placeholder="Ej: Calle 10 # 5-23, Municipio" /></div>' +
             '<div class="form-group" style="grid-column:1/-1"><label>Descripcion</label>' +
-            '<input type="text" id="np-desc" placeholder="Descripcion opcional" /></div>' +
+            '<textarea id="np-desc" rows="3" placeholder="Descripcion opcional del proyecto"></textarea></div>' +
             '</div>' +
             '<div id="np-error" class="form-error" style="display:none;margin-top:8px"></div>' +
             '<div class="form-actions">' +
@@ -81,16 +85,28 @@
           overlay.classList.add("open");
           window.SGIUI?.hydrate();
 
+          document.getElementById("np-sigla")?.addEventListener("input", function() {
+            this.value = this.value.toUpperCase();
+          });
+
           document.getElementById("np-submit")?.addEventListener("click", async () => {
-            const nombre = document.getElementById("np-nombre").value.trim();
-            const desc   = document.getElementById("np-desc").value.trim();
-            const errEl  = document.getElementById("np-error");
-            const btn    = document.getElementById("np-submit");
+            const nombre    = document.getElementById("np-nombre").value.trim();
+            const sigla     = document.getElementById("np-sigla").value.trim().toUpperCase();
+            const ubicacion = document.getElementById("np-ubicacion").value.trim();
+            const desc      = document.getElementById("np-desc").value.trim();
+            const errEl     = document.getElementById("np-error");
+            const btn       = document.getElementById("np-submit");
             if (!nombre) { errEl.textContent = "El nombre es obligatorio."; errEl.style.display = "block"; return; }
+            if (sigla && sigla.length > 3) { errEl.textContent = "La sigla debe tener maximo 3 caracteres."; errEl.style.display = "block"; return; }
             errEl.style.display = "none";
             btn.disabled = true; btn.textContent = "Guardando...";
             try {
-              await API.post("/proyectos", { nombre, descripcion: desc || undefined });
+              await API.post("/proyectos", {
+                nombre,
+                sigla:     sigla     || undefined,
+                ubicacion: ubicacion || undefined,
+                descripcion: desc    || undefined,
+              });
               UI.closeModal();
               window.SGIUI?.toast("Proyecto creado correctamente.", "success", "Exito");
               render(container);
