@@ -71,9 +71,53 @@ async function aplicarPagoACuotas(pago, email) {
 }
 
 exports.getAll = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("pago").select("*").order("fecha_pago", { ascending: false });
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("pago")
+    .select(`
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
+      estado, url_baucher, numero_cuenta_origen, tipo_pago, id_venta,
+      venta:id_venta(
+        lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
+        venta_comprador(comprador:id_comprador(nombres, apellidos))
+      ),
+      cuota_pago(
+        valor_aplicado,
+        cuota:id_cuota(
+          numero_cuota,
+          cuota_factura(factura:id_factura(numero_factura))
+        )
+      ),
+      recibo_pago(recibo:id_recibo(numero_recibo))
+    `)
+    .order("fecha_pago", { ascending: false });
+
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  res.json((data || []).map(p => {
+    const lote      = p.venta?.lote;
+    const comp      = p.venta?.venta_comprador?.[0]?.comprador;
+    const cuotaPago = p.cuota_pago?.[0];
+    const factura   = cuotaPago?.cuota?.cuota_factura?.[0]?.factura;
+    return {
+      id_pago:              p.id_pago,
+      numero_pago:          p.numero_pago,
+      fecha_pago:           p.fecha_pago,
+      valor_pago:           p.valor_pago,
+      metodo_pago:          p.metodo_pago,
+      referencia:           p.referencia,
+      estado:               p.estado,
+      url_baucher:          p.url_baucher,
+      numero_cuenta_origen: p.numero_cuenta_origen,
+      tipo_pago:            p.tipo_pago,
+      id_venta:             p.id_venta,
+      comprador:            comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+      proyecto:             lote?.proyecto?.nombre ?? "—",
+      codigo_lote:          lote?.codigo_lote      ?? "—",
+      numero_cuota:         cuotaPago?.cuota?.numero_cuota         ?? null,
+      numero_factura:       factura?.numero_factura                ?? null,
+      numero_recibo:        p.recibo_pago?.[0]?.recibo?.numero_recibo ?? null,
+    };
+  }));
 };
 
 exports.create = async (req, res) => {
