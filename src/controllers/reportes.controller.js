@@ -49,6 +49,56 @@ exports.getAuditoria = async (req, res) => {
   res.json(data);
 };
 
+exports.getProyeccionIngresos = async (req, res) => {
+  try {
+    const { data: ventasActivas, error: errVentas } = await supabase
+      .schema(SCHEMA).from("venta").select("id_venta").eq("estado", "activa");
+    if (errVentas) return res.status(500).json({ error: errVentas.message });
+
+    const ventaIds = (ventasActivas || []).map(v => v.id_venta);
+    if (!ventaIds.length) return res.json(_buildProjection([]));
+
+    const { data: cuotas, error } = await supabase
+      .schema(SCHEMA)
+      .from("cuota")
+      .select("id_venta, valor_cuota, fecha_vencimiento")
+      .neq("estado", "pagada")
+      .in("id_venta", ventaIds)
+      .not("fecha_vencimiento", "is", null);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(_buildProjection(cuotas || []));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+function _buildProjection(cuotas) {
+  const today  = new Date();
+  const months = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    months.push(d.toISOString().slice(0, 7));
+  }
+
+  const grouped = {};
+  cuotas.forEach(c => {
+    const mes = String(c.fecha_vencimiento || "").slice(0, 7);
+    if (mes.length < 7) return;
+    if (!grouped[mes]) grouped[mes] = { total_esperado: 0, cantidad_cuotas: 0, ventas: new Set() };
+    grouped[mes].total_esperado += Number(c.valor_cuota || 0);
+    grouped[mes].cantidad_cuotas++;
+    grouped[mes].ventas.add(c.id_venta);
+  });
+
+  return months.map(mes => ({
+    mes,
+    total_esperado:   grouped[mes]?.total_esperado   || 0,
+    cantidad_cuotas:  grouped[mes]?.cantidad_cuotas  || 0,
+    ventas_afectadas: grouped[mes]?.ventas.size      || 0,
+  }));
+}
+
 exports.getComisionesJefe = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")

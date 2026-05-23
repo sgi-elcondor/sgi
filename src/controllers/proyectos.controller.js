@@ -14,8 +14,8 @@ exports.getById = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { nombre, ubicacion, descripcion } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("proyecto").insert([{ nombre, ubicacion, descripcion }]).select().single();
+  const { nombre, sigla, ubicacion, descripcion } = req.body;
+  const { data, error } = await supabase.schema(SCHEMA).from("proyecto").insert([{ nombre, sigla: sigla || null, ubicacion: ubicacion || null, descripcion: descripcion || null }]).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 };
