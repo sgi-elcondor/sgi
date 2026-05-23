@@ -144,10 +144,17 @@
               body: fd,
             });
             if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              throw new Error(err.error || "Error al subir el baucher");
+              const ct = res.headers.get("content-type") || "";
+              let errMsg = `Error ${res.status} al subir el baucher`;
+              if (ct.includes("json")) {
+                const j = await res.json().catch(() => ({}));
+                if (j.error) errMsg = j.error;
+              }
+              throw new Error(errMsg);
             }
-            uploadedUrl = (await res.json()).url;
+            const uploadData = await res.json().catch(() => null);
+            if (!uploadData?.url) throw new Error("El servidor no devolvio la URL del baucher");
+            uploadedUrl = uploadData.url;
           }
           btn.textContent = "Registrando pago...";
           const fechaPago = datetimeV.includes("T") ? datetimeV : datetimeV + "T12:00:00";
