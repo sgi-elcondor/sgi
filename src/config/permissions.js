@@ -41,7 +41,8 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/recibos':                       { recurso: 'recibos', accion: 'crear' },
   'POST /api/v1/recibos/generar-pendientes':    { recurso: 'recibos', accion: 'crear' },
 
-  'GET /api/v1/compradores':           { recurso: 'compradores',   accion: 'leer' },
+  'GET /api/v1/compradores':                  { recurso: 'compradores',   accion: 'leer' },
+  'GET /api/v1/compradores/buscar-usuario':   { recurso: 'compradores',   accion: 'leer' },
   'POST /api/v1/compradores':          { recurso: 'compradores',   accion: 'crear' },
   'PUT /api/v1/compradores':           { recurso: 'compradores',   accion: 'actualizar' },
 
