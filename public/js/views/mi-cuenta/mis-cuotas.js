@@ -133,13 +133,28 @@
           if (!uploadedUrl) {
             const fd = new FormData();
             fd.append("baucher", baucherFile);
+            let uploadToken = localStorage.getItem("fb_token") || "";
+            try {
+              const fbUser = window._firebaseAuth?.currentUser;
+              if (fbUser) uploadToken = await fbUser.getIdToken(false);
+            } catch (_) {}
             const res = await fetch("/api/v1/uploads/baucher", {
               method: "POST",
-              headers: { Authorization: `Bearer ${localStorage.getItem("fb_token") || ""}` },
+              headers: { Authorization: `Bearer ${uploadToken}` },
               body: fd,
             });
-            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || "Error al subir el baucher"); }
-            uploadedUrl = (await res.json()).url;
+            if (!res.ok) {
+              const ct = res.headers.get("content-type") || "";
+              let errMsg = `Error ${res.status} al subir el baucher`;
+              if (ct.includes("json")) {
+                const j = await res.json().catch(() => ({}));
+                if (j.error) errMsg = j.error;
+              }
+              throw new Error(errMsg);
+            }
+            const uploadData = await res.json().catch(() => null);
+            if (!uploadData?.url) throw new Error("El servidor no devolvio la URL del baucher");
+            uploadedUrl = uploadData.url;
           }
           btn.textContent = "Registrando pago...";
           const fechaPago = datetimeV.includes("T") ? datetimeV : datetimeV + "T12:00:00";

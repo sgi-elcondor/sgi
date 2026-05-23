@@ -44,14 +44,14 @@
         <div onclick="_toggleGrupoFacturaPago('${key}')"
              style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
           <span>
-            <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
             Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
           </span>
           <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
             ${count} factura${count !== 1 ? "s" : ""}
           </span>
         </div>
-        <div id="pfg-body-${key}" style="display:none">
+        <div id="pfg-body-${key}" style="display:block">
           ${g.facturas.map(f => `
             <label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid var(--border);cursor:pointer">
               <input type="radio" name="factura_sel" value="${f.id_factura}"
@@ -280,6 +280,11 @@
       facturas = [cuotaFactura];
     }
 
+    let fracciones = [];
+    if (cuotaCtx?.tiene_fracciones) {
+      try { fracciones = await API.get(`/cuotas/${cuotaCtx.id_cuota}/fracciones`); } catch (_) {}
+    }
+
     pagoOrigen = cuotaCtx ? "cuotas" : "pagos";
     window._pagoFacturas = facturas;
 
@@ -315,9 +320,37 @@
           </div>
         </div>`;
 
+    const fraccionesHTML = fracciones.length > 0 ? `
+      <div class="form-group" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:.5rem">
+          Subdivisiones de la cuota
+          <span class="badge badge-info" style="font-size:.7rem">${fracciones.length} partes</span>
+        </label>
+        <table style="width:100%;border-collapse:collapse;font-size:.84rem;margin-top:.375rem">
+          <thead>
+            <tr style="font-size:.75rem;color:var(--text-muted);border-bottom:1px solid var(--border)">
+              <th style="padding:0 .75rem .375rem 0;text-align:center;font-weight:500">Nro.</th>
+              <th style="padding:0 .75rem .375rem 0;text-align:right;font-weight:500">Valor</th>
+              <th style="padding:0 .75rem .375rem 0;text-align:center;font-weight:500">Fecha propuesta</th>
+              <th style="padding:0 0 .375rem;text-align:left;font-weight:500">Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fracciones.map(f => `
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:.3rem .75rem .3rem 0;text-align:center">${f.numero_fraccion}</td>
+                <td style="padding:.3rem .75rem .3rem 0;text-align:right;font-weight:600">${UI.fmt(f.valor_fraccion)}</td>
+                <td style="padding:.3rem .75rem .3rem 0;text-align:center">${f.fecha_propuesta ? UI.date(f.fecha_propuesta) : '<span style="color:var(--text-muted)">—</span>'}</td>
+                <td style="padding:.3rem 0;color:var(--text-muted);font-size:.81rem">${f.notas || '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '';
+
     UI.openModal(cuotaCtx ? `Pagar Cuota #${cuotaCtx.numero_cuota ?? ""}`.trim() : "Registrar Pago", `
       <div class="form-grid">
         ${facturaSelectorHTML}
+        ${fraccionesHTML}
         <div class="form-group">
           <label>Fecha *</label>
           <input id="pf_fecha" type="date" value="${new Date().toISOString().split("T")[0]}">
@@ -352,6 +385,15 @@
         document.getElementById("pf_id_factura").value  = e.target.value;
         document.getElementById("pf_valor").textContent = UI.fmt(+e.target.dataset.valor);
       });
+
+      if (facturas.length === 1) {
+        const onlyRadio = document.querySelector("#pf_factura_lista input[type=radio]");
+        if (onlyRadio) {
+          onlyRadio.checked = true;
+          document.getElementById("pf_id_factura").value  = onlyRadio.value;
+          document.getElementById("pf_valor").textContent = UI.fmt(+onlyRadio.dataset.valor);
+        }
+      }
     }
   };
 
@@ -365,11 +407,16 @@
     if (!fecha_pago) return UI.toast("Ingrese la fecha de pago", "error");
     if (!referencia) return UI.toast("La referencia de pago es obligatoria", "error");
 
+    const factura = (window._pagoFacturas || []).find(f => String(f.id_factura) === String(id_factura));
+    if (!factura?.id_cuota) return UI.toast("No se encontró la cuota de la factura seleccionada", "error");
+
+    const cuotas = [{ id_cuota: factura.id_cuota, valor_aplicado: Number(factura.valor_facturado) }];
+
     const btn = document.getElementById("pf_btn_guardar");
     if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
 
     try {
-      await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, id_factura: +id_factura });
+      await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, cuotas });
       UI.closeModal();
       UI.toast("Pago registrado. Recibo generado automáticamente.", "ok");
       if (pagoOrigen === "cuotas" && typeof window.cuotasView === "function") {

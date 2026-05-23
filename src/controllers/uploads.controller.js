@@ -14,18 +14,23 @@ exports.uploadAvatar = (req, res) => {
     return res.status(400).json({ error: "El archivo supera el limite de 5 MB" });
   }
 
-  const uploadStream = cloudinary.uploader.upload_stream(
-    {
-      folder:          "sgi/avatars",
-      resource_type:   "image",
-      allowed_formats: ["jpg", "png", "webp"],
-      transformation:  [{ width: 400, height: 400, crop: "scale" }, { quality: "auto:good", fetch_format: "webp" }],
-    },
-    (err, result) => {
-      if (err) return res.status(500).json({ error: "Error al subir imagen: " + err.message });
-      res.json({ url: result.secure_url, public_id: result.public_id });
-    }
-  );
+  let uploadStream;
+  try {
+    uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder:          "sgi/avatars",
+        resource_type:   "image",
+        allowed_formats: ["jpg", "png", "webp"],
+        transformation:  [{ width: 400, height: 400, crop: "scale" }, { quality: "auto:good", fetch_format: "webp" }],
+      },
+      (err, result) => {
+        if (err) return res.status(500).json({ error: "Error al subir imagen: " + err.message });
+        res.json({ url: result.secure_url, public_id: result.public_id });
+      }
+    );
+  } catch (err) {
+    return res.status(500).json({ error: "Cloudinary no configurado: " + err.message });
+  }
 
   streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
 };
@@ -43,17 +48,22 @@ exports.uploadBaucher = (req, res) => {
     return res.status(400).json({ error: "El archivo supera el limite de 8 MB" });
   }
 
-  const uploadStream = cloudinary.uploader.upload_stream(
-    {
-      folder:          "sgi/bauchers",
-      resource_type:   "auto",
-      allowed_formats: ["jpg", "png", "webp", "gif", "pdf"],
-    },
-    (err, result) => {
-      if (err) return res.status(500).json({ error: "Error al subir archivo: " + err.message });
-      res.json({ url: result.secure_url, public_id: result.public_id });
-    }
-  );
+  let uploadStream;
+  try {
+    uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder:          "sgi/bauchers",
+        resource_type:   "auto",
+        allowed_formats: ["jpg", "png", "webp", "gif", "pdf"],
+      },
+      (err, result) => {
+        if (err) return res.status(500).json({ error: "Error al subir archivo: " + err.message });
+        res.json({ url: result.secure_url, public_id: result.public_id });
+      }
+    );
+  } catch (err) {
+    return res.status(500).json({ error: "Cloudinary no configurado: " + err.message });
+  }
 
   streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
 };
