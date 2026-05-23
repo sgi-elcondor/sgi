@@ -42,7 +42,7 @@ exports.updateValores = async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ error: 'ID de cuota inválido' });
 
-  const { valor_cuota, fecha_vencimiento } = req.body;
+  const { valor_cuota, fecha_vencimiento, motivo } = req.body;
 
   if (valor_cuota !== undefined && (typeof valor_cuota !== 'number' || valor_cuota <= 0)) {
     return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
@@ -76,7 +76,7 @@ exports.updateValores = async (req, res) => {
       valor_nuevo:    String(valor_cuota),
       usuario_db:     req.usuario.email,
       fecha_cambio:   new Date().toISOString(),
-      motivo:         'edicion_auxiliar_contable',
+      motivo:         motivo || 'edicion_auxiliar_contable',
     });
   }
   if (fecha_vencimiento !== undefined && fecha_vencimiento !== actual.fecha_vencimiento) {
@@ -88,7 +88,7 @@ exports.updateValores = async (req, res) => {
       valor_nuevo:    fecha_vencimiento,
       usuario_db:     req.usuario.email,
       fecha_cambio:   new Date().toISOString(),
-      motivo:         'edicion_auxiliar_contable',
+      motivo:         motivo || 'edicion_auxiliar_contable',
     });
   }
 
@@ -170,6 +170,133 @@ exports.getVencidas = async (req, res) => {
   }));
 };
 
+
+exports.getFracciones = async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid cuota ID' });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from('cuota_fraccion')
+    .select('*')
+    .eq('id_cuota', id)
+    .order('numero_fraccion');
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+};
+
+exports.setFracciones = async (req, res) => {
+  if (req.usuario.rol !== 'auxiliar_contable') {
+    return res.status(403).json({ error: 'Only auxiliar_contable can manage cuota fractions' });
+  }
+
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid cuota ID' });
+
+  const { fracciones } = req.body;
+  if (!Array.isArray(fracciones) || fracciones.length === 0) {
+    return res.status(400).json({ error: 'fracciones must be a non-empty array' });
+  }
+
+  for (const f of fracciones) {
+    if (typeof f.valor_fraccion !== 'number' || f.valor_fraccion <= 0) {
+      return res.status(400).json({ error: 'Each fraction must have a positive valor_fraccion' });
+    }
+  }
+
+  const { data: cuota, error: cuotaErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select('id_cuota, valor_cuota, estado')
+    .eq('id_cuota', id)
+    .single();
+
+  if (cuotaErr || !cuota) return res.status(404).json({ error: 'Cuota not found' });
+  if (cuota.estado === 'pagada') {
+    return res.status(400).json({ error: 'Cannot subdivide a paid cuota' });
+  }
+
+  const sum = fracciones.reduce((s, f) => s + f.valor_fraccion, 0);
+  if (Math.abs(sum - Number(cuota.valor_cuota)) > 1) {
+    return res.status(400).json({
+      error: `Sum of fractions (${sum}) must equal cuota value (${cuota.valor_cuota}) ±1`,
+    });
+  }
+
+  const { error: delErr } = await supabase.schema(SCHEMA)
+    .from('cuota_fraccion')
+    .delete()
+    .eq('id_cuota', id);
+
+  if (delErr) return res.status(500).json({ error: delErr.message });
+
+  const rows = fracciones.map((f, i) => ({
+    id_cuota:        id,
+    numero_fraccion: i + 1,
+    valor_fraccion:  f.valor_fraccion,
+    fecha_propuesta: f.fecha_propuesta || null,
+    notas:           f.notas || null,
+  }));
+
+  const { data: inserted, error: insErr } = await supabase.schema(SCHEMA)
+    .from('cuota_fraccion')
+    .insert(rows)
+    .select();
+
+  if (insErr) return res.status(500).json({ error: insErr.message });
+
+  await supabase.schema(SCHEMA).from('auditoria').insert({
+    tabla_afectada: 'cuota_fraccion',
+    id_registro:    id,
+    campo:          'fracciones',
+    valor_anterior: null,
+    valor_nuevo:    JSON.stringify(rows.map(r => ({ n: r.numero_fraccion, v: r.valor_fraccion }))),
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         'subdivision_cuota',
+  });
+
+  res.status(201).json(inserted);
+};
+
+exports.deleteFracciones = async (req, res) => {
+  if (req.usuario.rol !== 'auxiliar_contable') {
+    return res.status(403).json({ error: 'Only auxiliar_contable can delete cuota fractions' });
+  }
+
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid cuota ID' });
+
+  const { data: cuota, error: cuotaErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select('id_cuota, estado')
+    .eq('id_cuota', id)
+    .single();
+
+  if (cuotaErr || !cuota) return res.status(404).json({ error: 'Cuota not found' });
+  if (cuota.estado === 'pagada') {
+    return res.status(400).json({ error: 'Cannot modify fractions of a paid cuota' });
+  }
+
+  const { error: delErr } = await supabase.schema(SCHEMA)
+    .from('cuota_fraccion')
+    .delete()
+    .eq('id_cuota', id);
+
+  if (delErr) return res.status(500).json({ error: delErr.message });
+
+  await supabase.schema(SCHEMA).from('auditoria').insert({
+    tabla_afectada: 'cuota_fraccion',
+    id_registro:    id,
+    campo:          'fracciones',
+    valor_anterior: 'subdivision_existente',
+    valor_nuevo:    null,
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         'eliminar_subdivision_cuota',
+  });
+
+  res.json({ ok: true });
+};
 
 exports.getMisCuotas = async (req, res) => {
   const id_comprador = req.usuario.id_comprador;

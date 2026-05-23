@@ -1,5 +1,6 @@
-const supabase = require("../config/supabase"); // ? sin llaves {}
-const SCHEMA   = "condor";
+const supabase            = require("../config/supabase");
+const SCHEMA              = "condor";
+const { actualizarMora }  = require("../services/mora.service");
 
 exports.getPanelDiario = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("v_aux_panel_operaciones_diarias").select("*").single();
@@ -157,4 +158,14 @@ exports.getComisionesJefe = async (req, res) => {
   }
 
   res.json(rows);
+};
+
+
+exports.syncMora = async (req, res) => {
+  try {
+    const result = await actualizarMora();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
