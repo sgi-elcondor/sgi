@@ -153,18 +153,20 @@ exports.create = async (req, res) => {
   const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(cuotaRows);
   if (ec) return res.status(400).json({ error: ec.message });
 
-  // 3. Marcar como pagada cada cuota donde valor_aplicado >= valor_cuota
+  // 3. Mark cuotas as paid based on cumulative accepted payments
   const ids = cuotas.map(c => c.id_cuota);
   const { data: cuotasDB } = await supabase.schema(SCHEMA)
-    .from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids);
+    .from("cuota")
+    .select("id_cuota, valor_cuota, cuota_pago(valor_aplicado, pago:id_pago(estado))")
+    .in("id_cuota", ids);
 
-  if (cuotasDB) {
-    for (const db of cuotasDB) {
-      const c = cuotas.find(x => Number(x.id_cuota) === db.id_cuota);
-      if (c && Number(c.valor_aplicado) >= Number(db.valor_cuota)) {
-        await supabase.schema(SCHEMA).from("cuota")
-          .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
-      }
+  for (const db of (cuotasDB || [])) {
+    const totalPagado = (db.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    if (totalPagado >= Number(db.valor_cuota)) {
+      await supabase.schema(SCHEMA).from("cuota")
+        .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
     }
   }
 
