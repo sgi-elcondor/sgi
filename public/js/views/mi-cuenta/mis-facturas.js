@@ -56,8 +56,18 @@ window.misFacturasView = async function (container) {
     });
 
     function facturaCard(f) {
-      const dias = diasRestantes(f.fecha_vencimiento);
-      const dl   = diasLabel(dias);
+      const dias       = diasRestantes(f.fecha_vencimiento);
+      const dl         = diasLabel(dias);
+      const enRevision = !!f.tiene_comprobante_pendiente;
+      const btnPagar   = enRevision
+        ? `<button class="btn btn-sm" disabled
+             style="opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)">
+             ${window.SGIUI?.icon("clock") ?? ""} En revision
+           </button>`
+        : `<button class="btn btn-primary btn-sm btn-pagar-factura"
+             data-venta="${f.id_venta}" data-cuota="${f.id_cuota}">
+             ${window.SGIUI?.icon("wallet") ?? ""} Pagar
+           </button>`;
       return `
         <div class="factura-card ${dias !== null && dias <= 3 ? "urgente" : ""}">
           <div class="factura-card-top">
@@ -70,10 +80,7 @@ window.misFacturasView = async function (container) {
           </div>
           <div class="factura-card-bottom">
             <span class="factura-card-valor">${fmt(f.valor_facturado)}</span>
-            <button class="btn btn-primary btn-sm btn-pagar-factura"
-              data-venta="${f.id_venta}" data-cuota="${f.id_cuota}">
-              ${window.SGIUI?.icon("wallet") ?? ""} Pagar
-            </button>
+            ${btnPagar}
           </div>
         </div>`;
     }
@@ -143,6 +150,11 @@ window.misFacturasView = async function (container) {
         window._abrirModalPago({
           idVenta: Number(btn.dataset.venta),
           idCuota: Number(btn.dataset.cuota),
+          onSuccess: () => {
+            btn.disabled = true;
+            btn.textContent = "En revision";
+            btn.style.cssText = "opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)";
+          },
         });
       });
     });
