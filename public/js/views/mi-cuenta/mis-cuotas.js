@@ -13,7 +13,7 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
-  async function abrirModalPago({ idVenta, idCuota, soloAmortizacion = false }) {
+  async function abrirModalPago({ idVenta, idCuota, soloAmortizacion = false, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
@@ -160,6 +160,7 @@
           const fechaPago = datetimeV.includes("T") ? datetimeV : datetimeV + "T12:00:00";
           await onSubmit({ cuenta, fechaPago, ref: ref || undefined, uploadedUrl });
           UI.closeModal();
+          if (typeof onSuccess === "function") onSuccess();
           window.SGIUI?.toast("Comprobante enviado. El equipo contable lo revisara pronto.", "success", "Pago registrado");
           const vk = window.currentViewKey;
           if (vk) setTimeout(() => navigate(vk), 400);
@@ -321,7 +322,7 @@
         const dl  = diasLabel(c);
         const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
         const enRevision = (c.valor_en_revision || 0) > 0;
-        const canPay = isCurrent && !isPagada && c.tiene_factura && !enRevision;
+        const canPay = isCurrent && !isPagada && c.tiene_factura;
         return `
           <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
             <div class="cuota-card-left">
@@ -340,12 +341,10 @@
             <div class="cuota-card-right">
               ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
               ${canPay
-                ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>`
-                : enRevision && isCurrent && !isPagada
-                  ? `<span class="badge badge-warning" style="font-size:.75rem;text-align:center;line-height:1.5;white-space:normal;max-width:80px">Comprobante en revision</span>`
-                  : isCurrent && !isPagada
-                    ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
-                    : ""}
+                ? `<button class="btn btn-primary btn-sm btn-pagar-cuota">Pagar</button>`
+                : isCurrent && !isPagada
+                  ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
+                  : ""}
             </div>
           </div>`;
       }).join("");
@@ -392,10 +391,7 @@
         abrirModalPago({ idVenta: venta.id_venta, soloAmortizacion: true })
       );
       document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
-        btn.addEventListener("click", () => abrirModalPago({
-          idVenta: Number(btn.dataset.venta), idCuota: Number(btn.dataset.id),
-          valorCuota: Number(btn.dataset.valor), numeroCuota: Number(btn.dataset.num),
-        }));
+        btn.addEventListener("click", () => navigate("mis-facturas"));
       });
     }
 
