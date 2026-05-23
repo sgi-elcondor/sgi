@@ -35,7 +35,7 @@ window.reportesView = async function () {
     _repComisionesAll = comisionesJefe || [];
 
     const ventasActivas = todasVentas.filter(v => v.estado === "activa").length;
-    const casosMora     = todasVentas.filter(v => ["mora", "pre_mora", "devolucion"].includes(v.estado)).length;
+    const casosMora     = todasVentas.filter(v => ["en_mora", "pre_mora", "devolucion"].includes(v.estado)).length;
 
     const pagosDeEsteMes  = pagos.filter(p => p.estado === "aceptado" && String(p.fecha_pago || "").slice(0, 7) === mesActual);
     const totalRecaudado  = pagosDeEsteMes.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
@@ -321,7 +321,7 @@ function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
   if (c2 && todasVentas?.length) {
     const ESTADO_META = {
       activa:     { label: "Activa",     color: "rgba(34,197,94,.85)"   },
-      mora:       { label: "Mora",       color: "rgba(239,68,68,.85)"   },
+      en_mora:    { label: "En mora",    color: "rgba(239,68,68,.85)"   },
       pre_mora:   { label: "Pre-mora",   color: "rgba(234,179,8,.85)"   },
       devolucion: { label: "Devolucion", color: "rgba(249,115,22,.85)"  },
       cancelada:  { label: "Cancelada",  color: "rgba(107,114,128,.85)" },

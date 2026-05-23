@@ -49,7 +49,7 @@ exports.searchUser = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado, rango_pago } = req.body;
 
   if (!mail) {
     return res.status(400).json({ error: "El correo electrónico es obligatorio para registrar un comprador." });
@@ -70,7 +70,7 @@ exports.create = async (req, res) => {
 
   const { data: comprador, error: errC } = await supabase.schema(SCHEMA)
     .from("comprador")
-    .insert([{ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado: estado || "activo" }])
+    .insert([{ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado: estado || "activo", rango_pago: rango_pago || null }])
     .select().single();
   if (errC) return res.status(400).json({ error: errC.message });
 
@@ -115,7 +115,7 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado, rango_pago } = req.body;
 
   if (documento !== undefined) {
     const { data: existentes, error: dupError } = await supabase.schema(SCHEMA)
@@ -127,7 +127,7 @@ exports.update = async (req, res) => {
   }
 
   const { data, error } = await supabase.schema(SCHEMA).from("comprador")
-    .update({ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado })
+    .update({ tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado, rango_pago: rango_pago || null })
     .eq("id_comprador", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);

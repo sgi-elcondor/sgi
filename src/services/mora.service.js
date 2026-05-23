@@ -2,59 +2,42 @@ const supabase = require('../config/supabase');
 const SCHEMA   = 'condor';
 
 async function actualizarMora() {
-  const hoy = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
 
-  // Cuotas pendientes vencidas → agrupar id_venta única
-  const { data: cuotasVencidas, error: ev } = await supabase.schema(SCHEMA)
+  const { data: overdue, error: e1 } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select('id_venta')
-    .lt('fecha_vencimiento', hoy)
-    .eq('estado', 'pendiente');
+    .eq('estado', 'pendiente')
+    .lt('fecha_vencimiento', today);
+  if (e1) throw new Error(e1.message);
 
-  if (ev) throw new Error(ev.message);
+  const overdueIds = [...new Set((overdue || []).map(r => r.id_venta))];
 
-  const enMoraIds = [...new Set((cuotasVencidas || []).map(c => c.id_venta))];
+  const { error: e2 } = await supabase.schema(SCHEMA)
+    .from('venta')
+    .update({ estado: 'en_mora' })
+    .in('id_venta', overdueIds.length ? overdueIds : [-1])
+    .in('estado', ['activa', 'en_mora']);
+  if (e2) throw new Error(e2.message);
 
-  // Ventas activas con cuotas vencidas → mora
-  if (enMoraIds.length > 0) {
-    const { error: em } = await supabase.schema(SCHEMA)
-      .from('venta')
-      .update({ estado: 'mora' })
-      .in('id_venta', enMoraIds)
-      .eq('estado', 'activa');
-
-    if (em) throw new Error(em.message);
-  }
-
-  // Ventas actualmente en mora que ya no tienen cuotas vencidas → volver a activa
-  const { data: ventasEnMora, error: evm } = await supabase.schema(SCHEMA)
+  const { data: moraVentas, error: e3 } = await supabase.schema(SCHEMA)
     .from('venta')
     .select('id_venta')
-    .eq('estado', 'mora');
+    .eq('estado', 'en_mora');
+  if (e3) throw new Error(e3.message);
 
-  if (evm) throw new Error(evm.message);
+  const moraIds = (moraVentas || []).map(r => r.id_venta);
+  const toReactivate = moraIds.filter(id => !overdueIds.includes(id));
 
-  const salenDeMoraIds = (ventasEnMora || [])
-    .map(v => v.id_venta)
-    .filter(id => !enMoraIds.includes(id));
-
-  if (salenDeMoraIds.length > 0) {
-    const { error: es } = await supabase.schema(SCHEMA)
+  if (toReactivate.length) {
+    const { error: e4 } = await supabase.schema(SCHEMA)
       .from('venta')
       .update({ estado: 'activa' })
-      .in('id_venta', salenDeMoraIds);
-
-    if (es) throw new Error(es.message);
+      .in('id_venta', toReactivate);
+    if (e4) throw new Error(e4.message);
   }
 
-  const resumen = {
-    fecha:        hoy,
-    entraron_mora: enMoraIds.length,
-    salieron_mora: salenDeMoraIds.length,
-  };
-
-  console.log('[mora]', JSON.stringify(resumen));
-  return resumen;
+  return { mora: overdueIds.length, reactivated: toReactivate.length };
 }
 
 module.exports = { actualizarMora };
