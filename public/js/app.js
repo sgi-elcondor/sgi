@@ -1,7 +1,7 @@
 import { esperarAuthListo } from "./auth.js";
 
 const VIEWS = {
-  dashboard:           { fn: "dashboardView",        title: "Panel de control" },
+  dashboard:           { fn: "dashboardView",        title: "Panel de control" },  
   proyectos:           { fn: "proyectosView",         title: "Proyectos" },
   lotes:               { fn: "lotesView",             title: "Lotes" },
   compradores:         { fn: "compradoresView",       title: "Compradores" },
