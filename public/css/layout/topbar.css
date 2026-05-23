@@ -705,7 +705,7 @@
 .role-view-switcher::after {
   content: "";
   position: absolute;
-  right: 0.75rem;
+  right: 1.55rem; 
   top: 50%;
   transform: translateY(-50%);
   width: 0.8125rem;
@@ -758,6 +758,14 @@
   max-width: 13rem;
   letter-spacing: -0.01em;
   padding-right: 1.5rem;
+}
+
+.rvs-select:hover, .rvs-select:focus-visible { 
+  border: none;
+  border-color: transparent;  
+  background: transparent;
+  color: var(--text); 
+  box-shadow: none; 
 }
 
 .rvs-select option {
