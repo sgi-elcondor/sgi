@@ -60,7 +60,16 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "index.html"));
 });
 
+const { actualizarMora } = require('./services/mora.service');
+
 app.listen(PORT, () => {
   console.log(`SGI corriendo en http://localhost:${PORT}`);
+  actualizarMora().catch(err => console.error('[mora] startup error:', err.message));
 });
+
+// Run mora sync every 24 h
+setInterval(
+  () => actualizarMora().catch(err => console.error('[mora] interval error:', err.message)),
+  24 * 60 * 60 * 1000
+);
 
