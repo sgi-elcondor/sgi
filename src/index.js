@@ -10,9 +10,19 @@ const { verificarToken }   = require('./middlewares/auth.middleware');
 const { verificarPermiso } = require('./middlewares/permisos.middleware');
 
 
-// â”€â”€ Middlewares globales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(cors());
 app.use(express.json());
+
+if (process.env.NODE_ENV !== 'production') {
+  const livereload        = require('livereload');
+  const connectLivereload = require('connect-livereload');
+
+  const lrServer = livereload.createServer();
+  lrServer.watch(path.join(__dirname, '..', 'public'));
+
+  app.use(connectLivereload());
+}
+
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Servir favicon.ico sin requerir token â€” evita 401
@@ -20,7 +30,6 @@ app.get('/favicon.ico', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'src', 'img', 'favicon.svg'));
 });
 
-// â”€â”€ Rutas de autenticaciÃ³n (sin verificarToken) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 
 app.get('/api/v1/firebase-config', (req, res) => {
@@ -35,7 +44,6 @@ app.get('/api/v1/firebase-config', (req, res) => {
   });
 });
 
-// â”€â”€ Todas las demÃ¡s rutas requieren token y permisos â”€â”€â”€â”€â”€
 app.use('/api/v1', verificarToken, verificarPermiso);
 
 app.use('/api/v1/proyectos',      require('./routes/proyectos.routes'));

@@ -38,13 +38,13 @@ const SIDEBAR_GROUPS = [
   ]},
 ];
 
-function renderSidebar(vistas) {
+function renderSidebar(vistas, simulatedRol) {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
   const allowed    = new Set(vistas || []);
   const rendered   = new Set();
-  const isComprador = window.currentUser?.rol === "comprador";
+  const isComprador = (simulatedRol || window.currentUser?.rol) === "comprador";
   let html = "";
   let firstGroup = true;
 

@@ -62,10 +62,7 @@ public/js/api.js         ← Cliente HTTP centralizado (objeto global `API`)
 public/js/auth.js        ← Lógica de autenticación Firebase
 public/js/state.js       ← Estado global del usuario (vistas, permisos)
 public/js/ui.js          ← Utilidades de UI compartidas
-public/js/sidebar.js     ← Renderizado del sidebar, navegación y tooltips
-public/js/user-menu.js   ← Menú de usuario, tema claro/oscuro y edición de perfil
-public/js/onboarding.js  ← Modal de bienvenida para nuevos usuarios
-public/js/role-switcher.js ← Selector de rol para que el admin simule otros roles
+public/js/components/    ← Componentes de UI montables (sidebar, user-menu, onboarding, role-switcher, money-input, avatar-cropper)
 public/js/views/         ← Módulos de vista por dominio
 public/css/              ← Estilos organizados por capas
 

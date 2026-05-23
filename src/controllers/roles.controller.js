@@ -27,7 +27,9 @@ const VISTA_API_MAP = {
   'bank-transactions':  ['bank_transactions:leer', 'bank_transactions:crear', 'bank_transactions:actualizar', 'bank_transactions:eliminar'],
   'payment-validation': ['validacion_pagos:leer', 'validacion_pagos:crear'],
   'mis-cuotas':    ['mis_cuotas:leer'],
+  'mis-facturas':  ['mis_facturas:leer'],
   'mis-recibos':   ['mis_recibos:leer'],
+  'el-proyecto':   ['proyectos:leer', 'lotes:leer'],
 };
 
 // Build the set of managed resource namespaces from VISTA_API_MAP

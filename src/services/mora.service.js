@@ -18,22 +18,20 @@ async function actualizarMora() {
 
   const enMoraIds = [...new Set((cuotasVencidas || []).map(c => c.id_venta))];
 
-  // Ventas activas con cuotas vencidas → mora
   if (enMoraIds.length > 0) {
     const { error: em } = await supabase.schema(SCHEMA)
       .from('venta')
-      .update({ estado: 'mora' })
+      .update({ estado: 'en_mora' })
       .in('id_venta', enMoraIds)
       .eq('estado', 'activa');
 
     if (em) throw new Error(em.message);
   }
 
-  // Ventas actualmente en mora que ya no tienen cuotas vencidas → volver a activa
   const { data: ventasEnMora, error: evm } = await supabase.schema(SCHEMA)
     .from('venta')
     .select('id_venta')
-    .eq('estado', 'mora');
+    .eq('estado', 'en_mora');
 
   if (evm) throw new Error(evm.message);
 
@@ -51,7 +49,7 @@ async function actualizarMora() {
   }
 
   const resumen = {
-    fecha:        hoy,
+    fecha:         hoy,
     entraron_mora: enMoraIds.length,
     salieron_mora: salenDeMoraIds.length,
   };

@@ -1,9 +1,22 @@
-const ROLE_VIEW_STORAGE_KEY = "sgi_view_as";
+function showSimBanner(roleLabel) {
+  const banner  = document.getElementById("roleSimBanner");
+  const label   = document.getElementById("roleSimBannerLabel");
+  const exitBtn = document.getElementById("roleSimBannerExit");
+  if (!banner || !label) return;
+  label.textContent = roleLabel;
+  banner.hidden = false;
+  if (exitBtn) exitBtn.onclick = revertRoleSelect;
+  window.SGIUI?.hydrate();
+}
+
+function hideSimBanner() {
+  const banner = document.getElementById("roleSimBanner");
+  if (banner) banner.hidden = true;
+}
 
 function revertRoleSelect() {
   const select = document.getElementById("roleViewSelect");
   if (select) select.value = "admin";
-  sessionStorage.setItem(ROLE_VIEW_STORAGE_KEY, "admin");
   applyAdminView();
 }
 
@@ -12,6 +25,7 @@ function applyAdminView() {
   window.currentUser.vistas = perfil._originalVistas.slice();
   AppState.restore(perfil);
   renderSidebar(perfil._originalVistas);
+  hideSimBanner();
   navigate(window.currentViewKey || "dashboard");
 }
 
@@ -29,7 +43,8 @@ function applyRoleView(idRol, rolNombre) {
     const vistas = data.vistas || [];
     window.currentUser.vistas = vistas;
     AppState.simulate(vistas, data.can || []);
-    renderSidebar(vistas);
+    renderSidebar(vistas, rolNombre);
+    showSimBanner(humanizeRole(rolNombre));
     const cur  = window.currentViewKey || "dashboard";
     const next = vistas.includes(cur) ? cur : (vistas[0] || "dashboard");
     navigate(next);
@@ -133,18 +148,8 @@ function initRoleViewSwitcher(perfil) {
       select.appendChild(opt);
     });
 
-    const saved = sessionStorage.getItem(ROLE_VIEW_STORAGE_KEY);
-    if (saved && saved !== "admin") {
-      select.value = saved;
-      if (select.value === saved) {
-        const opt    = select.options[select.selectedIndex];
-        applyRoleView(Number(saved), opt.dataset.nombre);
-      }
-    }
-
     select.addEventListener("change", function() {
       const val = this.value;
-      sessionStorage.setItem(ROLE_VIEW_STORAGE_KEY, val);
       if (val === "admin") {
         applyAdminView();
       } else {

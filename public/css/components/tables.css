@@ -72,12 +72,13 @@
 }
 
 .table-wrap thead th.sortable .sort-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   margin-left: 0.25rem;
-  font-size: 0.625rem;
-  opacity: 0.4;
   vertical-align: middle;
-  transition: opacity 0.15s, transform 0.15s;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: opacity 0.15s, transform 0.15s, color 0.15s;
 }
 
 .table-wrap thead th.sortable.sort-asc .sort-icon,

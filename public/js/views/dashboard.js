@@ -138,19 +138,24 @@
   function renderCuotasPendientes(cuotas) {
     const all = Array.isArray(cuotas) ? cuotas : [];
 
-    const proximas = all
-      .filter(c => c.dias_atraso <= 0)
-      .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
-      .slice(0, 10);
+    const byVencimiento = (a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento);
 
-    const vencidas = all
-      .filter(c => c.dias_atraso > 0)
-      .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))
-      .slice(0, 10);
+    const proximasAll = all.filter(c => c.dias_atraso <= 0).sort(byVencimiento);
+    const vencidas    = all.filter(c => c.dias_atraso > 0).sort(byVencimiento).slice(0, 10);
+
+    const q1   = proximasAll.filter(c => c.rango_pago === "primera_quincena").slice(0, 10);
+    const q2   = proximasAll.filter(c => c.rango_pago === "segunda_quincena").slice(0, 10);
+    const qSin = proximasAll.filter(c => !c.rango_pago || c.rango_pago === "otro").slice(0, 10);
 
     const fmtFecha = d => d
       ? new Date(`${d}T12:00:00`).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })
       : "—";
+
+    const diasLabel = c => {
+      if (c.dias_atraso === 0) return `<span style="color:var(--warning);font-size:.8125rem;font-weight:600">Vence hoy</span>`;
+      if (c.dias_atraso < 0)  return `<span style="color:var(--text-muted);font-size:.8125rem">${Math.abs(c.dias_atraso)}d restantes</span>`;
+      return `<span style="color:var(--danger);font-size:.8125rem;font-weight:600">${c.dias_atraso}d vencida</span>`;
+    };
 
     const TH = label => `<th style="padding:.625rem 1rem;font-weight:600;color:var(--text-muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em">${label}</th>`;
 
@@ -185,19 +190,40 @@
 
     const emptyCard = msg => `<article class="panel-card"><p style="color:var(--text-muted)">${msg}</p></article>`;
 
-    const diasLabel = c => {
-      if (c.dias_atraso === 0) return `<span style="color:var(--warning);font-size:.8125rem;font-weight:600">Vence hoy</span>`;
-      if (c.dias_atraso < 0)  return `<span style="color:var(--text-muted);font-size:.8125rem">${Math.abs(c.dias_atraso)}d restantes</span>`;
-      return `<span style="color:var(--danger);font-size:.8125rem;font-weight:600">${c.dias_atraso}d vencida</span>`;
-    };
-
     const countPill = (n, color) =>
       `<span style="font-size:.75rem;font-weight:600;padding:.2rem .7rem;border-radius:99px;background:rgba(var(--${color}-rgb),.12);color:var(--${color})">${n} cuota${n !== 1 ? "s" : ""}</span>`;
 
+    const subHeader = (label, color, n) => `
+      <div style="display:flex;align-items:center;gap:.625rem;padding:.75rem 1rem .5rem;">
+        <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${color}">${label}</span>
+        ${countPill(n, color === "var(--info)" ? "info" : color === "var(--accent)" ? "accent" : "neutral")}
+      </div>`;
+
+    const totalProximas = q1.length + q2.length + qSin.length;
+
+    const proximasSection = totalProximas === 0  
+      ? emptyCard("No hay cuotas próximas a vencer.")
+      : `
+        ${q1.length ? `
+          <div style="margin-bottom:.75rem">
+            ${subHeader("Quincena 1 · 1–15", "var(--info)", q1.length)}
+            ${buildTable(q1)}
+          </div>` : ""}
+        ${q2.length ? `
+          <div style="margin-bottom:.75rem">
+            ${subHeader("Quincena 2 · 16–30", "var(--accent)", q2.length)}
+            ${buildTable(q2)}
+          </div>` : ""}
+        ${qSin.length ? `
+          <div>
+            ${subHeader("Sin quincena asignada", "var(--text-muted)", qSin.length)}
+            ${buildTable(qSin)}
+          </div>` : ""}`;
+
     return `
       <section class="dashboard-block">
-        ${window.SGIUI.sectionHeader({ kicker: "Próximas a vencer", title: "Cuotas por vencer", actions: proximas.length ? countPill(proximas.length, "accent") : "" })}
-        ${proximas.length ? buildTable(proximas) : emptyCard("No hay cuotas próximas a vencer.")}
+        ${window.SGIUI.sectionHeader({ kicker: "Próximas a vencer", title: "Cuotas por vencer", actions: totalProximas ? countPill(totalProximas, "accent") : "" })}
+        ${proximasSection}
       </section>
       <section class="dashboard-block">
         ${window.SGIUI.sectionHeader({ kicker: "Vencidas sin pagar", title: "Cuotas en mora", actions: vencidas.length ? countPill(vencidas.length, "danger") : "" })}
