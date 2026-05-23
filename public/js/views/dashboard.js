@@ -201,7 +201,7 @@
 
     const totalProximas = q1.length + q2.length + qSin.length;
 
-    const proximasSection = totalProximas === 0
+    const proximasSection = totalProximas === 0  
       ? emptyCard("No hay cuotas próximas a vencer.")
       : `
         ${q1.length ? `
