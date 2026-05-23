@@ -61,6 +61,35 @@
   border-bottom: 1px solid var(--border);
 }
 
+.table-wrap thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-wrap thead th.sortable:hover {
+  background: var(--surface-3, var(--border));
+  color: var(--text-primary);
+}
+
+.table-wrap thead th.sortable .sort-icon {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 0.625rem;
+  opacity: 0.4;
+  vertical-align: middle;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.table-wrap thead th.sortable.sort-asc .sort-icon,
+.table-wrap thead th.sortable.sort-desc .sort-icon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.table-wrap thead th.sortable.sort-desc .sort-icon {
+  transform: rotate(180deg);
+}
+
 .table-wrap tbody tr {
   transition: background var(--transition-fast);
 }

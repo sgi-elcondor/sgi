@@ -1,6 +1,17 @@
 (() => {
   const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
 
+  const sortState = { col: null, dir: "asc" };
+
+  const TABLE_COLS = [
+    { key: "id",          label: "ID"          },
+    { key: "nombre",      label: "Proyecto"    },
+    { key: "sigla",       label: "Sigla"       },
+    { key: "totalLotes",  label: "Total lotes" },
+    { key: "disponibles", label: "Disponibles" },
+    { key: "vendidos",    label: "Vendidos"    },
+  ];
+
   function fmt(n) {
     return new Intl.NumberFormat("es-CO").format(n || 0);
   }
@@ -9,16 +20,54 @@
     return total > 0 ? ((part / total) * 100).toFixed(1) : "0.0";
   }
 
-  function buildRows(rows) {
-    return rows.map(r =>
+  function appliedSort(rows) {
+    if (!sortState.col) return rows;
+    return [...rows].sort((a, b) => {
+      let va = a[sortState.col] ?? "";
+      let vb = b[sortState.col] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortState.dir === "asc" ? -1 : 1;
+      if (va > vb) return sortState.dir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function buildTableHTML(rows) {
+    const thead = `<thead><tr>${TABLE_COLS.map(c => {
+      const active = sortState.col === c.key;
+      const cls    = active ? `sortable sort-${sortState.dir}` : "sortable";
+      return `<th class="${cls}" data-col="${c.key}">${c.label} <span class="sort-icon">↑</span></th>`;
+    }).join("")}</tr></thead>`;
+
+    const tbody = `<tbody>${appliedSort(rows).map(r =>
       `<tr>
         <td><strong>${r.id}</strong></td>
         <td>${r.nombre}</td>
+        <td>${r.sigla ? `<span style="font-family:monospace;font-weight:600">${r.sigla}</span>` : "<span style='color:var(--text-muted)'>—</span>"}</td>
         <td>${r.totalLotes}</td>
         <td>${r.disponibles}</td>
         <td>${r.vendidos}</td>
       </tr>`
-    ).join("");
+    ).join("")}</tbody>`;
+
+    return thead + tbody;
+  }
+
+  function wireSortHeaders(tableEl, rows) {
+    tableEl.querySelectorAll("th[data-col]").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (sortState.col === col) {
+          sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+        } else {
+          sortState.col = col;
+          sortState.dir = "asc";
+        }
+        tableEl.innerHTML = buildTableHTML(rows);
+        wireSortHeaders(tableEl, rows);
+      });
+    });
   }
 
   async function exportExcel(rows, lotes) {
@@ -514,11 +563,13 @@
         "</section>" +
         '<section class="table-wrap">' +
         '<div class="table-header"><h3>Listado de proyectos</h3></div>' +
-        '<table><thead><tr><th>ID</th><th>Proyecto</th><th>Total lotes</th><th>Disponibles</th><th>Vendidos</th></tr></thead>' +
-        `<tbody>${buildRows(rows)}</tbody></table>` +
+        `<table id="proj-table">${buildTableHTML(rows)}</table>` +
         "</section></section>";
 
       window.SGIUI?.hydrate();
+
+      const projTable = document.getElementById("proj-table");
+      if (projTable) wireSortHeaders(projTable, rows);
 
       if (canExport) {
         document.getElementById("btnExportExcel")?.addEventListener("click", async () => {
