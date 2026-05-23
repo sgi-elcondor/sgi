@@ -236,7 +236,7 @@ window.facturasView = async function() {
     const emitidas = g.facturas.filter(f => f.estado === "emitida").length;
     const pagadas  = g.facturas.filter(f => f.estado === "pagada").length;
     const anuladas = g.facturas.filter(f => f.estado === "anulada").length;
-    const total    = g.facturas.reduce((s, f) => s + Number(f.valor_facturado || 0), 0);
+    const total    = g.facturas.filter(f => f.estado === "emitida").reduce((s, f) => s + Number(f.valor_facturado || 0), 0);
     const badges   = [
       emitidas ? `<span class="badge badge-info">${emitidas} emitida${emitidas>1?"s":""}</span>` : "",
       pagadas  ? `<span class="badge badge-success">${pagadas} pagada${pagadas>1?"s":""}</span>` : "",
@@ -414,7 +414,7 @@ window.facturasDeVentaView = function(grupo) {
 
   window._facturaDetalleGrupo = grupo;
 
-  const totalEmitido = grupo.facturas.reduce((s, f) => s + Number(f.valor_facturado || 0), 0);
+  const totalEmitido = grupo.facturas.filter(f => f.estado === "emitida").reduce((s, f) => s + Number(f.valor_facturado || 0), 0);
 
   vc.innerHTML = `
     <div class="table-wrap">
