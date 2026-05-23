@@ -4,11 +4,14 @@ const SCHEMA   = 'condor';
 async function actualizarMora() {
   const hoy = new Date().toISOString().split('T')[0];
 
-  // Cuotas pendientes vencidas → agrupar id_venta única
+  const umbralDate = new Date();
+  umbralDate.setDate(umbralDate.getDate() - 90);
+  const umbral = umbralDate.toISOString().split('T')[0];
+
   const { data: cuotasVencidas, error: ev } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select('id_venta')
-    .lt('fecha_vencimiento', hoy)
+    .lt('fecha_vencimiento', umbral)
     .eq('estado', 'pendiente');
 
   if (ev) throw new Error(ev.message);

@@ -171,9 +171,10 @@ window.pvAcceptSelected = async function() {
   const btn = document.querySelector('.pv-footer .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
   try {
-    const results = await API.patch('/pagos/accept-batch', { validations });
-    const ok     = results.filter(r => r.ok).length;
-    const failed = results.filter(r => !r.ok);
+    const results        = await API.patch('/pagos/accept-batch', { validations });
+    const ok             = results.filter(r => r.ok).length;
+    const failed         = results.filter(r => !r.ok);
+    const comisionesCausadas = results.filter(r => r.ok && r.comision_causada).length;
 
     if (failed.length) {
       window.SGIUI?.toast(`${ok} aceptados, ${failed.length} fallidos`, 'error', 'Resultado parcial');
@@ -191,6 +192,16 @@ window.pvAcceptSelected = async function() {
       window.SGIUI?.toast(`${ok} pago(s) aceptado(s) · ${rr.generados} recibo(s) generado(s)`, 'success', 'Listo');
     } else {
       window.SGIUI?.toast(`${ok} pago(s) aceptado(s)`, 'success', 'Pagos aprobados');
+    }
+
+    if (comisionesCausadas > 0) {
+      setTimeout(() => {
+        window.SGIUI?.toast(
+          `${comisionesCausadas} comisión(es) causada(s) al alcanzar el 30% del valor de venta`,
+          'info',
+          'Comisiones activadas'
+        );
+      }, 800);
     }
 
     window.navigate('recibos', false);
