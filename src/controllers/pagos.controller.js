@@ -155,18 +155,27 @@ exports.create = async (req, res) => {
 
   // 3. Mark cuotas as paid based on cumulative accepted payments
   const ids = cuotas.map(c => c.id_cuota);
-  const { data: cuotasDB } = await supabase.schema(SCHEMA)
-    .from("cuota")
-    .select("id_cuota, valor_cuota, cuota_pago(valor_aplicado, pago:id_pago(estado))")
-    .in("id_cuota", ids);
+
+  const [{ data: cuotasDB }, { data: pagosAplicados }] = await Promise.all([
+    supabase.schema(SCHEMA).from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids),
+    supabase.schema(SCHEMA).from("cuota_pago").select("id_cuota, valor_aplicado, pago:id_pago(estado)").in("id_cuota", ids),
+  ]);
 
   for (const db of (cuotasDB || [])) {
-    const totalPagado = (db.cuota_pago || [])
-      .filter(cp => cp.pago?.estado === "aceptado")
+    const totalPagado = (pagosAplicados || [])
+      .filter(cp => cp.id_cuota === db.id_cuota && cp.pago?.estado === "aceptado")
       .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
     if (totalPagado >= Number(db.valor_cuota)) {
       await supabase.schema(SCHEMA).from("cuota")
         .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
+      const { data: facturaLinks } = await supabase.schema(SCHEMA)
+        .from("cuota_factura").select("id_factura").eq("id_cuota", db.id_cuota);
+      if (facturaLinks?.length) {
+        await supabase.schema(SCHEMA).from("factura")
+          .update({ estado: "pagada" })
+          .in("id_factura", facturaLinks.map(f => f.id_factura))
+          .eq("estado", "emitida");
+      }
     }
   }
 
