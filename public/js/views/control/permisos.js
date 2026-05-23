@@ -21,6 +21,10 @@
         { key: 'compradores:crear',      label: 'Registrar comprador' },
         { key: 'compradores:actualizar', label: 'Editar comprador' },
       ]},
+      { key: 'el-proyecto', label: 'El Proyecto', icon: 'map-pin', actions: [
+        { key: 'proyectos:leer', label: 'Ver proyectos' },
+        { key: 'lotes:leer',     label: 'Ver lotes' },
+      ]},
       { key: 'ventas', label: 'Ventas', icon: 'briefcase', actions: [
         { key: 'ventas:leer',              label: 'Ver ventas' },
         { key: 'ventas:crear',             label: 'Crear venta directa' },
@@ -76,6 +80,9 @@
     { group: 'Mi cuenta', modules: [
       { key: 'mis-cuotas',  label: 'Mis cuotas',  icon: 'calendar',  actions: [
         { key: 'mis_cuotas:leer', label: 'Ver mis cuotas' },
+      ]},
+      { key: 'mis-facturas', label: 'Mis facturas', icon: 'receipt', actions: [
+        { key: 'mis_facturas:leer', label: 'Ver mis facturas' },
       ]},
       { key: 'mis-recibos', label: 'Mis recibos', icon: 'file-text', actions: [
         { key: 'mis_recibos:leer', label: 'Ver mis recibos' },
