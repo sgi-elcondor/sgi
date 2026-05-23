@@ -128,9 +128,20 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
+  let consec;
+  try { consec = await consecutivos.nextPago(); }
+  catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
+
   // 1. Crear registro de pago
   const { data: pago, error: ep } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{ fecha_pago, valor_pago, metodo_pago, referencia: referencia || null }]).select().single();
+    .insert([{
+      fecha_pago,
+      valor_pago,
+      metodo_pago,
+      referencia:   referencia || null,
+      numero_pago:  consec.numero_pago,
+      estado:       "aceptado",
+    }]).select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
   // 2. Vincular cuotas al pago
@@ -157,14 +168,12 @@ exports.create = async (req, res) => {
     }
   }
 
-  // 4. Auto-generar recibo vinculado al pago
-  const numero_recibo = `REC-${String(pago.id_pago).padStart(6, "0")}`;
-  const { data: recibo } = await supabase.schema(SCHEMA).from("recibo")
-    .insert([{ numero_recibo, emitido_por: req.usuario.email }]).select().single();
-  if (recibo) {
-    await supabase.schema(SCHEMA).from("recibo_pago")
-      .insert([{ id_recibo: recibo.id_recibo, id_pago: pago.id_pago }]);
-  }
+  // 4. Auto-generar recibo con consecutivo correcto
+  const { recibo } = await recibos.crearParaPago({
+    id_pago:     pago.id_pago,
+    numero_pago: consec.numero_pago,
+    emitido_por: req.usuario.email,
+  });
 
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
