@@ -32,7 +32,7 @@ async function verificarComision(id_venta, email) {
   const totalPagado = (pagos || []).reduce((s, p) => s + Number(p.valor_pago), 0);
   const umbral      = Number(venta.valor_total) * UMBRAL_COMISION;
 
-  if (totalPagado < umbral) return;
+  if (totalPagado < umbral) return false;
 
   // Trigger commission: mark all pending as causada
   const ahora = new Date().toISOString();
@@ -45,7 +45,7 @@ async function verificarComision(id_venta, email) {
 
   if (eu) {
     console.error('[comisiones] Error al marcar causada:', eu.message);
-    return;
+    return false;
   }
 
   await supabase.schema(SCHEMA).from('auditoria').insert([{
@@ -60,6 +60,7 @@ async function verificarComision(id_venta, email) {
   }]);
 
   console.log(`[comisiones] Comisión causada — venta ${id_venta}, pagado: ${totalPagado}/${venta.valor_total}`);
+  return true;
 }
 
 module.exports = { verificarComision };

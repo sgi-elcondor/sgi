@@ -448,9 +448,10 @@ exports.acceptBatch = async (req, res) => {
     }]);
 
     // Allocate payment to cuotas and check commission threshold
+    let comision_causada = false;
     if (pagoActual.id_venta) {
       await aplicarPagoACuotas(pagoActual, req.usuario.email);
-      await verificarComision(pagoActual.id_venta, req.usuario.email).catch(console.error);
+      comision_causada = await verificarComision(pagoActual.id_venta, req.usuario.email).catch(() => false);
     }
 
     // Auto-generate receipt if not already linked
@@ -467,7 +468,7 @@ exports.acceptBatch = async (req, res) => {
       }
     }
 
-    results.push({ id_pago, ok: true, pago });
+    results.push({ id_pago, ok: true, pago, comision_causada });
   }
 
   res.json(results);
