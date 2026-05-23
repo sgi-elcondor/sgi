@@ -40,13 +40,6 @@ window.misFacturasView = async function (container) {
     }).join("")}</div>`;
   }
 
-  const cuotasEnRevision = new Set();
-  (ventas || []).forEach(v => {
-    (v.cuotas || []).forEach(c => {
-      if ((c.valor_en_revision || 0) > 0) cuotasEnRevision.add(c.id_cuota);
-    });
-  });
-
   let selectedIdx = 0;
 
   function render(idx) {
@@ -65,7 +58,7 @@ window.misFacturasView = async function (container) {
     function facturaCard(f) {
       const dias       = diasRestantes(f.fecha_vencimiento);
       const dl         = diasLabel(dias);
-      const enRevision = cuotasEnRevision.has(f.id_cuota);
+      const enRevision = !!f.tiene_comprobante_pendiente;
       const btnPagar   = enRevision
         ? `<button class="btn btn-sm" disabled
              style="opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)">

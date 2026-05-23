@@ -221,6 +221,21 @@ exports.getMisFacturas = async (req, res) => {
     });
   }
 
+  const idsCuotas = result.map(r => r.id_cuota);
+  if (idsCuotas.length) {
+    const { data: pagosPendientes } = await supabase.schema(SCHEMA)
+      .from("pago")
+      .select("id_cuota_propuesta")
+      .eq("id_comprador", id_comprador)
+      .eq("estado", "pendiente_revision")
+      .in("id_cuota_propuesta", idsCuotas);
+
+    const cuotasConComprobante = new Set((pagosPendientes || []).map(p => p.id_cuota_propuesta));
+    for (const r of result) {
+      r.tiene_comprobante_pendiente = cuotasConComprobante.has(r.id_cuota);
+    }
+  }
+
   res.json(result);
 };
 
