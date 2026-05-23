@@ -194,7 +194,7 @@
       `<span style="font-size:.75rem;font-weight:600;padding:.2rem .7rem;border-radius:99px;background:rgba(var(--${color}-rgb),.12);color:var(--${color})">${n} cuota${n !== 1 ? "s" : ""}</span>`;
 
     const subHeader = (label, color, n) => `
-      <div style="display:flex;align-items:center;gap:.625rem;padding:.75rem 1rem .5rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.625rem;padding:.75rem 1rem .5rem;">
         <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${color}">${label}</span>
         ${countPill(n, color === "var(--info)" ? "info" : color === "var(--accent)" ? "accent" : "neutral")}
       </div>`;
