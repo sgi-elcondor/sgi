@@ -58,7 +58,7 @@ window.juridicoView = async function () {
     }
 
     const estadoBadge = est => {
-      const map = { mora: "danger", pre_mora: "warning", devolucion: "info", cancelada: "default" };
+      const map = { en_mora: "danger", pre_mora: "warning", devolucion: "info", cancelada: "default" };
       const cls = map[est] || "default";
       return `<span class="badge badge-${cls}">${(est || "").replace(/_/g, " ")}</span>`;
     };
