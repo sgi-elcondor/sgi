@@ -320,7 +320,8 @@
         const isVencida = c.dias_restantes < 0 && !isPagada;
         const dl  = diasLabel(c);
         const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
-        const canPay = isCurrent && !isPagada && c.tiene_factura;
+        const enRevision = (c.valor_en_revision || 0) > 0;
+        const canPay = isCurrent && !isPagada && c.tiene_factura && !enRevision;
         return `
           <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
             <div class="cuota-card-left">
@@ -334,15 +335,17 @@
                 <div class="cuota-card-pendiente">Pagado: ${fmt(c.valor_pagado)}</div>
                 <div class="cuota-card-pendiente">Pendiente: ${fmt(c.valor_pendiente)}</div>
                 <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>` : ""}
-              ${c.valor_en_revision > 0 ? `<div class="cuota-card-revision">En revision: ${fmt(c.valor_en_revision)}</div>` : ""}
+              ${enRevision ? `<div class="cuota-card-revision">En revision: ${fmt(c.valor_en_revision)}</div>` : ""}
             </div>
             <div class="cuota-card-right">
               ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
               ${canPay
                 ? `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-id="${c.id_cuota}" data-venta="${venta.id_venta}" data-valor="${c.valor_pendiente || c.valor_cuota}" data-num="${c.numero_cuota}">Pagar</button>`
-                : isCurrent && !isPagada
-                  ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
-                  : ""}
+                : enRevision && isCurrent && !isPagada
+                  ? `<span class="badge badge-warning" style="font-size:.75rem;text-align:center;line-height:1.5;white-space:normal;max-width:80px">Comprobante en revision</span>`
+                  : isCurrent && !isPagada
+                    ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
+                    : ""}
             </div>
           </div>`;
       }).join("");
