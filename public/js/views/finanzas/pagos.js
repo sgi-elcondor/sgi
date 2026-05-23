@@ -44,14 +44,14 @@
         <div onclick="_toggleGrupoFacturaPago('${key}')"
              style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
           <span>
-            <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
             Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
           </span>
           <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
             ${count} factura${count !== 1 ? "s" : ""}
           </span>
         </div>
-        <div id="pfg-body-${key}" style="display:none">
+        <div id="pfg-body-${key}" style="display:block">
           ${g.facturas.map(f => `
             <label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid var(--border);cursor:pointer">
               <input type="radio" name="factura_sel" value="${f.id_factura}"
@@ -385,6 +385,15 @@
         document.getElementById("pf_id_factura").value  = e.target.value;
         document.getElementById("pf_valor").textContent = UI.fmt(+e.target.dataset.valor);
       });
+
+      if (facturas.length === 1) {
+        const onlyRadio = document.querySelector("#pf_factura_lista input[type=radio]");
+        if (onlyRadio) {
+          onlyRadio.checked = true;
+          document.getElementById("pf_id_factura").value  = onlyRadio.value;
+          document.getElementById("pf_valor").textContent = UI.fmt(+onlyRadio.dataset.valor);
+        }
+      }
     }
   };
 
