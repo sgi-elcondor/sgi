@@ -447,7 +447,7 @@ exports.createCompradorPago = async (req, res) => {
 exports.getContrast = async (req, res) => {
   const { data: payments, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
-    .select('*, cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
+    .select('*, usuario:id_usuario(nombres, apellidos), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
     .eq('estado', 'pendiente_revision')
     .eq('metodo_pago', 'transferencia');
 

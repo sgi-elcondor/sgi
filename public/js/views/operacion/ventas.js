@@ -40,11 +40,11 @@ window.ventasView = async function() {
 
     tbody.innerHTML = rows.map(v => {
       const compradores = (v.venta_comprador || [])
-        .map(vc => `${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}`.trim() + (vc.comprador?.documento ? ` (${vc.comprador.documento})` : ""))
+        .map(vc => `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""}`.trim() + (vc.usuario?.documento ? ` (${vc.usuario.documento})` : ""))
         .join(", ") || "—";
       const vc0 = Array.isArray(v.venta_comisionista) ? v.venta_comisionista[0] : v.venta_comisionista;
       const comisionista = vc0
-        ? `${vc0.comisionista?.nombres || ""} ${vc0.comisionista?.apellidos || ""}`.trim()
+        ? `${vc0.usuario?.nombres || ""} ${vc0.usuario?.apellidos || ""}`.trim()
         : "—";
       const lote = v.lote ? `${v.lote.codigo_lote} M${v.lote.manzana}-${v.lote.numero_lote}` : "—";
       return `<tr>
@@ -348,10 +348,10 @@ window.verVenta = async function(id) {
             <tbody>
               ${(v.venta_comprador || []).map(vc => `
                 <tr>
-                  <td><b>${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}</b></td>
-                  <td>${vc.comprador?.documento || "—"}</td>
-                  <td>${vc.comprador?.telefono || "—"}</td>
-                  <td>${vc.comprador?.mail || "—"}</td>
+                  <td><b>${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""}</b></td>
+                  <td>${vc.usuario?.documento || "—"}</td>
+                  <td>${vc.usuario?.telefono || "—"}</td>
+                  <td>${vc.usuario?.email || "—"}</td>
                   <td>${vc.porcentaje || 100}%</td>
                 </tr>
               `).join("") || `
@@ -364,10 +364,10 @@ window.verVenta = async function(id) {
       `)}
 
       ${vc0 ? S("Comisionista", `
-        ${R("Nombre", `<b>${vc0.comisionista?.nombres || ""} ${vc0.comisionista?.apellidos || ""}</b>`)}
-        ${vc0.comisionista?.documento ? R("Documento", vc0.comisionista.documento) : ""}
-        ${vc0.comisionista?.telefono ? R("Teléfono", vc0.comisionista.telefono) : ""}
-        ${vc0.comisionista?.mail ? R("Correo", vc0.comisionista.mail) : ""}
+        ${R("Nombre", `<b>${vc0.usuario?.nombres || ""} ${vc0.usuario?.apellidos || ""}</b>`)}
+        ${vc0.usuario?.documento ? R("Documento", vc0.usuario.documento) : ""}
+        ${vc0.usuario?.telefono ? R("Teléfono", vc0.usuario.telefono) : ""}
+        ${vc0.usuario?.email ? R("Correo", vc0.usuario.email) : ""}
         ${R("Valor comisión", `<b style="color:var(--primary,#ff6a00)">${UI.fmt(vc0.valor_comision)}</b>`)}
       `) : ""}
 
@@ -798,7 +798,7 @@ function _bodyVenta() {
     numero_cuotas:               +document.getElementById("f_nc")?.value || 0,
     fecha_primera_cuota:         fechaPrimeraCuota,
     observaciones:               document.getElementById("f_obs").value,
-    compradores: [{ id_comprador: +document.getElementById("f_comp").value, porcentaje: 100 }],
+    compradores: [{ id_usuario: +document.getElementById("f_comp").value, porcentaje: 100 }],
     id_comisionista:             idComi ? +idComi : null,
     valor_comision:              _parseMiles(document.getElementById("f_pcom").value),
     permutas:                    window._ventaPermutas || [],
@@ -1117,21 +1117,21 @@ window._buscarComprador = function(texto) {
         <div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.85rem"
              onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
              onmouseout="this.style.background=''"
-             onclick="_seleccionarComprador(${c.id_comprador})">
+             onclick="_seleccionarComprador(${c.id_usuario})">
           <div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>
-          <div style="color:var(--text-muted);font-size:.78rem">Cédula: ${c.documento}${c.telefono ? " · Tel: " + c.telefono : ""}${c.mail ? " · " + c.mail : ""}</div>
+          <div style="color:var(--text-muted);font-size:.78rem">Cédula: ${c.documento}${c.telefono ? " · Tel: " + c.telefono : ""}${c.email ? " · " + c.email : ""}</div>
         </div>`).join("");
 };
 
 window._seleccionarComprador = function(id) {
-  const c = (window._ventaCompradores || []).find(x => x.id_comprador === id);
+  const c = (window._ventaCompradores || []).find(x => x.id_usuario === id);
   if (!c) return;
   window._compradorSeleccionado = c;
   document.getElementById("f_comp").value = id;
 
   const linea2 = ["Cédula: " + c.documento];
   if (c.telefono) linea2.push("Tel: " + c.telefono);
-  if (c.mail) linea2.push(c.mail);
+  if (c.email) linea2.push(c.email);
   if (c.tipo_persona) linea2.push(c.tipo_persona === "juridica" ? "Persona Jurídica" : "Persona Natural");
 
   document.getElementById("f_comp_card_info").innerHTML =
@@ -1164,7 +1164,7 @@ window._editarComprador = function() {
   document.getElementById("fe_comp_nom").value  = c.nombres || "";
   document.getElementById("fe_comp_ape").value  = c.apellidos || "";
   document.getElementById("fe_comp_tel").value  = c.telefono || "";
-  document.getElementById("fe_comp_mail").value = c.mail || "";
+  document.getElementById("fe_comp_mail").value = c.email || "";
   document.getElementById("fe_comp_tipo").value = c.tipo_persona || "natural";
   document.getElementById("f_comp_edit").style.display = "block";
 };
@@ -1184,17 +1184,17 @@ window._guardarEdicionComprador = async function() {
   if (!tel)                         return UI.toast("El teléfono es obligatorio", "error");
   if (mail && !_validarEmail(mail)) return UI.toast("Ingrese un correo electrónico válido", "error");
   try {
-    const upd = await API.put(`/compradores/${c.id_comprador}`, {
+    const upd = await API.put(`/compradores/${c.id_usuario}`, {
       documento:    doc, nombres: nom,
       apellidos:    document.getElementById("fe_comp_ape").value.trim(),
       telefono:     tel, mail,
       tipo_persona: document.getElementById("fe_comp_tipo").value,
     });
     window._compradorSeleccionado = upd;
-    const idx = (window._ventaCompradores || []).findIndex(x => x.id_comprador === upd.id_comprador);
+    const idx = (window._ventaCompradores || []).findIndex(x => x.id_usuario === upd.id_usuario);
     if (idx >= 0) window._ventaCompradores[idx] = upd;
     document.getElementById("f_comp_edit").style.display = "none";
-    _seleccionarComprador(upd.id_comprador);
+    _seleccionarComprador(upd.id_usuario);
     UI.toast("Comprador actualizado", "ok");
   } catch(e) { UI.toast(e.message, "error"); }
 };
@@ -1219,21 +1219,21 @@ window._buscarComisionista = function(texto) {
         <div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.85rem"
              onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
              onmouseout="this.style.background=''"
-             onclick="_seleccionarComisionista(${c.id_comisionista})">
+             onclick="_seleccionarComisionista(${c.id_usuario})">
           <div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>
           <div style="color:var(--text-muted);font-size:.78rem">Cédula: ${c.documento}${c.telefono ? " · Tel: " + c.telefono : ""}</div>
         </div>`).join("");
 };
 
 window._seleccionarComisionista = function(id) {
-  const c = (window._ventaComisionistas || []).find(x => x.id_comisionista === id);
+  const c = (window._ventaComisionistas || []).find(x => x.id_usuario === id);
   if (!c) return;
   window._comisionistaSeleccionado = c;
   document.getElementById("f_comi").value = id;
 
   const linea2 = ["Cédula: " + c.documento];
   if (c.telefono) linea2.push("Tel: " + c.telefono);
-  if (c.mail) linea2.push(c.mail);
+  if (c.email) linea2.push(c.email);
 
   document.getElementById("f_comi_card_info").innerHTML =
     `<div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>` +
@@ -1265,7 +1265,7 @@ window._editarComisionista = function() {
   document.getElementById("fe_comi_nom").value  = c.nombres || "";
   document.getElementById("fe_comi_ape").value  = c.apellidos || "";
   document.getElementById("fe_comi_tel").value  = c.telefono || "";
-  document.getElementById("fe_comi_mail").value = c.mail || "";
+  document.getElementById("fe_comi_mail").value = c.email || "";
   document.getElementById("f_comi_edit").style.display = "block";
 };
 
@@ -1284,16 +1284,16 @@ window._guardarEdicionComisionista = async function() {
   if (!tel)                         return UI.toast("El teléfono es obligatorio", "error");
   if (mail && !_validarEmail(mail)) return UI.toast("Ingrese un correo electrónico válido", "error");
   try {
-    const upd = await API.put(`/comisionistas/${c.id_comisionista}`, {
+    const upd = await API.put(`/comisionistas/${c.id_usuario}`, {
       documento: doc, nombres: nom,
       apellidos: document.getElementById("fe_comi_ape").value.trim(),
       telefono: tel, mail,
     });
     window._comisionistaSeleccionado = upd;
-    const idx = (window._ventaComisionistas || []).findIndex(x => x.id_comisionista === upd.id_comisionista);
+    const idx = (window._ventaComisionistas || []).findIndex(x => x.id_usuario === upd.id_usuario);
     if (idx >= 0) window._ventaComisionistas[idx] = upd;
     document.getElementById("f_comi_edit").style.display = "none";
-    _seleccionarComisionista(upd.id_comisionista);
+    _seleccionarComisionista(upd.id_usuario);
     UI.toast("Comisionista actualizado", "ok");
   } catch(e) { UI.toast(e.message, "error"); }
 };
@@ -1326,7 +1326,7 @@ window._crearCompradorRapido = async function() {
     });
     (window._ventaCompradores = window._ventaCompradores || []).push(nuevo);
     _toggleNuevoComprador();
-    _seleccionarComprador(nuevo.id_comprador);
+    _seleccionarComprador(nuevo.id_usuario);
     UI.toast("Comprador creado y seleccionado", "ok");
   } catch(e) { UI.toast(e.message, "error"); }
 };
@@ -1347,7 +1347,7 @@ window._crearComisionistaRapido = async function() {
     });
     (window._ventaComisionistas = window._ventaComisionistas || []).push(nuevo);
     _toggleNuevoComisionista();
-    _seleccionarComisionista(nuevo.id_comisionista);
+    _seleccionarComisionista(nuevo.id_usuario);
     UI.toast("Comisionista creado y seleccionado", "ok");
   } catch(e) { UI.toast(e.message, "error"); }
 };
@@ -1552,7 +1552,7 @@ function _validarBodyVenta(body) {
     return "La cuota inicial no puede ser negativa";
   if (body.cuota_inicial > body.valor_total)
     return "La cuota inicial no puede superar el valor total";
-  if (!body.compradores[0]?.id_comprador)
+  if (!body.compradores[0]?.id_usuario)
     return "Seleccione un comprador";
   if (!body.numero_cuotas)
     return "Ingrese el número de cuotas regulares";

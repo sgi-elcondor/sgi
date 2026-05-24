@@ -35,13 +35,15 @@ exports.searchUser = async (req, res) => {
   const q = (req.query.q || "").trim();
   if (!q) return res.json([]);
 
+  const id_rol = await compradorRolId();
+
   const { data, error } = await supabase.schema(SCHEMA).from("usuarios")
-    .select("id_usuario, email")
+    .select("id_usuario, email, id_rol")
     .ilike("email", `%${q}%`)
     .limit(6);
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data || []);
+  res.json((data || []).map(u => ({ ...u, is_comprador: u.id_rol === id_rol })));
 };
 
 exports.create = async (req, res) => {

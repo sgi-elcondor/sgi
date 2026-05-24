@@ -74,8 +74,8 @@ function _pvCard(m, i) {
         onerror="this.style.display='none'" onclick="pvZoomBaucher('${pago.url_baucher}')">
     </div>` : '';
 
-  const compradorNombre = pago.comprador
-    ? `${pago.comprador.nombres || ''} ${pago.comprador.apellidos || ''}`.trim()
+  const compradorNombre = pago.usuario
+    ? `${pago.usuario.nombres || ''} ${pago.usuario.apellidos || ''}`.trim()
     : null;
   const loteInfo = pago.venta?.lote
     ? `${pago.venta.lote.proyecto?.nombre || ''} · ${pago.venta.lote.codigo_lote || ''}`

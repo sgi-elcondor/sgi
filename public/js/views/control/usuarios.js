@@ -80,7 +80,7 @@ async function cargarUsuariosTabla() {
 }
 
 function mostrarAlertaPendientes(usuarios) {
-  const pendientes = usuarios.filter(u => u.roles?.nombre === 'comprador' && u.activo && !u.comprador);
+  const pendientes = usuarios.filter(u => u.roles?.nombre === 'comprador' && u.activo && !u.nombres);
   const alerta = document.getElementById('alerta-pendientes');
   if (!alerta) return;
   if (pendientes.length === 0) { alerta.style.display = 'none'; return; }
@@ -103,10 +103,8 @@ function renderTablaUsuarios(usuarios) {
   }
 
   tbody.innerHTML = usuarios.map(u => {
-    const vinculo = u.comprador
-      ? `${u.comprador.nombres} ${u.comprador.apellidos}`
-      : u.comisionista
-      ? `${u.comisionista.nombres} ${u.comisionista.apellidos}`
+    const vinculo = (u.nombres || u.apellidos)
+      ? `${u.nombres || ""} ${u.apellidos || ""}`.trim()
       : '<span style="color:var(--text-muted)">-</span>';
 
     const initial = (u.email || "?")[0].toUpperCase();
@@ -147,7 +145,7 @@ async function cambiarRolInline(sel) {
   const nuevoIdRol = parseInt(sel.value);
   const rolNombre  = sel.options[sel.selectedIndex].text;
   const u = _todosUsuarios.find(x => x.id_usuario == idUsuario);
-  const yaVinculado = !!(u?.comprador || u?.comisionista);
+  const yaVinculado = !!(u?.nombres && u?.apellidos && u?.documento);
 
   if (rolRequiereIdentidad(nuevoIdRol) && !yaVinculado) {
     // Revert dropdown visually and open full edit modal instead
@@ -268,7 +266,7 @@ async function abrirModalEditarUsuario(idUsuario) {
   const u = _todosUsuarios.find(x => x.id_usuario === idUsuario);
   if (!u) return;
 
-  const yaVinculado = !!(u.comprador || u.comisionista);
+  const yaVinculado = !!(u.nombres && u.apellidos && u.documento);
 
   UI.openModal('Editar Usuario', `
     <div class="form-grid">
@@ -292,19 +290,19 @@ async function abrirModalEditarUsuario(idUsuario) {
         <div class="form-grid" style="margin-top:.5rem;">
           <div class="form-group">
             <label>Nombres *</label>
-            <input id="u-nombres" type="text" placeholder="Nombres completos" />
+            <input id="u-nombres" type="text" placeholder="Nombres completos" value="${u.nombres || ""}" />
           </div>
           <div class="form-group">
             <label>Apellidos *</label>
-            <input id="u-apellidos" type="text" placeholder="Apellidos completos" />
+            <input id="u-apellidos" type="text" placeholder="Apellidos completos" value="${u.apellidos || ""}" />
           </div>
           <div class="form-group">
             <label>Documento de identidad *</label>
-            <input id="u-documento" type="text" placeholder="Cedula de ciudadania" />
+            <input id="u-documento" type="text" placeholder="Cedula de ciudadania" value="${u.documento || ""}" />
           </div>
           <div class="form-group">
             <label>Telefono <span style="color:var(--text-muted); font-weight:400;">(opcional)</span></label>
-            <input id="u-telefono" type="tel" placeholder="Ej: 3001234567" data-opcional="1" />
+            <input id="u-telefono" type="tel" placeholder="Ej: 3001234567" data-opcional="1" value="${u.telefono || ""}" />
           </div>
         </div>
       </div>
@@ -316,7 +314,7 @@ async function abrirModalEditarUsuario(idUsuario) {
   `);
 
   const rolSel = document.getElementById('u-rol');
-  if (rolSel) renderCamposIdentidad(rolRequiereIdentidad(rolSel.value) && !yaVinculado);
+  if (rolSel) renderCamposIdentidad(rolRequiereIdentidad(rolSel.value));
 }
 
 async function guardarNuevoUsuario() {
@@ -361,21 +359,18 @@ async function guardarEdicionUsuario() {
   const documento = document.getElementById('u-documento')?.value.trim();
   const telefono  = document.getElementById('u-telefono')?.value.trim();
 
-  const u = _todosUsuarios.find(x => x.id_usuario === _usuarioEditandoId);
-  const yaVinculado = !!(u?.comprador || u?.comisionista);
-
-  if (rolRequiereIdentidad(idRol) && !yaVinculado && (!nombres || !apellidos || !documento)) {
+  if (rolRequiereIdentidad(idRol) && (!nombres || !apellidos || !documento)) {
     UI.toast('Para este rol: nombres, apellidos y documento son obligatorios.', 'error');
     return;
   }
 
   try {
     const payload = { id_rol: idRol };
-    if (rolRequiereIdentidad(idRol) && !yaVinculado && nombres && apellidos && documento) {
+    if (rolRequiereIdentidad(idRol)) {
       payload.nombres   = nombres;
       payload.apellidos = apellidos;
       payload.documento = documento;
-      if (telefono) payload.telefono = telefono;
+      payload.telefono  = telefono || null;
     }
     await API.put(`/usuarios/${_usuarioEditandoId}`, payload);
     UI.closeModal();

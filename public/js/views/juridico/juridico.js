@@ -206,7 +206,7 @@ window.juridicoView = async function () {
       const comps = venta.venta_comprador || [];
       if (!comps.length) return `<p style="color:var(--text-muted)">Sin compradores.</p>`;
       return comps.map(vc => {
-        const c = vc.comprador || {};
+        const c = vc.usuario || {};
         return `<div style="margin-bottom:.5rem;font-size:.9rem">
           <strong>${c.nombres ?? ""} ${c.apellidos ?? ""}</strong>
           &nbsp;·&nbsp; CC ${c.documento ?? "—"}

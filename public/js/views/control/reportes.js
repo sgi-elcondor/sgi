@@ -600,8 +600,8 @@ function _renderComisionesRows(rows) {
   }
   return rows.map(r => {
     const vid          = r.id_venta;
-    const comisionista = r.comisionista
-      ? `${r.comisionista.nombres} ${r.comisionista.apellidos || ""}`.trim()
+    const comisionista = r.usuario
+      ? `${r.usuario.nombres} ${r.usuario.apellidos || ""}`.trim()
       : "—";
     const lote    = r.venta?.lote
       ? `${r.venta.lote.codigo_lote} M${r.venta.lote.manzana}-${r.venta.lote.numero_lote}`
@@ -647,7 +647,7 @@ function _renderComisionDetail(r) {
   const pendiente  = Math.max(0, valorCom - totalMicro);
   const pct        = valorCom > 0 ? Math.min(100, Math.round(totalMicro / valorCom * 100)) : 0;
   const compradores = (r.venta?.venta_comprador || [])
-    .map(vc => `${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""}`.trim())
+    .map(vc => `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""}`.trim())
     .filter(Boolean).join(", ") || "—";
 
   const micropagosHTML = micros.length === 0

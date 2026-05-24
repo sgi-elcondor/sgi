@@ -60,7 +60,7 @@ window.compradoresView = async function () {
       : `<div class="user-avatar-icon">${(c.nombres || "?")[0].toUpperCase()}</div>`;
     const nombre = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
     const accionesCell = canEdit
-      ? `<td><button class="btn btn-ghost btn-sm btn-comprador-editar" data-id="${c.id_comprador}">Editar</button></td>`
+      ? `<td><button class="btn btn-ghost btn-sm btn-comprador-editar" data-id="${c.id_usuario}">Editar</button></td>`
       : "";
     return `
       <tr>
@@ -182,7 +182,7 @@ window.compradoresView = async function () {
     tbody.addEventListener("click", e => {
       const btn = e.target.closest(".btn-comprador-editar");
       if (!btn) return;
-      const c = data.find(x => String(x.id_comprador) === btn.dataset.id);
+      const c = data.find(x => String(x.id_usuario) === btn.dataset.id);
       if (c) compradorForm(c);
     });
   }
@@ -196,7 +196,7 @@ window.compradorForm = function (comprador) {
   _selectedUserBlocked = false;
 
   const c      = comprador || {};
-  const isEdit = !!c.id_comprador;
+  const isEdit = !!c.id_usuario;
   const opt    = (val, current, label) =>
     `<option value="${val}" ${val === current ? "selected" : ""}>${label}</option>`;
 
@@ -291,7 +291,7 @@ window.compradorForm = function (comprador) {
 
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarComprador(${isEdit ? c.id_comprador : ""})">${isEdit ? "Guardar cambios" : "Guardar"}</button>
+      <button class="btn btn-primary" onclick="guardarComprador(${isEdit ? c.id_usuario : ""})">${isEdit ? "Guardar cambios" : "Guardar"}</button>
     </div>`);
 };
 
@@ -331,10 +331,10 @@ window.onCompradorMailInput = function () {
         `<div class="user-search-item"
               data-uid="${u.id_usuario}"
               data-email="${escAttr(u.email)}"
-              data-blocked="${!!u.id_comprador}"
+              data-blocked="${!!u.is_comprador}"
               onclick="seleccionarUsuarioParaComprador(this)">
            <span style="pointer-events:none">${escAttr(u.email)}</span>
-           ${u.id_comprador
+           ${u.is_comprador
              ? `<span class="badge badge-warning" style="pointer-events:none">Ya tiene comprador</span>`
              : `<span class="badge badge-success" style="pointer-events:none">Disponible</span>`}
          </div>`
