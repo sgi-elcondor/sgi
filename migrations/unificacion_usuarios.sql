@@ -36,7 +36,7 @@ UPDATE condor.usuarios u
 SET
   nombres      = c.nombres,
   apellidos    = c.apellidos,
-  documento    = c.documento,
+  documento    = c.documento::TEXT,
   tipo_persona = 'natural',
   telefono     = c.telefono
 FROM condor.comisionista c
@@ -94,7 +94,7 @@ INSERT INTO condor.usuarios (
 SELECT
   c.mail,
   (SELECT id_rol FROM condor.roles WHERE nombre = 'comisionista' LIMIT 1),
-  c.nombres, c.apellidos, c.documento,
+  c.nombres, c.apellidos, c.documento::TEXT,
   'natural', c.telefono, TRUE, NOW()
 FROM condor.comisionista c
 WHERE NOT EXISTS (
@@ -109,7 +109,7 @@ SET
   id_comisionista = c.id_comisionista,
   nombres         = COALESCE(u.nombres,    c.nombres),
   apellidos       = COALESCE(u.apellidos,  c.apellidos),
-  documento       = COALESCE(u.documento,  c.documento),
+  documento       = COALESCE(u.documento,  c.documento::TEXT),
   tipo_persona    = COALESCE(u.tipo_persona, 'natural'),
   telefono        = COALESCE(u.telefono,   c.telefono)
 FROM condor.comisionista c
