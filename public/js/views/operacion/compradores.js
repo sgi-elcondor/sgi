@@ -60,7 +60,7 @@ window.compradoresView = async function () {
       : `<div class="user-avatar-icon">${(c.nombres || "?")[0].toUpperCase()}</div>`;
     const nombre = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
     const accionesCell = canEdit
-      ? `<td><button class="btn btn-ghost btn-sm btn-comprador-editar" data-id="${c.id_comprador}">Editar</button></td>`
+      ? `<td><button class="btn btn-ghost btn-sm btn-comprador-editar" data-id="${c.id_usuario}">Editar</button></td>`
       : "";
     return `
       <tr>
@@ -69,7 +69,7 @@ window.compradoresView = async function () {
             ${avatar}
             <div class="comprador-cell-info">
               <span class="comprador-cell-name">${nombre || "—"}</span>
-              <span class="comprador-cell-mail">${c.mail || "Sin correo"}</span>
+              <span class="comprador-cell-mail">${c.email || "Sin correo"}</span>
             </div>
             ${accessBadge(c)}
           </div>
@@ -159,7 +159,7 @@ window.compradoresView = async function () {
       if (tipodoc && c.tipo_documento !== tipodoc) return false;
       if (rango   && c.rango_pago     !== rango)   return false;
       if (estado  && c.estado         !== estado)  return false;
-      if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.mail}`).includes(q)) return false;
+      if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.email}`).includes(q)) return false;
       return true;
     });
 
@@ -182,7 +182,7 @@ window.compradoresView = async function () {
     tbody.addEventListener("click", e => {
       const btn = e.target.closest(".btn-comprador-editar");
       if (!btn) return;
-      const c = data.find(x => String(x.id_comprador) === btn.dataset.id);
+      const c = data.find(x => String(x.id_usuario) === btn.dataset.id);
       if (c) compradorForm(c);
     });
   }
@@ -196,7 +196,7 @@ window.compradorForm = function (comprador) {
   _selectedUserBlocked = false;
 
   const c      = comprador || {};
-  const isEdit = !!c.id_comprador;
+  const isEdit = !!c.id_usuario;
   const opt    = (val, current, label) =>
     `<option value="${val}" ${val === current ? "selected" : ""}>${label}</option>`;
 
@@ -220,7 +220,7 @@ window.compradorForm = function (comprador) {
     ? `<div class="form-group form-group--full">
          <label>Email${c.linked_email ? ` <span style="color:var(--text-muted);font-size:.7rem;font-weight:400">(correo de acceso)</span>` : ""}</label>
          <input id="f_mail" type="email" placeholder="correo@ejemplo.com"
-           value="${escAttr(c.mail)}"
+           value="${escAttr(c.email)}"
            ${c.linked_email ? `readonly style="background:var(--surface-2);color:var(--text-muted);cursor:not-allowed"` : ""} />
          ${linkedAccountInfo}
        </div>`
@@ -291,7 +291,7 @@ window.compradorForm = function (comprador) {
 
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarComprador(${isEdit ? c.id_comprador : ""})">${isEdit ? "Guardar cambios" : "Guardar"}</button>
+      <button class="btn btn-primary" onclick="guardarComprador(${isEdit ? c.id_usuario : ""})">${isEdit ? "Guardar cambios" : "Guardar"}</button>
     </div>`);
 };
 
@@ -331,10 +331,10 @@ window.onCompradorMailInput = function () {
         `<div class="user-search-item"
               data-uid="${u.id_usuario}"
               data-email="${escAttr(u.email)}"
-              data-blocked="${!!u.id_comprador}"
+              data-blocked="${!!u.is_comprador}"
               onclick="seleccionarUsuarioParaComprador(this)">
            <span style="pointer-events:none">${escAttr(u.email)}</span>
-           ${u.id_comprador
+           ${u.is_comprador
              ? `<span class="badge badge-warning" style="pointer-events:none">Ya tiene comprador</span>`
              : `<span class="badge badge-success" style="pointer-events:none">Disponible</span>`}
          </div>`

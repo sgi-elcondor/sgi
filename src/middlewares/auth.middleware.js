@@ -1,4 +1,4 @@
-﻿const admin    = require('../config/firebase');
+const admin    = require('../config/firebase');
 const supabase = require('../config/supabase');
 
 async function verificarToken(req, res, next) {
@@ -15,7 +15,7 @@ async function verificarToken(req, res, next) {
     let { data: usuario, error } = await supabase
       .schema('condor')
       .from('usuarios')
-      .select('id_usuario, email, activo, id_rol, id_comprador, id_comisionista')
+      .select('id_usuario, email, activo, id_rol')
       .eq('firebase_uid', decoded.uid)
       .single();
 
@@ -23,7 +23,7 @@ async function verificarToken(req, res, next) {
       const { data: byEmail } = await supabase
         .schema('condor')
         .from('usuarios')
-        .select('id_usuario, email, activo, id_rol, id_comprador, id_comisionista')
+        .select('id_usuario, email, activo, id_rol')
         .eq('email', decoded.email)
         .single();
 
@@ -57,7 +57,7 @@ async function verificarToken(req, res, next) {
           email:        decoded.email,
           id_rol:       rolDefault.id_rol,
         }])
-        .select('id_usuario, email, activo, id_rol, id_comprador, id_comisionista')
+        .select('id_usuario, email, activo, id_rol')
         .single();
 
       if (errInsert || !nuevo) {
@@ -98,11 +98,10 @@ async function verificarToken(req, res, next) {
     );
 
     req.usuario = {
-      uid:             decoded.uid,
-      email:           usuario.email,
-      rol:             rolData.nombre,
-      id_comprador:    usuario.id_comprador,
-      id_comisionista: usuario.id_comisionista,
+      uid:        decoded.uid,
+      id_usuario: usuario.id_usuario,
+      email:      usuario.email,
+      rol:        rolData.nombre,
       permisos,
     };
 

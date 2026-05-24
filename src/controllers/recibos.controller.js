@@ -24,7 +24,7 @@ exports.getAll = async (req, res) => {
           venta:id_venta(
             id_venta,
             lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
-            venta_comprador(comprador:id_comprador(nombres, apellidos, documento))
+            venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
         )
       )
@@ -40,7 +40,7 @@ exports.getAll = async (req, res) => {
     const cuota   = cp?.cuota;
     const venta   = cuota?.venta;
     const lote    = venta?.lote;
-    const comp    = venta?.venta_comprador?.[0]?.comprador;
+    const comp    = venta?.venta_comprador?.[0]?.usuario;
     const factura = cuota?.cuota_factura?.[0]?.factura;
     // Use negative id_pago as synthetic key when no formal recibo exists yet
     return {
@@ -131,19 +131,18 @@ exports.generarRecibos = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { numero_recibo, emitido_por, observaciones, id_pago, id_comprador } = req.body;
+  const { numero_recibo, emitido_por, observaciones, id_pago } = req.body;
   const { data: recibo, error: er } = await supabase.schema(SCHEMA).from("recibo")
     .insert([{ numero_recibo, emitido_por, observaciones }]).select().single();
   if (er) return res.status(400).json({ error: er.message });
   if (id_pago) await supabase.schema(SCHEMA).from("recibo_pago").insert([{ id_recibo: recibo.id_recibo, id_pago }]);
-  if (id_comprador) await supabase.schema(SCHEMA).from("comprador_recibo").insert([{ id_recibo: recibo.id_recibo, id_comprador }]);
   res.status(201).json(recibo);
 };
 
 
 exports.getMisRecibos = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
@@ -159,12 +158,12 @@ exports.getMisRecibos = async (req, res) => {
           venta:id_venta(
             id_venta,
             lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
-            venta_comprador(comprador:id_comprador(nombres, apellidos, documento))
+            venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
         )
       )
     `)
-    .eq("id_comprador", id_comprador)
+    .eq("id_usuario", id_usuario)
     .eq("estado", "aceptado")
     .order("fecha_pago", { ascending: false });
 
@@ -178,7 +177,7 @@ exports.getMisRecibos = async (req, res) => {
       const cuota   = cp?.cuota;
       const venta   = cuota?.venta;
       const lote    = venta?.lote;
-      const comp    = venta?.venta_comprador?.[0]?.comprador;
+      const comp    = venta?.venta_comprador?.[0]?.usuario;
       const factura = cuota?.cuota_factura?.[0]?.factura;
       return {
         id_recibo:      recibo?.id_recibo,

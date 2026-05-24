@@ -28,7 +28,7 @@ window.comisionistasView = async function() {
         <select id="sel_comisionista" onchange="cargarComisionesDetalle()">
           <option value="">— Seleccione un comisionista —</option>
           ${lista.map(c => `
-            <option value="${c.id_comisionista}">
+            <option value="${c.id_usuario}">
               ${c.nombres} ${c.apellidos || ""} &middot; ${c.documento}
             </option>`).join("")}
         </select>

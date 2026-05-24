@@ -220,8 +220,7 @@ async function iniciarApp() {
     AppState.init(perfil);
 
     const necesitaOnboarding =
-      (perfil.rol === "comprador"    && !perfil.id_comprador) ||
-      (perfil.rol === "comisionista" && !perfil.id_comisionista);
+      (perfil.rol === "comprador" || perfil.rol === "comisionista") && !perfil.nombres;
 
     window.currentUser._originalVistas = perfil.vistas.slice();
 

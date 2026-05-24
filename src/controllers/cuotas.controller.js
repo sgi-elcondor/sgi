@@ -118,7 +118,7 @@ exports.getPendientes = async (req, res) => {
     .from("cuota")
     .select(`
       *,
-      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento, rango_pago))),
+      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento, rango_pago))),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
       cuota_factura(id_fraccion)
     `)
@@ -131,7 +131,7 @@ exports.getPendientes = async (req, res) => {
 
   for (const c of (data || [])) {
     const lote      = c.venta?.lote;
-    const comprador = c.venta?.venta_comprador?.[0]?.comprador;
+    const comprador = c.venta?.venta_comprador?.[0]?.usuario;
     const dias      = Math.floor((hoy - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
 
     const base = {
@@ -183,7 +183,7 @@ exports.getVencidas = async (req, res) => {
   const hoy = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos)))")
+    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))")
     .lt("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
@@ -191,7 +191,7 @@ exports.getVencidas = async (req, res) => {
 
   res.json((data || []).map(c => {
     const lote      = c.venta?.lote;
-    const comprador = c.venta?.venta_comprador?.[0]?.comprador;
+    const comprador = c.venta?.venta_comprador?.[0]?.usuario;
     const dias      = Math.floor((Date.now() - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
     return {
       id_cuota:          c.id_cuota,
@@ -337,13 +337,13 @@ exports.deleteFracciones = async (req, res) => {
 };
 
 exports.getMisCuotas = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const { data: vcData, error: vcErr } = await supabase.schema(SCHEMA)
     .from("venta_comprador")
     .select("id_venta")
-    .eq("id_comprador", id_comprador);
+    .eq("id_usuario", id_usuario);
 
   if (vcErr) return res.status(500).json({ error: vcErr.message });
   const ventaIds = (vcData || []).map(vc => vc.id_venta);
