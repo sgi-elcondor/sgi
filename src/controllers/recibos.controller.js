@@ -170,34 +170,37 @@ exports.getMisRecibos = async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json((data || []).map(p => {
-    const recibo  = p.recibo_pago?.[0]?.recibo;
-    const cp      = p.cuota_pago?.[0];
-    const cuota   = cp?.cuota;
-    const venta   = cuota?.venta;
-    const lote    = venta?.lote;
-    const comp    = venta?.venta_comprador?.[0]?.comprador;
-    const factura = cuota?.cuota_factura?.[0]?.factura;
-    return {
-      id_recibo:      recibo?.id_recibo      ?? -(p.id_pago),
-      numero_recibo:  recibo?.numero_recibo  ?? `REC-${String(p.id_pago).padStart(6, "0")}`,
-      fecha_emision:  recibo?.fecha_emision  ?? p.fecha_pago?.split("T")[0] ?? null,
-      emitido_por:    recibo?.emitido_por    ?? "Sistema SGI",
-      observaciones:  recibo?.observaciones  ?? null,
-      id_pago:        p.id_pago,
-      fecha_pago:     p.fecha_pago,
-      valor_pago:     p.valor_pago,
-      metodo_pago:    p.metodo_pago,
-      referencia:     p.referencia,
-      estado_pago:    p.estado,
-      id_venta:       venta?.id_venta         ?? p.id_venta ?? null,
-      numero_cuota:   cuota?.numero_cuota     ?? null,
-      id_factura:     factura?.id_factura     ?? null,
-      numero_factura: factura?.numero_factura ?? null,
-      proyecto:       lote?.proyecto?.nombre  ?? "—",
-      codigo_lote:    lote?.codigo_lote       ?? "—",
-      comprador:      comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
-      documento:      comp?.documento         ?? null,
-    };
-  }));
+  res.json((data || [])
+    .filter(p => p.recibo_pago && p.recibo_pago.length > 0)
+    .map(p => {
+      const recibo  = p.recibo_pago[0].recibo;
+      const cp      = p.cuota_pago?.[0];
+      const cuota   = cp?.cuota;
+      const venta   = cuota?.venta;
+      const lote    = venta?.lote;
+      const comp    = venta?.venta_comprador?.[0]?.comprador;
+      const factura = cuota?.cuota_factura?.[0]?.factura;
+      return {
+        id_recibo:      recibo?.id_recibo,
+        numero_recibo:  recibo?.numero_recibo,
+        fecha_emision:  recibo?.fecha_emision  ?? p.fecha_pago?.split("T")[0] ?? null,
+        emitido_por:    recibo?.emitido_por    ?? "Sistema SGI",
+        observaciones:  recibo?.observaciones  ?? null,
+        id_pago:        p.id_pago,
+        fecha_pago:     p.fecha_pago,
+        valor_pago:     p.valor_pago,
+        metodo_pago:    p.metodo_pago,
+        referencia:     p.referencia,
+        estado_pago:    p.estado,
+        id_venta:       venta?.id_venta         ?? p.id_venta ?? null,
+        numero_cuota:   cuota?.numero_cuota     ?? null,
+        id_factura:     factura?.id_factura     ?? null,
+        numero_factura: factura?.numero_factura ?? null,
+        proyecto:       lote?.proyecto?.nombre  ?? "—",
+        codigo_lote:    lote?.codigo_lote       ?? "—",
+        comprador:      comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+        documento:      comp?.documento         ?? null,
+      };
+    })
+  );
 };

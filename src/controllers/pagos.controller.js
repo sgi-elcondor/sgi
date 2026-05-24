@@ -128,6 +128,18 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
+  // Derive id_venta and id_comprador from the first cuota so the buyer can see this payment
+  const { data: cuotaInfo } = await supabase.schema(SCHEMA)
+    .from("cuota").select("id_venta").eq("id_cuota", cuotas[0].id_cuota).single();
+
+  const id_venta = cuotaInfo?.id_venta ?? null;
+  let id_comprador = null;
+  if (id_venta) {
+    const { data: vc } = await supabase.schema(SCHEMA)
+      .from("venta_comprador").select("id_comprador").eq("id_venta", id_venta).single();
+    id_comprador = vc?.id_comprador ?? null;
+  }
+
   let consec;
   try { consec = await consecutivos.nextPago(); }
   catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
@@ -141,10 +153,23 @@ exports.create = async (req, res) => {
       referencia:   referencia || null,
       numero_pago:  consec.numero_pago,
       estado:       "aceptado",
+      id_venta,
+      id_comprador,
     }]).select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
-  // 2. Vincular cuotas al pago
+  // 2. Accept any pending comprobantes from this buyer on the same venta
+  if (id_comprador && id_venta) {
+    await supabase.schema(SCHEMA)
+      .from('pago')
+      .update({ estado: 'aceptado' })
+      .eq('id_comprador', id_comprador)
+      .eq('id_venta', id_venta)
+      .eq('estado', 'pendiente_revision')
+      .neq('id_pago', pago.id_pago);
+  }
+
+  // 4. Vincular cuotas al pago
   const cuotaRows = cuotas.map(c => ({
     id_pago:        pago.id_pago,
     id_cuota:       c.id_cuota,
@@ -153,7 +178,7 @@ exports.create = async (req, res) => {
   const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(cuotaRows);
   if (ec) return res.status(400).json({ error: ec.message });
 
-  // 3. Mark cuotas as paid based on cumulative accepted payments
+  // 5. Mark cuotas as paid based on cumulative accepted payments
   const ids = cuotas.map(c => c.id_cuota);
 
   const [{ data: cuotasDB }, { data: pagosAplicados }] = await Promise.all([
@@ -518,19 +543,12 @@ exports.acceptBatch = async (req, res) => {
       comision_causada = await verificarComision(pagoActual.id_venta, req.usuario.email).catch(() => false);
     }
 
-    // Auto-generate receipt if not already linked
-    const { data: reciboExist } = await supabase.schema(SCHEMA)
-      .from('recibo_pago').select('id_recibo').eq('id_pago', id_pago).maybeSingle();
-
-    if (!reciboExist) {
-      const numero_recibo = `REC-${String(id_pago).padStart(6, '0')}`;
-      const { data: recibo } = await supabase.schema(SCHEMA).from('recibo')
-        .insert([{ numero_recibo, emitido_por: req.usuario.email }]).select().single();
-      if (recibo) {
-        await supabase.schema(SCHEMA).from('recibo_pago')
-          .insert([{ id_recibo: recibo.id_recibo, id_pago }]);
-      }
-    }
+    // Auto-generate receipt using the standard service (RC-YYYYMM-NNNNN format)
+    await recibos.crearParaPago({
+      id_pago,
+      numero_pago: pago.numero_pago,
+      emitido_por: req.usuario.email,
+    });
 
     results.push({ id_pago, ok: true, pago, comision_causada });
   }
