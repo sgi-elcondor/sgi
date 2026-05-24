@@ -98,7 +98,7 @@ SELECT
 FROM condor.venta v
 JOIN condor.lote l        ON l.id_lote     = v.id_lote
 JOIN condor.proyecto pr   ON pr.id_proyecto = l.id_proyecto
-WHERE v.estado IN ('en_mora', 'pre_mora', 'devolucion');
+WHERE v.estado IN ('en_mora', 'pre_mora');
 
 -- ================================================================
 -- 4. Auditoria basica de operaciones
