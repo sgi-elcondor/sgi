@@ -30,12 +30,8 @@ function applyAdminView() {
 }
 
 function applyRoleView(idRol, rolNombre) {
-  if (rolNombre === "comprador" && !window.currentUser.id_comprador) {
-    showLinkProfileModal("comprador", function() { applyRoleView(idRol, rolNombre); }, revertRoleSelect);
-    return;
-  }
-  if (rolNombre === "comisionista" && !window.currentUser.id_comisionista) {
-    showLinkProfileModal("comisionista", function() { applyRoleView(idRol, rolNombre); }, revertRoleSelect);
+  if ((rolNombre === "comprador" || rolNombre === "comisionista") && !window.currentUser.nombres) {
+    showLinkProfileModal(rolNombre, function() { applyRoleView(idRol, rolNombre); }, revertRoleSelect);
     return;
   }
 
@@ -114,8 +110,9 @@ function showLinkProfileModal(tipo, onSuccess, onCancel) {
       const result = await API.post("/auth/completar-perfil", {
         nombres, apellidos, documento, telefono: telefono || undefined, tipo,
       });
-      if (tipo === "comprador")    window.currentUser.id_comprador    = result.id_comprador;
-      if (tipo === "comisionista") window.currentUser.id_comisionista = result.id_comisionista;
+      window.currentUser.nombres   = nombres;
+      window.currentUser.apellidos = apellidos;
+      window.currentUser.documento = documento;
       overlay.remove();
       onSuccess();
     } catch (err) {
