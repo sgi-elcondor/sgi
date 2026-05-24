@@ -1,17 +1,17 @@
 'use strict';
-// Deletes all venta/cuota/pago/factura/recibo data for a single buyer and frees their lots.
-// Does NOT delete the comprador or usuario records.
-// Usage: node seeds/reset-comprador.js allexgaming3@gmail.com
+// Resets financial data (pagos, facturas, recibos, fracciones) for a single buyer.
+// Keeps: venta, cuotas, venta_comprador, lote assignment.
+// Resets cuota.estado and venta.estado to their initial values.
+// Usage: node seeds/reset-pagos-comprador.js allexgaming3@gmail.com
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { supabase, SCHEMA } = require('./lib/batch');
 
 const email = process.argv[2];
-if (!email) { console.error('Usage: node seeds/reset-comprador.js <email>'); process.exit(1); }
+if (!email) { console.error('Usage: node seeds/reset-pagos-comprador.js <email>'); process.exit(1); }
 
 async function run() {
-  console.log(`\n→ Resetting data for: ${email}\n`);
+  console.log(`\n→ Resetting payments for: ${email}\n`);
 
-  // 1. Find comprador
   const { data: usuario, error: eu } = await supabase.schema(SCHEMA)
     .from('usuarios')
     .select('id_comprador')
@@ -25,53 +25,32 @@ async function run() {
   const { id_comprador } = usuario;
   console.log(`  ✓ id_comprador: ${id_comprador}`);
 
-  // 2. Find ventas (via venta_comprador, or orphan ventas with no link)
   const { data: vcRows } = await supabase.schema(SCHEMA)
     .from('venta_comprador')
     .select('id_venta')
     .eq('id_comprador', id_comprador);
 
-  let ventaIds = (vcRows || []).map(r => r.id_venta);
-
+  const ventaIds = (vcRows || []).map(r => r.id_venta);
   if (!ventaIds.length) {
-    // venta_comprador may have been partially deleted — scan for orphan ventas
-    const { data: allVentas } = await supabase.schema(SCHEMA).from('venta').select('id_venta, id_lote');
-    const { data: allVc } = await supabase.schema(SCHEMA).from('venta_comprador').select('id_venta');
-    const linked = new Set((allVc || []).map(r => r.id_venta));
-    const orphans = (allVentas || []).filter(v => !linked.has(v.id_venta));
-    if (orphans.length) {
-      console.log(`  ⚠ No venta_comprador found — using ${orphans.length} orphan venta(s): ${orphans.map(v => v.id_venta).join(', ')}`);
-      ventaIds = orphans.map(v => v.id_venta);
-    } else {
-      console.log('  No ventas found — nothing to delete.');
-      return;
-    }
+    console.log('  No ventas found — nothing to reset.');
+    return;
   }
-
   console.log(`  ✓ ventas: ${ventaIds.join(', ')}`);
 
-  // 3. Collect lote ids before deleting
-  const { data: ventaRows } = await supabase.schema(SCHEMA)
-    .from('venta')
-    .select('id_lote')
-    .in('id_venta', ventaIds);
-  const loteIds = (ventaRows || []).map(r => r.id_lote).filter(Boolean);
-
-  // 4. Collect cuota ids
   const { data: cuotaRows } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select('id_cuota')
     .in('id_venta', ventaIds);
   const cuotaIds = (cuotaRows || []).map(r => r.id_cuota);
+  console.log(`  ✓ cuotas: ${cuotaIds.length}`);
 
-  // 5. Collect pago ids
   const { data: pagoRows } = await supabase.schema(SCHEMA)
     .from('pago')
     .select('id_pago')
-    .in('id_venta', ventaIds);
+    .or(`id_venta.in.(${ventaIds.join(',')}),id_comprador.eq.${id_comprador}`);
   const pagoIds = (pagoRows || []).map(r => r.id_pago);
+  console.log(`  ✓ pagos: ${pagoIds.length}`);
 
-  // 6. Collect recibo ids (via recibo_pago)
   let reciboIds = [];
   if (pagoIds.length) {
     const { data: rpRows } = await supabase.schema(SCHEMA)
@@ -80,8 +59,8 @@ async function run() {
       .in('id_pago', pagoIds);
     reciboIds = (rpRows || []).map(r => r.id_recibo);
   }
+  console.log(`  ✓ recibos: ${reciboIds.length}`);
 
-  // 7. Collect factura ids (via cuota_factura — factura has no id_venta column)
   let facturaIds = [];
   if (cuotaIds.length) {
     const { data: cfRows } = await supabase.schema(SCHEMA)
@@ -90,29 +69,13 @@ async function run() {
       .in('id_cuota', cuotaIds);
     facturaIds = (cfRows || []).map(r => r.id_factura);
   }
+  console.log(`  ✓ facturas: ${facturaIds.length}`);
 
-  // Delete in reverse dependency order
   const steps = [
-    async () => {
-      // Cancel ventas first so the DB trigger resets lote.estado to 'disponible'
-      if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('venta').update({ estado: 'cancelada' }).in('id_venta', ventaIds);
-      log('venta.estado → cancelada (frees lotes via trigger)', error);
-    },
-    async () => {
-      if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('auditoria').delete().in('id_registro', ventaIds.map(String));
-      log('auditoria (by venta)', error);
-    },
     async () => {
       if (!pagoIds.length) return;
       const { error } = await supabase.schema(SCHEMA).from('auditoria').delete().in('id_registro', pagoIds.map(String));
-      log('auditoria (by pago)', error);
-    },
-    async () => {
-      if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('observacion_juridica').delete().in('id_venta', ventaIds);
-      log('observacion_juridica', error);
+      log('auditoria (pagos)', error);
     },
     async () => {
       if (!cuotaIds.length) return;
@@ -152,7 +115,7 @@ async function run() {
     async () => {
       if (!pagoIds.length) return;
       const { error } = await supabase.schema(SCHEMA).from('bank_transaction').update({ id_pago: null }).in('id_pago', pagoIds);
-      log('bank_transaction (unlink id_pago)', error);
+      log('bank_transaction (unlink)', error);
     },
     async () => {
       if (!pagoIds.length) return;
@@ -166,31 +129,29 @@ async function run() {
     },
     async () => {
       if (!cuotaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('cuota').delete().in('id_cuota', cuotaIds);
-      log('cuota', error);
+      const hoy = new Date().toISOString().split('T')[0];
+      const { data: cuotas } = await supabase.schema(SCHEMA)
+        .from('cuota')
+        .select('id_cuota, fecha_vencimiento')
+        .in('id_cuota', cuotaIds);
+      for (const c of (cuotas || [])) {
+        const estado = c.fecha_vencimiento <= hoy ? 'activa' : 'pendiente';
+        await supabase.schema(SCHEMA).from('cuota').update({ estado }).eq('id_cuota', c.id_cuota);
+      }
+      log('cuota.estado reset', null);
     },
     async () => {
       if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('venta_comisionista').delete().in('id_venta', ventaIds);
-      log('venta_comisionista', error);
+      // Temporarily cancel so lote trigger fires and resets lote.estado, then restore to activa
+      await supabase.schema(SCHEMA).from('venta').update({ estado: 'cancelada' }).in('id_venta', ventaIds);
+      const { error } = await supabase.schema(SCHEMA).from('venta').update({ estado: 'activa' }).in('id_venta', ventaIds);
+      log('venta.estado reset → activa (lote freed via cancel trigger)', error);
     },
-    async () => {
-      if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('venta_comprador').delete().in('id_venta', ventaIds);
-      log('venta_comprador', error);
-    },
-    async () => {
-      if (!ventaIds.length) return;
-      const { error } = await supabase.schema(SCHEMA).from('venta').delete().in('id_venta', ventaIds);
-      log('venta', error);
-    },
-    // Note: lote.estado has a system-only constraint — availability is derived from active ventas,
-    // so no update needed; once the venta is deleted the lot is automatically free.
   ];
 
   for (const step of steps) await step();
 
-  console.log('\n✓ Done. The buyer has no ventas and their lots are now available.\n');
+  console.log('\n✓ Done. Venta, cuotas, and lot assignment preserved. Payments reset.\n');
 }
 
 function log(label, error) {
