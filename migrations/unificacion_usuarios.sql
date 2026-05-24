@@ -132,7 +132,7 @@ WHERE u.id_comprador = vc.id_comprador
 UPDATE condor.venta_comprador vc
 SET id_usuario = u.id_usuario
 FROM condor.comprador c
-JOIN condor.usuarios u ON u.documento = c.documento
+JOIN condor.usuarios u ON u.documento = c.documento::TEXT
 WHERE vc.id_comprador = c.id_comprador
   AND vc.id_usuario IS NULL;
 
@@ -151,7 +151,7 @@ WHERE u.id_comisionista = vc.id_comisionista
 UPDATE condor.venta_comisionista vc
 SET id_usuario = u.id_usuario
 FROM condor.comisionista c
-JOIN condor.usuarios u ON u.documento = c.documento
+JOIN condor.usuarios u ON u.documento = c.documento::TEXT
 WHERE vc.id_comisionista = c.id_comisionista
   AND vc.id_usuario IS NULL;
 
