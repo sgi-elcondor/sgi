@@ -111,7 +111,7 @@ exports.getAll = async (req, res) => {
       estado, url_baucher, numero_cuenta_origen, tipo_pago, id_venta,
       venta:id_venta(
         lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
-        venta_comprador(comprador:id_comprador(nombres, apellidos))
+        venta_comprador(usuario:id_usuario(nombres, apellidos))
       ),
       cuota_pago(
         valor_aplicado,
@@ -128,7 +128,7 @@ exports.getAll = async (req, res) => {
 
   res.json((data || []).map(p => {
     const lote      = p.venta?.lote;
-    const comp      = p.venta?.venta_comprador?.[0]?.comprador;
+    const comp      = p.venta?.venta_comprador?.[0]?.usuario;
     const cuotaPago = p.cuota_pago?.[0];
     const factura   = cuotaPago?.cuota?.cuota_factura?.[0]?.factura;
     return {
@@ -161,16 +161,15 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
-  // Derive id_venta and id_comprador from the first cuota so the buyer can see this payment
   const { data: cuotaInfo } = await supabase.schema(SCHEMA)
     .from("cuota").select("id_venta").eq("id_cuota", cuotas[0].id_cuota).single();
 
   const id_venta = cuotaInfo?.id_venta ?? null;
-  let id_comprador = null;
+  let id_usuario_comprador = null;
   if (id_venta) {
     const { data: vc } = await supabase.schema(SCHEMA)
-      .from("venta_comprador").select("id_comprador").eq("id_venta", id_venta).single();
-    id_comprador = vc?.id_comprador ?? null;
+      .from("venta_comprador").select("id_usuario").eq("id_venta", id_venta).limit(1).single();
+    id_usuario_comprador = vc?.id_usuario ?? null;
   }
 
   let consec;
@@ -185,18 +184,17 @@ exports.create = async (req, res) => {
       metodo_pago,
       referencia:   referencia || null,
       numero_pago:  consec.numero_pago,
-      estado:       "aceptado",
+      estado:     "aceptado",
       id_venta,
-      id_comprador,
+      id_usuario: id_usuario_comprador,
     }]).select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
-  // 2. Accept any pending comprobantes from this buyer on the same venta
-  if (id_comprador && id_venta) {
+  if (id_usuario_comprador && id_venta) {
     await supabase.schema(SCHEMA)
       .from('pago')
       .update({ estado: 'aceptado' })
-      .eq('id_comprador', id_comprador)
+      .eq('id_usuario', id_usuario_comprador)
       .eq('id_venta', id_venta)
       .eq('estado', 'pendiente_revision')
       .neq('id_pago', pago.id_pago);
@@ -358,8 +356,8 @@ exports.createAbonoExtraordinario = async (req, res) => {
 };
 
 exports.getMisPagos = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
@@ -375,7 +373,7 @@ exports.getMisPagos = async (req, res) => {
         recibo:id_recibo (numero_recibo, fecha_emision)
       )
     `)
-    .eq("id_comprador", id_comprador)
+    .eq("id_usuario", id_usuario)
     .order("fecha_pago", { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
@@ -383,8 +381,8 @@ exports.getMisPagos = async (req, res) => {
 };
 
 exports.createCompradorPago = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const {
     fecha_pago, valor_pago, metodo_pago,
@@ -406,9 +404,9 @@ exports.createCompradorPago = async (req, res) => {
   if (id_venta) {
     const { data: vc } = await supabase.schema(SCHEMA)
       .from("venta_comprador")
-      .select("id_comprador")
+      .select("id_usuario")
       .eq("id_venta", id_venta)
-      .eq("id_comprador", id_comprador)
+      .eq("id_usuario", id_usuario)
       .single();
     if (!vc) return res.status(403).json({ error: "No tienes acceso a esta venta" });
   }
@@ -424,7 +422,7 @@ exports.createCompradorPago = async (req, res) => {
       url_baucher:          url_baucher || null,
       numero_cuenta_origen: numero_cuenta_origen || null,
       tipo_pago:            tipo_pago || "cuota",
-      id_comprador,
+      id_usuario,
       id_venta:             id_venta || null,
       id_cuota_propuesta:   id_cuota_propuesta || null,
     }])

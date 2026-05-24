@@ -2,25 +2,59 @@ const supabase     = require("../config/supabase");
 const consecutivos = require("../services/consecutivos.service");
 const SCHEMA       = "condor";
 
+async function comisionistaRolId() {
+  const { data } = await supabase.schema(SCHEMA).from("roles").select("id_rol").eq("nombre", "comisionista").single();
+  return data?.id_rol ?? null;
+}
+
 exports.getAll = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("comisionista").select("*").order("nombres");
+  const id_rol = await comisionistaRolId();
+  if (!id_rol) return res.status(500).json({ error: "Rol comisionista no encontrado" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("usuarios")
+    .select("id_usuario, email, activo, nombres, apellidos, documento, telefono, fecha_creacion")
+    .eq("id_rol", id_rol)
+    .order("nombres");
+
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 };
 
 exports.create = async (req, res) => {
-  const { documento, nombres, apellidos, telefono } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("comisionista").insert([{ documento, nombres, apellidos, telefono }]).select().single();
+  const { documento, nombres, apellidos, telefono, mail } = req.body;
+
+  const id_rol = await comisionistaRolId();
+  if (!id_rol) return res.status(500).json({ error: "Rol comisionista no encontrado" });
+
+  if (documento) {
+    const { data: existing } = await supabase.schema(SCHEMA)
+      .from("usuarios").select("id_usuario").eq("documento", documento).limit(1);
+    if (existing?.length) return res.status(409).json({ error: "Ya existe un usuario con ese documento." });
+  }
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("usuarios")
+    .insert([{ documento: documento || null, nombres, apellidos, telefono: telefono || null, email: mail || null, id_rol, activo: true }])
+    .select()
+    .single();
+
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 };
 
 exports.update = async (req, res) => {
   const { documento, nombres, apellidos, telefono, mail } = req.body;
-  const payload = { documento, nombres, apellidos, telefono };
-  if (mail !== undefined) payload.mail = mail;
-  const { data, error } = await supabase.schema(SCHEMA).from("comisionista")
-    .update(payload).eq("id_comisionista", req.params.id).select().single();
+
+  const updates = {};
+  if (documento !== undefined) updates.documento = documento;
+  if (nombres   !== undefined) updates.nombres   = nombres;
+  if (apellidos !== undefined) updates.apellidos = apellidos;
+  if (telefono  !== undefined) updates.telefono  = telefono || null;
+  if (mail      !== undefined) updates.email     = mail;
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("usuarios").update(updates).eq("id_usuario", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 };
@@ -37,28 +71,27 @@ exports.getComisionesDetail = async (req, res) => {
   const { data: comisiones, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .select(`
-      id_venta, id_comisionista, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
+      id_venta, id_usuario, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
       venta:id_venta(
         id_venta, valor_total, fecha_venta, estado,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
-        venta_comprador(comprador:id_comprador(nombres, apellidos, documento))
+        venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
       )
     `)
-    .eq("id_comisionista", id)
+    .eq("id_usuario", id)
     .order("id_venta", { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
 
   const ventaIds = (comisiones || []).map(vc => vc.id_venta).filter(Boolean);
 
-  let micropagosMap   = {};
-  let pagadoPorVenta  = {};
+  let micropagosMap  = {};
+  let pagadoPorVenta = {};
 
   if (ventaIds.length > 0) {
     const { data: cuotas } = await supabase.schema(SCHEMA)
       .from("cuota").select("id_venta, estado, valor_cuota").in("id_venta", ventaIds);
 
-    // Try extended select (with optional columns); fall back to base columns if they don't exist yet
     let micropagos;
     const { data: mpFull, error: mpErr } = await supabase.schema(SCHEMA)
       .from("pago_comision")
@@ -96,16 +129,16 @@ exports.getComisionesDetail = async (req, res) => {
       || (umbral30 > 0 && totalPagado >= umbral30);
 
     return {
-      id_venta:          vc.id_venta,
-      valor_comision:    vc.valor_comision,
-      estado_comision:   vc.estado,
-      fecha_ganada:      vc.fecha_ganada,
-      pagada:            vc.pagada || false,
-      fecha_pagado:      vc.fecha_pagado,
+      id_venta:           vc.id_venta,
+      valor_comision:     vc.valor_comision,
+      estado_comision:    vc.estado,
+      fecha_ganada:       vc.fecha_ganada,
+      pagada:             vc.pagada || false,
+      fecha_pagado:       vc.fecha_pagado,
       ganada,
       total_pagado_venta: totalPagado,
-      umbral_30pct:      umbral30,
-      porcentaje_pagado: valorTotal > 0
+      umbral_30pct:       umbral30,
+      porcentaje_pagado:  valorTotal > 0
         ? Math.min(100, Math.round((totalPagado / valorTotal) * 100))
         : 0,
       venta: {
@@ -114,9 +147,9 @@ exports.getComisionesDetail = async (req, res) => {
         fecha_venta: venta?.fecha_venta,
         estado:      venta?.estado,
         lote:        venta?.lote,
-        compradores: (venta?.venta_comprador || []).map(r => r.comprador)
+        compradores: (venta?.venta_comprador || []).map(r => r.usuario),
       },
-      micropagos: micropagosMap[vc.id_venta] || []
+      micropagos: micropagosMap[vc.id_venta] || [],
     };
   });
 
@@ -124,7 +157,7 @@ exports.getComisionesDetail = async (req, res) => {
 };
 
 exports.registrarMicropago = async (req, res) => {
-  const ventaId     = req.params.ventaId;
+  const ventaId              = req.params.ventaId;
   const { valor, fecha, nota } = req.body;
 
   if (!valor || Number(valor) <= 0)
@@ -136,13 +169,7 @@ exports.registrarMicropago = async (req, res) => {
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago_comision")
-    .insert([{
-      id_venta:       Number(ventaId),
-      valor:          Number(valor),
-      fecha,
-      nota:           nota || null,
-      registrado_por: emitido_por
-    }])
+    .insert([{ id_venta: Number(ventaId), valor: Number(valor), fecha, nota: nota || null, registrado_por: emitido_por }])
     .select()
     .single();
 
@@ -164,7 +191,7 @@ exports.registrarMicropago = async (req, res) => {
         .update({ numero_pago: consec.numero_micropago, id_recibo: recibo.id_recibo })
         .eq("id_pago_comision", data.id_pago_comision);
     }
-  } catch(reciboErr) {
+  } catch (reciboErr) {
     console.error("[micropago-comision] recibo generation failed:", reciboErr?.message || reciboErr);
   }
 
@@ -175,22 +202,19 @@ exports.registrarMicropago = async (req, res) => {
     valor_anterior: null,
     valor_nuevo:    JSON.stringify({ id_venta: ventaId, valor: data.valor, fecha }),
     usuario_db:     emitido_por,
-    motivo:         "micropago_comision"
+    motivo:         "micropago_comision",
   }]);
 
   res.status(201).json({ ...data, numero_recibo });
 };
 
 exports.togglePagada = async (req, res) => {
-  const ventaId    = req.params.ventaId;
-  const { pagada } = req.body;
+  const ventaId      = req.params.ventaId;
+  const { pagada }   = req.body;
   const fecha_pagado = pagada ? new Date().toISOString().split("T")[0] : null;
 
   const { data: prev } = await supabase.schema(SCHEMA)
-    .from("venta_comisionista")
-    .select("pagada")
-    .eq("id_venta", ventaId)
-    .single();
+    .from("venta_comisionista").select("pagada").eq("id_venta", ventaId).single();
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
@@ -208,7 +232,7 @@ exports.togglePagada = async (req, res) => {
     valor_anterior: String(prev?.pagada ?? false),
     valor_nuevo:    String(!!pagada),
     usuario_db:     req.usuario?.email,
-    motivo:         "cambio_estado_pago_comision"
+    motivo:         "cambio_estado_pago_comision",
   }]);
 
   res.json(data);

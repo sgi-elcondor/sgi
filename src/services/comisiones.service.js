@@ -7,7 +7,7 @@ async function verificarComision(id_venta, email) {
   // Load venta value and comisionista links
   const { data: venta, error: ev } = await supabase.schema(SCHEMA)
     .from('venta')
-    .select('valor_total, venta_comisionista(id_comisionista, valor_comision, causada)')
+    .select('valor_total, venta_comisionista(id_usuario, valor_comision, causada)')
     .eq('id_venta', id_venta)
     .single();
 

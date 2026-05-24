@@ -1,7 +1,8 @@
 const supabase = require('../config/supabase');
+const SCHEMA   = 'condor';
 
 async function registrarUsuario(req, res) {
-  const { firebase_uid, email, id_rol, id_comprador, id_comisionista } = req.body;
+  const { email, id_rol } = req.body;
 
   const ROLES_CON_ACCESO = ['admin', 'auxiliar_contable'];
   if (!ROLES_CON_ACCESO.includes(req.usuario.rol)) {
@@ -9,9 +10,9 @@ async function registrarUsuario(req, res) {
   }
 
   const { data, error } = await supabase
-    .schema('condor')
+    .schema(SCHEMA)
     .from('usuarios')
-    .insert([{ firebase_uid, email, id_rol, id_comprador, id_comisionista }])
+    .insert([{ email, id_rol }])
     .select()
     .single();
 
@@ -20,162 +21,86 @@ async function registrarUsuario(req, res) {
 }
 
 async function miPerfil(req, res) {
-  const { email, rol, id_comprador, id_comisionista, permisos } = req.usuario;
+  const { email, rol, id_usuario, permisos } = req.usuario;
 
   const vistas = [];
-  const can = [];
+  const can    = [];
   for (const p of permisos) {
     if (p.startsWith('vista:')) vistas.push(p.slice(6));
     else can.push(p);
   }
 
-  let profileData = {};
-  let photo_url   = null;
-  try {
-    const { data: uData } = await supabase.schema('condor').from('usuarios')
-      .select('photo_url')
-      .eq('email', email)
-      .single();
-    photo_url = uData?.photo_url || null;
+  const { data: uData } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('photo_url, nombres, apellidos, telefono, documento, tipo_documento, tipo_persona, rango_pago')
+    .eq('id_usuario', id_usuario)
+    .single();
 
-    if (rol === 'comprador' && id_comprador) {
-      const { data } = await supabase.schema('condor').from('comprador')
-        .select('nombres, apellidos, telefono')
-        .eq('id_comprador', id_comprador)
-        .single();
-      if (data) profileData = data;
-    } else if (rol === 'comisionista' && id_comisionista) {
-      const { data } = await supabase.schema('condor').from('comisionista')
-        .select('nombres, apellidos, telefono')
-        .eq('id_comisionista', id_comisionista)
-        .single();
-      if (data) profileData = data;
-    }
-  } catch (_) {}
-
-  return res.json({ email, rol, id_comprador, id_comisionista, vistas, can, photo_url, ...profileData });
+  return res.json({
+    email,
+    rol,
+    id_usuario,
+    vistas,
+    can,
+    photo_url:      uData?.photo_url      ?? null,
+    nombres:        uData?.nombres        ?? null,
+    apellidos:      uData?.apellidos      ?? null,
+    telefono:       uData?.telefono       ?? null,
+    documento:      uData?.documento      ?? null,
+    tipo_documento: uData?.tipo_documento ?? null,
+    tipo_persona:   uData?.tipo_persona   ?? null,
+    rango_pago:     uData?.rango_pago     ?? null,
+  });
 }
 
 async function completarPerfil(req, res) {
-  const { rol, email, id_comprador, id_comisionista } = req.usuario;
-  const { documento, nombres, apellidos, telefono, tipo } = req.body;
-
-  const tipoEfectivo = rol === 'admin' ? tipo : rol;
-
-  if (tipoEfectivo !== 'comprador' && tipoEfectivo !== 'comisionista') {
-    return res.status(400).json({ error: 'Este endpoint solo aplica para compradores y comisionistas' });
-  }
-
-  if (tipoEfectivo === 'comprador' && id_comprador) {
-    return res.status(400).json({ error: 'Este usuario ya tiene un comprador vinculado' });
-  }
-
-  if (tipoEfectivo === 'comisionista' && id_comisionista) {
-    return res.status(400).json({ error: 'Este usuario ya tiene un comisionista vinculado' });
-  }
+  const { id_usuario } = req.usuario;
+  const { documento, nombres, apellidos, telefono, tipo_documento, tipo_persona } = req.body;
 
   if (!documento || !nombres || !apellidos) {
     return res.status(400).json({ error: 'Documento, nombres y apellidos son obligatorios' });
   }
 
-  try {
-    if (tipoEfectivo === 'comprador') {
-      const { data: existente } = await supabase
-        .schema('condor')
-        .from('comprador')
-        .select('id_comprador')
-        .eq('documento', documento)
-        .single();
+  const { data: existente } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('id_usuario')
+    .eq('documento', documento)
+    .neq('id_usuario', id_usuario)
+    .maybeSingle();
 
-      if (existente) {
-        return res.status(409).json({ error: 'Ya existe un comprador con ese documento de identidad' });
-      }
-
-      const { data: comprador, error: errC } = await supabase
-        .schema('condor')
-        .from('comprador')
-        .insert([{ tipo_persona: 'natural', documento, nombres, apellidos, telefono: telefono || null, mail: email, estado: 'activo' }])
-        .select('id_comprador')
-        .single();
-
-      if (errC) return res.status(400).json({ error: errC.message });
-
-      await supabase
-        .schema('condor')
-        .from('usuarios')
-        .update({ id_comprador: comprador.id_comprador })
-        .eq('email', email);
-
-      return res.json({ ok: true, id_comprador: comprador.id_comprador });
-    }
-
-    if (tipoEfectivo === 'comisionista') {
-      const { data: existente } = await supabase
-        .schema('condor')
-        .from('comisionista')
-        .select('id_comisionista')
-        .eq('documento', documento)
-        .single();
-
-      if (existente) {
-        return res.status(409).json({ error: 'Ya existe un comisionista con ese documento de identidad' });
-      }
-
-      const { data: comisionista, error: errCo } = await supabase
-        .schema('condor')
-        .from('comisionista')
-        .insert([{ documento, nombres, apellidos, telefono: telefono || null, mail: email }])
-        .select('id_comisionista')
-        .single();
-
-      if (errCo) return res.status(400).json({ error: errCo.message });
-
-      await supabase
-        .schema('condor')
-        .from('usuarios')
-        .update({ id_comisionista: comisionista.id_comisionista })
-        .eq('email', email);
-
-      return res.json({ ok: true, id_comisionista: comisionista.id_comisionista });
-    }
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+  if (existente) {
+    return res.status(409).json({ error: 'Ya existe un usuario con ese documento de identidad' });
   }
+
+  const { error } = await supabase.schema(SCHEMA).from('usuarios')
+    .update({
+      documento,
+      nombres,
+      apellidos,
+      telefono:       telefono       || null,
+      tipo_documento: tipo_documento || null,
+      tipo_persona:   tipo_persona   || 'natural',
+    })
+    .eq('id_usuario', id_usuario);
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ ok: true });
 }
 
 async function actualizarMiPerfil(req, res) {
-  const { rol, id_comprador, id_comisionista, email } = req.usuario;
+  const { id_usuario } = req.usuario;
   const { nombres, apellidos, telefono, photo_url } = req.body;
-
-  if (rol !== 'comprador' && rol !== 'comisionista') {
-    return res.status(403).json({ error: 'Solo compradores y comisionistas pueden editar su perfil' });
-  }
 
   if (!nombres || !apellidos) {
     return res.status(400).json({ error: 'Nombres y apellidos son obligatorios' });
   }
 
+  const updates = { nombres, apellidos, telefono: telefono || null };
+  if (photo_url !== undefined) updates.photo_url = photo_url || null;
+
   try {
-    if (rol === 'comprador' && id_comprador) {
-      const { error } = await supabase.schema('condor').from('comprador')
-        .update({ nombres, apellidos, telefono: telefono || null })
-        .eq('id_comprador', id_comprador);
-      if (error) return res.status(400).json({ error: error.message });
-    } else if (rol === 'comisionista' && id_comisionista) {
-      const { error } = await supabase.schema('condor').from('comisionista')
-        .update({ nombres, apellidos, telefono: telefono || null })
-        .eq('id_comisionista', id_comisionista);
-      if (error) return res.status(400).json({ error: error.message });
-    } else {
-      return res.status(400).json({ error: 'No se encontro un perfil vinculado' });
-    }
-
-    if (photo_url !== undefined) {
-      await supabase.schema('condor').from('usuarios')
-        .update({ photo_url: photo_url || null })
-        .eq('email', email);
-    }
-
+    const { error } = await supabase.schema(SCHEMA).from('usuarios')
+      .update(updates)
+      .eq('id_usuario', id_usuario);
+    if (error) return res.status(400).json({ error: error.message });
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -183,13 +108,13 @@ async function actualizarMiPerfil(req, res) {
 }
 
 async function actualizarAvatar(req, res) {
-  const { email } = req.usuario;
-  const { photo_url } = req.body;
+  const { id_usuario } = req.usuario;
+  const { photo_url }  = req.body;
 
   try {
-    const { error } = await supabase.schema('condor').from('usuarios')
+    const { error } = await supabase.schema(SCHEMA).from('usuarios')
       .update({ photo_url: photo_url || null })
-      .eq('email', email);
+      .eq('id_usuario', id_usuario);
     if (error) return res.status(400).json({ error: error.message });
     return res.json({ ok: true });
   } catch (err) {

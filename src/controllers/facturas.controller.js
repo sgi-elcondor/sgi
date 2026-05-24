@@ -211,11 +211,11 @@ exports.create = async (req, res) => {
 };
 
 exports.getMisFacturas = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const { data: vc, error: ev } = await supabase.schema(SCHEMA)
-    .from("venta_comprador").select("id_venta").eq("id_comprador", id_comprador);
+    .from("venta_comprador").select("id_venta").eq("id_usuario", id_usuario);
 
   if (ev || !vc?.length) return res.json([]);
 
@@ -290,7 +290,7 @@ exports.getMisFacturas = async (req, res) => {
     const { data: pagosPendientes } = await supabase.schema(SCHEMA)
       .from("pago")
       .select("id_cuota_propuesta")
-      .eq("id_comprador", id_comprador)
+      .eq("id_usuario", id_usuario)
       .eq("estado", "pendiente_revision")
       .in("id_cuota_propuesta", idsCuotas);
 

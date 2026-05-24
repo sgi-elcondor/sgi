@@ -105,11 +105,11 @@ exports.getComisionesJefe = async (req, res) => {
     .from("venta_comisionista")
     .select(`
       id_venta, valor_comision, pagada, fecha_ganada, fecha_pagado, estado,
-      comisionista:id_comisionista(nombres, apellidos),
+      usuario:id_usuario(nombres, apellidos),
       venta:id_venta(
         id_venta, fecha_venta, valor_total,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
-        venta_comprador(comprador:id_comprador(nombres, apellidos))
+        venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
     `)
     .order("id_venta", { ascending: false });

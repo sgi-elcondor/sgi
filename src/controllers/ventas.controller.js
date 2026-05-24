@@ -8,8 +8,8 @@ exports.getAll = async (req, res) => {
 
   let q = supabase.schema(SCHEMA).from("venta")
     .select(`*, lote(codigo_lote, manzana, numero_lote, proyecto(nombre)),
-      venta_comprador(porcentaje, comprador(nombres, apellidos, documento)),
-      venta_comisionista(valor_comision, comisionista(nombres, apellidos))`)
+      venta_comprador(porcentaje, usuario:id_usuario(nombres, apellidos, documento)),
+      venta_comisionista(valor_comision, usuario:id_usuario(nombres, apellidos))`)
     .order("fecha_venta", { ascending: false });
 
   if (estado) q = q.eq("estado", estado);
@@ -46,7 +46,7 @@ exports.getAll = async (req, res) => {
 
     result = result.filter(v =>
       (v.venta_comprador || []).some(vc => {
-        const full = `${vc.comprador?.nombres || ""} ${vc.comprador?.apellidos || ""} ${vc.comprador?.documento || ""}`
+        const full = `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""} ${vc.usuario?.documento || ""}`
           .toLowerCase()
           .normalize("NFD")
           .replace(/[̀-ͯ]/g, "");
@@ -68,8 +68,8 @@ exports.getById = async (req, res) => {
 
   const { data, error } = await supabase.schema(SCHEMA).from("venta")
     .select(`*, lote(*, proyecto(nombre)),
-      venta_comprador(*, comprador(*)),
-      venta_comisionista(*, comisionista(*)),
+      venta_comprador(*, usuario:id_usuario(*)),
+      venta_comisionista(*, usuario:id_usuario(*)),
       cuota(*)`)
     .eq("id_venta", id)
     .single();
@@ -126,7 +126,7 @@ function validarCamposVenta({
   }
 
   for (const c of compradores) {
-    if (!c.id_comprador || isNaN(Number(c.id_comprador)) || Number(c.id_comprador) <= 0) {
+    if (!c.id_usuario || isNaN(Number(c.id_usuario)) || Number(c.id_usuario) <= 0) {
       return "Uno de los compradores no es válido";
     }
 
@@ -311,9 +311,9 @@ async function crearVenta(req, res, estadoFijo) {
   // Compradores
   if (Array.isArray(compradores) && compradores.length > 0) {
     const rows = compradores.map(c => ({
-      id_venta:     venta.id_venta,
-      id_comprador: Number(c.id_comprador),
-      porcentaje:   Number(c.porcentaje) || 100
+      id_venta:   venta.id_venta,
+      id_usuario: Number(c.id_usuario),
+      porcentaje: Number(c.porcentaje) || 100
     }));
 
     const { error: ec } = await supabase
@@ -336,9 +336,9 @@ async function crearVenta(req, res, estadoFijo) {
       .schema(SCHEMA)
       .from("venta_comisionista")
       .insert([{
-        id_venta:         venta.id_venta,
-        id_comisionista:  Number(id_comisionista),
-        valor_comision:   Number(valor_comision) || 0
+        id_venta:      venta.id_venta,
+        id_usuario:    Number(id_comisionista),
+        valor_comision: Number(valor_comision) || 0
       }]);
 
     if (eco) {
@@ -508,7 +508,7 @@ exports.getEstadoFinanciero = async (req, res) => {
         ),
         venta_comprador (
           porcentaje,
-          comprador:id_comprador (
+          usuario:id_usuario (
             nombres,
             apellidos,
             documento
@@ -539,7 +539,7 @@ exports.getEstadoFinanciero = async (req, res) => {
 
     const resultado = (data || []).map((venta) => {
       const cuotas = venta.cuota || [];
-      const compradorPrincipal = venta.venta_comprador?.[0]?.comprador || null;
+      const compradorPrincipal = venta.venta_comprador?.[0]?.usuario || null;
 
       const pagosAplicados = [];
 
@@ -640,8 +640,8 @@ exports.getEstadoFinanciero = async (req, res) => {
 
 
 exports.getMisVentas = async (req, res) => {
-  const id_comprador = req.usuario.id_comprador;
-  if (!id_comprador) return res.status(400).json({ error: "Sin comprador vinculado a este usuario" });
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comprador")
@@ -667,7 +667,7 @@ exports.getMisVentas = async (req, res) => {
         )
       )
     `)
-    .eq("id_comprador", id_comprador);
+    .eq("id_usuario", id_usuario);
 
   if (error) return res.status(500).json({ error: error.message });
 
