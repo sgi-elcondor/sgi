@@ -12,7 +12,7 @@ async function actualizarMora() {
     .from('cuota')
     .select('id_venta')
     .lt('fecha_vencimiento', umbral)
-    .eq('estado', 'pendiente');
+    .neq('estado', 'pagada');
 
   if (ev) throw new Error(ev.message);
 
@@ -23,38 +23,17 @@ async function actualizarMora() {
       .from('venta')
       .update({ estado: 'en_mora' })
       .in('id_venta', enMoraIds)
-      .eq('estado', 'activa');
+      .in('estado', ['activa', 'pre_mora']);
 
     if (em) throw new Error(em.message);
-  }
-
-  const { data: ventasEnMora, error: evm } = await supabase.schema(SCHEMA)
-    .from('venta')
-    .select('id_venta')
-    .eq('estado', 'en_mora');
-
-  if (evm) throw new Error(evm.message);
-
-  const salenDeMoraIds = (ventasEnMora || [])
-    .map(v => v.id_venta)
-    .filter(id => !enMoraIds.includes(id));
-
-  if (salenDeMoraIds.length > 0) {
-    const { error: es } = await supabase.schema(SCHEMA)
-      .from('venta')
-      .update({ estado: 'activa' })
-      .in('id_venta', salenDeMoraIds);
-
-    if (es) throw new Error(es.message);
   }
 
   const resumen = {
     fecha:         hoy,
     entraron_mora: enMoraIds.length,
-    salieron_mora: salenDeMoraIds.length,
   };
 
-  console.log('[mora]', JSON.stringify(resumen));
+  if (enMoraIds.length > 0) console.log('[mora]', JSON.stringify(resumen));
   return resumen;
 }
 
