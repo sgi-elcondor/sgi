@@ -22,7 +22,7 @@ SET
   nombres        = c.nombres,
   apellidos      = c.apellidos,
   documento      = c.documento,
-  tipo_persona   = COALESCE(c.tipo_persona, 'natural'),
+  tipo_persona   = COALESCE(c.tipo_persona::TEXT, 'natural'),
   tipo_documento = c.tipo_documento,
   rango_pago     = c.rango_pago,
   telefono       = c.telefono
@@ -63,7 +63,7 @@ SET
   nombres        = COALESCE(u.nombres,        c.nombres),
   apellidos      = COALESCE(u.apellidos,      c.apellidos),
   documento      = COALESCE(u.documento,      c.documento),
-  tipo_persona   = COALESCE(u.tipo_persona,   c.tipo_persona,   'natural'),
+  tipo_persona   = COALESCE(u.tipo_persona,   c.tipo_persona::TEXT, 'natural'),
   tipo_documento = COALESCE(u.tipo_documento, c.tipo_documento),
   rango_pago     = COALESCE(u.rango_pago,     c.rango_pago),
   telefono       = COALESCE(u.telefono,       c.telefono)
@@ -79,7 +79,7 @@ SELECT
   c.mail,
   (SELECT id_rol FROM condor.roles WHERE nombre = 'comprador' LIMIT 1),
   c.nombres, c.apellidos, c.documento,
-  COALESCE(c.tipo_persona, 'natural'),
+  COALESCE(c.tipo_persona::TEXT, 'natural'),
   c.tipo_documento, c.rango_pago, c.telefono,
   (c.estado = 'activo'),
   NOW()
