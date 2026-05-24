@@ -69,7 +69,7 @@ window.compradoresView = async function () {
             ${avatar}
             <div class="comprador-cell-info">
               <span class="comprador-cell-name">${nombre || "—"}</span>
-              <span class="comprador-cell-mail">${c.mail || "Sin correo"}</span>
+              <span class="comprador-cell-mail">${c.email || "Sin correo"}</span>
             </div>
             ${accessBadge(c)}
           </div>
@@ -159,7 +159,7 @@ window.compradoresView = async function () {
       if (tipodoc && c.tipo_documento !== tipodoc) return false;
       if (rango   && c.rango_pago     !== rango)   return false;
       if (estado  && c.estado         !== estado)  return false;
-      if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.mail}`).includes(q)) return false;
+      if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.email}`).includes(q)) return false;
       return true;
     });
 
@@ -220,7 +220,7 @@ window.compradorForm = function (comprador) {
     ? `<div class="form-group form-group--full">
          <label>Email${c.linked_email ? ` <span style="color:var(--text-muted);font-size:.7rem;font-weight:400">(correo de acceso)</span>` : ""}</label>
          <input id="f_mail" type="email" placeholder="correo@ejemplo.com"
-           value="${escAttr(c.mail)}"
+           value="${escAttr(c.email)}"
            ${c.linked_email ? `readonly style="background:var(--surface-2);color:var(--text-muted);cursor:not-allowed"` : ""} />
          ${linkedAccountInfo}
        </div>`

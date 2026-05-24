@@ -1476,7 +1476,7 @@ _limpiarErrorVenta();
     ${body.escriturado ? _seccionResumen("Escritura", `Escriturado${body.fecha_escritura ? " · " + UI.date(body.fecha_escritura) : ""}`) : ""}
     ${body.cuota_inicial>0 ? _seccionResumen("Cuota inicial",`${body.numero_cuotas_inicial} micro-cuota${body.numero_cuotas_inicial>1?"s":""}<table style="margin-top:4px;border-collapse:collapse;font-size:.82rem">${mcRows}</table>`) : ""}
     ${_seccionResumen("Cuotas regulares", cuotaLine)}
-    ${_seccionResumen("Comprador", comp ? `<b>${comp.nombres} ${comp.apellidos||""}</b> · CC ${comp.documento}${comp.telefono?" · "+comp.telefono:""}${comp.mail?" · "+comp.mail:""}` : "—")}
+    ${_seccionResumen("Comprador", comp ? `<b>${comp.nombres} ${comp.apellidos||""}</b> · CC ${comp.documento}${comp.telefono?" · "+comp.telefono:""}${comp.email?" · "+comp.email:""}` : "—")}
     ${_seccionResumen("Comisionista", comi ? `<b>${comi.nombres} ${comi.apellidos||""}</b> · CC ${comi.documento} · Comisión: ${UI.fmt(body.valor_comision)}` : "Sin comisionista")}
     ${body.observaciones ? _seccionResumen("Observaciones", body.observaciones) : ""}
     <div class="form-actions">
