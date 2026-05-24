@@ -13,7 +13,7 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
-  async function abrirModalPago({ idVenta, idCuota, soloAmortizacion = false, onSuccess } = {}) {
+  async function abrirModalPago({ idVenta, idCuota, idFactura, soloAmortizacion = false, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
@@ -209,7 +209,9 @@
       return;
     }
 
-    let selectedFactura = facturas.find(f => f.id_cuota === Number(idCuota)) || facturas[0];
+    let selectedFactura = (idFactura ? facturas.find(f => f.id_factura === Number(idFactura)) : null)
+      || facturas.find(f => f.id_cuota === Number(idCuota))
+      || facturas[0];
 
     function _fmtFN(n) {
       if (!n) return "—";

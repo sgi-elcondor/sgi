@@ -36,6 +36,7 @@ exports.getAll = async (req, res) => {
     .select(`
       id_factura, numero_factura, fecha_emision, valor_facturado, estado, observaciones,
       cuota_factura(
+        id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
           venta(
@@ -50,7 +51,8 @@ exports.getAll = async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   res.json((data || []).map(f => {
-    const cuota = f.cuota_factura?.[0]?.cuota;
+    const link  = f.cuota_factura?.[0];
+    const cuota = link?.cuota;
     const lote  = cuota?.venta?.lote;
     const comp  = cuota?.venta?.venta_comprador?.[0]?.comprador;
     return {
@@ -60,12 +62,13 @@ exports.getAll = async (req, res) => {
       valor_facturado:   f.valor_facturado,
       estado:            f.estado,
       observaciones:     f.observaciones,
+      id_fraccion:       link?.id_fraccion         ?? null,
       id_venta:          cuota?.venta?.id_venta    ?? null,
-      id_cuota:          cuota?.id_cuota          ?? null,
-      numero_cuota:      cuota?.numero_cuota       ?? null,
-      fecha_vencimiento: cuota?.fecha_vencimiento  ?? null,
-      proyecto:          lote?.proyecto?.nombre    ?? "—",
-      codigo_lote:       lote?.codigo_lote         ?? "—",
+      id_cuota:          cuota?.id_cuota           ?? null,
+      numero_cuota:      cuota?.numero_cuota        ?? null,
+      fecha_vencimiento: cuota?.fecha_vencimiento   ?? null,
+      proyecto:          lote?.proyecto?.nombre     ?? "—",
+      codigo_lote:       lote?.codigo_lote          ?? "—",
       comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
     };
   }));
@@ -73,14 +76,14 @@ exports.getAll = async (req, res) => {
 
 exports.getCuotasSinFactura = async (req, res) => {
   const hoy = new Date().toISOString().split("T")[0];
-
   const ESTADOS_FACTURABLES = ["activa", "pre_mora", "en_mora"];
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
-      cuota_factura(id_cuota),
+      cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
+      cuota_factura(id_cuota, id_fraccion),
       venta(
         id_venta,
         estado,
@@ -94,29 +97,51 @@ exports.getCuotasSinFactura = async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json(
-    (data || [])
-      .filter(c =>
-        !c.cuota_factura?.length &&
-        ESTADOS_FACTURABLES.includes(c.venta?.estado)
-      )
-      .map(c => {
-        const lote = c.venta?.lote;
-        const comp = c.venta?.venta_comprador?.[0]?.comprador;
-        return {
-          id_cuota:          c.id_cuota,
-          id_venta:          c.venta?.id_venta      ?? null,
-          estado_venta:      c.venta?.estado        ?? null,
-          numero_cuota:      c.numero_cuota,
-          fecha_vencimiento: c.fecha_vencimiento,
-          valor_cuota:       c.valor_cuota,
-          estado:            c.estado,
-          proyecto:          lote?.proyecto?.nombre ?? "—",
-          codigo_lote:       lote?.codigo_lote      ?? "—",
-          comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
-        };
-      })
-  );
+  const result = [];
+
+  for (const c of (data || [])) {
+    if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
+
+    const lote = c.venta?.lote;
+    const comp = c.venta?.venta_comprador?.[0]?.comprador;
+    const base = {
+      id_cuota:          c.id_cuota,
+      id_venta:          c.venta?.id_venta ?? null,
+      estado_venta:      c.venta?.estado   ?? null,
+      numero_cuota:      c.numero_cuota,
+      fecha_vencimiento: c.fecha_vencimiento,
+      estado:            c.estado,
+      proyecto:          lote?.proyecto?.nombre ?? "—",
+      codigo_lote:       lote?.codigo_lote      ?? "—",
+      comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+    };
+
+    const fracciones         = c.cuota_fraccion || [];
+    const facturasExistentes = c.cuota_factura  || [];
+
+    if (fracciones.length === 0) {
+      if (!facturasExistentes.some(cf => cf.id_fraccion === null)) {
+        result.push({ ...base, valor_cuota: c.valor_cuota, tiene_fracciones: false });
+      }
+    } else {
+      const fraccionesFacturadas = new Set(facturasExistentes.map(cf => cf.id_fraccion).filter(Boolean));
+      for (const f of fracciones) {
+        if (!fraccionesFacturadas.has(f.id_fraccion)) {
+          result.push({
+            ...base,
+            id_fraccion:       f.id_fraccion,
+            numero_fraccion:   f.numero_fraccion,
+            total_fracciones:  fracciones.length,
+            valor_cuota:       f.valor_fraccion,
+            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
+            tiene_fracciones:  true,
+          });
+        }
+      }
+    }
+  }
+
+  res.json(result);
 };
 
 exports.generarPendientes = async (req, res) => {
@@ -127,7 +152,9 @@ exports.generarPendientes = async (req, res) => {
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
-      id_cuota, id_venta, numero_cuota, valor_cuota, cuota_factura(id_cuota),
+      id_cuota, id_venta, numero_cuota, valor_cuota,
+      cuota_fraccion(id_fraccion),
+      cuota_factura(id_cuota),
       venta(id_venta, estado, lote:id_lote(proyecto:id_proyecto(sigla)))
     `)
     .lte("fecha_vencimiento", hoy)
@@ -135,7 +162,9 @@ exports.generarPendientes = async (req, res) => {
   if (ec) return res.status(500).json({ error: ec.message });
 
   const pendientes = (cuotas || []).filter(c =>
-    !c.cuota_factura?.length && ESTADOS_FACTURABLES.includes(c.venta?.estado)
+    !c.cuota_factura?.length &&
+    !c.cuota_fraccion?.length &&
+    ESTADOS_FACTURABLES.includes(c.venta?.estado)
   );
   if (!pendientes.length) return res.json({ generadas: 0 });
 
@@ -160,7 +189,7 @@ exports.generarPendientes = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { fecha_emision, valor_facturado, estado, observaciones, id_cuota } = req.body;
+  const { fecha_emision, valor_facturado, estado, observaciones, id_cuota, id_fraccion } = req.body;
   let numero_factura;
   try {
     numero_factura = await _buildNumFactura(id_cuota || null);
@@ -172,7 +201,11 @@ exports.create = async (req, res) => {
     .select().single();
   if (ef) return res.status(400).json({ error: ef.message });
   if (id_cuota) {
-    await supabase.schema(SCHEMA).from("cuota_factura").insert([{ id_cuota, id_factura: factura.id_factura }]);
+    await supabase.schema(SCHEMA).from("cuota_factura").insert([{
+      id_cuota,
+      id_factura:  factura.id_factura,
+      id_fraccion: id_fraccion || null,
+    }]);
   }
   res.status(201).json(factura);
 };
@@ -192,7 +225,9 @@ exports.getMisFacturas = async (req, res) => {
     .from("cuota")
     .select(`
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, id_venta,
-      cuota_factura(factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
+      cuota_factura(id_fraccion, factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
+      cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
+      cuota_pago(valor_aplicado, pago:id_pago(estado)),
       venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
     `)
     .in("id_venta", ventaIds)
@@ -202,23 +237,52 @@ exports.getMisFacturas = async (req, res) => {
 
   const result = [];
   for (const c of (cuotas || [])) {
-    const factura = (c.cuota_factura || [])
-      .map(cf => cf.factura)
-      .find(f => f?.estado === "emitida");
-    if (!factura) continue;
+    const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
+
+    const facturasEmitidas = (c.cuota_factura || [])
+      .filter(cf => cf.factura?.estado === "emitida")
+      .map(cf => ({ ...cf.factura, id_fraccion: cf.id_fraccion }));
+
+    if (!facturasEmitidas.length) continue;
+
     const lote = c.venta?.lote;
-    result.push({
-      id_factura:        factura.id_factura,
-      numero_factura:    factura.numero_factura,
-      valor_facturado:   factura.valor_facturado,
-      fecha_emision:     factura.fecha_emision,
-      id_cuota:          c.id_cuota,
-      numero_cuota:      c.numero_cuota,
-      fecha_vencimiento: c.fecha_vencimiento,
-      id_venta:          c.id_venta,
-      proyecto:          lote?.proyecto?.nombre ?? "—",
-      codigo_lote:       lote?.codigo_lote      ?? "—",
-    });
+    let visibleFacturas = facturasEmitidas;
+
+    if (fracciones.length > 0) {
+      const totalAceptado = (c.cuota_pago || [])
+        .filter(cp => cp.pago?.estado === "aceptado")
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+
+      const coveredFracciones = new Set();
+      let remaining = totalAceptado;
+      for (const f of fracciones) {
+        if (remaining >= Number(f.valor_fraccion)) {
+          coveredFracciones.add(f.id_fraccion);
+          remaining -= Number(f.valor_fraccion);
+        } else {
+          break;
+        }
+      }
+
+      visibleFacturas = facturasEmitidas.filter(f => !coveredFracciones.has(f.id_fraccion));
+    }
+
+    if (!visibleFacturas.length) continue;
+
+    for (const factura of visibleFacturas) {
+      result.push({
+        id_factura:        factura.id_factura,
+        numero_factura:    factura.numero_factura,
+        valor_facturado:   factura.valor_facturado,
+        fecha_emision:     factura.fecha_emision,
+        id_cuota:          c.id_cuota,
+        numero_cuota:      c.numero_cuota,
+        fecha_vencimiento: c.fecha_vencimiento,
+        id_venta:          c.id_venta,
+        proyecto:          lote?.proyecto?.nombre ?? "—",
+        codigo_lote:       lote?.codigo_lote      ?? "—",
+      });
+    }
   }
 
   const idsCuotas = result.map(r => r.id_cuota);

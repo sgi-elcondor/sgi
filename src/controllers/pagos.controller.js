@@ -9,12 +9,20 @@ const { verificarComision } = require("../services/comisiones.service");
 async function aplicarPagoACuotas(pago, email) {
   const { id_pago, id_venta, id_cuota_propuesta, valor_pago } = pago;
 
+  // If a DB trigger on pago UPDATE already inserted cuota_pago records, skip allocation entirely
+  // to avoid double-applying the payment to subsequent cuotas.
+  const { count: yaAsignado } = await supabase.schema(SCHEMA)
+    .from('cuota_pago')
+    .select('id_pago', { count: 'exact', head: true })
+    .eq('id_pago', id_pago);
+  if (yaAsignado > 0) return;
+
   // Pending cuotas for this sale, ordered chronologically
   const { data: cuotas } = await supabase.schema(SCHEMA)
     .from('cuota')
-    .select('id_cuota, numero_cuota, valor_cuota')
+    .select('id_cuota, numero_cuota, valor_cuota, estado')
     .eq('id_venta', id_venta)
-    .eq('estado', 'pendiente')
+    .not('estado', 'eq', 'pagada')
     .order('numero_cuota');
 
   if (!cuotas || cuotas.length === 0) return;
@@ -61,12 +69,37 @@ async function aplicarPagoACuotas(pago, email) {
     restante -= aplicar;
   }
 
+  // Capture estado before inserting so we can undo a DB trigger that fires on cuota_pago INSERT
+  const estadoOrig = {};
+  for (const c of cuotas) estadoOrig[c.id_cuota] = c.estado;
+
   if (filasCuotaPago.length > 0) {
     await supabase.schema(SCHEMA).from('cuota_pago').insert(filasCuotaPago);
+
+    // The DB has a trigger on cuota_pago INSERT that can incorrectly mark a cuota as 'pagada'
+    // even for partial payments. Restore the original estado for cuotas that should NOT be fully paid.
+    for (const fila of filasCuotaPago) {
+      if (cuotasAMarcarPagas.includes(fila.id_cuota)) continue;
+      const { data: chk } = await supabase.schema(SCHEMA)
+        .from('cuota').select('estado').eq('id_cuota', fila.id_cuota).single();
+      if (chk?.estado === 'pagada') {
+        await supabase.schema(SCHEMA).from('cuota')
+          .update({ estado: estadoOrig[fila.id_cuota] || 'activa' })
+          .eq('id_cuota', fila.id_cuota);
+      }
+    }
   }
 
   for (const id_cuota of cuotasAMarcarPagas) {
     await supabase.schema(SCHEMA).from('cuota').update({ estado: 'pagada' }).eq('id_cuota', id_cuota);
+    const { data: facturaLinks } = await supabase.schema(SCHEMA)
+      .from('cuota_factura').select('id_factura').eq('id_cuota', id_cuota);
+    if (facturaLinks?.length) {
+      await supabase.schema(SCHEMA).from('factura')
+        .update({ estado: 'pagada' })
+        .in('id_factura', facturaLinks.map(f => f.id_factura))
+        .eq('estado', 'emitida');
+    }
   }
 }
 
@@ -170,6 +203,14 @@ exports.create = async (req, res) => {
   }
 
   // 4. Vincular cuotas al pago
+  const ids = cuotas.map(c => c.id_cuota);
+
+  // Capture estado before inserting so we can undo a DB trigger that fires on cuota_pago INSERT
+  const { data: cuotasPreInsert } = await supabase.schema(SCHEMA)
+    .from("cuota").select("id_cuota, valor_cuota, estado").in("id_cuota", ids);
+  const estadoOrig = {};
+  for (const c of (cuotasPreInsert || [])) estadoOrig[c.id_cuota] = c.estado;
+
   const cuotaRows = cuotas.map(c => ({
     id_pago:        pago.id_pago,
     id_cuota:       c.id_cuota,
@@ -178,13 +219,11 @@ exports.create = async (req, res) => {
   const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(cuotaRows);
   if (ec) return res.status(400).json({ error: ec.message });
 
-  // 5. Mark cuotas as paid based on cumulative accepted payments
-  const ids = cuotas.map(c => c.id_cuota);
-
-  const [{ data: cuotasDB }, { data: pagosAplicados }] = await Promise.all([
-    supabase.schema(SCHEMA).from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids),
-    supabase.schema(SCHEMA).from("cuota_pago").select("id_cuota, valor_aplicado, pago:id_pago(estado)").in("id_cuota", ids),
-  ]);
+  // 5. Mark cuotas as paid based on cumulative accepted payments; undo trigger for partial payments
+  const { data: cuotasDB } = await supabase.schema(SCHEMA)
+    .from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids);
+  const { data: pagosAplicados } = await supabase.schema(SCHEMA)
+    .from("cuota_pago").select("id_cuota, valor_aplicado, pago:id_pago(estado)").in("id_cuota", ids);
 
   for (const db of (cuotasDB || [])) {
     const totalPagado = (pagosAplicados || [])
@@ -200,6 +239,15 @@ exports.create = async (req, res) => {
           .update({ estado: "pagada" })
           .in("id_factura", facturaLinks.map(f => f.id_factura))
           .eq("estado", "emitida");
+      }
+    } else {
+      // The DB trigger may have incorrectly set estado='pagada' — restore original estado
+      const { data: chk } = await supabase.schema(SCHEMA)
+        .from("cuota").select("estado").eq("id_cuota", db.id_cuota).single();
+      if (chk?.estado === "pagada") {
+        await supabase.schema(SCHEMA).from("cuota")
+          .update({ estado: estadoOrig[db.id_cuota] || "activa" })
+          .eq("id_cuota", db.id_cuota);
       }
     }
   }
@@ -235,7 +283,7 @@ exports.createAbonoExtraordinario = async (req, res) => {
   const { data: cuotasPendientes, error: errorCuotas } = await supabase
     .schema(SCHEMA).from("cuota")
     .select("id_cuota, id_venta, numero_cuota, valor_cuota, estado")
-    .eq("id_venta", id_venta).eq("estado", "pendiente")
+    .eq("id_venta", id_venta).not("estado", "eq", "pagada")
     .order("numero_cuota", { ascending: false });
 
   if (errorCuotas) return res.status(500).json({ error: errorCuotas.message });
@@ -507,19 +555,43 @@ exports.acceptBatch = async (req, res) => {
       results.push({ id_pago, ok: false, error: 'Pago no encontrado' });
       continue;
     }
+
+    // A pago may be already 'aceptado' if it was auto-accepted by exports.create but never
+    // allocated. Allow re-processing ONLY when it has no cuota_pago records yet.
     if (pagoActual.estado === 'aceptado') {
-      results.push({ id_pago, ok: false, error: 'El pago ya fue aceptado' });
-      continue;
+      const { count } = await supabase.schema(SCHEMA)
+        .from('cuota_pago')
+        .select('id_pago', { count: 'exact', head: true })
+        .eq('id_pago', id_pago);
+      if (count > 0) {
+        results.push({ id_pago, ok: false, error: 'El pago ya fue aceptado y asignado' });
+        continue;
+      }
     }
 
-    const { data: pago, error: ep } = await supabase.schema(SCHEMA)
-      .from('pago')
-      .update({ estado: 'aceptado' })
-      .eq('id_pago', id_pago)
-      .select()
-      .single();
+    // Capture cuota state BEFORE updating pago.estado — a DB trigger on pago UPDATE may fire
+    // and incorrectly mark cuotas as 'pagada' before our allocation logic runs.
+    let cuotaSnapshot = null;
+    if (pagoActual.id_cuota_propuesta && pagoActual.id_venta) {
+      const { data: snap } = await supabase.schema(SCHEMA)
+        .from('cuota')
+        .select('id_cuota, valor_cuota, estado')
+        .eq('id_cuota', pagoActual.id_cuota_propuesta)
+        .single();
+      cuotaSnapshot = snap || null;
+    }
 
-    if (ep) { results.push({ id_pago, ok: false, error: ep.message }); continue; }
+    let pago = pagoActual;
+    if (pagoActual.estado !== 'aceptado') {
+      const { data: updated, error: ep } = await supabase.schema(SCHEMA)
+        .from('pago')
+        .update({ estado: 'aceptado' })
+        .eq('id_pago', id_pago)
+        .select()
+        .single();
+      if (ep) { results.push({ id_pago, ok: false, error: ep.message }); continue; }
+      pago = updated;
+    }
 
     await supabase.schema(SCHEMA)
       .from('bank_transaction')
@@ -530,7 +602,7 @@ exports.acceptBatch = async (req, res) => {
       tabla_afectada: 'pago',
       id_registro:    id_pago,
       campo:          'estado',
-      valor_anterior: 'pendiente_revision',
+      valor_anterior: pagoActual.estado,
       valor_nuevo:    'aceptado',
       usuario_db:     req.usuario.email,
       motivo:         `validacion_transaccion_bancaria:${id_transaction}`,
@@ -541,6 +613,40 @@ exports.acceptBatch = async (req, res) => {
     if (pagoActual.id_venta) {
       await aplicarPagoACuotas(pagoActual, req.usuario.email);
       comision_causada = await verificarComision(pagoActual.id_venta, req.usuario.email).catch(() => false);
+    }
+
+    // Reconcile the proposed cuota after the DB trigger and aplicarPagoACuotas have run.
+    if (cuotaSnapshot) {
+      const { data: allCp } = await supabase.schema(SCHEMA)
+        .from('cuota_pago')
+        .select('valor_aplicado, pago:id_pago(estado)')
+        .eq('id_cuota', cuotaSnapshot.id_cuota);
+      const totalAceptado = (allCp || [])
+        .filter(cp => cp.pago?.estado === 'aceptado')
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+
+      if (totalAceptado < Number(cuotaSnapshot.valor_cuota)) {
+        // Partial payment — DB trigger incorrectly set 'pagada', restore original estado
+        const { data: chk } = await supabase.schema(SCHEMA)
+          .from('cuota').select('estado').eq('id_cuota', cuotaSnapshot.id_cuota).single();
+        if (chk?.estado === 'pagada') {
+          await supabase.schema(SCHEMA).from('cuota')
+            .update({ estado: cuotaSnapshot.estado || 'activa' })
+            .eq('id_cuota', cuotaSnapshot.id_cuota);
+        }
+      } else {
+        // Fully paid — ensure cuota is 'pagada' and mark all linked facturas
+        await supabase.schema(SCHEMA).from('cuota')
+          .update({ estado: 'pagada' }).eq('id_cuota', cuotaSnapshot.id_cuota);
+        const { data: facturaLinks } = await supabase.schema(SCHEMA)
+          .from('cuota_factura').select('id_factura').eq('id_cuota', cuotaSnapshot.id_cuota);
+        if (facturaLinks?.length) {
+          await supabase.schema(SCHEMA).from('factura')
+            .update({ estado: 'pagada' })
+            .in('id_factura', facturaLinks.map(f => f.id_factura))
+            .eq('estado', 'emitida');
+        }
+      }
     }
 
     // Auto-generate receipt using the standard service (RC-YYYYMM-NNNNN format)
