@@ -58,22 +58,32 @@ function _cuotasAgrupadasHTML(cuotas, filtro) {
           Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
         </span>
         <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
-          ${count} cuota${count !== 1 ? "s" : ""}
+          ${count} ítem${count !== 1 ? "s" : ""}
         </span>
       </div>
       <div id="gc-body-${key}" style="display:none">
-        ${g.cuotas.map(c => `
-          <label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid var(--border);cursor:pointer">
+        ${g.cuotas.map(c => {
+          const esFraccion = !!c.id_fraccion;
+          const label = esFraccion
+            ? `Cuota <strong>#${c.numero_cuota}</strong> &bull; Fracción <strong>${c.numero_fraccion}/${c.total_fracciones}</strong> &bull; Vence: ${UI.date(c.fecha_vencimiento)}`
+            : `Cuota <strong>#${c.numero_cuota}</strong> &bull; Vence: ${UI.date(c.fecha_vencimiento)}`;
+          return `
+          <label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid var(--border);cursor:pointer${esFraccion ? ";padding-left:24px" : ""}">
             <input type="radio" name="cuota_sel" value="${c.id_cuota}"
-              data-valor="${c.valor_cuota}" data-id-venta="${c.id_venta||0}" data-num-cuota="${c.numero_cuota||0}"
+              data-valor="${c.valor_cuota}"
+              data-id-venta="${c.id_venta||0}"
+              data-num-cuota="${c.numero_cuota||0}"
+              data-fraccion="${c.id_fraccion||""}"
               style="flex-shrink:0">
             <span style="flex:1;font-size:.83rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-              <span>Cuota <strong>#${c.numero_cuota}</strong> &bull; Vence: ${UI.date(c.fecha_vencimiento)}</span>
+              <span>${label}</span>
               <span style="display:flex;gap:6px;align-items:center;white-space:nowrap">
-                ${UI.fmt(c.valor_cuota)} &nbsp;${UI.badge(c.estado)}
+                ${UI.fmt(c.valor_cuota)}
+                ${esFraccion ? `<span class="badge badge-info" style="font-size:.7rem">Fracción</span>` : `&nbsp;${UI.badge(c.estado)}`}
               </span>
             </span>
-          </label>`).join("")}
+          </label>`;
+        }).join("")}
       </div>
     </div>`;
   }).join("");
@@ -285,7 +295,7 @@ window.facturasView = async function() {
                 <tr data-cuota="${encodeURIComponent(JSON.stringify(c))}">
                   <td>${c.comprador}</td>
                   <td>${c.proyecto} · <strong>${c.codigo_lote}</strong></td>
-                  <td class="fsb-center">${c.numero_cuota}</td>
+                  <td class="fsb-center">${c.tiene_fracciones ? `${c.numero_cuota} <span style="color:var(--text-muted);font-size:.78rem">· Frac ${c.numero_fraccion}/${c.total_fracciones}</span>` : c.numero_cuota}</td>
                   <td>${UI.date(c.fecha_vencimiento)}</td>
                   <td class="fsb-right">${UI.fmt(c.valor_cuota)}</td>
                   <td>${UI.badge(c.estado)}</td>
@@ -497,18 +507,20 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
            <div class="summary-card-grid">
              <div class="summary-item"><span class="summary-item-label">Proyecto</span><span class="summary-item-value">${cuotaPresel.proyecto}</span></div>
              <div class="summary-item"><span class="summary-item-label">Lote</span><span class="summary-item-value">${cuotaPresel.codigo_lote}</span></div>
-             <div class="summary-item"><span class="summary-item-label">Cuota</span><span class="summary-item-value">#${cuotaPresel.numero_cuota}</span></div>
+             <div class="summary-item"><span class="summary-item-label">Cuota</span><span class="summary-item-value">#${cuotaPresel.numero_cuota}${cuotaPresel.tiene_fracciones ? ` &bull; Fracción ${cuotaPresel.numero_fraccion}/${cuotaPresel.total_fracciones}` : ""}</span></div>
              <div class="summary-item"><span class="summary-item-label">Vence</span><span class="summary-item-value">${UI.date(cuotaPresel.fecha_vencimiento)}</span></div>
              <div class="summary-item"><span class="summary-item-label">Valor</span><span class="summary-item-value">${UI.fmt(cuotaPresel.valor_cuota)}</span></div>
            </div>
          </div>
          <input type="hidden" id="f_id_cuota" value="${cuotaPresel.id_cuota}">
+         <input type="hidden" id="f_id_fraccion" value="${cuotaPresel.id_fraccion || ''}">
        </div>`
     : `<div class="form-group" style="grid-column:1/-1">
          <label>Cuota *${ctxLabel}</label>
          <input type="text" id="f_cuota_buscar" placeholder="Filtrar por comprador, lote o cédula..."
                 oninput="_filtrarCuotasFactura()" autocomplete="off" style="margin-bottom:6px">
          <input type="hidden" id="f_id_cuota">
+         <input type="hidden" id="f_id_fraccion">
          <div id="f_cuota_lista"
               style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 12px">
            ${_cuotasAgrupadasHTML(cuotas, "")}
@@ -532,8 +544,9 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
     if (lista) {
       lista.addEventListener("change", e => {
         if (e.target.type !== "radio") return;
-        document.getElementById("f_id_cuota").value = e.target.value;
-        document.getElementById("f_vf").value       = _fmtMiles(e.target.dataset.valor);
+        document.getElementById("f_id_cuota").value      = e.target.value;
+        document.getElementById("f_id_fraccion").value   = e.target.dataset.fraccion || "";
+        document.getElementById("f_vf").value            = _fmtMiles(e.target.dataset.valor);
       });
     }
   }
@@ -544,6 +557,7 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
 
 window.guardarFactura = async function() {
   const id_cuota_str    = document.getElementById("f_id_cuota")?.value;
+  const id_fraccion_str = document.getElementById("f_id_fraccion")?.value;
   const fecha_emision   = document.getElementById("f_fe").value;
   const valor_facturado = Number((document.getElementById("f_vf").value || "").replace(/\./g, ""));
   const observaciones   = document.getElementById("f_obs").value;
@@ -552,7 +566,13 @@ window.guardarFactura = async function() {
   if (!fecha_emision)                           return UI.toast("Ingrese la fecha de emisión", "error");
   if (!valor_facturado || valor_facturado <= 0) return UI.toast("El valor debe ser mayor a 0", "error");
 
-  const body = { fecha_emision, valor_facturado, observaciones, id_cuota: +id_cuota_str };
+  const body = {
+    fecha_emision,
+    valor_facturado,
+    observaciones,
+    id_cuota:    +id_cuota_str,
+    id_fraccion: id_fraccion_str ? +id_fraccion_str : null,
+  };
   try {
     await API.post("/facturas", body);
     UI.closeModal();

@@ -264,7 +264,10 @@
 
     let cuotaFactura = null;
     if (cuotaCtx) {
-      cuotaFactura = facturas.find(f => f.id_cuota === cuotaCtx.id_cuota);
+      cuotaFactura = cuotaCtx.id_fraccion
+        ? facturas.find(f => f.id_cuota === cuotaCtx.id_cuota && f.id_fraccion === cuotaCtx.id_fraccion)
+        : null;
+      if (!cuotaFactura) cuotaFactura = facturas.find(f => f.id_cuota === cuotaCtx.id_cuota);
       if (!cuotaFactura) {
         const emitir = await UI.confirm({
           title:       "¿Emitir la factura ahora?",
@@ -410,7 +413,7 @@
     const factura = (window._pagoFacturas || []).find(f => String(f.id_factura) === String(id_factura));
     if (!factura?.id_cuota) return UI.toast("No se encontró la cuota de la factura seleccionada", "error");
 
-    const cuotas = [{ id_cuota: factura.id_cuota, valor_aplicado: Number(factura.valor_facturado) }];
+    const cuotas = [{ id_cuota: factura.id_cuota, id_factura: factura.id_factura, valor_aplicado: Number(factura.valor_facturado) }];
 
     const btn = document.getElementById("pf_btn_guardar");
     if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }

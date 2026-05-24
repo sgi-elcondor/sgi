@@ -117,7 +117,7 @@ function _pvCard(m, i) {
         <label class="pv-checkbox-wrap">
           <input type="checkbox" class="pv-accept-chk" id="pv-chk-${i}"
             data-pago="${pago.id_pago}" data-tx="${transaction ? transaction.id_transaction : ''}"
-            checked onchange="_pvUpdateCount()">
+            onchange="_pvUpdateCount()">
           <span class="pv-chk-label">Aceptar</span>
         </label>
       </div>

@@ -116,17 +116,25 @@ exports.getPendientes = async (req, res) => {
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento, rango_pago))), cuota_fraccion(id_fraccion)")
+    .select(`
+      *,
+      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(comprador(nombres, apellidos, documento, rango_pago))),
+      cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
+      cuota_factura(id_fraccion)
+    `)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
   if (error) return res.status(500).json({ error: error.message });
 
-  const hoy = Date.now();
-  let result = (data || []).map(c => {
+  const hoy    = Date.now();
+  const result = [];
+
+  for (const c of (data || [])) {
     const lote      = c.venta?.lote;
     const comprador = c.venta?.venta_comprador?.[0]?.comprador;
     const dias      = Math.floor((hoy - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
-    return {
+
+    const base = {
       id_cuota:          c.id_cuota,
       id_venta:          c.id_venta,
       proyecto:          lote?.proyecto?.nombre || "—",
@@ -137,16 +145,38 @@ exports.getPendientes = async (req, res) => {
       numero_cuota:      c.numero_cuota,
       fecha_vencimiento: c.fecha_vencimiento,
       dias_atraso:       dias,
-      valor_cuota:       c.valor_cuota,
-      valor_pendiente:   c.valor_cuota,
       estado:            c.estado,
-      tiene_fracciones:  (c.cuota_fraccion?.length || 0) > 0,
     };
-  });
 
-  if (rango_pago) result = result.filter(c => c.rango_pago === rango_pago);
+    const fracciones         = c.cuota_fraccion || [];
+    const facturasExistentes = c.cuota_factura  || [];
 
-  res.json(result);
+    if (fracciones.length === 0) {
+      const yaFacturada = facturasExistentes.some(cf => cf.id_fraccion === null);
+      if (!yaFacturada) {
+        result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: c.valor_cuota, tiene_fracciones: false });
+      }
+    } else {
+      const fraccionesFacturadas = new Set(facturasExistentes.map(cf => cf.id_fraccion).filter(Boolean));
+      for (const f of fracciones) {
+        if (!fraccionesFacturadas.has(f.id_fraccion)) {
+          result.push({
+            ...base,
+            id_fraccion:       f.id_fraccion,
+            numero_fraccion:   f.numero_fraccion,
+            total_fracciones:  fracciones.length,
+            valor_cuota:       f.valor_fraccion,
+            valor_pendiente:   f.valor_fraccion,
+            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
+            tiene_fracciones:  true,
+          });
+        }
+      }
+    }
+  }
+
+  const filtered = rango_pago ? result.filter(c => c.rango_pago === rango_pago) : result;
+  res.json(filtered);
 };
 
 exports.getVencidas = async (req, res) => {
