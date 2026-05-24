@@ -85,7 +85,6 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
 
   'POST /api/v1/uploads/baucher':    { recurso: 'uploads',     accion: 'crear' },
-  'POST /api/v1/uploads/avatar':     { recurso: 'uploads',     accion: 'avatar' },
   'GET /api/v1/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/v1/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/v1/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
