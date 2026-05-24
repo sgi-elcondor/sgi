@@ -36,7 +36,7 @@ Digitaliza y centraliza: ventas de lotes, cuotas, pagos, facturación, recibos, 
 | Backend        | Node.js + Express               |
 | Base de datos  | Supabase (PostgreSQL)           |
 | Autenticación  | Firebase Auth + middleware JWT  |
-| Almacenamiento | Cloudinary (fotos de perfil)    |
+| Almacenamiento | Cloudinary (fotos de perfil y bauchers de pago) |
 | Frontend       | HTML / CSS / JavaScript vanilla |
 | Config BD      | `src/config/supabase.js`        |
 | Config Auth    | `src/config/firebase.js`        |
@@ -62,11 +62,13 @@ public/js/api.js         ← Cliente HTTP centralizado (objeto global `API`)
 public/js/auth.js        ← Lógica de autenticación Firebase
 public/js/state.js       ← Estado global del usuario (vistas, permisos)
 public/js/ui.js          ← Utilidades de UI compartidas
+public/js/helpers.js     ← Helpers financieros globales (SGIHelpers, _fmtMiles, _parseMiles, _onMoneyInput)
 public/js/components/    ← Componentes de UI montables (sidebar, user-menu, onboarding, role-switcher, money-input, avatar-cropper)
 public/js/views/         ← Módulos de vista por dominio
 public/css/              ← Estilos organizados por capas
 
 tests/                ← Pruebas automatizadas con Jest
+seeds/                ← Scripts de seed de datos para desarrollo (ejecutar con node seeds/seed.js)
 ```
 
 ---
@@ -138,6 +140,8 @@ Usar los servicios existentes en lugar de replicar lógica:
 | `cuotas.service.js` → `limpiarVentaCreada()` | En el catch de la creación de venta (rollback) |
 | `consecutivos.service.js` → `nextPago()` | Al registrar un pago nuevo                       |
 | `recibos.service.js` → `crearParaPago()` | Al emitir un recibo asociado a un pago           |
+| `mora.service.js` → `actualizarMora()` | Marca ventas `en_mora` si tienen cuotas vencidas >90 días; revierte si se ponen al día |
+| `comisiones.service.js` → `verificarComision()` | Después de registrar un pago: marca comisión como `causada` si se alcanzó el 30% del valor total |
 
 ### Consecutivos
 
@@ -193,6 +197,17 @@ window.humanizeRole = humanizeRole;
 window.setActiveNav = setActiveNav;
 window.setViewTitle = setViewTitle;
 ```
+
+`helpers.js` expone utilidades de formato financiero usadas en múltiples vistas:
+
+```js
+window.SGIHelpers      // { fmtMiles, parseMiles, applyMoneyInput, smartConvert }
+window._fmtMiles       // alias de compatibilidad (ventas.js)
+window._parseMiles     // alias de compatibilidad (ventas.js)
+window._onMoneyInput   // alias de compatibilidad (ventas.js)
+```
+
+`smartConvert` acepta shorthands: `0.30` → 30% del valor referencia; `5` → 5 millones; número con separadores de miles → sin conversión.
 
 ### Estado Global
 
