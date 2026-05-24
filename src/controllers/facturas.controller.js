@@ -42,7 +42,7 @@ exports.getAll = async (req, res) => {
           venta(
             id_venta,
             lote(codigo_lote, proyecto(nombre)),
-            venta_comprador(comprador(nombres, apellidos, documento))
+            venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
         )
       )
@@ -54,7 +54,7 @@ exports.getAll = async (req, res) => {
     const link  = f.cuota_factura?.[0];
     const cuota = link?.cuota;
     const lote  = cuota?.venta?.lote;
-    const comp  = cuota?.venta?.venta_comprador?.[0]?.comprador;
+    const comp  = cuota?.venta?.venta_comprador?.[0]?.usuario;
     return {
       id_factura:        f.id_factura,
       numero_factura:    f.numero_factura,
@@ -88,7 +88,7 @@ exports.getCuotasSinFactura = async (req, res) => {
         id_venta,
         estado,
         lote(codigo_lote, proyecto(nombre)),
-        venta_comprador(comprador(nombres, apellidos))
+        venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
     `)
     .lte("fecha_vencimiento", hoy)
@@ -103,7 +103,7 @@ exports.getCuotasSinFactura = async (req, res) => {
     if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
 
     const lote = c.venta?.lote;
-    const comp = c.venta?.venta_comprador?.[0]?.comprador;
+    const comp = c.venta?.venta_comprador?.[0]?.usuario;
     const base = {
       id_cuota:          c.id_cuota,
       id_venta:          c.venta?.id_venta ?? null,
