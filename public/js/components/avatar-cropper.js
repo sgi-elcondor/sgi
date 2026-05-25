@@ -17,13 +17,17 @@ const AvatarCropper = (function () {
           <button class="ac-close" id="ac-close-btn" aria-label="Cerrar"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="ac-crop-area">
-          <img id="ac-img" src="" alt="preview" />
+          <div class="ac-placeholder" id="ac-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Selecciona una imagen para recortar</span>
+          </div>
+          <img id="ac-img" src="" alt="preview" style="display:none" />
         </div>
-        <div class="ac-hint">Arrastra y ajusta el recuadro para seleccionar el área que quieres conservar</div>
+        <div class="ac-hint" id="ac-hint" style="display:none">Arrastra y ajusta el recuadro para seleccionar el área que quieres conservar</div>
         <div class="ac-actions">
           <label class="ac-btn ac-btn-ghost" id="ac-change-label">
             <input type="file" id="ac-file-input" accept="image/jpeg,image/png,image/webp" style="display:none" />
-            Cambiar imagen
+            <span id="ac-change-label-text">Subir imagen</span>
           </label>
           <button class="ac-btn ac-btn-primary" id="ac-confirm-btn">Guardar foto</button>
         </div>
@@ -36,7 +40,6 @@ const AvatarCropper = (function () {
     fileInput.addEventListener('change', _handleFileChange);
     document.getElementById('ac-close-btn').addEventListener('click', _cleanup);
     document.getElementById('ac-confirm-btn').addEventListener('click', function () { _upload(onSuccess); });
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) _cleanup(); });
 
     fileInput.click();
   }
@@ -60,6 +63,13 @@ const AvatarCropper = (function () {
     const reader = new FileReader();
     reader.onload = function (ev) {
       const img = document.getElementById('ac-img');
+      const placeholder = document.getElementById('ac-placeholder');
+      const hint = document.getElementById('ac-hint');
+      const labelText = document.getElementById('ac-change-label-text');
+      if (placeholder) placeholder.style.display = 'none';
+      if (hint) hint.style.display = '';
+      if (labelText) labelText.textContent = 'Cambiar imagen';
+      img.style.display = '';
       img.src = ev.target.result;
 
       if (_cropperInstance) { _cropperInstance.destroy(); _cropperInstance = null; }

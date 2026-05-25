@@ -389,7 +389,6 @@
     const closeHandler = () => sgiCloseLoteModal();
     closeBtn.onclick  = closeHandler;
     cancelBtn.onclick = closeHandler;
-    overlay.onclick   = e => { if (e.target === overlay) sgiCloseLoteModal(); };
 
     form.onsubmit = async event => {
       event.preventDefault();

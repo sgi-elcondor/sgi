@@ -88,10 +88,15 @@ async function registerEmail(email, password) {
 // Password recovery
 // ─────────────────────────────────────────────────────────
 async function resetPassword(email) {
-  const { sendPasswordResetEmail } = await import(
-    "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
-  );
-  await sendPasswordResetEmail(auth, email);
+  const res = await fetch('/api/v1/auth/reset-password-email', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error || 'Error al enviar el correo.'), { code: 'backend/error' });
+  }
 }
 
 export { auth, loginEmail, loginGoogle, logout, esperarAuthListo, registerEmail, resetPassword };

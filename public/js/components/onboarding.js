@@ -73,7 +73,6 @@ function mostrarPromptFoto() {
     '<circle cx="60" cy="60" r="58" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4" opacity="0.3"/>' +
     '<circle cx="60" cy="44" r="20" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="2"/>' +
     '<circle cx="60" cy="44" r="20" fill="currentColor" opacity="0.1"/>' +
-    '<ellipse cx="60" cy="96" rx="34" ry="18" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="2"/>' +
     '<circle cx="53" cy="41" r="3" fill="currentColor" opacity="0.5"/>' +
     '<circle cx="67" cy="41" r="3" fill="currentColor" opacity="0.5"/>' +
     '<path d="M53 51 Q60 57 67 51" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.5"/>' +
