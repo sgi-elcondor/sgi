@@ -61,14 +61,14 @@ function _fmtDate(d) {
   return new Date(d + 'T12:00:00').toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-let _btCurrentTab = 'list', _btImportBank = 'bancolombia', _btImportParsed = [];
+let _btCurrentTab = 'list', _btImportBank = 'bancolombia', _btImportParsed = [], _btManualRows = [];
 let _btSearchTimer = null;
 
 window.bankTransactionsView = async function() {
   const vc        = document.getElementById('viewContainer');
   const canCreate = AppState.can('bank_transactions', 'crear');
   vc.innerHTML    = UI.loader();
-  _btCurrentTab = 'list'; _btImportParsed = [];
+  _btCurrentTab = 'list'; _btImportParsed = []; _btManualRows = [];
 
   vc.innerHTML = `
     <div class="bt-page">
@@ -110,12 +110,36 @@ window.bankTransactionsView = async function() {
               <p class="bt-hint">En Bancolombia: abre el detalle de movimientos, selecciona las filas de la tabla, copia (Ctrl+C) y pega aqui.</p>
               <textarea id="bt_import_text" class="bt-textarea" placeholder="Fecha&#9;Descripcion&#9;Referencia&#9;Valor" oninput="btParsePreview()"></textarea>
             </div>
+            <div class="bt-manual-section">
+              <div class="bt-manual-divider"><span>O ingresa manualmente</span></div>
+              <div class="bt-manual-form">
+                <div class="form-group">
+                  <label>Fecha *</label>
+                  <input id="btm_date" type="date" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label>Descripcion *</label>
+                  <input id="btm_desc" type="text" class="form-input" placeholder="Descripcion de la transaccion">
+                </div>
+                <div class="form-group">
+                  <label>Referencia</label>
+                  <input id="btm_ref" type="text" class="form-input" placeholder="Opcional">
+                </div>
+                <div class="form-group">
+                  <label>Monto</label>
+                  <input id="btm_amount" type="number" step="0.01" class="form-input" placeholder="Positivo o negativo">
+                </div>
+                <div class="bt-manual-add">
+                  <button class="btn btn-secondary btn-sm" onclick="btAddManualRow()">+ Agregar fila</button>
+                </div>
+              </div>
+            </div>
             <div id="bt-parse-errors" style="display:none" class="bt-errors"></div>
             <div id="bt-preview-wrap" style="display:none">
               <h4 style="margin:18px 0 10px;font-size:14px;font-weight:600">Previsualizacion - <span id="bt-preview-count">0</span> filas</h4>
               <div class="bt-preview-scroll">
                 <table class="bt-preview-table">
-                  <thead><tr><th>#</th><th>Fecha</th><th>Descripcion</th><th>Referencia</th><th style="text-align:right">Monto</th></tr></thead>
+                  <thead><tr><th>#</th><th>Fecha</th><th>Descripcion</th><th>Referencia</th><th style="text-align:right">Monto</th><th></th></tr></thead>
                   <tbody id="bt-preview-tbody"></tbody>
                 </table>
               </div>
@@ -198,11 +222,33 @@ window._btLoad = async function() {
     </tr>`).join('');
 };
 
+function _btRefreshPreview() {
+  const combined    = [..._btImportParsed, ..._btManualRows];
+  const previewWrap = document.getElementById('bt-preview-wrap');
+  if (!combined.length) { previewWrap.style.display = 'none'; return; }
+  previewWrap.style.display = 'block';
+  document.getElementById('bt-preview-count').textContent = combined.length;
+  let manualIdx = 0;
+  document.getElementById('bt-preview-tbody').innerHTML = combined.map((r, i) => {
+    const deleteBtn = r._manual
+      ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger);padding:0.125rem 0.375rem;font-size:0.6875rem" onclick="btRemoveManualRow(${manualIdx++})">&#x2715;</button>`
+      : '';
+    return `<tr${r._manual ? ' class="bt-manual-row"' : ''}>
+      <td style="color:var(--text-muted)">${i + 1}</td>
+      <td style="white-space:nowrap">${_fmtDate(r.transaction_date)}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.description}">${r.description}</td>
+      <td style="color:var(--text-muted);font-size:0.75rem">${r.reference || '--'}</td>
+      <td style="text-align:right">${_fmtAmount(r.amount)}</td>
+      <td style="text-align:center;width:2rem">${deleteBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
 window.btParsePreview = function() {
-  const text = document.getElementById('bt_import_text')?.value || '';
-  const errWrap = document.getElementById('bt-parse-errors'), previewWrap = document.getElementById('bt-preview-wrap');
+  const text    = document.getElementById('bt_import_text')?.value || '';
+  const errWrap = document.getElementById('bt-parse-errors');
   if (!text.trim()) {
-    errWrap.style.display = 'none'; previewWrap.style.display = 'none'; _btImportParsed = []; return;
+    errWrap.style.display = 'none'; _btImportParsed = []; _btRefreshPreview(); return;
   }
   const parser = BANK_PARSERS[_btImportBank];
   if (!parser) return;
@@ -210,32 +256,41 @@ window.btParsePreview = function() {
   _btImportParsed = results;
   errWrap.style.display = errors.length ? 'block' : 'none';
   if (errors.length) errWrap.innerHTML = errors.map(e => `<div>&#9888; ${e}</div>`).join('');
-  if (!results.length) { previewWrap.style.display = 'none'; return; }
-  previewWrap.style.display = 'block';
-  document.getElementById('bt-preview-count').textContent = results.length;
-  document.getElementById('bt-preview-tbody').innerHTML = results.map((r, i) => `
-    <tr>
-      <td style="color:var(--text-muted)">${i + 1}</td>
-      <td style="white-space:nowrap">${_fmtDate(r.transaction_date)}</td>
-      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.description}">${r.description}</td>
-      <td style="color:var(--text-muted);font-size:12px">${r.reference || '--'}</td>
-      <td style="text-align:right">${_fmtAmount(r.amount)}</td>
-    </tr>`).join('');
+  _btRefreshPreview();
 };
 
 window.btClearImport = function() {
   const ta = document.getElementById('bt_import_text'); if (ta) ta.value = '';
   _btImportParsed = [];
+  _btManualRows   = [];
+  ['btm_date','btm_desc','btm_ref','btm_amount'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['bt-parse-errors','bt-preview-wrap'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   const s = document.getElementById('bt-import-status'); if (s) s.textContent = '';
 };
 
+window.btAddManualRow = function() {
+  const date = document.getElementById('btm_date')?.value;
+  const desc = document.getElementById('btm_desc')?.value.trim();
+  const ref  = document.getElementById('btm_ref')?.value.trim();
+  const amt  = document.getElementById('btm_amount')?.value;
+  if (!date || !desc) { window.SGIUI?.toast('Fecha y descripcion son obligatorios', 'error', 'Error'); return; }
+  _btManualRows.push({ transaction_date: date, description: desc, reference: ref || null, amount: amt !== '' ? parseFloat(amt) : null, _manual: true });
+  ['btm_date','btm_desc','btm_ref','btm_amount'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _btRefreshPreview();
+};
+
+window.btRemoveManualRow = function(idx) {
+  _btManualRows.splice(idx, 1);
+  _btRefreshPreview();
+};
+
 window.btConfirmImport = async function() {
-  if (!_btImportParsed.length) return;
+  const combined = [..._btImportParsed, ..._btManualRows];
+  if (!combined.length) return;
   const btn = document.getElementById('bt-confirm-btn'), status = document.getElementById('bt-import-status');
   btn.disabled = true; btn.textContent = 'Importando...';
   try {
-    const data = await API.post('/bank-transactions/batch', { bank: _btImportBank, transactions: _btImportParsed });
+    const data = await API.post('/bank-transactions/batch', { bank: _btImportBank, transactions: combined });
     window.SGIUI?.toast(`${data.length} transacciones importadas`, 'success', 'Exito');
     btClearImport(); btSwitchTab('list');
   } catch(e) {
