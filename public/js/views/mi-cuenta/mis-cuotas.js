@@ -17,7 +17,7 @@
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
-    const iconSwap    = window.SGIUI?.icon("arrows-left-right") ?? "";
+    const iconSwap    = window.SGIUI?.icon("arrow-left-right") ?? "";
     const iconInfo    = window.SGIUI?.icon("info")          ?? "";
     const iconUpload  = window.SGIUI?.icon("upload-cloud")  ?? "";
     const iconFile    = window.SGIUI?.icon("file")          ?? "";

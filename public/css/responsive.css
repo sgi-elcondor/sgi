@@ -199,6 +199,12 @@ table {
     justify-content: flex-start !important;
     padding: 0.72rem 0.85rem !important;
     margin-inline: 0 !important;
+    border-radius: 0.95rem !important;
+  }
+
+  body.sidebar-collapsed .nav-item::before,
+  body.sidebar-mobile-open .nav-item::before {
+    display: block !important;
   }
 
   body.sidebar-collapsed .nav-icon,

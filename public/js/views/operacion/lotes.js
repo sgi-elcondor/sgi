@@ -891,6 +891,61 @@
       return { lotes, proyectos };
     }
 
+    function renderSummary(summary) {
+      const el = document.getElementById("lotes-summary-section");
+      if (!el) return;
+      el.innerHTML = `
+        <article class="stat-card">
+          <div class="stat-label">Total lotes</div>
+          <div class="stat-value">${summary.total}</div>
+          <div class="stat-sub">Resultado actual</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Disponibles</div>
+          <div class="stat-value">${summary.disponibles}</div>
+          <div class="stat-sub">Listos para comercialización</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Vendidos</div>
+          <div class="stat-value">${summary.vendidos}</div>
+          <div class="stat-sub">Con venta registrada</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Entregados</div>
+          <div class="stat-value">${summary.entregados}</div>
+          <div class="stat-sub">Proceso finalizado</div>
+        </article>
+      `;
+    }
+
+    function renderTable(filteredLotes) {
+      const el = document.getElementById("lotes-table-section");
+      if (!el) return;
+      el.innerHTML = filteredLotes.length
+        ? `<div class="table-header"><h3>Listado de lotes</h3></div>
+           <table id="lotes-table">${buildLotesTableHTML(filteredLotes, state, canCreate)}</table>`
+        : `<div class="table-header"><h3>Listado de lotes</h3></div>
+           <div class="empty-state">
+             <div class="empty-state-title">No hay resultados</div>
+             <div class="empty-state-text">No encontramos lotes con los filtros actuales.</div>
+             ${canCreate ? `<div><button class="btn btn-primary" id="btnEmptyCreateLote">Crear lote</button></div>` : ""}
+           </div>`;
+
+      const lotesTable = document.getElementById("lotes-table");
+      if (lotesTable) wireLotesSortHeaders(lotesTable, filteredLotes, state, canCreate);
+
+      document.getElementById("btnEmptyCreateLote")?.addEventListener("click", () => {
+        sgiOpenCreateLoteModal(_proyectos, () => renderLotesScreen(true));
+      });
+    }
+
+    function applyFilters() {
+      if (_allLotes === null) return;
+      const filteredLotes = sgiLoteApplyFilters(_allLotes, state);
+      renderSummary(sgiLoteBuildSummary(filteredLotes));
+      renderTable(filteredLotes);
+    }
+
     async function renderLotesScreen(forceRefresh = false) {
       try {
         container.innerHTML = window.UI?.loader ? UI.loader() : "";
@@ -936,28 +991,7 @@
                   <h3 class="section-title">Estado del inventario</h3>
                 </div>
               </div>
-              <div class="stats-grid lotes-summary-grid">
-                <article class="stat-card">
-                  <div class="stat-label">Total lotes</div>
-                  <div class="stat-value">${summary.total}</div>
-                  <div class="stat-sub">Resultado actual</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Disponibles</div>
-                  <div class="stat-value">${summary.disponibles}</div>
-                  <div class="stat-sub">Listos para comercialización</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Vendidos</div>
-                  <div class="stat-value">${summary.vendidos}</div>
-                  <div class="stat-sub">Con venta registrada</div>
-                </article>
-                <article class="stat-card">
-                  <div class="stat-label">Entregados</div>
-                  <div class="stat-value">${summary.entregados}</div>
-                  <div class="stat-sub">Proceso finalizado</div>
-                </article>
-              </div>
+              <div class="stats-grid lotes-summary-grid" id="lotes-summary-section"></div>
             </section>
 
             <section class="table-wrap">
@@ -982,46 +1016,33 @@
               </div>
             </section>
 
-            <section class="table-wrap">
-              <div class="table-header"><h3>Listado de lotes</h3></div>
-              ${filteredLotes.length
-                ? `<table id="lotes-table">${buildLotesTableHTML(filteredLotes, state, canCreate)}</table>`
-                : `<div class="empty-state">
-                    <div class="empty-state-title">No hay resultados</div>
-                    <div class="empty-state-text">No encontramos lotes con los filtros actuales.</div>
-                    ${canCreate ? `<div><button class="btn btn-primary" id="btnEmptyCreateLote">Crear lote</button></div>` : ""}
-                   </div>`}
-            </section>
+            <section class="table-wrap" id="lotes-table-section"></section>
           </section>
         `;
 
-        const lotesTable = document.getElementById("lotes-table");
-        if (lotesTable) wireLotesSortHeaders(lotesTable, filteredLotes, state, canCreate);
+        renderSummary(summary);
+        renderTable(filteredLotes);
 
         document.getElementById("filtroProyecto")?.addEventListener("change", e => {
           state.proyecto = e.target.value;
-          renderLotesScreen();
+          applyFilters();
         });
 
         document.getElementById("buscarLote")?.addEventListener("input", e => {
           state.search = e.target.value;
-          renderLotesScreen();
+          applyFilters();
         });
 
         if (canExport) {
           document.getElementById("btnLotesExportExcel")?.addEventListener("click", async () => {
-            await exportLotesExcel(filteredLotes, proyectos);
+            await exportLotesExcel(sgiLoteApplyFilters(_allLotes, state), proyectos);
           });
           document.getElementById("btnLotesExportPDF")?.addEventListener("click", () => {
-            exportLotesPDF(filteredLotes);
+            exportLotesPDF(sgiLoteApplyFilters(_allLotes, state));
           });
         }
 
         document.getElementById("btnNuevoLote")?.addEventListener("click", () => {
-          sgiOpenCreateLoteModal(proyectos, () => renderLotesScreen(true));
-        });
-
-        document.getElementById("btnEmptyCreateLote")?.addEventListener("click", () => {
           sgiOpenCreateLoteModal(proyectos, () => renderLotesScreen(true));
         });
 

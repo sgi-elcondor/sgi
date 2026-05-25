@@ -5,6 +5,10 @@
   flex-direction: column;
 }
 
+#bt-list-panel {
+  overflow-x: auto;
+}
+
 .bt-filters {
   display: flex;
   flex-wrap: wrap;
@@ -94,6 +98,45 @@
 
 .bt-import-inner {
   padding: 1.25rem 1.25rem 0.5rem;
+}
+
+.bt-manual-section {
+  margin-top: 1rem;
+}
+
+.bt-manual-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.875rem;
+}
+
+.bt-manual-divider::before,
+.bt-manual-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.bt-manual-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.bt-manual-add {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.125rem;
+}
+
+.bt-preview-table .bt-manual-row td {
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 .bt-preview-scroll {
