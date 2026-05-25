@@ -102,15 +102,96 @@ function renderChangePasswordView() {
   const isEmailProvider = user?.providerData?.some(function(p) { return p.providerId === "password"; });
 
   if (!isEmailProvider) {
+    const email = user?.email || '';
     vc.innerHTML =
       '<div class="auth-card-wrap"><div class="auth-card">' +
       '<div class="auth-card-brand"><div class="auth-card-icon"><i data-lucide="key-round"></i></div>' +
-      '<div><div class="auth-card-title">Cambiar contrasena</div><div class="auth-card-sub">Seguridad de cuenta</div></div></div>' +
-      '<p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;margin-bottom:1.5rem">Tu cuenta usa Google. Gestiona tu contrasena desde tu cuenta de Google.</p>' +
+      '<div><div class="auth-card-title">Contrasena</div><div class="auth-card-sub">Seguridad de cuenta</div></div></div>' +
+      '<div id="google-pwd-step1">' +
+      '<div class="google-provider-notice">' +
+      '<svg viewBox="0 0 24 24" width="1.25rem" height="1.25rem" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>' +
+      '<path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>' +
+      '<path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>' +
+      '<path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>' +
+      '</svg>' +
+      '<span>Tu cuenta usa Google</span>' +
+      '</div>' +
+      '<p class="google-pwd-note">Iniciaste sesion con Google (<strong>' + email + '</strong>). Tambien puedes habilitar el inicio de sesion con contrasena usando ese mismo correo.</p>' +
+      '<button class="auth-card-btn auth-card-btn--primary" id="btn-enable-password">Habilitar inicio de sesion con contrasena</button>' +
       '<button class="auth-card-btn" id="back-from-pwd"><i data-lucide="arrow-left"></i> Volver</button>' +
+      '</div>' +
+      '<div id="google-pwd-step2" style="display:none">' +
+      '<p class="google-pwd-note">Crea una contrasena para <strong>' + email + '</strong>. Podras iniciar sesion tanto con Google como con tu contrasena.</p>' +
+      '<div class="auth-card-field"><label>Nueva contrasena</label><input type="password" id="pwd-new" placeholder="Minimo 8 caracteres" autocomplete="new-password" />' +
+      '<div class="pwd-rules"><span class="pwd-rule" id="pr-len">Minimo 8 caracteres</span><span class="pwd-rule" id="pr-upper">Una letra mayuscula</span><span class="pwd-rule" id="pr-num">Un numero</span></div></div>' +
+      '<div class="auth-card-field"><label>Confirmar contrasena</label><input type="password" id="pwd-confirm" placeholder="Repite la contrasena" autocomplete="new-password" /></div>' +
+      '<div class="auth-card-error" id="pwd-error"></div>' +
+      '<div class="auth-card-success" id="pwd-success"></div>' +
+      '<button class="auth-card-btn auth-card-btn--primary" id="btn-set-pwd">Activar inicio de sesion con contrasena</button>' +
+      '<button class="auth-card-btn" id="back-to-step1"><i data-lucide="arrow-left"></i> Volver</button>' +
+      '</div>' +
       '</div></div>';
+
     window.SGIUI?.hydrate();
+
     document.getElementById("back-from-pwd")?.addEventListener("click", function() { navigate(prev); });
+
+    document.getElementById("btn-enable-password")?.addEventListener("click", function() {
+      document.getElementById("google-pwd-step1").style.display = "none";
+      document.getElementById("google-pwd-step2").style.display = "block";
+      document.getElementById("pwd-new")?.focus();
+    });
+
+    document.getElementById("back-to-step1")?.addEventListener("click", function() {
+      document.getElementById("google-pwd-step2").style.display = "none";
+      document.getElementById("google-pwd-step1").style.display = "";
+      document.getElementById("pwd-error").style.display = "none";
+    });
+
+    document.getElementById("pwd-new")?.addEventListener("input", function(e) {
+      const v = e.target.value;
+      document.getElementById("pr-len")?.classList.toggle("ok", v.length >= 8);
+      document.getElementById("pr-upper")?.classList.toggle("ok", /[A-Z]/.test(v));
+      document.getElementById("pr-num")?.classList.toggle("ok", /[0-9]/.test(v));
+    });
+
+    document.getElementById("btn-set-pwd")?.addEventListener("click", async function() {
+      const newPwd    = document.getElementById("pwd-new").value;
+      const confirm   = document.getElementById("pwd-confirm").value;
+      const errorEl   = document.getElementById("pwd-error");
+      const successEl = document.getElementById("pwd-success");
+      const btn       = document.getElementById("btn-set-pwd");
+
+      errorEl.style.display = successEl.style.display = "none";
+
+      if (!newPwd || !confirm)                                                     { errorEl.textContent = "Completa todos los campos."; errorEl.style.display = "block"; return; }
+      if (newPwd.length < 8 || !/[A-Z]/.test(newPwd) || !/[0-9]/.test(newPwd)) { errorEl.textContent = "La contrasena no cumple los requisitos."; errorEl.style.display = "block"; return; }
+      if (newPwd !== confirm)                                                      { errorEl.textContent = "Las contrasenass no coinciden."; errorEl.style.display = "block"; return; }
+
+      btn.disabled = true; btn.textContent = "Activando...";
+
+      try {
+        const { EmailAuthProvider, linkWithCredential } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+        const fbUser     = window._firebaseAuth?.currentUser;
+        const credential = EmailAuthProvider.credential(fbUser.email, newPwd);
+        await linkWithCredential(fbUser, credential);
+        successEl.textContent = "Inicio de sesion con contrasena habilitado. Ya puedes usar ambos metodos.";
+        successEl.style.display = "block";
+        setTimeout(function() { navigate(prev); }, 2500);
+      } catch (err) {
+        const MAP = {
+          "auth/provider-already-linked": "Ya tienes contrasena configurada en tu cuenta.",
+          "auth/weak-password":           "La contrasena es demasiado debil.",
+          "auth/email-already-in-use":    "Este correo ya tiene una cuenta con contrasena independiente.",
+          "auth/requires-recent-login":   "Por seguridad, vuelve a iniciar sesion con Google antes de continuar.",
+          "auth/operation-not-allowed":   "Esta funcion no esta habilitada. Contacta al administrador.",
+        };
+        errorEl.textContent = MAP[err.code] || err.message; errorEl.style.display = "block";
+        btn.disabled = false; btn.textContent = "Activar inicio de sesion con contrasena";
+      }
+    });
+
     return;
   }
 
