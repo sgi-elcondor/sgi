@@ -449,7 +449,7 @@
           <div class="pago-method-tabs">
             <button type="button" class="pago-method-tab active" data-method="transferencia">${window.SGIUI?.icon("smartphone") ?? ""} Electrónico</button>
             <button type="button" class="pago-method-tab" data-method="efectivo">${window.SGIUI?.icon("banknote") ?? ""} Efectivo</button>
-            <button type="button" class="pago-method-tab" data-method="permuta">${window.SGIUI?.icon("arrows-left-right") ?? ""} Permuta</button>
+            <button type="button" class="pago-method-tab" data-method="permuta">${window.SGIUI?.icon("arrow-left-right") ?? ""} Permuta</button>
           </div>
         </div>
 
