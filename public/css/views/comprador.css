@@ -92,18 +92,25 @@
 
 .baucher-upload-area { border: 2px dashed var(--border); border-radius: 0.625rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
 .baucher-upload-area:hover, .baucher-upload-area.dragover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.baucher-upload-area.has-preview { padding: 0.75rem; cursor: default; }
+.baucher-upload-area.has-preview:hover { border-color: var(--border); background: transparent; }
 .baucher-upload-area input[type="file"] { display: none; }
 .baucher-upload-icon { margin-bottom: 0.5rem; color: var(--text-muted); }
-.baucher-upload-label { font-size: 0.8125rem; color: var(--text-muted); }
-.baucher-upload-label strong { color: var(--accent); cursor: pointer; }
-.baucher-preview { margin-top: 0.75rem; display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.875rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.8125rem; }
-.baucher-preview-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; 
-    justify-content: center;
-    display: flex;
-    align-items: center;
-    gap: .5rem;  
-}
-.baucher-preview-remove { color: var(--danger); cursor: pointer; flex-shrink: 0; }
+.baucher-upload-label { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+.baucher-upload-btn { margin-top: 0.25rem; }
+
+.baucher-img-preview-wrap { position: relative; width: 100%; border-radius: 0.5rem; overflow: hidden; }
+.baucher-img-preview { width: 100%; max-height: 11rem; object-fit: contain; display: block; background: var(--surface-3); border-radius: 0.5rem; }
+.baucher-img-remove { position: absolute; top: 0.375rem; right: 0.375rem; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: rgba(0,0,0,0.55); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; }
+.baucher-img-remove:hover { background: rgba(220, 38, 38, 0.85); }
+.baucher-img-remove i { width: 0.875rem; height: 0.875rem; }
+.baucher-preview-footer { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.625rem; flex-wrap: wrap; }
+
+.baucher-preview { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.875rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.8125rem; }
+.baucher-preview--file { justify-content: space-between; flex-wrap: wrap; }
+.baucher-preview-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-muted); min-width: 0; }
+.baucher-preview-name i { flex-shrink: 0; }
+.baucher-preview-remove { color: var(--danger); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; }
 
 .datetime-row { display: flex; gap: 0.5rem; align-items: flex-end; }
 .datetime-row input { flex: 1; }

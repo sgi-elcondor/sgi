@@ -294,6 +294,12 @@ input:focus {
   padding: 0;
   text-decoration: none;
   transition: color var(--transition), opacity var(--transition);
+  display: flex;
+  flex-wrap: wrap;  
+  flex-direction: row;
+  width: 100%;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .link-btn:hover { color: var(--accent-hover); opacity: 0.9; }
