@@ -312,52 +312,60 @@ function _gastosFilterBar() {
   ).join("");
 
   return `
-    <div class="table-wrap" style="margin-bottom:1rem">
-      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;padding:.5rem 0">
+    <div style="margin-bottom:1rem;border:1px solid var(--border);border-radius:1rem;background:var(--surface);box-shadow:var(--shadow-soft);padding:.5rem .875rem">
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;padding:.25rem 0">
         <div class="form-group" style="margin:0;min-width:11rem;flex:1">
           <label>Proyecto</label>
-          <select id="gf_proyecto" onchange="_gastosApplyFilter()">
+          <select id="gf_proyecto">
             <option value="">Todos</option>
             ${proyOptions}
           </select>
         </div>
         <div class="form-group" style="margin:0;min-width:9rem">
           <label>Categoria</label>
-          <select id="gf_categoria" onchange="_gastosApplyFilter()">
+          <select id="gf_categoria">
             <option value="">Todas</option>
             ${catOptions}
           </select>
         </div>
         <div class="form-group" style="margin:0">
           <label>Desde</label>
-          <input type="date" id="gf_desde" onchange="_gastosApplyFilter()">
+          <input type="date" id="gf_desde">
         </div>
         <div class="form-group" style="margin:0">
           <label>Hasta</label>
-          <input type="date" id="gf_hasta" onchange="_gastosApplyFilter()">
+          <input type="date" id="gf_hasta">
         </div>
-        <button class="btn btn-sm" onclick="_gastosResetFilters()" style="margin-bottom:.1rem">Limpiar</button>
+        <button class="btn btn-sm" id="gf_limpiar" style="margin-bottom:.1rem">Limpiar</button>
       </div>
     </div>
   `;
 }
 
-window._gastosApplyFilter = function() {
+function _gastosApplyFilter() {
   _gastosFilters.id_proyecto = document.getElementById("gf_proyecto")?.value || "";
   _gastosFilters.categoria   = document.getElementById("gf_categoria")?.value || "";
   _gastosFilters.fecha_desde = document.getElementById("gf_desde")?.value || "";
   _gastosFilters.fecha_hasta = document.getElementById("gf_hasta")?.value || "";
   _gastosRenderTable();
-};
+}
 
-window._gastosResetFilters = function() {
+function _gastosResetFilters() {
   _gastosFilters = { id_proyecto: "", categoria: "", fecha_desde: "", fecha_hasta: "" };
   ["gf_proyecto","gf_categoria","gf_desde","gf_hasta"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
   _gastosRenderTable();
-};
+}
+
+function _gastosWireFilters() {
+  document.getElementById("gf_proyecto")?.addEventListener("change", _gastosApplyFilter);
+  document.getElementById("gf_categoria")?.addEventListener("change", _gastosApplyFilter);
+  document.getElementById("gf_desde")?.addEventListener("change", _gastosApplyFilter);
+  document.getElementById("gf_hasta")?.addEventListener("change", _gastosApplyFilter);
+  document.getElementById("gf_limpiar")?.addEventListener("click",  _gastosResetFilters);
+}
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
@@ -485,6 +493,7 @@ window.gastosView = async function() {
   `;
 
   SGIUI.hydrate();
+  _gastosWireFilters();
 };
 
 // ─── Form modal ───────────────────────────────────────────────────────────────
