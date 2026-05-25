@@ -138,12 +138,14 @@
 
   function sgiLoteApplyFilters(lotes, state) {
     const search = sgiNormalizeText(state.search);
+    const estado = sgiNormalizeText(state.estado);
     return lotes.filter(lote => {
       const matchesProject = !state.proyecto || String(lote.proyectoId) === String(state.proyecto);
+      const matchesEstado  = !estado || sgiNormalizeText(lote.estado) === estado;
       const haystack = [lote.codigo, lote.manzana, lote.numero_lote, lote.proyecto, lote.estado]
         .map(sgiNormalizeText).join(" ");
       const matchesSearch = !search || haystack.includes(search);
-      return matchesProject && matchesSearch;
+      return matchesProject && matchesEstado && matchesSearch;
     });
   }
 
@@ -870,6 +872,7 @@
 
     const state = {
       proyecto: "",
+      estado:   "",
       search:   "",
       sortCol:  null,
       sortDir:  "asc",
@@ -994,7 +997,7 @@
               <div class="stats-grid lotes-summary-grid" id="lotes-summary-section"></div>
             </section>
 
-            <section class="table-wrap">
+            <section class="table-wrap lotes-filter-section">
               <div class="table-header"><h3>Filtros y búsqueda</h3></div>
               <div class="filter-bar">
                 <div class="form-group filter-field">
@@ -1008,9 +1011,18 @@
                   </select>
                 </div>
                 <div class="form-group filter-field">
+                  <label for="filtroEstado">Estado</label>
+                  <select id="filtroEstado">
+                    <option value="">Todos</option>
+                    <option value="disponible" ${state.estado === "disponible" ? "selected" : ""}>Disponible</option>
+                    <option value="vendido"    ${state.estado === "vendido"    ? "selected" : ""}>Vendido</option>
+                    <option value="entregado"  ${state.estado === "entregado"  ? "selected" : ""}>Entregado</option>
+                  </select>
+                </div>
+                <div class="form-group filter-field">
                   <label for="buscarLote">Buscar</label>
                   <input id="buscarLote" type="text"
-                    placeholder="Buscar por código, manzana, lote, proyecto o estado"
+                    placeholder="Buscar por código, manzana, lote o proyecto"
                     value="${state.search}" />
                 </div>
               </div>
@@ -1025,6 +1037,11 @@
 
         document.getElementById("filtroProyecto")?.addEventListener("change", e => {
           state.proyecto = e.target.value;
+          applyFilters();
+        });
+
+        document.getElementById("filtroEstado")?.addEventListener("change", e => {
+          state.estado = e.target.value;
           applyFilters();
         });
 

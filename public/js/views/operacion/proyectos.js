@@ -2,6 +2,7 @@
   const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
 
   const sortState = { col: null, dir: "asc" };
+  let cachedLotes = [];
 
   const TABLE_COLS = [
     { key: "id",          label: "ID"          },
@@ -14,6 +15,11 @@
 
   function fmt(n) {
     return new Intl.NumberFormat("es-CO").format(n || 0);
+  }
+
+  function fmtCOP(n) {
+    if (n == null || n === "") return "—";
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
   }
 
   function pct(part, total) {
@@ -41,7 +47,7 @@
     }).join("")}</tr></thead>`;
 
     const tbody = `<tbody>${appliedSort(rows).map(r =>
-      `<tr>
+      `<tr class="clickable-row" data-id="${r.id}" title="Ver detalle del proyecto">
         <td><strong>${r.id}</strong></td>
         <td>${r.nombre}</td>
         <td>${r.sigla ? `<span style="font-family:monospace;font-weight:600">${r.sigla}</span>` : "<span style='color:var(--text-muted)'>—</span>"}</td>
@@ -66,8 +72,307 @@
         }
         tableEl.innerHTML = buildTableHTML(rows);
         wireSortHeaders(tableEl, rows);
+        wireRowClicks(tableEl, rows);
       });
     });
+  }
+
+  function wireRowClicks(tableEl, rows) {
+    const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
+    tableEl.querySelectorAll("tr.clickable-row").forEach(tr => {
+      tr.addEventListener("click", () => {
+        const id  = parseInt(tr.dataset.id, 10);
+        const row = rows.find(r => r.id === id);
+        if (!row) return;
+        const projectLotes = cachedLotes.filter(l => l.id_proyecto === id);
+        showProjectDetail(row, projectLotes, canExport);
+      });
+    });
+  }
+
+  function showProjectDetail(row, projectLotes, canExport) {
+    const overlay = document.getElementById("modalOverlay");
+    const titleEl = document.getElementById("modalTitle");
+    const bodyEl  = document.getElementById("modalBody");
+    if (!overlay || !titleEl || !bodyEl) return;
+
+    const disponibles  = projectLotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
+    const vendidos     = projectLotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
+    const entregados   = projectLotes.filter(l => (l.estado || "").toLowerCase() === "entregado").length;
+    const total        = projectLotes.length;
+    const areaTotal    = projectLotes.reduce((s, l) => s + (l.area_m2 || 0), 0);
+    const withPrice    = projectLotes.filter(l => l.precio_base);
+    const precioTotal  = withPrice.reduce((s, l) => s + (l.precio_base || 0), 0);
+    const precioAvg    = withPrice.length ? precioTotal / withPrice.length : 0;
+    const ocupacion    = vendidos + entregados;
+
+    titleEl.textContent = row.nombre;
+
+    const kpis = [
+      { label: "Total lotes",  value: fmt(total),                          sub: "Inventario del proyecto"               },
+      { label: "Disponibles",  value: fmt(disponibles),                    sub: `${pct(disponibles, total)}% del total` },
+      { label: "Vendidos",     value: fmt(vendidos),                       sub: `${pct(vendidos, total)}% del total`    },
+      { label: "Entregados",   value: fmt(entregados),                     sub: `${pct(entregados, total)}% del total`  },
+      { label: "Ocupación",    value: `${pct(ocupacion, total)}%`,         sub: "(Vendidos + Entregados) ÷ Total"       },
+      { label: "Área total",   value: `${fmt(areaTotal.toFixed(1))} m²`,   sub: "Suma del área de todos los lotes"      },
+      { label: "Precio prom.", value: fmtCOP(Math.round(precioAvg)),       sub: "Precio base promedio por lote"         },
+      { label: "Valor total",  value: fmtCOP(Math.round(precioTotal)),     sub: "Suma del valor base del inventario"    },
+    ];
+
+    const kpiHTML = kpis.map(k =>
+      `<div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:0.5rem;padding:0.875rem 0.5rem;text-align:center">
+        <div style="font-size:1.05rem;font-weight:700;color:var(--color-primary);word-break:break-all">${k.value}</div>
+        <div style="font-size:0.72rem;font-weight:600;color:var(--text-primary);margin-top:0.25rem">${k.label}</div>
+        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:0.125rem;line-height:1.3">${k.sub}</div>
+      </div>`
+    ).join("");
+
+    const estadoBadge = (estado) => {
+      const map = { disponible: "success", vendido: "warning", entregado: "info" };
+      const cls = map[(estado || "").toLowerCase()] || "default";
+      return `<span class="badge badge-${cls}">${estado || "—"}</span>`;
+    };
+
+    const lotesRows = projectLotes.map(l =>
+      `<tr>
+        <td>${l.codigo_lote || "—"}</td>
+        <td>${l.manzana || "—"}</td>
+        <td>${l.numero_lote || "—"}</td>
+        <td>${l.area_m2 != null ? `${l.area_m2} m²` : "—"}</td>
+        <td>${l.precio_base != null ? fmtCOP(l.precio_base) : "—"}</td>
+        <td>${estadoBadge(l.estado)}</td>
+      </tr>`
+    ).join("");
+
+    const metaChips = [
+      row.sigla     ? `<span style="font-family:monospace;background:var(--bg-tertiary,var(--bg-secondary));padding:0.15rem 0.5rem;border-radius:0.25rem;font-weight:600;font-size:0.82rem;border:1px solid var(--border-color)">${row.sigla}</span>` : "",
+      row.ubicacion ? `<span style="color:var(--text-muted);font-size:0.82rem">📍 ${row.ubicacion}</span>` : "",
+    ].filter(Boolean).join(" ");
+
+    bodyEl.innerHTML =
+      `<div style="display:flex;flex-direction:column;gap:1rem">` +
+      (metaChips ? `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">${metaChips}</div>` : "") +
+      (row.descripcion ? `<p style="color:var(--text-secondary);font-size:0.82rem;margin:0;line-height:1.5">${row.descripcion}</p>` : "") +
+      `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem">${kpiHTML}</div>` +
+      (projectLotes.length
+        ? `<div class="table-wrap" style="margin:0">
+            <div class="table-header"><h3 style="font-size:0.85rem;margin:0">Lotes del proyecto</h3></div>
+            <div style="overflow-x:auto;max-height:16rem">
+              <table>
+                <thead><tr>
+                  <th>Código</th><th>Manzana</th><th>N° Lote</th><th>Área</th><th>Precio base</th><th>Estado</th>
+                </tr></thead>
+                <tbody>${lotesRows}</tbody>
+              </table>
+            </div>
+           </div>`
+        : `<p style="color:var(--text-muted);text-align:center;padding:1rem 0;margin:0">Sin lotes registrados.</p>`
+      ) +
+      `<div class="form-actions" style="margin-top:0.5rem">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cerrar</button>
+        ${canExport ? `<button class="btn btn-primary" id="btnExportProjectPDF">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar PDF
+        </button>` : ""}
+       </div>` +
+      `</div>`;
+
+    overlay.classList.add("open");
+    window.SGIUI?.hydrate();
+
+    if (canExport) {
+      document.getElementById("btnExportProjectPDF")?.addEventListener("click", () => {
+        exportProjectPDF(row, projectLotes);
+      });
+    }
+  }
+
+  function exportProjectPDF(row, projectLotes) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    const disponibles = projectLotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
+    const vendidos    = projectLotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
+    const entregados  = projectLotes.filter(l => (l.estado || "").toLowerCase() === "entregado").length;
+    const total       = projectLotes.length;
+    const areaTotal   = projectLotes.reduce((s, l) => s + (l.area_m2 || 0), 0);
+    const withPrice   = projectLotes.filter(l => l.precio_base);
+    const precioTotal = withPrice.reduce((s, l) => s + (l.precio_base || 0), 0);
+    const precioAvg   = withPrice.length ? precioTotal / withPrice.length : 0;
+    const ocupacion   = vendidos + entregados;
+
+    const C_PRIMARY = [255, 78, 0];
+    const C_DARK    = [30, 41, 59];
+    const C_GRAY    = [100, 116, 139];
+    const C_LIGHT   = [255, 248, 245];
+    const C_WHITE   = [255, 255, 255];
+    const C_DIVIDER = [255, 207, 189];
+
+    // Header
+    doc.setFillColor(...C_PRIMARY);
+    doc.rect(0, 0, 210, 32, "F");
+    doc.setTextColor(...C_WHITE);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("EL CÓNDOR S.A.S.", 14, 14);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Sistema de Gestión Inmobiliaria — SGI", 14, 22);
+    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 196, 22, { align: "right" });
+
+    // Title
+    doc.setTextColor(...C_DARK);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Ficha de Proyecto: ${row.nombre}`, 14, 44);
+    doc.setDrawColor(...C_PRIMARY);
+    doc.setLineWidth(0.6);
+    doc.line(14, 47, 196, 47);
+
+    let y = 54;
+
+    // Project info box
+    doc.setFillColor(...C_LIGHT);
+    doc.roundedRect(14, y, 182, row.descripcion ? 26 : 18, 2, 2, "F");
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C_DARK);
+    doc.text("Información del proyecto", 18, y + 6);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C_GRAY);
+    const infoMeta = [
+      row.sigla     ? `Sigla: ${row.sigla}` : null,
+      row.ubicacion ? `Ubicación: ${row.ubicacion}` : null,
+    ].filter(Boolean).join("   |   ");
+    if (infoMeta) doc.text(doc.splitTextToSize(infoMeta, 170), 18, y + 13);
+    if (row.descripcion) doc.text(doc.splitTextToSize(row.descripcion, 170), 18, y + 20);
+    y += (row.descripcion ? 26 : 18) + 8;
+
+    // KPIs section
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C_DARK);
+    doc.text("Indicadores Clave del Proyecto", 14, y);
+    doc.setDrawColor(...C_DIVIDER);
+    doc.setLineWidth(0.3);
+    doc.line(14, y + 2, 196, y + 2);
+    y += 8;
+
+    const kpis = [
+      { value: fmt(total),                              label: "Total lotes",  desc: "Inventario registrado en el proyecto"         },
+      { value: fmt(disponibles),                         label: "Disponibles",  desc: `${pct(disponibles, total)}% — Sin venta activa` },
+      { value: fmt(vendidos),                            label: "Vendidos",     desc: `${pct(vendidos, total)}% — Con venta activa`    },
+      { value: fmt(entregados),                          label: "Entregados",   desc: `${pct(entregados, total)}% — Ya entregados`      },
+      { value: `${pct(ocupacion, total)}%`,              label: "Ocupación",    desc: "(Vendidos + Entregados) ÷ Total lotes × 100"    },
+      { value: `${fmt(areaTotal.toFixed(0))} m²`,        label: "Área total",   desc: "Suma del área de todos los lotes del proyecto"   },
+      { value: `$${fmt(Math.round(precioAvg))}`,         label: "Precio prom.", desc: "Precio base promedio por lote del inventario"    },
+      { value: `$${fmt(Math.round(precioTotal))}`,       label: "Valor total",  desc: "Suma del valor base de todos los lotes"          },
+    ];
+
+    const cardW  = 44;
+    const cardH  = 28;
+    const gapX   = 1.6;
+    const perRow = 4;
+
+    kpis.forEach((k, i) => {
+      const col = i % perRow;
+      const rw  = Math.floor(i / perRow);
+      const x   = 14 + col * (cardW + gapX);
+      const ky  = y + rw * (cardH + 3);
+
+      doc.setFillColor(...C_LIGHT);
+      doc.roundedRect(x, ky, cardW, cardH, 2, 2, "F");
+      doc.setDrawColor(...C_DIVIDER);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(x, ky, cardW, cardH, 2, 2, "S");
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...C_PRIMARY);
+      doc.text(k.value, x + cardW / 2, ky + 9, { align: "center" });
+
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...C_DARK);
+      doc.text(k.label, x + cardW / 2, ky + 15, { align: "center" });
+
+      doc.setFontSize(5.8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...C_GRAY);
+      doc.text(doc.splitTextToSize(k.desc, cardW - 4), x + cardW / 2, ky + 20, { align: "center" });
+    });
+
+    y += Math.ceil(kpis.length / perRow) * (cardH + 3) + 8;
+
+    // Lotes table
+    if (projectLotes.length > 0) {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...C_DARK);
+      doc.text("Inventario de Lotes", 14, y);
+      doc.setDrawColor(...C_DIVIDER);
+      doc.setLineWidth(0.3);
+      doc.line(14, y + 2, 196, y + 2);
+      y += 6;
+
+      doc.autoTable({
+        startY: y,
+        head: [["Código", "Manzana", "N° Lote", "Área (m²)", "Precio Base", "Estado"]],
+        body: projectLotes.map(l => [
+          l.codigo_lote   || "—",
+          l.manzana       || "—",
+          l.numero_lote   || "—",
+          l.area_m2 != null ? String(l.area_m2) : "—",
+          l.precio_base   != null ? `$${fmt(l.precio_base)}` : "—",
+          l.estado        || "—",
+        ]),
+        styles: {
+          fontSize: 7.5,
+          cellPadding: 2.5,
+          lineColor: C_DIVIDER,
+          lineWidth: 0.2,
+          textColor: C_DARK,
+        },
+        headStyles: {
+          fillColor: C_PRIMARY,
+          textColor: C_WHITE,
+          fontStyle: "bold",
+          fontSize: 8,
+          halign: "center",
+        },
+        alternateRowStyles: { fillColor: C_LIGHT },
+        columnStyles: {
+          0: { cellWidth: 24 },
+          1: { halign: "center", cellWidth: 20 },
+          2: { halign: "center", cellWidth: 20 },
+          3: { halign: "center", cellWidth: 24 },
+          4: { halign: "right",  cellWidth: 46 },
+          5: { halign: "center", cellWidth: 22 },
+        },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    // Footer on all pages
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      const pageH = doc.internal.pageSize.getHeight();
+      doc.setFillColor(...C_LIGHT);
+      doc.rect(0, pageH - 13, 210, 13, "F");
+      doc.setDrawColor(...C_DIVIDER);
+      doc.setLineWidth(0.3);
+      doc.line(0, pageH - 13, 210, pageH - 13);
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...C_GRAY);
+      doc.text("El Cóndor S.A.S. — Uso interno y confidencial", 14, pageH - 5);
+      doc.text(`Página ${i} de ${pageCount}`, 196, pageH - 5, { align: "right" });
+    }
+
+    const slug = (row.sigla || row.nombre).toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    doc.save(`proyecto_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   async function exportExcel(rows, lotes) {
@@ -517,6 +822,8 @@
         API.get("/lotes"),
       ]);
 
+      cachedLotes = lotes;
+
       const rows = proyectos.map(p => {
         const id  = p.id_proyecto ?? p.id;
         const del = lotes.filter(l => l.id_proyecto === id);
@@ -547,6 +854,7 @@
         : "";
 
       container.innerHTML =
+        '<style>.clickable-row:hover td{background:var(--bg-hover,rgba(255,78,0,0.04));cursor:pointer}.clickable-row td:last-child::after{content:"›";float:right;color:var(--text-muted);font-size:1rem;line-height:1}</style>' +
         '<section class="page-shell">' +
         window.SGIUI.pageHeader({
           kicker:   "Gestion",
@@ -562,14 +870,17 @@
         `<article class="stat-card"><div class="stat-label">Total lotes</div><div class="stat-value">${fmt(lotes.length)}</div><div class="stat-sub">Inventario consolidado</div></article>` +
         "</section>" +
         '<section class="table-wrap">' +
-        '<div class="table-header"><h3>Listado de proyectos</h3></div>' +
+        '<div class="table-header"><h3>Listado de proyectos</h3><span style="font-size:0.75rem;color:var(--text-muted)">Haz clic en una fila para ver el detalle</span></div>' +
         `<table id="proj-table">${buildTableHTML(rows)}</table>` +
         "</section></section>";
 
       window.SGIUI?.hydrate();
 
       const projTable = document.getElementById("proj-table");
-      if (projTable) wireSortHeaders(projTable, rows);
+      if (projTable) {
+        wireSortHeaders(projTable, rows);
+        wireRowClicks(projTable, rows);
+      }
 
       if (canExport) {
         document.getElementById("btnExportExcel")?.addEventListener("click", async () => {
