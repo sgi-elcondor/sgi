@@ -31,17 +31,19 @@
   font: 1.875rem var(--font-serif);
 }
 
+.lotes-filter-section {
+  overflow: visible;
+}
+
 .filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: 1rem;
   padding: 1rem 1.25rem 1.25rem;
 }
 
 .filter-field {
-  min-width: 13.75rem;
-  flex: 1 1 13.75rem;
+  min-width: 0;
 }
 
 .table-head-actions {
