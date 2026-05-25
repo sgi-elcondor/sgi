@@ -26,7 +26,6 @@
     document.body.appendChild(overlay);
     window.SGIUI?.hydrate();
 
-    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
     document.getElementById("bl-close")?.addEventListener("click", () => overlay.remove());
 
     const escHandler = e => {

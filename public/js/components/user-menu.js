@@ -5,7 +5,7 @@ function initUserMenu(perfil) {
   const panel = document.getElementById("userMenuPanel");
   if (!btn || !panel) return;
 
-  const canEdit    = perfil.rol === "comprador" || perfil.rol === "comisionista";
+  const canEdit    = true; 
   const savedTheme = localStorage.getItem(THEME_KEY) || "system";
 
   const avatarPanelHtml = perfil.photo_url
