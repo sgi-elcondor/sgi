@@ -1,5 +1,7 @@
 (function () {
 
+const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
+
 window.ventasView = async function() {
   const vc = document.getElementById("viewContainer");
   vc.innerHTML = UI.loader();
@@ -187,7 +189,13 @@ window.verVenta = async function(id) {
 
   const totalPagadoIni = sumVal(pagIni);
   const totalPagadoReg = sumVal(pagReg);
-  const totalPagado = totalPagadoIni + totalPagadoReg;
+
+  // ── Financiero ──
+  const vt = Number(v.valor_total) || 0;
+  const ci = Number(v.cuota_inicial) || 0;
+  const tp = Number(v.total_permutas) || 0;
+  const totalPagado = totalPagadoIni + totalPagadoReg + tp;
+  const saldo = Math.max(0, vt - ci - tp);
 
   const cuotasPendientes = cuotas.filter(c => !pagada(c)).length;
   const cuotasVencidas = cuotas.filter(vencida).length;
@@ -195,12 +203,6 @@ window.verVenta = async function(id) {
   const proximaCuota = cuotas
     .filter(c => !pagada(c))
     .sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento))[0];
-
-  // ── Financiero ──
-  const vt = Number(v.valor_total) || 0;
-  const ci = Number(v.cuota_inicial) || 0;
-  const tp = Number(v.total_permutas) || 0;
-  const saldo = Math.max(0, vt - ci - tp);
   const pct = vt > 0 ? totalPagado / vt * 100 : 0;
 
   const cumple = pct >= 30;
@@ -263,6 +265,8 @@ window.verVenta = async function(id) {
         <th>Estado</th>
       </tr>
     </thead>`;
+
+  const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
 
   const lote = v.lote || {};
 
@@ -447,9 +451,26 @@ window.verVenta = async function(id) {
         )}
       `)}
 
+      ${canExport ? `
+      <div class="form-actions" style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" id="btnVentaExcel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Exportar Excel
+        </button>
+        <button class="btn btn-primary btn-sm" id="btnVentaPDF">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar PDF
+        </button>
+      </div>` : ""}
     </div>`;
 
   UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
+
+  if (canExport) {
+    const fin = { vt, ci, tp, totalPagado, saldo, pct, cumple, escrit, cuotasIni, cuotasReg, pagIni, pagReg, sumVal };
+    document.getElementById("btnVentaPDF")?.addEventListener("click",   () => _exportVentaPDF(v, cuotas, fin));
+    document.getElementById("btnVentaExcel")?.addEventListener("click", () => _exportVentaExcel(v, cuotas, fin));
+  }
 };
 
 window._editarFinanciero = function(id, vtActual, ciActual) {
@@ -1686,5 +1707,394 @@ window.guardarSolicitudVenta = async function() {
 };
 
 window._actualizarCalculos = _actualizarCalculos;
+
+function _exportVentaPDF(v, cuotas, fin) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const fmtCOP  = n => n != null
+    ? Number(n).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
+    : "—";
+  const fmtDate = d => d
+    ? new Date(String(d).length === 10 ? d + "T12:00:00" : d).toLocaleDateString("es-CO")
+    : "—";
+  const pagada  = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
+
+  const C_PRIMARY = [255, 78, 0];
+  const C_DARK    = [30, 41, 59];
+  const C_GRAY    = [100, 116, 139];
+  const C_LIGHT   = [255, 248, 245];
+  const C_WHITE   = [255, 255, 255];
+  const C_DIVIDER = [255, 207, 189];
+
+  const ML = 14, MR = 14;
+
+  doc.setFillColor(...C_PRIMARY);
+  doc.rect(0, 0, 210, 32, "F");
+  doc.setTextColor(...C_WHITE);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("EL CÓNDOR S.A.S.", ML, 14);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Sistema de Gestión Inmobiliaria — SGI", ML, 22);
+  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 196, 22, { align: "right" });
+
+  const lote = v.lote || {};
+  doc.setTextColor(...C_DARK);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Detalle de Venta #${v.id_venta} — ${lote.proyecto?.nombre || ""}`, ML, 44);
+  doc.setDrawColor(...C_PRIMARY);
+  doc.setLineWidth(0.6);
+  doc.line(ML, 47, 196, 47);
+
+  let y = 54;
+
+  doc.setFillColor(...C_LIGHT);
+  doc.roundedRect(ML, y - 4, 182, 12, 2, 2, "F");
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...C_PRIMARY);
+  doc.text(`Estado: ${(v.estado || "—").replace(/_/g, " ").toUpperCase()}`, ML + 4, y + 3);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...C_GRAY);
+  doc.text(`Fecha de venta: ${fmtDate(v.fecha_venta)}`, 196, y + 3, { align: "right" });
+  y += 16;
+
+  const sectionTitle = title => {
+    if (y > 262) { doc.addPage(); y = 20; }
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C_DARK);
+    doc.text(title, ML, y);
+    doc.setDrawColor(...C_DIVIDER);
+    doc.setLineWidth(0.3);
+    doc.line(ML, y + 2, 196, y + 2);
+    y += 7;
+  };
+
+  const plainTableStyles = {
+    styles:        { fontSize: 8, cellPadding: 2.5, textColor: C_DARK, lineColor: C_DIVIDER, lineWidth: 0.15 },
+    columnStyles:  { 0: { fontStyle: "bold", fillColor: C_LIGHT, cellWidth: 46 }, 1: { cellWidth: 136 } },
+    margin:        { left: ML, right: MR },
+    theme:         "plain",
+  };
+
+  sectionTitle("Lote y Proyecto");
+  doc.autoTable({
+    startY: y,
+    body: [
+      ["Proyecto",    lote.proyecto?.nombre || "—"],
+      ["Código lote", lote.codigo_lote || "—"],
+      ["Ubicación",   `Mz ${lote.manzana || "—"} · Lote ${lote.numero_lote || "—"}`],
+      ...(lote.area_m2 != null    ? [["Área",         `${lote.area_m2} m²`]]       : []),
+      ...(lote.precio_lista != null ? [["Precio lista", fmtCOP(lote.precio_lista)]] : []),
+    ],
+    ...plainTableStyles,
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  sectionTitle("Compradores");
+  const compradores = v.venta_comprador || [];
+  doc.autoTable({
+    startY: y,
+    head: [["Nombre", "Documento", "Teléfono", "Correo", "%"]],
+    body: compradores.length
+      ? compradores.map(vc => [
+          `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""}`.trim() || "—",
+          vc.usuario?.documento || "—",
+          vc.usuario?.telefono  || "—",
+          vc.usuario?.email     || "—",
+          `${vc.porcentaje || 100}%`,
+        ])
+      : [["Sin compradores", "", "", "", ""]],
+    styles:            { fontSize: 7.5, cellPadding: 2.5, textColor: C_DARK, lineColor: C_DIVIDER, lineWidth: 0.15 },
+    headStyles:        { fillColor: C_PRIMARY, textColor: C_WHITE, fontStyle: "bold", fontSize: 8 },
+    alternateRowStyles: { fillColor: C_LIGHT },
+    columnStyles: {
+      0: { cellWidth: 50 },
+      1: { cellWidth: 28, halign: "center" },
+      2: { cellWidth: 26, halign: "center" },
+      3: { cellWidth: 58 },
+      4: { cellWidth: 20, halign: "center" },
+    },
+    margin: { left: ML, right: MR },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const { vt, ci, tp, totalPagado, saldo, pct, cumple, escrit, cuotasIni, cuotasReg, pagIni, pagReg, sumVal } = fin;
+
+  sectionTitle("Valores Financieros");
+  doc.autoTable({
+    startY: y,
+    body: [
+      ["Valor total",      fmtCOP(vt)],
+      ...(ci > 0 ? [["Cuota inicial",   fmtCOP(ci)]] : []),
+      ...(tp > 0 ? [["Permutas",        fmtCOP(tp)]] : []),
+      ["Saldo financiado", fmtCOP(saldo)],
+      ["Total pagado",     `${fmtCOP(totalPagado)}  (${pct.toFixed(1)}%)`],
+      ["Por pagar",        fmtCOP(Math.max(0, vt - totalPagado))],
+      ["Requisito 30%",    cumple ? "Cumple" : `No cumple — faltan ${(30 - pct).toFixed(1)}% (${fmtCOP(Math.max(0, vt * 0.3 - totalPagado))})`],
+      ["Escriturado",      escrit ? `Sí${v.fecha_escritura ? " · " + fmtDate(v.fecha_escritura) : ""}` : "No"],
+    ],
+    ...plainTableStyles,
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const cuotaTableOpts = {
+    head: [["#", "Tipo", "Vencimiento", "Valor", "Fecha pago", "Estado"]],
+    styles:             { fontSize: 7.5, cellPadding: 2.5, textColor: C_DARK, lineColor: C_DIVIDER, lineWidth: 0.15 },
+    headStyles:         { fillColor: C_PRIMARY, textColor: C_WHITE, fontStyle: "bold", fontSize: 8 },
+    alternateRowStyles: { fillColor: C_LIGHT },
+    columnStyles: {
+      0: { halign: "center", cellWidth: 12 },
+      1: { cellWidth: 28 },
+      2: { halign: "center", cellWidth: 34 },
+      3: { halign: "right",  cellWidth: 40 },
+      4: { halign: "center", cellWidth: 34 },
+      5: { halign: "center", cellWidth: 34 },
+    },
+    margin: { left: ML, right: MR },
+  };
+
+  const allDisplayCuotas = [...cuotasIni, ...cuotasReg];
+  if (cuotasIni.length > 0) {
+    sectionTitle(`Cuotas de Cuota Inicial — ${pagIni.length}/${cuotasIni.length} pagadas · Recaudado: ${fmtCOP(sumVal(pagIni))}`);
+    doc.autoTable({
+      startY: y,
+      body: cuotasIni.map(c => [
+        c.numero_cuota,
+        "Inicial",
+        fmtDate(c.fecha_vencimiento),
+        fmtCOP(c.valor_cuota),
+        c.fecha_pago ? fmtDate(c.fecha_pago) : "—",
+        pagada(c) ? "Pagada" : "Pendiente",
+      ]),
+      ...cuotaTableOpts,
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  if (cuotasReg.length > 0) {
+    sectionTitle(`Cuotas Regulares — ${pagReg.length}/${cuotasReg.length} pagadas · Recaudado: ${fmtCOP(sumVal(pagReg))}`);
+    doc.autoTable({
+      startY: y,
+      body: cuotasReg.map(c => [
+        c.numero_cuota,
+        "Regular",
+        fmtDate(c.fecha_vencimiento),
+        fmtCOP(c.valor_cuota),
+        c.fecha_pago ? fmtDate(c.fecha_pago) : "—",
+        pagada(c) ? "Pagada" : "Pendiente",
+      ]),
+      ...cuotaTableOpts,
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  const vc0 = Array.isArray(v.venta_comisionista) ? v.venta_comisionista[0] : v.venta_comisionista;
+  if (vc0) {
+    sectionTitle("Comisionista");
+    doc.autoTable({
+      startY: y,
+      body: [
+        ["Nombre",         `${vc0.usuario?.nombres || ""} ${vc0.usuario?.apellidos || ""}`.trim() || "—"],
+        ...(vc0.usuario?.documento ? [["Documento",  vc0.usuario.documento]] : []),
+        ...(vc0.usuario?.telefono  ? [["Teléfono",   vc0.usuario.telefono]]  : []),
+        ...(vc0.usuario?.email     ? [["Correo",     vc0.usuario.email]]     : []),
+        ["Valor comisión", fmtCOP(vc0.valor_comision)],
+      ],
+      ...plainTableStyles,
+    });
+  }
+
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    const pH = doc.internal.pageSize.getHeight();
+    doc.setFillColor(...C_LIGHT);
+    doc.rect(0, pH - 13, 210, 13, "F");
+    doc.setDrawColor(...C_DIVIDER);
+    doc.setLineWidth(0.3);
+    doc.line(0, pH - 13, 210, pH - 13);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...C_GRAY);
+    doc.text("El Cóndor S.A.S. — Uso interno y confidencial", ML, pH - 5);
+    doc.text(`Página ${i} de ${pageCount}`, 196, pH - 5, { align: "right" });
+  }
+
+  doc.save(`venta_${v.id_venta}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+async function _exportVentaExcel(v, cuotas, fin) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "SGI El Cóndor";
+  wb.created = new Date();
+
+  const ORANGE     = "FFFF4E00";
+  const ORANGE_MID = "FFFFCFBD";
+  const ORANGE_BG  = "FFFFF2EE";
+  const DARK       = "FF1E293B";
+  const WHITE      = "FFFFFFFF";
+  const GREEN      = "FF16A34A";
+  const RED        = "FFEF4444";
+
+  const pagada  = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
+  const fmtDate = d => d
+    ? new Date(String(d).length === 10 ? d + "T12:00:00" : d).toLocaleDateString("es-CO")
+    : "—";
+
+  const hStyle = {
+    fill:      { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE } },
+    font:      { color: { argb: WHITE }, bold: true, size: 10 },
+    alignment: { horizontal: "center", vertical: "middle" },
+  };
+  const labelStyle = {
+    fill:      { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_BG } },
+    font:      { bold: true, color: { argb: DARK }, size: 9 },
+    alignment: { horizontal: "left", vertical: "middle" },
+  };
+  const valStyle = {
+    font:      { color: { argb: DARK }, size: 9 },
+    alignment: { horizontal: "left", vertical: "middle" },
+  };
+  const subStyle = {
+    fill:      { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_MID } },
+    font:      { bold: true, color: { argb: DARK }, size: 10 },
+    alignment: { horizontal: "left", vertical: "middle" },
+  };
+  const MONEY_FMT = "#,##0";
+
+  const ws1 = wb.addWorksheet("Resumen");
+  ws1.columns = [
+    { key: "label", width: 26 },
+    { key: "value", width: 44 },
+  ];
+
+  const titleRow = ws1.addRow([`Venta #${v.id_venta} — Detalle completo`, ""]);
+  titleRow.height = 24;
+  titleRow.getCell(1).style = { ...hStyle, font: { ...hStyle.font, size: 13 } };
+  ws1.mergeCells(`A1:B1`);
+
+  const sub = text => {
+    const r = ws1.addRow([text, ""]);
+    r.height = 18;
+    r.getCell(1).style = subStyle;
+    ws1.mergeCells(`A${r.number}:B${r.number}`);
+  };
+  const row = (label, value, money = false) => {
+    const r = ws1.addRow([label, value]);
+    r.height = 16;
+    r.getCell(1).style = labelStyle;
+    r.getCell(2).style = money ? { ...valStyle, numFmt: MONEY_FMT } : valStyle;
+  };
+  const blank = () => ws1.addRow([]);
+
+  blank();
+
+  sub("Información general");
+  row("Número de venta", v.id_venta);
+  row("Estado", (v.estado || "—").replace(/_/g, " "));
+  row("Fecha de venta", fmtDate(v.fecha_venta));
+  blank();
+
+  const lote = v.lote || {};
+  sub("Lote y Proyecto");
+  row("Proyecto",    lote.proyecto?.nombre || "—");
+  row("Código lote", lote.codigo_lote || "—");
+  row("Manzana",     lote.manzana || "—");
+  row("Número lote", lote.numero_lote || "—");
+  if (lote.area_m2 != null)     row("Área (m²)",     lote.area_m2);
+  if (lote.precio_lista != null) row("Precio lista", Number(lote.precio_lista), true);
+  blank();
+
+  const { vt, ci, tp, totalPagado, saldo, pct, cumple, escrit, cuotasIni, cuotasReg, pagIni, pagReg, sumVal } = fin;
+  sub("Valores Financieros");
+  row("Valor total",      Number(vt),                        true);
+  if (ci > 0) row("Cuota inicial",   Number(ci),             true);
+  if (tp > 0) row("Permutas",        Number(tp),             true);
+  row("Saldo financiado", Number(saldo),                     true);
+  row("Total pagado",     Number(totalPagado),               true);
+  row("% pagado",         `${pct.toFixed(1)}%`);
+  row("Por pagar",        Number(Math.max(0, vt - totalPagado)), true);
+  row("Requisito 30%",    cumple ? "Cumple" : `No cumple — faltan ${(30 - pct).toFixed(1)}%`);
+  row("Escriturado",      escrit ? `Sí${v.fecha_escritura ? " · " + fmtDate(v.fecha_escritura) : ""}` : "No");
+  blank();
+
+  const compradores = v.venta_comprador || [];
+  if (compradores.length > 0) {
+    sub("Compradores");
+    compradores.forEach((vc, i) => {
+      const nombre = `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""}`.trim() || "—";
+      row(`Comprador ${i + 1}`,  nombre);
+      if (vc.usuario?.documento) row("  Documento",     vc.usuario.documento);
+      if (vc.usuario?.telefono)  row("  Teléfono",      vc.usuario.telefono);
+      if (vc.usuario?.email)     row("  Correo",        vc.usuario.email);
+      row("  Participación %", `${vc.porcentaje || 100}%`);
+    });
+    blank();
+  }
+
+  const vc0 = Array.isArray(v.venta_comisionista) ? v.venta_comisionista[0] : v.venta_comisionista;
+  if (vc0) {
+    sub("Comisionista");
+    row("Nombre",         `${vc0.usuario?.nombres || ""} ${vc0.usuario?.apellidos || ""}`.trim() || "—");
+    if (vc0.usuario?.documento) row("Documento",  vc0.usuario.documento);
+    if (vc0.usuario?.telefono)  row("Teléfono",   vc0.usuario.telefono);
+    if (vc0.usuario?.email)     row("Correo",     vc0.usuario.email);
+    row("Valor comisión", Number(vc0.valor_comision), true);
+  }
+
+  const ws2 = wb.addWorksheet("Plan de Pagos");
+  ws2.columns = [
+    { key: "tipo",      width: 16 },
+    { key: "numero",    width: 8  },
+    { key: "vence",     width: 16 },
+    { key: "valor",     width: 20 },
+    { key: "fechaPago", width: 16 },
+    { key: "estado",    width: 14 },
+  ];
+  const hRow = ws2.getRow(1);
+  hRow.values = ["Tipo", "#", "Vencimiento", "Valor (COP)", "Fecha pago", "Estado"];
+  hRow.eachCell(cell => { cell.style = hStyle; });
+  hRow.height = 20;
+
+  const allCuotas = [...cuotasIni, ...cuotasReg].sort((a, b) => a.numero_cuota - b.numero_cuota);
+  allCuotas.forEach(c => {
+    const ok = pagada(c);
+    const r  = ws2.addRow({
+      tipo:      c.tipo === "inicial" ? "Cuota inicial" : "Cuota regular",
+      numero:    c.numero_cuota,
+      vence:     fmtDate(c.fecha_vencimiento),
+      valor:     Number(c.valor_cuota || 0),
+      fechaPago: c.fecha_pago ? fmtDate(c.fecha_pago) : "—",
+      estado:    ok ? "Pagada" : "Pendiente",
+    });
+    r.height = 16;
+    r.getCell("valor").numFmt = MONEY_FMT;
+    r.getCell("estado").style = {
+      font:      { bold: ok, color: { argb: ok ? GREEN : RED }, size: 9 },
+      alignment: { horizontal: "center" },
+    };
+  });
+
+  ws2.addRow([]);
+  const totPagado = sumVal(allCuotas.filter(pagada));
+  const totRow = ws2.addRow(["", "", "Total recaudado en cuotas", totPagado, "", ""]);
+  totRow.height = 18;
+  totRow.getCell(3).style = { font: { bold: true, color: { argb: DARK }, size: 9 } };
+  totRow.getCell(4).style = { font: { bold: true, color: { argb: ORANGE }, size: 9 }, numFmt: MONEY_FMT };
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement("a");
+  a.href       = url;
+  a.download   = `venta_${v.id_venta}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 })();
