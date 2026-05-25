@@ -229,3 +229,51 @@
   font-size: 0.85rem;
   font-weight: 700;
 }
+
+.pwd-forgot-link {
+  display: block;
+  margin-top: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+  transition: opacity var(--transition-fast);
+}
+
+.pwd-forgot-link:hover:not(:disabled) {
+  opacity: 0.75;
+}
+
+.pwd-forgot-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.google-provider-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3rem;
+  padding: 0.4375rem 0.875rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.google-pwd-note {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.google-pwd-note strong {
+  color: var(--text);
+  font-weight: 600;
+}

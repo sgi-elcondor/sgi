@@ -1,4 +1,6 @@
 const supabase = require('../config/supabase');
+const admin    = require('../config/firebase');
+const { sendPasswordResetEmail } = require('../services/email.service');
 const SCHEMA   = 'condor';
 
 async function registrarUsuario(req, res) {
@@ -122,4 +124,19 @@ async function actualizarAvatar(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar };
+async function enviarEmailReset(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
+
+  try {
+    const resetLink = await admin.auth().generatePasswordResetLink(email);
+    await sendPasswordResetEmail(email, resetLink);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'auth/user-not-found') return res.json({ ok: true });
+    console.error('[reset-password-email]', err.code, err.message);
+    res.status(500).json({ error: 'No se pudo enviar el correo. Intenta de nuevo.' });
+  }
+}
+
+module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset };

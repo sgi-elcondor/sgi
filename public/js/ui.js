@@ -2,19 +2,13 @@
   openModal(title, bodyHTML) {
     document.getElementById("modalTitle").textContent = title;
     document.getElementById("modalBody").innerHTML = bodyHTML;
-    document.getElementById("modalConfirm").hidden = true;
     document.getElementById("modalOverlay").classList.add("open");
   },
   closeModal() {
-    document.getElementById("modalConfirm").hidden = true;
     document.getElementById("modalOverlay").classList.remove("open");
   },
   forceClose() {
-    document.getElementById("modalConfirm").hidden = true;
     document.getElementById("modalOverlay").classList.remove("open");
-  },
-  cancelConfirm() {
-    document.getElementById("modalConfirm").hidden = true;
   },
   badge(estado) {
     const map = {
@@ -69,7 +63,7 @@
       const onClick = e => {
         const action = e.target.closest("[data-confirm]")?.dataset.confirm;
         if (action === "ok") { cleanup(); resolve(true); }
-        else if (action === "cancel" || e.target === ov) { cleanup(); resolve(false); }
+        else if (action === "cancel") { cleanup(); resolve(false); }
       };
       const onKey = e => { if (e.key === "Escape") { cleanup(); resolve(false); } };
 
@@ -243,13 +237,3 @@ window.UI = UI;
 })();
 
 document.getElementById("modalClose").addEventListener("click", UI.closeModal);
-document.getElementById("modalOverlay").addEventListener("click", e => {
-  if (e.target.id !== "modalOverlay") return;
-  const confirm = document.getElementById("modalConfirm");
-  if (confirm.hidden) {
-    confirm.hidden = false;
-    document.getElementById("modal").scrollTop = document.getElementById("modal").scrollHeight;
-  } else {
-    confirm.hidden = true;
-  }
-});
