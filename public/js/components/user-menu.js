@@ -199,7 +199,7 @@ function renderChangePasswordView() {
     '<div class="auth-card-wrap"><div class="auth-card">' +
     '<div class="auth-card-brand"><div class="auth-card-icon"><i data-lucide="key-round"></i></div>' +
     '<div><div class="auth-card-title">Cambiar contrasena</div><div class="auth-card-sub">Seguridad de cuenta</div></div></div>' +
-    '<div class="auth-card-field"><label>Contrasena actual</label><input type="password" id="pwd-current" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" /></div>' +
+    '<div class="auth-card-field"><label>Contrasena actual</label><input type="password" id="pwd-current" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" /><button type="button" class="pwd-forgot-link" id="btn-forgot-pwd">&iquest;Olvidaste tu contrasena?</button></div>' +
     '<div class="auth-card-field"><label>Nueva contrasena</label><input type="password" id="pwd-new" placeholder="Minimo 8 caracteres" autocomplete="new-password" />' +
     '<div class="pwd-rules"><span class="pwd-rule" id="pr-len">Minimo 8 caracteres</span><span class="pwd-rule" id="pr-upper">Una letra mayuscula</span><span class="pwd-rule" id="pr-num">Un numero</span></div></div>' +
     '<div class="auth-card-field"><label>Confirmar contrasena</label><input type="password" id="pwd-confirm" placeholder="Repite la contrasena" autocomplete="new-password" /></div>' +
@@ -219,6 +219,26 @@ function renderChangePasswordView() {
   });
 
   document.getElementById("back-from-pwd")?.addEventListener("click", function() { navigate(prev); });
+
+  document.getElementById("btn-forgot-pwd")?.addEventListener("click", async function() {
+    const errorEl   = document.getElementById("pwd-error");
+    const successEl = document.getElementById("pwd-success");
+    const btn       = document.getElementById("btn-forgot-pwd");
+
+    errorEl.style.display = successEl.style.display = "none";
+    btn.disabled = true; btn.textContent = "Enviando...";
+
+    try {
+      const fbUser = window._firebaseAuth?.currentUser;
+      await API.post('/auth/reset-password-email', { email: fbUser.email });
+      successEl.textContent = "Enviamos un enlace de recuperacion a " + fbUser.email + ". Revisa tu correo (Spams)."; 
+      successEl.style.display = "block";
+    } catch (err) {
+      errorEl.textContent = err.message; errorEl.style.display = "block";
+    } finally {
+      btn.disabled = false; btn.textContent = "¿Olvidaste tu contrasena?";
+    }
+  });
 
   document.getElementById("btn-change-pwd")?.addEventListener("click", async function() {
     const current   = document.getElementById("pwd-current").value;
