@@ -14,8 +14,9 @@ const CATEGORIA_LABELS = {
 let _gastosList      = [];
 let _gastosProyectos = [];
 let _gastosFilters   = { id_proyecto: "", categoria: "", fecha_desde: "", fecha_hasta: "" };
-let _gastosEditId    = null;
+let _gastosEditId         = null;
 let _gastosComprobanteUrl = null;
+let _gastosBaucherFile    = null;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,169 @@ function _gastosFiltered() {
     if (fecha_hasta && g.fecha > fecha_hasta)                          return false;
     return true;
   });
+}
+
+function _gastosIsImageUrl(url) {
+  if (!url) return false;
+  return /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(url) || url.includes("/image/upload/");
+}
+
+window._gastosOpenPreviewModal = function(idOrUrl) {
+  const url = typeof idOrUrl === "number"
+    ? _gastosList.find(g => g.id_gasto === idOrUrl)?.comprobante_url
+    : idOrUrl;
+  if (!url) return;
+
+  const existing = document.getElementById("gasto-preview-overlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "gasto-preview-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem;cursor:pointer;";
+
+  if (_gastosIsImageUrl(url)) {
+    overlay.innerHTML = `<img src="${url}" style="max-width:100%;max-height:90vh;border-radius:0.5rem;object-fit:contain;cursor:default;box-shadow:0 8px 40px rgba(0,0,0,0.5);" alt="Comprobante">`;
+  } else {
+    overlay.innerHTML = `<div style="background:var(--surface);border-radius:0.75rem;padding:2rem;text-align:center;cursor:default;min-width:18rem">
+      <p style="margin-bottom:1rem;color:var(--text-muted)">Vista previa no disponible para este formato.</p>
+      <a href="${url}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Abrir archivo</a>
+    </div>`;
+  }
+
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+};
+
+function _gastosUploadAreaHTML(existingUrl) {
+  const iU    = window.SGIUI?.icon("upload-cloud") ?? "";
+  const iX    = window.SGIUI?.icon("x")            ?? "✕";
+  const iF    = window.SGIUI?.icon("file")         ?? "";
+  const isImg = _gastosIsImageUrl(existingUrl);
+  const hasUrl = !!existingUrl;
+
+  let previewHtml = "";
+  if (hasUrl) {
+    if (isImg) {
+      previewHtml = `
+        <div class="baucher-img-preview-wrap">
+          <img src="${existingUrl}" class="baucher-img-preview" alt="Comprobante" style="cursor:zoom-in">
+          <button type="button" class="baucher-img-remove" id="gasto-baucher-remove">${iX}</button>
+        </div>
+        <div class="baucher-preview-footer">
+          <span class="baucher-preview-name">${iF} Comprobante actual</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="gasto-baucher-change">${iU} Cambiar</button>
+        </div>`;
+    } else {
+      previewHtml = `
+        <div class="baucher-preview baucher-preview--file">
+          <span class="baucher-preview-name">${iF} Comprobante actual</span>
+          <div style="display:flex;gap:.5rem;flex-shrink:0">
+            <a href="${existingUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Ver</a>
+            <button type="button" class="btn btn-ghost btn-sm" id="gasto-baucher-change">${iU} Cambiar</button>
+            <span class="baucher-preview-remove" id="gasto-baucher-remove">${iX}</span>
+          </div>
+        </div>`;
+    }
+  }
+
+  return `
+    <div class="baucher-upload-area${hasUrl ? " has-preview" : ""}" id="gasto-baucher-area">
+      <input type="file" id="gasto-baucher-input" accept="image/*,application/pdf">
+      <div id="gasto-baucher-empty"${hasUrl ? ' style="display:none"' : ""}>
+        <div class="baucher-upload-icon">${iU}</div>
+        <div class="baucher-upload-label">Arrastra el comprobante aqui o haz clic para subir</div>
+        <button type="button" class="btn btn-ghost btn-sm" id="gasto-baucher-click">${iU} Subir archivo</button>
+      </div>
+      <div id="gasto-baucher-preview"${!hasUrl ? ' style="display:none"' : ""}>${previewHtml}</div>
+    </div>`;
+}
+
+function _gastosWireBaucher() {
+  const input = document.getElementById("gasto-baucher-input");
+  const area  = document.getElementById("gasto-baucher-area");
+  if (!input || !area) return;
+
+  let objUrl = null;
+
+  function _showFile(f) {
+    _gastosBaucherFile = f;
+    if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+
+    const emptyEl = document.getElementById("gasto-baucher-empty");
+    const preview = document.getElementById("gasto-baucher-preview");
+    const iX = window.SGIUI?.icon("x")            ?? "✕";
+    const iF = window.SGIUI?.icon("file")         ?? "";
+    const iU = window.SGIUI?.icon("upload-cloud") ?? "";
+
+    if (f.type.startsWith("image/")) {
+      objUrl = URL.createObjectURL(f);
+      preview.innerHTML = `
+        <div class="baucher-img-preview-wrap">
+          <img src="${objUrl}" class="baucher-img-preview" alt="Vista previa" style="cursor:zoom-in">
+          <button type="button" class="baucher-img-remove" id="gasto-baucher-remove">${iX}</button>
+        </div>
+        <div class="baucher-preview-footer">
+          <span class="baucher-preview-name">${iF} ${f.name}</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="gasto-baucher-change">${iU} Cambiar</button>
+        </div>`;
+
+      const capturedUrl = objUrl;
+      preview.querySelector(".baucher-img-preview")?.addEventListener("click", () => {
+        window._gastosOpenPreviewModal(capturedUrl);
+      });
+    } else {
+      preview.innerHTML = `
+        <div class="baucher-preview baucher-preview--file">
+          <span class="baucher-preview-name">${iF} ${f.name}</span>
+          <div style="display:flex;gap:.5rem;flex-shrink:0">
+            <button type="button" class="btn btn-ghost btn-sm" id="gasto-baucher-change">${iU} Cambiar</button>
+            <span class="baucher-preview-remove" id="gasto-baucher-remove">${iX}</span>
+          </div>
+        </div>`;
+    }
+
+    if (emptyEl) emptyEl.style.display = "none";
+    preview.style.display = "block";
+    area.classList.add("has-preview");
+    window.SGIUI?.hydrate();
+
+    document.getElementById("gasto-baucher-remove")?.addEventListener("click", () => {
+      _gastosBaucherFile    = null;
+      _gastosComprobanteUrl = null;
+      if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+      preview.style.display = "none";
+      preview.innerHTML = "";
+      if (emptyEl) emptyEl.style.display = "";
+      area.classList.remove("has-preview");
+      input.value = "";
+    });
+    document.getElementById("gasto-baucher-change")?.addEventListener("click", () => input.click());
+  }
+
+  document.getElementById("gasto-baucher-remove")?.addEventListener("click", () => {
+    _gastosComprobanteUrl = null;
+    const emptyEl = document.getElementById("gasto-baucher-empty");
+    const preview = document.getElementById("gasto-baucher-preview");
+    if (emptyEl) emptyEl.style.display = "";
+    if (preview) { preview.style.display = "none"; preview.innerHTML = ""; }
+    area.classList.remove("has-preview");
+    input.value = "";
+  });
+  document.getElementById("gasto-baucher-change")?.addEventListener("click", () => input.click());
+  document.getElementById("gasto-baucher-click")?.addEventListener("click",  () => input.click());
+
+  const existingImg = document.querySelector("#gasto-baucher-preview .baucher-img-preview");
+  if (existingImg && _gastosComprobanteUrl) {
+    existingImg.addEventListener("click", () => window._gastosOpenPreviewModal(_gastosComprobanteUrl));
+  }
+
+  area.addEventListener("dragover",  e => { e.preventDefault(); area.classList.add("dragover"); });
+  area.addEventListener("dragleave", () => area.classList.remove("dragover"));
+  area.addEventListener("drop", e => {
+    e.preventDefault(); area.classList.remove("dragover");
+    if (e.dataTransfer.files[0]) _showFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change", () => { if (input.files[0]) _showFile(input.files[0]); });
 }
 
 function _gastosResumenCards(lista) {
@@ -95,7 +259,9 @@ function _gastosTableHTML(lista) {
         <td style="text-align:right">${UI.fmt(saldo)}</td>
         <td>
           ${g.comprobante_url
-            ? `<a href="${g.comprobante_url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:.75rem">Ver</a>`
+            ? (_gastosIsImageUrl(g.comprobante_url)
+                ? `<img src="${g.comprobante_url}" alt="Comprobante" style="width:2.25rem;height:2.25rem;object-fit:cover;border-radius:.375rem;cursor:pointer;border:1px solid var(--border);vertical-align:middle" onclick="_gastosOpenPreviewModal(${g.id_gasto})">`
+                : `<a href="${g.comprobante_url}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:.75rem">Ver</a>`)
             : `<span style="color:var(--text-muted);font-size:.8rem">—</span>`}
         </td>
         <td>
@@ -404,16 +570,12 @@ function _gastosFormHTML(gasto) {
           <label>Responsable / Empresa recibe</label>
           <input type="text" id="gasto_resp_recibe"
             placeholder="Quien o que empresa recibio"
-            value="${gasto?.responsable_recibe || ""}">
+            value="${gasto?.responsable_recibe || [window.currentUser?.nombres, window.currentUser?.apellidos].filter(Boolean).join(" ")}">
         </div>
       </div>
       <div class="form-group" style="margin:0">
         <label>Comprobante</label>
-        <input type="file" id="gasto_file" accept="image/*,application/pdf">
-        ${gasto?.comprobante_url
-          ? `<a href="${gasto.comprobante_url}" target="_blank" rel="noopener" style="font-size:.8rem;margin-top:.25rem;display:inline-block">Ver comprobante actual</a>`
-          : ""}
-        <div id="gasto_upload_status" style="font-size:.8rem;margin-top:.25rem;color:var(--text-muted)"></div>
+        ${_gastosUploadAreaHTML(gasto?.comprobante_url ?? null)}
       </div>
       <div id="gasto_error" style="display:none;color:var(--danger);font-size:.875rem"></div>
       <div style="display:flex;gap:.5rem;justify-content:flex-end">
@@ -435,8 +597,10 @@ window._gastosMedioPagoToggle = function() {
 window.gastosOpenCreate = function() {
   _gastosEditId         = null;
   _gastosComprobanteUrl = null;
+  _gastosBaucherFile    = null;
   UI.openModal("Nuevo gasto operativo", _gastosFormHTML(null));
   SGIUI.hydrate();
+  _gastosWireBaucher();
   const valorEl = document.getElementById("gasto_valor");
   if (valorEl) MoneyInput.init(valorEl);
 };
@@ -446,8 +610,10 @@ window.gastosOpenEdit = function(id) {
   if (!gasto) return;
   _gastosEditId         = id;
   _gastosComprobanteUrl = gasto.comprobante_url || null;
+  _gastosBaucherFile    = null;
   UI.openModal("Editar gasto", _gastosFormHTML(gasto));
   SGIUI.hydrate();
+  _gastosWireBaucher();
   const valorEl = document.getElementById("gasto_valor");
   if (valorEl) MoneyInput.init(valorEl);
 };
@@ -468,9 +634,6 @@ window._gastosSubmit = async function() {
   const cuenta_origen    = document.getElementById("gasto_cuenta_origen")?.value.trim() || null;
   const resp_entrega     = document.getElementById("gasto_resp_entrega").value.trim();
   const resp_recibe      = document.getElementById("gasto_resp_recibe").value.trim();
-  const fileInput   = document.getElementById("gasto_file");
-  const statusEl    = document.getElementById("gasto_upload_status");
-
   const valorAbs = _gastosParseInput(valorRaw);
 
   if (!id_proyecto || !fecha || !categoria || !descripcion || !valorRaw || valorAbs === 0) {
@@ -486,11 +649,11 @@ window._gastosSubmit = async function() {
 
   let comprobanteUrl = _gastosComprobanteUrl;
 
-  if (fileInput?.files?.length) {
-    statusEl.textContent = "Subiendo comprobante...";
+  if (_gastosBaucherFile) {
+    btn.textContent = "Subiendo comprobante...";
     try {
       const formData = new FormData();
-      formData.append("baucher", fileInput.files[0]);
+      formData.append("baucher", _gastosBaucherFile);
       const token = localStorage.getItem("fb_token");
       const res = await fetch("/api/v1/uploads/baucher", {
         method:  "POST",
@@ -500,7 +663,7 @@ window._gastosSubmit = async function() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Error al subir archivo");
       comprobanteUrl = result.url;
-      statusEl.textContent = "Comprobante subido.";
+      btn.textContent = "Guardando...";
     } catch (err) {
       errEl.textContent = "Error al subir comprobante: " + err.message;
       errEl.style.display = "block";
