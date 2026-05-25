@@ -1,0 +1,221 @@
+.sgi-select {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.sgi-select-native {
+  display: none;
+}
+
+.sgi-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color var(--transition),
+    background-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.sgi-select-trigger:hover:not(:disabled) {
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background-color: var(--surface-2);
+}
+
+.sgi-select-trigger:focus-visible,
+.sgi-select.is-open > .sgi-select-trigger {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background-color: var(--surface-focus);
+  box-shadow: var(--ring);
+}
+
+.sgi-select-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background-color: var(--surface-2);
+}
+
+.sgi-select-trigger--sm {
+  padding: 0.3125rem 0.5625rem;
+  font-size: 0.8125rem;
+  border-radius: 0.5rem;
+}
+
+.sgi-select-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sgi-select-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.sgi-select-arrow svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sgi-select.is-open .sgi-select-arrow {
+  transform: rotate(180deg);
+}
+
+.sgi-select-panel {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 9600;
+  max-height: 16rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  animation: sgi-select-in 0.12s ease;
+}
+
+.sgi-select.opens-up .sgi-select-panel {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+  animation: sgi-select-in-up 0.12s ease;
+}
+
+.sgi-select-panel[hidden] {
+  display: none;
+}
+
+@keyframes sgi-select-in {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sgi-select-in-up {
+  from { opacity: 0; transform: translateY(0.25rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sgi-select-search-wrap {
+  position: sticky;
+  top: 0;
+  padding: 0.375rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
+}
+
+.sgi-select-search {
+  width: 100%;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.sgi-select-search::placeholder {
+  color: var(--placeholder);
+}
+
+.sgi-select-search:focus {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: var(--ring);
+}
+
+.sgi-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+}
+
+.sgi-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.4rem;
+  color: var(--text);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sgi-select-option[hidden] {
+  display: none;
+}
+
+.sgi-select-option-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sgi-select-option.is-highlighted {
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.sgi-select-option.is-selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sgi-select-option.is-disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sgi-select-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--accent);
+}
+
+.sgi-select-check svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sgi-select-empty {
+  padding: 0.875rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  margin: 0;
+}
