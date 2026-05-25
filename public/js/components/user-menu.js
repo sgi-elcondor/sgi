@@ -98,7 +98,7 @@ function renderChangePasswordView() {
   setActiveNav("");
   setViewTitle("Cambiar contrasena");
 
-  const user            = window._firebaseAuth?.currentUser;
+  const user            = window._firebaseAuth?.currentUser;  
   const isEmailProvider = user?.providerData?.some(function(p) { return p.providerId === "password"; });
 
   if (!isEmailProvider) {
