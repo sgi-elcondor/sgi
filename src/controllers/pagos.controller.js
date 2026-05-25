@@ -154,7 +154,7 @@ exports.getAll = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { fecha_pago, metodo_pago, referencia, cuotas } = req.body;
+  const { fecha_pago, metodo_pago, referencia, cuotas, url_baucher, numero_cuenta_origen } = req.body;
 
   if (!cuotas || cuotas.length === 0)
     return res.status(400).json({ error: "Debe seleccionar al menos una cuota" });
@@ -182,11 +182,13 @@ exports.create = async (req, res) => {
       fecha_pago,
       valor_pago,
       metodo_pago,
-      referencia:   referencia || null,
-      numero_pago:  consec.numero_pago,
-      estado:     "aceptado",
+      referencia:           referencia || null,
+      numero_pago:          consec.numero_pago,
+      estado:               "aceptado",
       id_venta,
-      id_usuario: id_usuario_comprador,
+      id_usuario:           id_usuario_comprador,
+      url_baucher:          url_baucher          || null,
+      numero_cuenta_origen: numero_cuenta_origen || null,
     }]).select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 

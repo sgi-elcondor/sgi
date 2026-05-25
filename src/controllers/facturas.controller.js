@@ -303,6 +303,71 @@ exports.getMisFacturas = async (req, res) => {
   res.json(result);
 };
 
+exports.emitirParaCuota = async (req, res) => {
+  const { id_cuota } = req.body;
+  if (!id_cuota) return res.status(400).json({ error: "id_cuota requerido" });
+
+  const id_usuario = req.usuario.id_usuario;
+
+  const { data: cuota, error: ec } = await supabase.schema(SCHEMA)
+    .from("cuota")
+    .select(`
+      id_cuota, numero_cuota, valor_cuota, estado,
+      cuota_factura(id_fraccion, factura:id_factura(id_factura, estado, numero_factura, valor_facturado)),
+      venta:id_venta(
+        id_venta, estado,
+        lote:id_lote(proyecto:id_proyecto(sigla)),
+        venta_comprador(id_usuario)
+      )
+    `)
+    .eq("id_cuota", id_cuota)
+    .single();
+
+  if (ec || !cuota) return res.status(404).json({ error: "Cuota no encontrada" });
+
+  const ownsVenta = (cuota.venta?.venta_comprador || []).some(vc => vc.id_usuario === id_usuario);
+  if (!ownsVenta) return res.status(403).json({ error: "No tienes acceso a esta cuota" });
+
+  if (cuota.estado === "pagada") return res.status(400).json({ error: "Esta cuota ya esta pagada" });
+
+  const existing = (cuota.cuota_factura || [])
+    .find(cf => cf.id_fraccion === null && cf.factura?.estado === "emitida");
+  if (existing) {
+    return res.json({
+      id_factura:      existing.factura.id_factura,
+      numero_factura:  existing.factura.numero_factura,
+      valor_facturado: existing.factura.valor_facturado,
+    });
+  }
+
+  const hoy = new Date().toISOString().split("T")[0];
+  let numero_factura;
+  try {
+    numero_factura = await _buildNumFactura(id_cuota);
+  } catch (e) {
+    return res.status(500).json({ error: `Error al generar numero de factura: ${e.message}` });
+  }
+
+  const { data: factura, error: ef } = await supabase.schema(SCHEMA)
+    .from("factura")
+    .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: cuota.valor_cuota, estado: "emitida" }])
+    .select()
+    .single();
+
+  if (ef) return res.status(500).json({ error: ef.message });
+
+  await supabase.schema(SCHEMA).from("cuota_factura").insert([{
+    id_factura: factura.id_factura,
+    id_cuota,
+  }]);
+
+  res.status(201).json({
+    id_factura:      factura.id_factura,
+    numero_factura:  factura.numero_factura,
+    valor_facturado: factura.valor_facturado,
+  });
+};
+
 exports.anular = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("factura").update({ estado: "anulada" }).eq("id_factura", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });

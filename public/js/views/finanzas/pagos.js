@@ -1,7 +1,9 @@
 (function () {
 
   // Tracks which view opened the payment modal, to refresh the right one afterwards
-  let pagoOrigen = "pagos";
+  let pagoOrigen   = "pagos";
+  let _baucherFile = null;
+  let _baucherUrl  = null;
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -254,44 +256,128 @@
 
   // ── Payment form ──────────────────────────────────────────────────────────────
 
+  function _wireBaucherAdmin() {
+    const input  = document.getElementById("pf-baucher-input");
+    const area   = document.getElementById("pf-baucher-area");
+    const btnClick = document.getElementById("pf-baucher-click");
+    if (!input || !area) return;
+
+    let objUrl = null;
+
+    function setFile(f) {
+      _baucherFile = f;
+      _baucherUrl  = null;
+      if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+
+      const emptyEl = document.getElementById("pf-baucher-empty");
+      const preview = document.getElementById("pf-baucher-preview");
+      const iconX   = window.SGIUI?.icon("x")            ?? "✕";
+      const iconF   = window.SGIUI?.icon("file")          ?? "";
+      const iconU   = window.SGIUI?.icon("upload-cloud")  ?? "";
+      const isImage = f.type.startsWith("image/");
+
+      if (isImage) {
+        objUrl = URL.createObjectURL(f);
+        preview.innerHTML = `
+          <div class="baucher-img-preview-wrap">
+            <img src="${objUrl}" class="baucher-img-preview" alt="Vista previa">
+            <button type="button" class="baucher-img-remove" id="pf-baucher-remove">${iconX}</button>
+          </div>
+          <div class="baucher-preview-footer">
+            <span class="baucher-preview-name">${iconF} ${f.name}</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="pf-baucher-change">${iconU} Cambiar</button>
+          </div>`;
+      } else {
+        preview.innerHTML = `
+          <div class="baucher-preview baucher-preview--file">
+            <span class="baucher-preview-name">${iconF} ${f.name}</span>
+            <div style="display:flex;gap:.5rem;flex-shrink:0">
+              <button type="button" class="btn btn-ghost btn-sm" id="pf-baucher-change">${iconU} Cambiar</button>
+              <span class="baucher-preview-remove" id="pf-baucher-remove">${iconX}</span>
+            </div>
+          </div>`;
+      }
+
+      if (emptyEl) emptyEl.style.display = "none";
+      preview.style.display = "block";
+      area.classList.add("has-preview");
+      window.SGIUI?.hydrate();
+
+      document.getElementById("pf-baucher-remove")?.addEventListener("click", () => {
+        _baucherFile = null; _baucherUrl = null;
+        if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+        preview.style.display = "none";
+        preview.innerHTML = "";
+        if (emptyEl) emptyEl.style.display = "";
+        area.classList.remove("has-preview");
+        input.value = "";
+      });
+
+      document.getElementById("pf-baucher-change")?.addEventListener("click", () => input.click());
+    }
+
+    btnClick?.addEventListener("click", () => input.click());
+    area.addEventListener("dragover",  e => { e.preventDefault(); area.classList.add("dragover"); });
+    area.addEventListener("dragleave", () => area.classList.remove("dragover"));
+    area.addEventListener("drop", e => {
+      e.preventDefault(); area.classList.remove("dragover");
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+    input.addEventListener("change", () => { if (input.files[0]) setFile(input.files[0]); });
+  }
+
   window.pagoForm = async function(idVentaCtx = null, cuotaCtx = null) {
-    let facturas = [];
+    const hoy = new Date().toISOString().split("T")[0];
+    let facturas     = [];
+    let cuotaFactura = null;
+
     try {
       const todas = await API.get("/facturas");
       facturas = todas.filter(f => f.estado === "emitida");
-      if (idVentaCtx) facturas = facturas.filter(f => f.id_venta === idVentaCtx);
+      if (idVentaCtx && !cuotaCtx) facturas = facturas.filter(f => f.id_venta === idVentaCtx);
     } catch (e) { facturas = []; }
 
-    let cuotaFactura = null;
     if (cuotaCtx) {
       cuotaFactura = cuotaCtx.id_fraccion
         ? facturas.find(f => f.id_cuota === cuotaCtx.id_cuota && f.id_fraccion === cuotaCtx.id_fraccion)
-        : null;
-      if (!cuotaFactura) cuotaFactura = facturas.find(f => f.id_cuota === cuotaCtx.id_cuota);
+        : facturas.find(f => f.id_cuota === cuotaCtx.id_cuota);
+
       if (!cuotaFactura) {
-        const emitir = await UI.confirm({
-          title:       "¿Emitir la factura ahora?",
-          message:     "Esta cuota no tiene una factura emitida y no se puede pagar sin ella.",
-          confirmText: "Emitir factura",
-          cancelText:  "Cancelar",
-        });
-        if (emitir && typeof window.facturaForm === "function") {
-          window.facturaForm(cuotaCtx, null, true);
+        try {
+          const nueva = await API.post("/facturas", {
+            id_cuota:        cuotaCtx.id_cuota,
+            fecha_emision:   hoy,
+            valor_facturado: cuotaCtx.valor_cuota,
+          });
+          cuotaFactura = {
+            id_factura:      nueva.id_factura,
+            numero_factura:  nueva.numero_factura,
+            valor_facturado: nueva.valor_facturado,
+            id_cuota:        cuotaCtx.id_cuota,
+            numero_cuota:    cuotaCtx.numero_cuota ?? "—",
+            comprador:       cuotaCtx.comprador    ?? "—",
+            proyecto:        cuotaCtx.proyecto     ?? "—",
+            codigo_lote:     cuotaCtx.codigo_lote  ?? "—",
+          };
+        } catch (e) {
+          UI.toast(e.message || "Error al emitir la factura", "error");
+          return;
         }
-        return;
       }
       facturas = [cuotaFactura];
     }
+
+    pagoOrigen = cuotaCtx ? "cuotas" : "pagos";
+    window._pagoFacturas = facturas;
+    _baucherFile = null;
+    _baucherUrl  = null;
 
     let fracciones = [];
     if (cuotaCtx?.tiene_fracciones) {
       try { fracciones = await API.get(`/cuotas/${cuotaCtx.id_cuota}/fracciones`); } catch (_) {}
     }
 
-    pagoOrigen = cuotaCtx ? "cuotas" : "pagos";
-    window._pagoFacturas = facturas;
-
-    const ctxLabel = idVentaCtx
+    const ctxLabel = idVentaCtx && !cuotaCtx
       ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta #${idVentaCtx}</span>`
       : "";
 
@@ -350,26 +436,86 @@
         </table>
       </div>` : '';
 
-    UI.openModal(cuotaCtx ? `Pagar Cuota #${cuotaCtx.numero_cuota ?? ""}`.trim() : "Registrar Pago", `
+    const iU = window.SGIUI?.icon("upload-cloud") ?? "";
+    const iF = window.SGIUI?.icon("file")          ?? "";
+
+    UI.openModal(cuotaCtx ? `Pagar Cuota #${cuotaCtx.numero_cuota ?? ""}` : "Registrar Pago", `
       <div class="form-grid">
         ${facturaSelectorHTML}
         ${fraccionesHTML}
-        <div class="form-group">
-          <label>Fecha *</label>
-          <input id="pf_fecha" type="date" value="${new Date().toISOString().split("T")[0]}">
-        </div>
-        <div class="form-group">
-          <label>Método de pago *</label>
-          <select id="pf_metodo">
-            <option value="transferencia">Transferencia</option>
-            <option value="efectivo">Efectivo</option>
-            <option value="cheque">Cheque</option>
-          </select>
-        </div>
+
         <div class="form-group" style="grid-column:1/-1">
-          <label>Referencia *</label>
-          <input id="pf_ref" placeholder="Nro. comprobante o transacción">
+          <label>Método de pago *</label>
+          <div class="pago-method-tabs">
+            <button type="button" class="pago-method-tab active" data-method="transferencia">${window.SGIUI?.icon("smartphone") ?? ""} Electrónico</button>
+            <button type="button" class="pago-method-tab" data-method="efectivo">${window.SGIUI?.icon("banknote") ?? ""} Efectivo</button>
+            <button type="button" class="pago-method-tab" data-method="permuta">${window.SGIUI?.icon("arrows-left-right") ?? ""} Permuta</button>
+          </div>
         </div>
+
+        <div id="pf-fields-transferencia" style="grid-column:1/-1">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="form-group">
+              <label>Fecha del pago *</label>
+              <input id="pf_fecha_trans" type="date" value="${hoy}">
+            </div>
+            <div class="form-group">
+              <label>N° cuenta / celular origen</label>
+              <input id="pf_cuenta" type="text" placeholder="Ej: 3001234567">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Referencia / N° transacción *</label>
+            <input id="pf_ref_trans" type="text" placeholder="Ej: TRF-123456">
+          </div>
+          <div class="form-group">
+            <label>Comprobante de pago (baucher)</label>
+            <div class="baucher-upload-area" id="pf-baucher-area">
+              <input type="file" id="pf-baucher-input" accept="image/jpeg,image/png,image/webp,application/pdf">
+              <div id="pf-baucher-empty">
+                <div class="baucher-upload-icon">${iU}</div>
+                <div class="baucher-upload-label">Arrastra el baucher aquí o haz clic para subir</div>
+                <button type="button" class="btn btn-ghost btn-sm" id="pf-baucher-click">${iU} Subir archivo</button>
+              </div>
+              <div id="pf-baucher-preview" style="display:none"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pf-fields-efectivo" style="grid-column:1/-1;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="form-group">
+              <label>Fecha de recepción *</label>
+              <input id="pf_fecha_efect" type="date" value="${hoy}">
+            </div>
+            <div class="form-group">
+              <label>N° recibo físico *</label>
+              <input id="pf_ref_efect" type="text" placeholder="Ej: RC-001">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea id="pf_obs_efect" rows="2" style="resize:vertical;min-height:4rem" placeholder="Detalles adicionales del recibo en efectivo"></textarea>
+          </div>
+        </div>
+
+        <div id="pf-fields-permuta" style="grid-column:1/-1;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="form-group">
+              <label>Fecha de la permuta *</label>
+              <input id="pf_fecha_perm" type="date" value="${hoy}">
+            </div>
+            <div class="form-group">
+              <label>N° documento / referencia</label>
+              <input id="pf_ref_perm" type="text" placeholder="Ej: CONT-001">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Descripción del bien o activo *</label>
+            <textarea id="pf_desc_perm" rows="2" style="resize:vertical;min-height:4rem" placeholder="Ej: Vehículo Toyota Corolla 2020, placas ABC123"></textarea>
+          </div>
+        </div>
+
         <div class="form-group" style="grid-column:1/-1">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border)">
             <span style="color:var(--text-muted)">Valor a pagar:</span>
@@ -382,13 +528,25 @@
         <button id="pf_btn_guardar" class="btn btn-primary" onclick="guardarPago()">Guardar</button>
       </div>`);
 
+    document.querySelectorAll(".pago-method-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".pago-method-tab").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const m = btn.dataset.method;
+        document.getElementById("pf-fields-transferencia").style.display = m === "transferencia" ? "block" : "none";
+        document.getElementById("pf-fields-efectivo").style.display      = m === "efectivo"      ? "block" : "none";
+        document.getElementById("pf-fields-permuta").style.display       = m === "permuta"       ? "block" : "none";
+      });
+    });
+
+    _wireBaucherAdmin();
+
     if (!cuotaFactura) {
       document.getElementById("pf_factura_lista")?.addEventListener("change", e => {
         if (e.target.type !== "radio") return;
         document.getElementById("pf_id_factura").value  = e.target.value;
         document.getElementById("pf_valor").textContent = UI.fmt(+e.target.dataset.valor);
       });
-
       if (facturas.length === 1) {
         const onlyRadio = document.querySelector("#pf_factura_lista input[type=radio]");
         if (onlyRadio) {
@@ -401,25 +559,82 @@
   };
 
   window.guardarPago = async function() {
-    const id_factura  = document.getElementById("pf_id_factura")?.value;
-    const fecha_pago  = document.getElementById("pf_fecha")?.value;
-    const metodo_pago = document.getElementById("pf_metodo")?.value;
-    const referencia  = document.getElementById("pf_ref")?.value.trim();
+    const id_factura = document.getElementById("pf_id_factura")?.value;
+    const metodo     = document.querySelector(".pago-method-tab.active")?.dataset.method || "transferencia";
 
     if (!id_factura) return UI.toast("Seleccione una factura", "error");
-    if (!fecha_pago) return UI.toast("Ingrese la fecha de pago", "error");
-    if (!referencia) return UI.toast("La referencia de pago es obligatoria", "error");
 
     const factura = (window._pagoFacturas || []).find(f => String(f.id_factura) === String(id_factura));
     if (!factura?.id_cuota) return UI.toast("No se encontró la cuota de la factura seleccionada", "error");
 
-    const cuotas = [{ id_cuota: factura.id_cuota, id_factura: factura.id_factura, valor_aplicado: Number(factura.valor_facturado) }];
+    let fecha_pago, referencia, numero_cuenta_origen = null;
+
+    if (metodo === "transferencia") {
+      fecha_pago           = document.getElementById("pf_fecha_trans")?.value;
+      referencia           = document.getElementById("pf_ref_trans")?.value.trim();
+      numero_cuenta_origen = document.getElementById("pf_cuenta")?.value.trim() || null;
+      if (!fecha_pago) return UI.toast("Ingrese la fecha del pago", "error");
+      if (!referencia) return UI.toast("La referencia de la transacción es obligatoria", "error");
+    } else if (metodo === "efectivo") {
+      fecha_pago     = document.getElementById("pf_fecha_efect")?.value;
+      const ref      = document.getElementById("pf_ref_efect")?.value.trim();
+      const obs      = document.getElementById("pf_obs_efect")?.value.trim();
+      if (!fecha_pago) return UI.toast("Ingrese la fecha de recepción", "error");
+      if (!ref)        return UI.toast("El número de recibo físico es obligatorio", "error");
+      referencia = obs ? `${ref} — ${obs}` : ref;
+    } else if (metodo === "permuta") {
+      fecha_pago   = document.getElementById("pf_fecha_perm")?.value;
+      const desc   = document.getElementById("pf_desc_perm")?.value.trim();
+      const ref    = document.getElementById("pf_ref_perm")?.value.trim();
+      if (!fecha_pago) return UI.toast("Ingrese la fecha de la permuta", "error");
+      if (!desc)       return UI.toast("Ingrese la descripción del bien o activo", "error");
+      referencia = ref ? `${desc} — ${ref}` : desc;
+    }
 
     const btn = document.getElementById("pf_btn_guardar");
     if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
 
+    let url_baucher = null;
+    if (metodo === "transferencia" && _baucherFile) {
+      if (btn) btn.textContent = "Subiendo baucher...";
+      try {
+        let token = localStorage.getItem("fb_token") || "";
+        try {
+          const fbUser = window._firebaseAuth?.currentUser;
+          if (fbUser) token = await fbUser.getIdToken(false);
+        } catch (_) {}
+        const fd = new FormData();
+        fd.append("baucher", _baucherFile);
+        const res = await fetch("/api/v1/uploads/baucher", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        if (!res.ok) throw new Error(`Error ${res.status} al subir el baucher`);
+        const d = await res.json().catch(() => null);
+        if (!d?.url) throw new Error("El servidor no devolvió la URL del baucher");
+        url_baucher = d.url;
+        _baucherUrl = url_baucher;
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
+        UI.toast(e.message || "Error al subir el baucher", "error");
+        return;
+      }
+    }
+
+    if (btn) btn.textContent = "Guardando...";
+
+    const cuotas = [{ id_cuota: factura.id_cuota, id_factura: factura.id_factura, valor_aplicado: Number(factura.valor_facturado) }];
+
     try {
-      await API.post("/pagos", { fecha_pago, metodo_pago, referencia: referencia || null, cuotas });
+      await API.post("/pagos", {
+        fecha_pago,
+        metodo_pago:          metodo,
+        referencia:           referencia || null,
+        cuotas,
+        url_baucher:          url_baucher          || null,
+        numero_cuenta_origen: numero_cuenta_origen || null,
+      });
       UI.closeModal();
       UI.toast("Pago registrado. Recibo generado automáticamente.", "ok");
       if (pagoOrigen === "cuotas" && typeof window.cuotasView === "function") {

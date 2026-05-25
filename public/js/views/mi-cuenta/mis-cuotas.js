@@ -13,7 +13,7 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
-  async function abrirModalPago({ idVenta, idCuota, idFactura, soloAmortizacion = false, onSuccess } = {}) {
+  async function abrirModalPago({ idVenta, idCuota, cuota, soloAmortizacion = false, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
@@ -49,13 +49,16 @@
             <label>Comprobante de pago (baucher) *</label>
             <div class="baucher-upload-area" id="mp-baucher-area">
               <input type="file" id="mp-baucher-input" accept="image/jpeg,image/png,image/webp,application/pdf" />
-              <div class="baucher-upload-icon">${iconUpload}</div>
-              <div class="baucher-upload-label">Arrastra tu baucher aqui o <strong id="mp-baucher-click">haz clic para seleccionar</strong></div>
+              <div id="mp-baucher-empty">
+                <div class="baucher-upload-icon">${iconUpload}</div>
+                <div class="baucher-upload-label">Arrastra tu baucher aqui</div>
+                <button type="button" class="btn btn-outline btn-sm baucher-upload-btn" id="mp-baucher-click">${iconUpload} Subir imagen</button>
+              </div>
               <div id="mp-baucher-preview" style="display:none"></div>
             </div>
           </div>
           <div class="form-group">
-            <label>Referencia / Numero de transaccion (opcional)</label>
+            <label>Referencia / Numero de transaccion *</label>
             <input type="text" id="mp-ref" placeholder="Ej: TRF-123456" />
           </div>
         </div>
@@ -95,6 +98,7 @@
 
       const baucherInput = document.getElementById("mp-baucher-input");
       const baucherArea  = document.getElementById("mp-baucher-area");
+      let currentObjectUrl = null;
       document.getElementById("mp-baucher-click")?.addEventListener("click", () => baucherInput.click());
       baucherArea.addEventListener("dragover",  e => { e.preventDefault(); baucherArea.classList.add("dragover"); });
       baucherArea.addEventListener("dragleave", () => baucherArea.classList.remove("dragover"));
@@ -106,14 +110,50 @@
 
       function setFile(f) {
         baucherFile = f; uploadedUrl = null;
-        const preview = document.getElementById("mp-baucher-preview");
-        preview.style.display = "flex";
-        preview.innerHTML = `<span class="baucher-preview-name">${iconFile} ${f.name}</span><span class="baucher-preview-remove" id="mp-baucher-remove">${iconX}</span>`;
+        if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+
+        const emptyEl  = document.getElementById("mp-baucher-empty");
+        const preview  = document.getElementById("mp-baucher-preview");
+        const isImage  = f.type.startsWith("image/");
+
+        if (isImage) {
+          currentObjectUrl = URL.createObjectURL(f);
+          preview.innerHTML = `
+            <div class="baucher-img-preview-wrap">
+              <img src="${currentObjectUrl}" class="baucher-img-preview" alt="Vista previa del baucher" />
+              <button type="button" class="baucher-img-remove" id="mp-baucher-remove">${iconX}</button>
+            </div>
+            <div class="baucher-preview-footer">
+              <span class="baucher-preview-name">${iconFile} ${f.name}</span>
+              <button type="button" class="btn btn-ghost btn-sm" id="mp-baucher-change">${iconUpload} Cambiar imagen</button>
+            </div>`;
+        } else {
+          preview.innerHTML = `
+            <div class="baucher-preview baucher-preview--file">
+              <span class="baucher-preview-name">${iconFile} ${f.name}</span>
+              <div style="display:flex;gap:0.5rem;flex-shrink:0">
+                <button type="button" class="btn btn-ghost btn-sm" id="mp-baucher-change">${iconUpload} Cambiar archivo</button>
+                <span class="baucher-preview-remove" id="mp-baucher-remove">${iconX}</span>
+              </div>
+            </div>`;
+        }
+
+        if (emptyEl) emptyEl.style.display = "none";
+        preview.style.display = "block";
+        baucherArea.classList.add("has-preview");
         window.SGIUI?.hydrate();
+
         document.getElementById("mp-baucher-remove")?.addEventListener("click", () => {
           baucherFile = null; uploadedUrl = null;
-          preview.style.display = "none"; baucherInput.value = "";
+          if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+          preview.style.display = "none";
+          preview.innerHTML = "";
+          if (emptyEl) emptyEl.style.display = "";
+          baucherArea.classList.remove("has-preview");
+          baucherInput.value = "";
         });
+
+        document.getElementById("mp-baucher-change")?.addEventListener("click", () => baucherInput.click());
       }
 
       document.getElementById("mp-submit")?.addEventListener("click", async () => {
@@ -126,6 +166,7 @@
         if (!cuenta)      { showError("Ingresa el numero de cuenta o celular de origen."); return; }
         if (!datetimeV)   { showError("Selecciona la fecha y hora de la transaccion."); return; }
         if (!baucherFile) { showError("Debes adjuntar el baucher de pago."); return; }
+        if (!ref)         { showError("Ingresa la referencia o numero de transaccion."); return; }
 
         const btn = document.getElementById("mp-submit");
         btn.disabled = true; btn.textContent = "Subiendo baucher...";
@@ -193,84 +234,40 @@
       return;
     }
 
-    // ── Factura selection ─────────────────────────────────────────────────────
-    let facturas = [];
-    try { facturas = await API.get("/facturas/mis-facturas"); } catch(e) {}
+    // ── Cuota payment ────────────────────────────────────────────────────────
+    UI.openModal("Preparando factura...", `<div style="display:flex;justify-content:center;padding:2.5rem">${UI.loader()}</div>`);
 
-    if (!facturas.length) {
-      UI.openModal("Sin facturas disponibles", `
-        <div style="padding:8px 0 16px">
-          <p style="color:var(--text-muted);line-height:1.6;font-size:.9rem">
-            No tienes facturas disponibles para pagar en este momento.<br>
-            El equipo contable debe generar la factura de tu cuota antes de que puedas registrar el pago.
-          </p>
-        </div>
-        <div class="form-actions"><button class="btn btn-primary" onclick="UI.closeModal()">Entendido</button></div>`);
+    let facturaData;
+    try {
+      facturaData = await API.post("/facturas/emitir-para-cuota", { id_cuota: idCuota });
+    } catch (e) {
+      UI.closeModal();
+      window.SGIUI?.toast(e.message || "Error al emitir la factura.", "error");
       return;
     }
 
-    let selectedFactura = (idFactura ? facturas.find(f => f.id_factura === Number(idFactura)) : null)
-      || facturas.find(f => f.id_cuota === Number(idCuota))
-      || facturas[0];
-
-    function _fmtFN(n) {
-      if (!n) return "—";
-      const s = String(n).padStart(9, "0");
-      return /^\d{9}$/.test(s) ? `20${s.slice(0,2)}-${s.slice(2,6)}-${s.slice(6)}` : String(n);
-    }
-
-    const listHTML = facturas.map(f => {
-      const sel = selectedFactura?.id_factura === f.id_factura;
-      return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:2px solid ${sel ? "var(--accent,#ff6a00)" : "var(--border)"};background:${sel ? "var(--surface-2,#f0f4f8)" : "transparent"};transition:border-color .15s,background .15s" id="mp-fopt-${f.id_factura}">
-        <input type="radio" name="mp-factura" value="${f.id_factura}" data-cuota="${f.id_cuota}" data-venta="${f.id_venta}" data-valor="${f.valor_facturado}" ${sel ? "checked" : ""} style="flex-shrink:0">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.85rem;font-weight:600">Factura ${_fmtFN(f.numero_factura)}</div>
-          <div style="font-size:.76rem;color:var(--text-muted)">Cuota #${f.numero_cuota} &bull; Vence ${new Date(f.fecha_vencimiento+"T12:00:00").toLocaleDateString("es-CO")} &bull; ${f.proyecto} &bull; ${f.codigo_lote}</div>
-        </div>
-        <span style="font-size:.9rem;font-weight:700;white-space:nowrap;color:var(--accent,#ff6a00)">${fmt(f.valor_facturado)}</span>
-      </label>`;
-    }).join("");
-
     UI.openModal("Registrar pago", `
       <div style="display:flex;flex-direction:column;gap:18px">
-        <div class="form-group">
-          <label>Factura a pagar *</label>
-          <div id="mp-facturas-lista" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px">
-            ${listHTML}
+        <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div>
+            <div style="font-size:.78rem;color:var(--text-muted)">${facturaData.numero_factura}</div>
+            <div style="font-size:.875rem;font-weight:600">Cuota #${cuota?.numero_cuota ?? idCuota}${cuota?.es_extraordinaria ? " · Extraordinaria" : ""}</div>
           </div>
-        </div>
-        <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-          <span style="color:var(--text-muted);font-size:.88rem">Valor a pagar:</span>
-          <strong id="mp-valor-display" style="font-size:1.05rem">${fmt(selectedFactura?.valor_facturado)}</strong>
+          <strong style="font-size:1.05rem;white-space:nowrap;color:var(--accent,#ff6a00)">${fmt(facturaData.valor_facturado)}</strong>
         </div>
         ${paymentFields}
       </div>`);
 
-    document.getElementById("mp-facturas-lista")?.addEventListener("change", e => {
-      if (e.target.type !== "radio") return;
-      const f = facturas.find(f => f.id_factura === Number(e.target.value));
-      if (!f) return;
-      selectedFactura = f;
-      document.querySelectorAll("#mp-facturas-lista label").forEach(l => {
-        const radio = l.querySelector("input[type=radio]");
-        const active = Number(radio?.value) === f.id_factura;
-        l.style.borderColor = active ? "var(--accent,#ff6a00)" : "var(--border)";
-        l.style.background  = active ? "var(--surface-2,#f0f4f8)" : "transparent";
-      });
-      document.getElementById("mp-valor-display").textContent = fmt(f.valor_facturado);
-    });
-
     _wireEvents(async ({ cuenta, fechaPago, ref, uploadedUrl }) => {
-      if (!selectedFactura) throw new Error("Selecciona una factura a pagar.");
       await API.post("/pagos/comprador", {
         fecha_pago:           fechaPago,
-        valor_pago:           selectedFactura.valor_facturado,
+        valor_pago:           facturaData.valor_facturado,
         metodo_pago:          "transferencia",
         numero_cuenta_origen: cuenta,
         url_baucher:          uploadedUrl,
         referencia:           ref,
-        id_venta:             selectedFactura.id_venta || undefined,
-        id_cuota_propuesta:   selectedFactura.id_cuota || undefined,
+        id_venta:             idVenta || undefined,
+        id_cuota_propuesta:   idCuota || undefined,
         tipo_pago:            "cuota",
       });
     });
@@ -324,7 +321,16 @@
         const dl  = diasLabel(c);
         const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
         const enRevision = (c.valor_en_revision || 0) > 0;
-        const canPay = isCurrent && !isPagada && c.tiene_factura;
+        let actionBtn = "";
+        if (!isPagada) {
+          if (enRevision) {
+            actionBtn = `<button class="btn btn-sm" disabled style="opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)">${window.SGIUI?.icon("clock") ?? ""} En revision</button>`;
+          } else if (isCurrent) {
+            actionBtn = `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-cuota-idx="${i}">Pagar</button>`;
+          } else {
+            actionBtn = `<button class="btn btn-ghost btn-sm btn-pagar-cuota" data-cuota-idx="${i}">${window.SGIUI?.icon("zap") ?? ""} Adelantar</button>`;
+          }
+        }
         return `
           <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
             <div class="cuota-card-left">
@@ -342,11 +348,7 @@
             </div>
             <div class="cuota-card-right">
               ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
-              ${canPay
-                ? `<button class="btn btn-primary btn-sm btn-pagar-cuota">Pagar</button>`
-                : isCurrent && !isPagada
-                  ? `<span style="font-size:.75rem;color:var(--text-muted);text-align:center;line-height:1.4">Factura<br>pendiente</span>`
-                  : ""}
+              ${actionBtn}
             </div>
           </div>`;
       }).join("");
@@ -361,10 +363,6 @@
             meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
           }) ?? ""}
           ${buildLoteSelector(idx)}
-          <div class="flow-context-hint">
-            ${window.SGIUI?.icon("info") ?? ""}
-            <span>Para pagar una cuota, el equipo contable debe emitir su factura. Cuando este lista, aparece el boton <strong>Pagar</strong>.</span>
-          </div>
           <section class="table-wrap">
             <div style="padding:1rem 1.25rem">
               <div class="cuotas-progress-header">
@@ -375,9 +373,6 @@
             </div>
           </section>
           <section class="cuotas-comprador">${cuotasHtml || `<p style="color:var(--text-muted);padding:1.25rem">No hay cuotas registradas.</p>`}</section>
-          <div style="padding:1rem 0.25rem;text-align:center">
-            <button class="btn btn-ghost btn-sm" onclick="navigate('mis-facturas')">${window.SGIUI?.icon("receipt") ?? ""} Ver mis facturas</button>
-          </div>
         </section>`;
 
       window.SGIUI?.hydrate();
@@ -393,7 +388,10 @@
         abrirModalPago({ idVenta: venta.id_venta, soloAmortizacion: true })
       );
       document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
-        btn.addEventListener("click", () => navigate("mis-facturas"));
+        btn.addEventListener("click", () => {
+          const cuota = cuotas[Number(btn.dataset.cuotaIdx)];
+          abrirModalPago({ cuota, idVenta: venta.id_venta, idCuota: cuota.id_cuota });
+        });
       });
     }
 
