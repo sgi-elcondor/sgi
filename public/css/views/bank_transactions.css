@@ -5,6 +5,10 @@
   flex-direction: column;
 }
 
+#bt-list-panel {
+  overflow-x: auto;
+}
+
 .bt-filters {
   display: flex;
   flex-wrap: wrap;

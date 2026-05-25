@@ -187,7 +187,7 @@ window._btLoad = async function() {
       <td style="color:var(--text-muted);font-size:12px">${tx.reference || '--'}</td>
       <td style="text-align:right">${_fmtAmount(tx.amount)}</td>
       <td>${tx.id_pago
-        ? `<span style="font-size:11px;background:#d1fae5;color:var(--success);padding:2px 8px;border-radius:20px">Pago #${tx.id_pago}</span>`
+        ? `<span style="font-size:11px;background:#d1fae5;color:var(--success);padding:2px 8px;border-radius:20px;white-space:nowrap">Pago #${tx.id_pago}</span>`
         : '<span style="color:var(--text-muted);font-size:12px">--</span>'}</td>
       <td>
         <div style="display:flex;gap:6px">
