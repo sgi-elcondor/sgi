@@ -94,8 +94,9 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/bank-transactions':        { recurso: 'bank_transactions', accion: 'actualizar' },
   'DELETE /api/v1/bank-transactions':     { recurso: 'bank_transactions', accion: 'eliminar' },
 
-  'GET /api/v1/pagos/contrast':           { recurso: 'validacion_pagos',  accion: 'leer' },
+  'GET /api/v1/pagos/contrast':            { recurso: 'validacion_pagos',  accion: 'leer' },
   'PATCH /api/v1/pagos/accept-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
+  'PATCH /api/v1/pagos/reject-batch':     { recurso: 'validacion_pagos',  accion: 'crear' },
 
   'GET /api/v1/gastos':                   { recurso: 'gastos', accion: 'leer' },
   'GET /api/v1/gastos/resumen':           { recurso: 'gastos', accion: 'leer' },

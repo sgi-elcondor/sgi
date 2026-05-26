@@ -251,7 +251,7 @@
         <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div>
             <div style="font-size:.78rem;color:var(--text-muted)">${facturaData.numero_factura}</div>
-            <div style="font-size:.875rem;font-weight:600">Cuota #${cuota?.numero_cuota ?? idCuota}${cuota?.es_extraordinaria ? " · Extraordinaria" : ""}</div>
+            <div style="font-size:.875rem;font-weight:600">Cuota #${cuota?.numero_cuota ?? idCuota}${cuota?.es_extraordinaria ? " · Extraordinaria" : ""}${cuota?.tiene_fracciones && cuota?.fraccion_actual ? ` · Subdivisión ${cuota.fraccion_actual}/${cuota.total_fracciones}` : ""}</div>
           </div>
           <strong style="font-size:1.05rem;white-space:nowrap;color:var(--accent,#ff6a00)">${fmt(facturaData.valor_facturado)}</strong>
         </div>
@@ -314,43 +314,77 @@
       const cuotas = venta.cuotas || [];
       const indexActual = cuotas.findIndex(c => c.estado !== "pagada");
 
-      const cuotasHtml = cuotas.map((c, i) => {
+      const cuotasHtml = cuotas.flatMap((c, i) => {
         const isCurrent = i === indexActual;
         const isPagada  = c.estado === "pagada";
         const isVencida = c.dias_restantes < 0 && !isPagada;
         const dl  = diasLabel(c);
-        const pct = c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0;
+        const pct = c.tiene_fracciones
+          ? (c.valor_total_cuota > 0 ? Math.min(100, (c.total_pagado_cuota / c.valor_total_cuota) * 100) : 0)
+          : (c.valor_cuota > 0 ? Math.min(100, (c.valor_pagado / c.valor_cuota) * 100) : 0);
         const enRevision = (c.valor_en_revision || 0) > 0;
+        const pagoRechazado = !!c.pago_rechazado;
         let actionBtn = "";
         if (!isPagada) {
           if (enRevision) {
             actionBtn = `<button class="btn btn-sm" disabled style="opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)">${window.SGIUI?.icon("clock") ?? ""} En revision</button>`;
-          } else if (isCurrent) {
+          } else if (isCurrent || pagoRechazado) {
             actionBtn = `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-cuota-idx="${i}">Pagar</button>`;
           } else {
             actionBtn = `<button class="btn btn-ghost btn-sm btn-pagar-cuota" data-cuota-idx="${i}">${window.SGIUI?.icon("zap") ?? ""} Adelantar</button>`;
           }
         }
-        return `
+        const fraccionBadge = c.tiene_fracciones && c.fraccion_actual
+          ? `<span class="badge badge-muted" style="margin-left:6px">Subdivisión ${c.fraccion_actual}/${c.total_fracciones}</span>`
+          : "";
+
+        const fracPagadasCards = (!isPagada && c.fracciones_pagadas?.length > 0)
+          ? c.fracciones_pagadas.map(fp => `
+            <div class="cuota-card pagada">
+              <div class="cuota-card-left">
+                <div class="cuota-card-num">Cuota #${c.numero_cuota}<span class="badge badge-muted" style="margin-left:6px">Subdivisión ${fp.numero_fraccion}/${c.total_fracciones}</span></div>
+                <div class="cuota-card-fecha">${fp.fecha_propuesta ? fmtDate(fp.fecha_propuesta) : fmtDate(c.fecha_vencimiento)}</div>
+                <div class="cuota-card-dias muted">Pagada</div>
+              </div>
+              <div class="cuota-card-center">
+                <div class="cuota-card-valor">${fmt(fp.valor_fraccion)}</div>
+              </div>
+              <div class="cuota-card-right">
+                <span class="badge badge-success">Pagada</span>
+              </div>
+            </div>`)
+          : [];
+
+        const mainCard = `
           <div class="cuota-card ${isCurrent?"current":""} ${isPagada?"pagada":""} ${isVencida?"vencida":""}">
             <div class="cuota-card-left">
-              <div class="cuota-card-num">Cuota #${c.numero_cuota}${c.es_extraordinaria?'<span class="badge badge-info" style="margin-left:6px">Extraordinaria</span>':""}${c.tipo==="inicial"?'<span class="badge badge-muted" style="margin-left:6px">Inicial</span>':""}</div>
+              <div class="cuota-card-num">Cuota #${c.numero_cuota}${c.es_extraordinaria?'<span class="badge badge-info" style="margin-left:6px">Extraordinaria</span>':""}${c.tipo==="inicial"?'<span class="badge badge-muted" style="margin-left:6px">Inicial</span>':""}${fraccionBadge}</div>
               <div class="cuota-card-fecha">${fmtDate(c.fecha_vencimiento)}</div>
               <div class="cuota-card-dias ${dl.cls}">${dl.text}</div>
             </div>
             <div class="cuota-card-center">
-              <div class="cuota-card-valor">${fmt(c.valor_cuota)}</div>
-              ${c.valor_pagado > 0 && !isPagada ? `
-                <div class="cuota-card-pendiente">Pagado: ${fmt(c.valor_pagado)}</div>
-                <div class="cuota-card-pendiente">Pendiente: ${fmt(c.valor_pendiente)}</div>
-                <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>` : ""}
+              ${c.tiene_fracciones && !isPagada ? `
+                <div class="cuota-card-valor">${fmt(c.valor_cuota)}</div>
+                <div class="cuota-card-pendiente">Pendiente: ${fmt(Math.max(0, c.valor_total_cuota - c.total_pagado_cuota))}</div>
+                <div class="cuota-card-pendiente">Pagado: ${fmt(c.total_pagado_cuota)}</div>
+                <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>
+              ` : `
+                <div class="cuota-card-valor">${fmt(c.valor_cuota)}</div>
+                ${c.valor_pagado > 0 && !isPagada ? `
+                  <div class="cuota-card-pendiente">Pagado: ${fmt(c.valor_pagado)}</div>
+                  <div class="cuota-card-pendiente">Pendiente: ${fmt(c.valor_pendiente)}</div>
+                  <div class="cuota-mini-progress"><div class="cuota-mini-progress-bar"><div class="cuota-mini-progress-fill" style="width:${pct}%"></div></div></div>` : ""}
+              `}
               ${enRevision ? `<div class="cuota-card-revision">En revision: ${fmt(c.valor_en_revision)}</div>` : ""}
+              ${pagoRechazado && !enRevision ? `<div class="cuota-card-rechazado">${window.SGIUI?.icon("x-circle") ?? ""} Comprobante rechazado — vuelve a registrar tu pago</div>` : ""}
             </div>
             <div class="cuota-card-right">
               ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
               ${actionBtn}
             </div>
           </div>`;
+
+        return [...fracPagadasCards, mainCard];
       }).join("");
 
       vc.innerHTML = `

@@ -449,7 +449,7 @@ exports.createCompradorPago = async (req, res) => {
 exports.getContrast = async (req, res) => {
   const { data: payments, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
-    .select('*, usuario:id_usuario(nombres, apellidos), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
+    .select('*, usuario:id_usuario(nombres, apellidos), venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre))), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
     .eq('estado', 'pendiente_revision')
     .eq('metodo_pago', 'transferencia');
 
@@ -463,7 +463,8 @@ exports.getContrast = async (req, res) => {
 
   if (et) return res.status(500).json({ error: et.message });
 
-  const matches = [];
+  // Build best candidate per pago (all transactions scored)
+  const candidatePerPago = {};
 
   for (const pago of (payments || [])) {
     const pagoAmount = Math.abs(Number(pago.valor_pago));
@@ -481,9 +482,9 @@ exports.getContrast = async (req, res) => {
 
       if (pagoAmount === txAmount) { score += 60; amountMatch = true; }
 
-      if (pagoRef && txRef) {
-        if (pagoRef === txRef)                                          { score += 30; referenceMatch = 'exact'; }
-        else if (pagoRef.includes(txRef) || txRef.includes(pagoRef))   { score += 15; referenceMatch = 'partial'; }
+      if (pagoRef && txRef && pagoRef !== '0' && txRef !== '0') {
+        if (pagoRef === txRef)                                        { score += 30; referenceMatch = 'exact'; }
+        else if (pagoRef.includes(txRef) || txRef.includes(pagoRef)) { score += 15; referenceMatch = 'partial'; }
       }
 
       const diffMs      = Math.abs(txDate - pagoDate);
@@ -508,8 +509,9 @@ exports.getContrast = async (req, res) => {
         dateDiffHuman = `${Math.round(diffDays)} dias`;
       }
 
-      if (score > 0) {
-        matches.push({
+      const prev = candidatePerPago[pago.id_pago];
+      if (!prev || score > prev.score) {
+        candidatePerPago[pago.id_pago] = {
           pago,
           transaction:     tx,
           score,
@@ -517,23 +519,50 @@ exports.getContrast = async (req, res) => {
           reference_match: referenceMatch,
           date_diff_days:  Math.round(diffDays),
           date_diff_human: dateDiffHuman,
-        });
+        };
       }
     }
   }
 
-  matches.sort((a, b) => b.score - a.score);
+  // A match is meaningful only if at least amount or reference coincide
+  const isMeaningful = c => c && (c.amount_match || c.reference_match !== 'none');
 
-  const seen     = new Set();
-  const seenTx   = new Set();
-  const best     = matches.filter(m => {
-    if (seen.has(m.pago.id_pago) || seenTx.has(m.transaction.id_transaction)) return false;
-    seen.add(m.pago.id_pago);
-    seenTx.add(m.transaction.id_transaction);
-    return true;
-  });
+  // Assign transactions to pagos: best meaningful match wins, dedup by transaction
+  const byScore = Object.values(candidatePerPago)
+    .filter(isMeaningful)
+    .sort((a, b) => b.score - a.score);
 
-  res.json(best);
+  const usedTx    = new Set();
+  const matchedPago = new Set();
+  const result    = [];
+
+  for (const candidate of byScore) {
+    const txId = candidate.transaction.id_transaction;
+    if (usedTx.has(txId) || matchedPago.has(candidate.pago.id_pago)) continue;
+    usedTx.add(txId);
+    matchedPago.add(candidate.pago.id_pago);
+    result.push({ ...candidate, manual: false });
+  }
+
+  // Pagos with no meaningful match → manual review (always visible)
+  for (const pago of (payments || [])) {
+    if (!matchedPago.has(pago.id_pago)) {
+      result.push({
+        pago,
+        transaction:     null,
+        score:           0,
+        amount_match:    false,
+        reference_match: 'none',
+        date_diff_days:  null,
+        date_diff_human: null,
+        manual:          true,
+      });
+    }
+  }
+
+  result.sort((a, b) => b.score - a.score);
+
+  res.json(result);
 };
 
 exports.acceptBatch = async (req, res) => {
@@ -657,6 +686,72 @@ exports.acceptBatch = async (req, res) => {
     });
 
     results.push({ id_pago, ok: true, pago, comision_causada });
+  }
+
+  res.json(results);
+};
+
+exports.rejectBatch = async (req, res) => {
+  const { pagos } = req.body;
+  if (!Array.isArray(pagos) || pagos.length === 0)
+    return res.status(400).json({ error: 'pagos must be a non-empty array' });
+
+  const results = [];
+
+  for (const { id_pago, motivo } of pagos) {
+    const { data: pagoActual, error: eLeer } = await supabase.schema(SCHEMA)
+      .from('pago')
+      .select('id_pago, estado, id_venta, id_cuota_propuesta')
+      .eq('id_pago', id_pago)
+      .single();
+
+    if (eLeer || !pagoActual) {
+      results.push({ id_pago, ok: false, error: 'Pago no encontrado' });
+      continue;
+    }
+
+    if (pagoActual.estado !== 'pendiente_revision') {
+      results.push({ id_pago, ok: false, error: 'El pago no está en revisión' });
+      continue;
+    }
+
+    const { error: eUpdate } = await supabase.schema(SCHEMA)
+      .from('pago')
+      .update({ estado: 'rechazado' })
+      .eq('id_pago', id_pago);
+
+    if (eUpdate) {
+      results.push({ id_pago, ok: false, error: eUpdate.message });
+      continue;
+    }
+
+    await supabase.schema(SCHEMA).from('auditoria').insert([{
+      tabla_afectada: 'pago',
+      id_registro:    id_pago,
+      campo:          'estado',
+      valor_anterior: 'pendiente_revision',
+      valor_nuevo:    'rechazado',
+      usuario_db:     req.usuario.email,
+      motivo:         motivo ? `rechazo_manual:${motivo}` : 'rechazo_manual',
+    }]);
+
+    if (pagoActual.id_cuota_propuesta) {
+      const { data: cfLinks } = await supabase.schema(SCHEMA)
+        .from('cuota_factura')
+        .select('id_factura, factura:id_factura(estado)')
+        .eq('id_cuota', pagoActual.id_cuota_propuesta);
+      const idsToAnnul = (cfLinks || [])
+        .filter(cf => cf.factura?.estado === 'emitida')
+        .map(cf => cf.id_factura);
+      if (idsToAnnul.length > 0) {
+        await supabase.schema(SCHEMA)
+          .from('factura')
+          .update({ estado: 'anulada' })
+          .in('id_factura', idsToAnnul);
+      }
+    }
+
+    results.push({ id_pago, ok: true });
   }
 
   res.json(results);

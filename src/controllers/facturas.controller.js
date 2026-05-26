@@ -83,7 +83,7 @@ exports.getCuotasSinFactura = async (req, res) => {
     .select(`
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
-      cuota_factura(id_cuota, id_fraccion),
+      cuota_factura(id_cuota, id_fraccion, factura:id_factura(estado)),
       venta(
         id_venta,
         estado,
@@ -120,11 +120,16 @@ exports.getCuotasSinFactura = async (req, res) => {
     const facturasExistentes = c.cuota_factura  || [];
 
     if (fracciones.length === 0) {
-      if (!facturasExistentes.some(cf => cf.id_fraccion === null)) {
+      if (!facturasExistentes.some(cf => cf.id_fraccion === null && cf.factura?.estado === 'emitida')) {
         result.push({ ...base, valor_cuota: c.valor_cuota, tiene_fracciones: false });
       }
     } else {
-      const fraccionesFacturadas = new Set(facturasExistentes.map(cf => cf.id_fraccion).filter(Boolean));
+      const fraccionesFacturadas = new Set(
+        facturasExistentes
+          .filter(cf => cf.factura?.estado === 'emitida')
+          .map(cf => cf.id_fraccion)
+          .filter(Boolean)
+      );
       for (const f of fracciones) {
         if (!fraccionesFacturadas.has(f.id_fraccion)) {
           result.push({
@@ -313,6 +318,7 @@ exports.emitirParaCuota = async (req, res) => {
     .from("cuota")
     .select(`
       id_cuota, numero_cuota, valor_cuota, estado,
+      cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
       cuota_factura(id_fraccion, factura:id_factura(id_factura, estado, numero_factura, valor_facturado)),
       venta:id_venta(
         id_venta, estado,
@@ -330,6 +336,55 @@ exports.emitirParaCuota = async (req, res) => {
 
   if (cuota.estado === "pagada") return res.status(400).json({ error: "Esta cuota ya esta pagada" });
 
+  const fracciones = (cuota.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
+  const fraccionesFacturadas = new Set(
+    (cuota.cuota_factura || [])
+      .filter(cf => cf.factura?.estado !== 'anulada')
+      .map(cf => cf.id_fraccion)
+      .filter(Boolean)
+  );
+  const fraccionPendiente = fracciones.find(f => !fraccionesFacturadas.has(f.id_fraccion)) || null;
+
+  if (fraccionPendiente) {
+    const existingFrac = (cuota.cuota_factura || [])
+      .find(cf => cf.id_fraccion === fraccionPendiente.id_fraccion && cf.factura?.estado === "emitida");
+    if (existingFrac) {
+      return res.json({
+        id_factura:       existingFrac.factura.id_factura,
+        numero_factura:   existingFrac.factura.numero_factura,
+        valor_facturado:  existingFrac.factura.valor_facturado,
+        numero_fraccion:  fraccionPendiente.numero_fraccion,
+        total_fracciones: fracciones.length,
+      });
+    }
+
+    const hoy = new Date().toISOString().split("T")[0];
+    let numero_factura;
+    try { numero_factura = await _buildNumFactura(id_cuota); }
+    catch (e) { return res.status(500).json({ error: `Error al generar numero de factura: ${e.message}` }); }
+
+    const { data: factura, error: ef } = await supabase.schema(SCHEMA)
+      .from("factura")
+      .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: fraccionPendiente.valor_fraccion, estado: "emitida" }])
+      .select().single();
+    if (ef) return res.status(500).json({ error: ef.message });
+
+    await supabase.schema(SCHEMA).from("cuota_factura").insert([{
+      id_factura:  factura.id_factura,
+      id_cuota,
+      id_fraccion: fraccionPendiente.id_fraccion,
+    }]);
+
+    return res.status(201).json({
+      id_factura:       factura.id_factura,
+      numero_factura:   factura.numero_factura,
+      valor_facturado:  factura.valor_facturado,
+      numero_fraccion:  fraccionPendiente.numero_fraccion,
+      total_fracciones: fracciones.length,
+    });
+  }
+
+  // No fracciones: emit for the full cuota value
   const existing = (cuota.cuota_factura || [])
     .find(cf => cf.id_fraccion === null && cf.factura?.estado === "emitida");
   if (existing) {

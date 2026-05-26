@@ -114,17 +114,20 @@ function _pvCard(m, i) {
             <span class="pv-ind-item" style="color:var(--text-muted)">Diferencia de fecha: <strong>${date_diff_human || '--'}</strong></span>
           `}
         </div>
-        <label class="pv-checkbox-wrap">
-          <input type="checkbox" class="pv-accept-chk" id="pv-chk-${i}"
-            data-pago="${pago.id_pago}" data-tx="${transaction ? transaction.id_transaction : ''}"
-            onchange="_pvUpdateCount()">
-          <span class="pv-chk-label">Aceptar</span>
-        </label>
+        <div style="display:flex;align-items:center;gap:12px">
+          ${AppState.can('validacion_pagos', 'crear') ? `<button class="btn btn-sm btn-danger" onclick="pvRejectOne(${pago.id_pago})">Rechazar</button>` : ''}
+          <label class="pv-checkbox-wrap">
+            <input type="checkbox" class="pv-accept-chk" id="pv-chk-${i}"
+              data-pago="${pago.id_pago}" data-tx="${transaction ? transaction.id_transaction : ''}"
+              onchange="_pvUpdateCount()">
+            <span class="pv-chk-label">Aceptar</span>
+          </label>
+        </div>
       </div>
       <div class="pv-card-body">
         <div class="pv-side pv-side-payment">
           <div class="pv-side-title">Pago del comprador</div>
-          ${compradorNombre && !manual ? `<div class="pv-field"><span class="pv-label">Comprador</span><span class="pv-value">${compradorNombre}</span></div>` : ''}
+          ${compradorNombre ? `<div class="pv-field"><span class="pv-label">Comprador</span><span class="pv-value">${compradorNombre}</span></div>` : ''}
           <div class="pv-field"><span class="pv-label">ID pago</span><span class="pv-value">#${pago.id_pago}</span></div>
           <div class="pv-field"><span class="pv-label">Fecha reporte</span><span class="pv-value">${_pvDate(pago.fecha_pago)}</span></div>
           <div class="pv-field ${amount_match ? 'pv-highlight-ok' : ''}"><span class="pv-label">Valor</span><span class="pv-value pv-money">${_pvFmt(pago.valor_pago)}</span></div>
@@ -210,4 +213,36 @@ window.pvAcceptSelected = async function() {
     window.SGIUI?.toast(e.message, 'error', 'Error');
   }
 };
+window.pvRejectOne = function(idPago) {
+  UI.openModal('Rechazar pago', `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <p style="color:var(--text-muted);font-size:0.875rem">
+        El comprador recibirá una notificación y podrá volver a registrar su comprobante.
+      </p>
+      <div class="form-group">
+        <label>Motivo del rechazo (opcional)</label>
+        <input id="pv-reject-motivo" type="text" placeholder="Ej: Monto incorrecto, baucher ilegible…" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+        <button class="btn btn-danger" id="pv-reject-confirm">Rechazar pago</button>
+      </div>
+    </div>`);
+
+  document.getElementById('pv-reject-confirm')?.addEventListener('click', async () => {
+    const motivo = document.getElementById('pv-reject-motivo')?.value.trim() || null;
+    const btn = document.getElementById('pv-reject-confirm');
+    btn.disabled = true; btn.textContent = 'Rechazando...';
+    try {
+      await API.patch('/pagos/reject-batch', { pagos: [{ id_pago: idPago, motivo }] });
+      UI.closeModal();
+      window.SGIUI?.toast('Pago rechazado. El comprador puede volver a registrarlo.', 'success', 'Pago rechazado');
+      paymentValidationView();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Rechazar pago';
+      window.SGIUI?.toast(e.message, 'error', 'Error');
+    }
+  });
+};
+
 })();

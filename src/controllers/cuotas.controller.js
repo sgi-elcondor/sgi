@@ -120,7 +120,7 @@ exports.getPendientes = async (req, res) => {
       *,
       venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento, rango_pago))),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
-      cuota_factura(id_fraccion)
+      cuota_pago(valor_aplicado, pago:id_pago(estado))
     `)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
@@ -148,18 +148,22 @@ exports.getPendientes = async (req, res) => {
       estado:            c.estado,
     };
 
-    const fracciones         = c.cuota_fraccion || [];
-    const facturasExistentes = c.cuota_factura  || [];
+    const fracciones = c.cuota_fraccion || [];
 
     if (fracciones.length === 0) {
-      const yaFacturada = facturasExistentes.some(cf => cf.id_fraccion === null);
-      if (!yaFacturada) {
-        result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: c.valor_cuota, tiene_fracciones: false });
-      }
+      result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: c.valor_cuota, tiene_fracciones: false });
     } else {
-      const fraccionesFacturadas = new Set(facturasExistentes.map(cf => cf.id_fraccion).filter(Boolean));
+      const pagadoAceptado = (c.cuota_pago || [])
+        .filter(cp => cp.pago?.estado === 'aceptado')
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      let acumuladoFrac = 0;
+      const fraccionesCompletadas = new Set();
       for (const f of fracciones) {
-        if (!fraccionesFacturadas.has(f.id_fraccion)) {
+        acumuladoFrac += Number(f.valor_fraccion);
+        if (pagadoAceptado >= acumuladoFrac) fraccionesCompletadas.add(f.id_fraccion);
+      }
+      for (const f of fracciones) {
+        if (!fraccionesCompletadas.has(f.id_fraccion)) {
           result.push({
             ...base,
             id_fraccion:       f.id_fraccion,

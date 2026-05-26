@@ -654,14 +654,19 @@ exports.getMisVentas = async (req, res) => {
           codigo_lote, manzana, numero_lote,
           proyecto:id_proyecto (nombre)
         ),
+        pago (
+          id_pago, estado, id_cuota_propuesta, valor_pago
+        ),
         cuota (
           id_cuota, numero_cuota, tipo,
           fecha_vencimiento, valor_cuota, estado,
+          cuota_fraccion ( id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta ),
           cuota_pago (
             valor_aplicado,
             pago:id_pago ( estado, tipo_pago )
           ),
           cuota_factura (
+            id_fraccion,
             factura:id_factura ( id_factura, estado )
           )
         )
@@ -676,6 +681,12 @@ exports.getMisVentas = async (req, res) => {
   const result = (data || []).map(vc => {
     const v = vc.venta;
     if (!v) return null;
+
+    const pagosRechazados = new Set(
+      (v.pago || [])
+        .filter(p => p.estado === 'rechazado' && p.id_cuota_propuesta)
+        .map(p => p.id_cuota_propuesta)
+    );
 
     const cuotas = (v.cuota || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
 
@@ -748,22 +759,51 @@ return {
         const pagadoAceptado = (c.cuota_pago || [])
           .filter(cp => cp.pago?.estado === "aceptado")
           .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-        const pagadoPendiente = (c.cuota_pago || [])
-          .filter(cp => cp.pago?.estado === "pendiente_revision")
-          .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+        const pagadoPendiente = (v.pago || [])
+          .filter(p => p.estado === "pendiente_revision" && p.id_cuota_propuesta === c.id_cuota)
+          .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
         const dias = Math.floor((new Date(c.fecha_vencimiento + "T12:00:00") - hoy) / 86_400_000);
+
+        const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
+        let acumuladoFrac = 0;
+        const fraccionesCompletadas = new Set();
+        for (const f of fracciones) {
+          acumuladoFrac += Number(f.valor_fraccion);
+          if (pagadoAceptado >= acumuladoFrac) fraccionesCompletadas.add(f.id_fraccion);
+        }
+        const fraccionPendiente = fracciones.find(f => !fraccionesCompletadas.has(f.id_fraccion)) || null;
+
+        const valorAMostrar = fraccionPendiente
+          ? Number(fraccionPendiente.valor_fraccion)
+          : Number(c.valor_cuota);
+
+        const idxFracPendiente = fraccionPendiente ? fracciones.indexOf(fraccionPendiente) : -1;
+        const acumuladoAntesFracActual = idxFracPendiente > 0
+          ? fracciones.slice(0, idxFracPendiente).reduce((s, f) => s + Number(f.valor_fraccion), 0)
+          : 0;
+        const pagadoEnFracActual = Math.max(0, pagadoAceptado - acumuladoAntesFracActual);
+
         return {
           id_cuota:          c.id_cuota,
           numero_cuota:      c.numero_cuota,
           tipo:              c.tipo,
-          fecha_vencimiento: c.fecha_vencimiento,
-          valor_cuota:       Number(c.valor_cuota),
+          fecha_vencimiento: fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento,
+          valor_cuota:       valorAMostrar,
           estado:            c.estado,
-          valor_pagado:      pagadoAceptado,
-          valor_pendiente:   Math.max(0, Number(c.valor_cuota) - pagadoAceptado),
+          valor_pagado:      fraccionPendiente ? pagadoEnFracActual : pagadoAceptado,
+          valor_pendiente:   Math.max(0, valorAMostrar - (fraccionPendiente ? pagadoEnFracActual : pagadoAceptado)),
           valor_en_revision: pagadoPendiente,
+          pago_rechazado:    pagosRechazados.has(c.id_cuota),
           dias_restantes:    dias,
           tiene_factura:     (c.cuota_factura || []).some(cf => cf.factura?.estado === "emitida"),
+          tiene_fracciones:   fracciones.length > 0,
+          fraccion_actual:    fraccionPendiente?.numero_fraccion ?? null,
+          total_fracciones:   fracciones.length || null,
+          valor_total_cuota:  fracciones.length > 0 ? Number(c.valor_cuota) : null,
+          total_pagado_cuota: fracciones.length > 0 ? pagadoAceptado : null,
+          fracciones_pagadas: fracciones
+            .filter(f => fraccionesCompletadas.has(f.id_fraccion))
+            .map(f => ({ numero_fraccion: f.numero_fraccion, valor_fraccion: Number(f.valor_fraccion), fecha_propuesta: f.fecha_propuesta || null })),
         };
       }),
     };

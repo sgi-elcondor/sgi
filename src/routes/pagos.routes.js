@@ -8,8 +8,9 @@ router.get("/",           ctrl.getAll);
 router.post("/abono-extraordinario", ctrl.createAbonoExtraordinario);
 router.post("/",          ctrl.create);
 
-router.get('/contrast',     ctrl.getContrast);
+router.get('/contrast',       ctrl.getContrast);
 router.patch('/accept-batch', ctrl.acceptBatch);
+router.patch('/reject-batch', ctrl.rejectBatch);
 
 module.exports = router;
 

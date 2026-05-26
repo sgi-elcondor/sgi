@@ -123,7 +123,7 @@
     const optsProyecto = proyectos.map(p => `<option value="${p}">${p}</option>`).join("");
 
     function filaVenta(g) {
-      const total = g.pagos.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+      const total = g.pagos.filter(p => p.estado === 'aceptado').reduce((s, p) => s + Number(p.valor_pago || 0), 0);
       return `<tr data-grupo-key="${g.id_venta ?? "none"}" style="cursor:pointer">
         <td>${g.id_venta ? `<strong>#${g.id_venta}</strong>` : "—"}</td>
         <td>${g.comprador}</td>
@@ -218,7 +218,9 @@
   </tr>`;
 }
 
-    const totalPagado = grupo.pagos.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+    const totalPagado = grupo.pagos
+      .filter(p => p.estado === 'aceptado')
+      .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
 
     vc.innerHTML = `
       <div class="table-wrap">
