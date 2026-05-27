@@ -190,6 +190,7 @@
   function exportProjectPDF(row, projectLotes) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const SX  = window.SGIExport.pdf;
 
     const disponibles = projectLotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
     const vendidos    = projectLotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
@@ -201,120 +202,32 @@
     const precioAvg   = withPrice.length ? precioTotal / withPrice.length : 0;
     const ocupacion   = vendidos + entregados;
 
-    const C_PRIMARY = [255, 78, 0];
-    const C_DARK    = [30, 41, 59];
-    const C_GRAY    = [100, 116, 139];
-    const C_LIGHT   = [255, 248, 245];
-    const C_WHITE   = [255, 255, 255];
-    const C_DIVIDER = [255, 207, 189];
+    let y = SX.brand(doc);
 
-    // Header
-    doc.setFillColor(...C_PRIMARY);
-    doc.rect(0, 0, 210, 32, "F");
-    doc.setTextColor(...C_WHITE);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("EL CÓNDOR S.A.S.", 14, 14);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text("Sistema de Gestión Inmobiliaria — SGI", 14, 22);
-    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 196, 22, { align: "right" });
-
-    // Title
-    doc.setTextColor(...C_DARK);
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Ficha de Proyecto: ${row.nombre}`, 14, 44);
-    doc.setDrawColor(...C_PRIMARY);
-    doc.setLineWidth(0.6);
-    doc.line(14, 47, 196, 47);
-
-    let y = 54;
-
-    // Project info box
-    doc.setFillColor(...C_LIGHT);
-    doc.roundedRect(14, y, 182, row.descripcion ? 26 : 18, 2, 2, "F");
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Información del proyecto", 18, y + 6);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...C_GRAY);
-    const infoMeta = [
-      row.sigla     ? `Sigla: ${row.sigla}` : null,
-      row.ubicacion ? `Ubicación: ${row.ubicacion}` : null,
-    ].filter(Boolean).join("   |   ");
-    if (infoMeta) doc.text(doc.splitTextToSize(infoMeta, 170), 18, y + 13);
-    if (row.descripcion) doc.text(doc.splitTextToSize(row.descripcion, 170), 18, y + 20);
-    y += (row.descripcion ? 26 : 18) + 8;
-
-    // KPIs section
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Indicadores Clave del Proyecto", 14, y);
-    doc.setDrawColor(...C_DIVIDER);
-    doc.setLineWidth(0.3);
-    doc.line(14, y + 2, 196, y + 2);
-    y += 8;
-
-    const kpis = [
-      { value: fmt(total),                              label: "Total lotes",  desc: "Inventario registrado en el proyecto"         },
-      { value: fmt(disponibles),                         label: "Disponibles",  desc: `${pct(disponibles, total)}% — Sin venta activa` },
-      { value: fmt(vendidos),                            label: "Vendidos",     desc: `${pct(vendidos, total)}% — Con venta activa`    },
-      { value: fmt(entregados),                          label: "Entregados",   desc: `${pct(entregados, total)}% — Ya entregados`      },
-      { value: `${pct(ocupacion, total)}%`,              label: "Ocupación",    desc: "(Vendidos + Entregados) ÷ Total lotes × 100"    },
-      { value: `${fmt(areaTotal.toFixed(0))} m²`,        label: "Área total",   desc: "Suma del área de todos los lotes del proyecto"   },
-      { value: `$${fmt(Math.round(precioAvg))}`,         label: "Precio prom.", desc: "Precio base promedio por lote del inventario"    },
-      { value: `$${fmt(Math.round(precioTotal))}`,       label: "Valor total",  desc: "Suma del valor base de todos los lotes"          },
-    ];
-
-    const cardW  = 44;
-    const cardH  = 28;
-    const gapX   = 1.6;
-    const perRow = 4;
-
-    kpis.forEach((k, i) => {
-      const col = i % perRow;
-      const rw  = Math.floor(i / perRow);
-      const x   = 14 + col * (cardW + gapX);
-      const ky  = y + rw * (cardH + 3);
-
-      doc.setFillColor(...C_LIGHT);
-      doc.roundedRect(x, ky, cardW, cardH, 2, 2, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.2);
-      doc.roundedRect(x, ky, cardW, cardH, 2, 2, "S");
-
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_PRIMARY);
-      doc.text(k.value, x + cardW / 2, ky + 9, { align: "center" });
-
-      doc.setFontSize(7.5);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_DARK);
-      doc.text(k.label, x + cardW / 2, ky + 15, { align: "center" });
-
-      doc.setFontSize(5.8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      doc.text(doc.splitTextToSize(k.desc, cardW - 4), x + cardW / 2, ky + 20, { align: "center" });
+    const metaParts = [
+      row.sigla     ? `Sigla ${row.sigla}` : null,
+      row.ubicacion ? row.ubicacion : null,
+    ].filter(Boolean).join("  ·  ");
+    const subtitle  = [metaParts, row.descripcion].filter(Boolean).join("\n");
+    y = SX.title(doc, y + 2, {
+      title:    `Ficha de Proyecto · ${row.nombre}`,
+      subtitle: subtitle || undefined,
     });
 
-    y += Math.ceil(kpis.length / perRow) * (cardH + 3) + 8;
+    y = SX.section(doc, y + 2, { kicker: "Resumen", title: "Indicadores Clave" });
+    y = SX.kpiCards(doc, y, [
+      { label: "Total lotes",  value: fmt(total),                         desc: "Inventario registrado" },
+      { label: "Disponibles",  value: fmt(disponibles),                   desc: `${pct(disponibles, total)}% sin venta` },
+      { label: "Vendidos",     value: fmt(vendidos),                      desc: `${pct(vendidos, total)}% con venta activa` },
+      { label: "Entregados",   value: fmt(entregados),                    desc: `${pct(entregados, total)}% entregados` },
+      { label: "Ocupación",    value: `${pct(ocupacion, total)}%`,        desc: "Vendidos + Entregados" },
+      { label: "Área total",   value: `${fmt(areaTotal.toFixed(0))} m²`,  desc: "Suma de áreas" },
+      { label: "Precio prom.", value: `$${fmt(Math.round(precioAvg))}`,   desc: "Por lote del inventario" },
+      { label: "Valor total",  value: `$${fmt(Math.round(precioTotal))}`, desc: "Suma del inventario" },
+    ], { perRow: 4 });
 
-    // Lotes table
     if (projectLotes.length > 0) {
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_DARK);
-      doc.text("Inventario de Lotes", 14, y);
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.3);
-      doc.line(14, y + 2, 196, y + 2);
-      y += 6;
+      y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Inventario de Lotes" });
 
       doc.autoTable({
         startY: y,
@@ -327,189 +240,109 @@
           l.precio_base   != null ? `$${fmt(l.precio_base)}` : "—",
           l.estado        || "—",
         ]),
-        styles: {
-          fontSize: 7.5,
-          cellPadding: 2.5,
-          lineColor: C_DIVIDER,
-          lineWidth: 0.2,
-          textColor: C_DARK,
-        },
-        headStyles: {
-          fillColor: C_PRIMARY,
-          textColor: C_WHITE,
-          fontStyle: "bold",
-          fontSize: 8,
-          halign: "center",
-        },
-        alternateRowStyles: { fillColor: C_LIGHT },
+        ...SX.tableTheme(),
         columnStyles: {
           0: { cellWidth: 24 },
           1: { halign: "center", cellWidth: 20 },
           2: { halign: "center", cellWidth: 20 },
-          3: { halign: "center", cellWidth: 24 },
+          3: { halign: "right",  cellWidth: 24 },
           4: { halign: "right",  cellWidth: 46 },
           5: { halign: "center", cellWidth: 22 },
         },
-        margin: { left: 14, right: 14 },
       });
     }
 
-    // Footer on all pages
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      const pageH = doc.internal.pageSize.getHeight();
-      doc.setFillColor(...C_LIGHT);
-      doc.rect(0, pageH - 13, 210, 13, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.3);
-      doc.line(0, pageH - 13, 210, pageH - 13);
-      doc.setFontSize(7.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      doc.text("El Cóndor S.A.S. — Uso interno y confidencial", 14, pageH - 5);
-      doc.text(`Página ${i} de ${pageCount}`, 196, pageH - 5, { align: "right" });
-    }
+    SX.footer(doc);
 
     const slug = (row.sigla || row.nombre).toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
     doc.save(`proyecto_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   async function exportExcel(rows, lotes) {
-    const ORANGE      = "FFFF4E00";
-    const ORANGE_SOFT = "FFFFF2EE";
-    const ORANGE_MID  = "FFFFCFBD";
-    const DARK        = "FF1E2937";
-    const WHITE       = "FFFFFFFF";
-    const GRAY_LIGHT  = "FFF8F9FA";
-
-    const headerFill   = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE } };
-    const subFill      = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_MID } };
-    const altFill      = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_SOFT } };
-    const plainFill    = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
-    const titleFont    = { bold: true, size: 14, color: { argb: WHITE }, name: "Calibri" };
-    const headerFont   = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
-    const subFont      = { bold: true, size: 10, color: { argb: ORANGE }, name: "Calibri" };
-    const bodyFont     = { size: 10, color: { argb: DARK }, name: "Calibri" };
-    const thinBorder   = { style: "thin", color: { argb: ORANGE_MID } };
-    const cellBorder   = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
-
-    function applyTableRow(row, isAlt) {
-      row.eachCell({ includeEmpty: true }, cell => {
-        cell.fill   = isAlt ? altFill : plainFill;
-        cell.font   = bodyFont;
-        cell.border = cellBorder;
-        cell.alignment = { vertical: "middle", wrapText: true };
-      });
-      row.height = 18;
-    }
-
-    function applyHeaderRow(row) {
-      row.eachCell({ includeEmpty: true }, cell => {
-        cell.fill      = headerFill;
-        cell.font      = headerFont;
-        cell.border    = cellBorder;
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      });
-      row.height = 22;
-    }
-
-    const wb = new ExcelJS.Workbook();
-    wb.creator = "SGI El Cóndor";
-    wb.created = new Date();
+    const SX = window.SGIExport.xlsx;
+    const wb = SX.setup();
 
     const totalLotes = lotes.length;
     const totalDisp  = lotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
     const totalVend  = lotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
 
     // ── Hoja 1: Resumen ────────────────────────────────────────────────────
-    const ws1 = wb.addWorksheet("Resumen", { tabColor: { argb: ORANGE } });
+    const ws1 = wb.addWorksheet("Resumen", { tabColor: { argb: SX.C.primary } });
     ws1.columns = [
       { key: "a", width: 38 },
       { key: "b", width: 16 },
-      { key: "c", width: 52 },
+      { key: "c", width: 16 },
+      { key: "d", width: 16 },
+      { key: "e", width: 16 },
     ];
 
-    ws1.mergeCells("A1:C1");
-    const t1 = ws1.getCell("A1");
-    t1.value     = "REPORTE DE PROYECTOS — EL CÓNDOR S.A.S.";
-    t1.fill      = headerFill;
-    t1.font      = titleFont;
-    t1.alignment = { horizontal: "center", vertical: "middle" };
-    ws1.getRow(1).height = 32;
-
-    ws1.mergeCells("A2:C2");
-    const t2 = ws1.getCell("A2");
-    t2.value     = "Sistema de Gestión Inmobiliaria (SGI)";
-    t2.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF7733" } };
-    t2.font      = { bold: false, size: 10, color: { argb: WHITE }, name: "Calibri" };
-    t2.alignment = { horizontal: "center", vertical: "middle" };
-    ws1.getRow(2).height = 18;
-
-    ws1.mergeCells("A3:C3");
-    const t3 = ws1.getCell("A3");
-    t3.value     = `Generado: ${new Date().toLocaleString("es-CO")}`;
-    t3.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: GRAY_LIGHT } };
-    t3.font      = { size: 9, color: { argb: "FF64748B" }, italic: true, name: "Calibri" };
-    t3.alignment = { horizontal: "right", vertical: "middle" };
-    ws1.getRow(3).height = 16;
-
-    ws1.addRow([]);
-
-    ws1.mergeCells("A5:C5");
-    const sectionCell = ws1.getCell("A5");
-    sectionCell.value     = "INDICADORES GLOBALES";
-    sectionCell.fill      = subFill;
-    sectionCell.font      = subFont;
-    sectionCell.alignment = { horizontal: "left", vertical: "middle" };
-    ws1.getRow(5).height  = 20;
-
-    const kpiHeader = ws1.addRow(["Indicador", "Valor", "Descripción"]);
-    applyHeaderRow(kpiHeader);
-
-    const kpiData = [
-      ["Total de proyectos registrados",  rows.length,                          "Proyectos activos en la plataforma a la fecha"],
-      ["Total de lotes en inventario",    totalLotes,                           "Suma de todos los lotes de todos los proyectos"],
-      ["Lotes disponibles para la venta", totalDisp,                            "Lotes sin venta activa asignada"],
-      ["Lotes vendidos",                  totalVend,                            "Lotes con venta activa o finalizada en el sistema"],
-      ["Porcentaje de ocupación (%)",     parseFloat(pct(totalVend, totalLotes)), "Lotes vendidos ÷ total de lotes × 100"],
-    ];
-    kpiData.forEach((rowData, i) => {
-      applyTableRow(ws1.addRow(rowData), i % 2 !== 0);
+    SX.masthead(ws1, {
+      title:     "Reporte de Proyectos",
+      subtitle:  "Estado consolidado del portafolio inmobiliario",
+      mergeCols: 5,
     });
 
+    SX.kpiRow(ws1, [
+      { label: "Proyectos",   value: rows.length },
+      { label: "Total lotes", value: totalLotes },
+      { label: "Disponibles", value: totalDisp },
+      { label: "Vendidos",    value: totalVend },
+      { label: "Ocupación",   value: totalLotes ? totalVend / totalLotes : 0, percent: true },
+    ]);
+
+    SX.sectionHeader(ws1, "Indicadores Globales", { mergeCols: 5 });
+    const kpiHeader = ws1.addRow(["Indicador", "Valor", "Descripción", "", ""]);
+    ws1.mergeCells(kpiHeader.number, 3, kpiHeader.number, 5);
+    SX.styleHeader(kpiHeader);
+
+    const kpiData = [
+      ["Total de proyectos registrados",  rows.length, "Proyectos activos en la plataforma a la fecha"],
+      ["Total de lotes en inventario",    totalLotes,  "Suma de todos los lotes de todos los proyectos"],
+      ["Lotes disponibles para la venta", totalDisp,   "Lotes sin venta activa asignada"],
+      ["Lotes vendidos",                  totalVend,   "Lotes con venta activa o finalizada en el sistema"],
+      ["Porcentaje de ocupación",         totalLotes ? totalVend / totalLotes : 0, "Lotes vendidos ÷ total de lotes"],
+    ];
+    kpiData.forEach((rowData, i) => {
+      const r = ws1.addRow(rowData);
+      ws1.mergeCells(r.number, 3, r.number, 5);
+      SX.styleBody(r, i % 2 !== 0);
+      r.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+      r.getCell(2).font = { name: "Calibri", bold: true, size: 11, color: { argb: SX.C.primary } };
+      if (i === kpiData.length - 1) r.getCell(2).numFmt = SX.NF.percent;
+    });
+
+    ws1.views = [{ state: "frozen", ySplit: 5 }];
+
     // ── Hoja 2: Proyectos ──────────────────────────────────────────────────
-    const ws2 = wb.addWorksheet("Proyectos", { tabColor: { argb: ORANGE } });
+    const ws2 = wb.addWorksheet("Proyectos", { tabColor: { argb: SX.C.primary } });
     ws2.columns = [
       { key: "id",          width: 8  },
-      { key: "nombre",      width: 36 },
+      { key: "nombre",      width: 32 },
       { key: "sigla",       width: 10 },
-      { key: "ubicacion",   width: 36 },
-      { key: "descripcion", width: 42 },
+      { key: "ubicacion",   width: 28 },
+      { key: "descripcion", width: 38 },
       { key: "totalLotes",  width: 14 },
       { key: "disponibles", width: 14 },
       { key: "vendidos",    width: 12 },
       { key: "ocupacion",   width: 14 },
     ];
 
-    ws2.mergeCells("A1:I1");
-    const pt1 = ws2.getCell("A1");
-    pt1.value     = "PROYECTOS INMOBILIARIOS — EL CÓNDOR S.A.S.";
-    pt1.fill      = headerFill;
-    pt1.font      = titleFont;
-    pt1.alignment = { horizontal: "center", vertical: "middle" };
-    ws2.getRow(1).height = 28;
+    SX.masthead(ws2, {
+      title:     "Detalle de Proyectos",
+      subtitle:  `${rows.length} proyecto${rows.length === 1 ? "" : "s"} en el reporte`,
+      mergeCols: 9,
+    });
 
-    ws2.addRow([]);
-
+    ws2.addRow([]).height = 4;
     const projHeader = ws2.addRow([
       "ID", "Nombre", "Sigla", "Ubicación", "Descripción",
-      "Total Lotes", "Disponibles", "Vendidos", "Ocupación (%)",
+      "Total Lotes", "Disponibles", "Vendidos", "Ocupación",
     ]);
-    applyHeaderRow(projHeader);
+    SX.styleHeader(projHeader);
+    const projHeaderRow = projHeader.number;
 
     rows.forEach((r, i) => {
-      applyTableRow(ws2.addRow([
+      const row = ws2.addRow([
         r.id,
         r.nombre,
         r.sigla       || "",
@@ -518,46 +351,54 @@
         r.totalLotes,
         r.disponibles,
         r.vendidos,
-        parseFloat(pct(r.vendidos, r.totalLotes)),
-      ]), i % 2 !== 0);
+        r.totalLotes ? r.vendidos / r.totalLotes : 0,
+      ]);
+      SX.styleBody(row, i % 2 !== 0);
+      [6, 7, 8].forEach(c => {
+        row.getCell(c).alignment = { vertical: "middle", horizontal: "center" };
+      });
+      row.getCell(9).numFmt = SX.NF.percent;
+      row.getCell(9).alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    ws2.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 9 } };
+    ws2.views = [{ state: "frozen", ySplit: projHeaderRow }];
+    ws2.autoFilter = {
+      from: { row: projHeaderRow, column: 1 },
+      to:   { row: projHeaderRow, column: 9 },
+    };
 
     // ── Hoja 3: Lotes ──────────────────────────────────────────────────────
-    const ws3 = wb.addWorksheet("Lotes", { tabColor: { argb: ORANGE } });
+    const ws3 = wb.addWorksheet("Lotes", { tabColor: { argb: SX.C.primary } });
     ws3.columns = [
       { key: "id_lote",      width: 10 },
       { key: "codigo",       width: 14 },
-      { key: "proyecto",     width: 32 },
+      { key: "proyecto",     width: 28 },
       { key: "manzana",      width: 12 },
-      { key: "numero_lote",  width: 14 },
+      { key: "numero_lote",  width: 12 },
       { key: "area_m2",      width: 12 },
-      { key: "precio_base",  width: 16 },
+      { key: "precio_base",  width: 18 },
       { key: "dimensiones",  width: 18 },
       { key: "estado",       width: 14 },
       { key: "descripcion",  width: 40 },
     ];
 
-    ws3.mergeCells("A1:J1");
-    const lt1 = ws3.getCell("A1");
-    lt1.value     = "INVENTARIO DE LOTES — EL CÓNDOR S.A.S.";
-    lt1.fill      = headerFill;
-    lt1.font      = titleFont;
-    lt1.alignment = { horizontal: "center", vertical: "middle" };
-    ws3.getRow(1).height = 28;
+    SX.masthead(ws3, {
+      title:     "Inventario de Lotes",
+      subtitle:  `${lotes.length} lote${lotes.length === 1 ? "" : "s"} consolidados de todos los proyectos`,
+      mergeCols: 10,
+    });
 
-    ws3.addRow([]);
-
+    ws3.addRow([]).height = 4;
     const lotHeader = ws3.addRow([
-      "ID Lote", "Código", "Proyecto", "Manzana", "Número de Lote",
+      "ID Lote", "Código", "Proyecto", "Manzana", "Núm. Lote",
       "Área (m²)", "Precio Base", "Dimensiones", "Estado", "Descripción",
     ]);
-    applyHeaderRow(lotHeader);
+    SX.styleHeader(lotHeader);
+    const lotHeaderRow = lotHeader.number;
 
     lotes.forEach((l, i) => {
       const proj = rows.find(r => r.id === l.id_proyecto);
-      applyTableRow(ws3.addRow([
+      const row  = ws3.addRow([
         l.id_lote,
         l.codigo_lote || "",
         proj ? proj.nombre : "",
@@ -568,190 +409,53 @@
         l.dimensiones || "",
         l.estado      || "",
         l.descripcion || "",
-      ]), i % 2 !== 0);
+      ]);
+      SX.styleBody(row, i % 2 !== 0);
+      if (typeof l.area_m2     === "number") row.getCell(6).numFmt = SX.NF.decimal;
+      if (typeof l.precio_base === "number") row.getCell(7).numFmt = SX.NF.money;
+      row.getCell(6).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      row.getCell(7).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
     });
 
-    ws3.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 10 } };
+    ws3.views = [{ state: "frozen", ySplit: lotHeaderRow }];
+    ws3.autoFilter = {
+      from: { row: lotHeaderRow, column: 1 },
+      to:   { row: lotHeaderRow, column: 10 },
+    };
 
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `proyectos_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    await SX.download(wb, `proyectos_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function exportPDF(rows, lotes) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const SX  = window.SGIExport.pdf;
 
     const totalLotes = lotes.length;
     const totalDisp  = lotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
     const totalVend  = lotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
 
-    const C_PRIMARY = [255, 78, 0];
-    const C_DARK    = [30, 41, 59];
-    const C_GRAY    = [100, 116, 139];
-    const C_LIGHT   = [255, 248, 245];
-    const C_BLUE_BG = [255, 242, 235];
-    const C_WHITE   = [255, 255, 255];
-    const C_DIVIDER = [255, 207, 189];
+    let y = SX.brand(doc);
 
-    // ── Header ─────────────────────────────────────────────────────────────
-    doc.setFillColor(...C_PRIMARY);
-    doc.rect(0, 0, 210, 32, "F");
-
-    doc.setTextColor(...C_WHITE);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("EL CÓNDOR S.A.S.", 14, 14);
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text("Sistema de Gestión Inmobiliaria — SGI", 14, 22);
-    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 196, 22, { align: "right" });
-
-    // ── Título ─────────────────────────────────────────────────────────────
-    doc.setTextColor(...C_DARK);
-    doc.setFontSize(15);
-    doc.setFont("helvetica", "bold");
-    doc.text("Reporte Ejecutivo de Proyectos", 14, 44);
-
-    doc.setDrawColor(...C_PRIMARY);
-    doc.setLineWidth(0.6);
-    doc.line(14, 47, 196, 47);
-
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C_GRAY);
-    const introLines = doc.splitTextToSize(
-      "Este reporte presenta el estado actual del portafolio de proyectos inmobiliarios de El Cóndor S.A.S. " +
-      "Incluye indicadores clave del inventario de lotes y la ficha completa de cada proyecto con sus métricas " +
-      "de disponibilidad y ocupación a la fecha de generación. Uso exclusivo para análisis interno y toma de decisiones.",
-      182
-    );
-    doc.text(introLines, 14, 53);
-
-    // ── Sección: Indicadores Globales ─────────────────────────────────────
-    let y = 72;
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Indicadores Globales", 14, y);
-
-    doc.setDrawColor(...C_DIVIDER);
-    doc.setLineWidth(0.3);
-    doc.line(14, y + 2, 196, y + 2);
-    y += 7;
-
-    const kpis = [
-      {
-        value: String(rows.length),
-        label: "Proyectos",
-        desc:  "Total de proyectos registrados en el sistema a la fecha.",
-      },
-      {
-        value: fmt(totalLotes),
-        label: "Total Lotes",
-        desc:  "Inventario consolidado: suma de todos los lotes de todos los proyectos.",
-      },
-      {
-        value: fmt(totalDisp),
-        label: "Disponibles",
-        desc:  "Lotes sin venta activa asignada, aptos para la comercialización.",
-      },
-      {
-        value: fmt(totalVend),
-        label: "Vendidos",
-        desc:  "Lotes vinculados a una venta activa o finalizada en el sistema.",
-      },
-      {
-        value: `${pct(totalVend, totalLotes)}%`,
-        label: "Ocupación",
-        desc:  "Porcentaje de lotes vendidos sobre el inventario total (lotes vendidos ÷ total × 100).",
-      },
-    ];
-
-    const cardW  = 35.6;
-    const cardH  = 26;
-    const gapX   = 1.5;
-
-    kpis.forEach((k, i) => {
-      const x = 14 + i * (cardW + gapX);
-
-      doc.setFillColor(...C_LIGHT);
-      doc.roundedRect(x, y, cardW, cardH, 2, 2, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.2);
-      doc.roundedRect(x, y, cardW, cardH, 2, 2, "S");
-
-      doc.setFontSize(15);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_PRIMARY);
-      doc.text(k.value, x + cardW / 2, y + 10, { align: "center" });
-
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_DARK);
-      doc.text(k.label, x + cardW / 2, y + 16, { align: "center" });
-
-      doc.setFontSize(6.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      const dLines = doc.splitTextToSize(k.desc, cardW - 4);
-      doc.text(dLines, x + cardW / 2, y + 21, { align: "center" });
+    y = SX.title(doc, y + 2, {
+      title:    "Reporte Ejecutivo de Proyectos",
+      subtitle: "Estado actual del portafolio inmobiliario y sus métricas de disponibilidad y ocupación a la fecha de generación.",
     });
 
-    y += cardH + 12;
+    y = SX.section(doc, y + 2, { kicker: "Resumen", title: "Indicadores Globales" });
+    y = SX.kpiCards(doc, y, [
+      { label: "Proyectos",   value: String(rows.length),         desc: "Proyectos activos" },
+      { label: "Total lotes", value: fmt(totalLotes),             desc: "Inventario consolidado" },
+      { label: "Disponibles", value: fmt(totalDisp),              desc: "Sin venta activa" },
+      { label: "Vendidos",    value: fmt(totalVend),              desc: "Con venta activa" },
+      { label: "Ocupación",   value: `${pct(totalVend, totalLotes)}%`, desc: "Vendidos ÷ total" },
+    ], { perRow: 5 });
 
-    // ── Sección: Tabla de Proyectos ─────────────────────────────────────────
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Detalle de Proyectos", 14, y);
-
-    doc.setDrawColor(...C_DIVIDER);
-    doc.setLineWidth(0.3);
-    doc.line(14, y + 2, 196, y + 2);
-    y += 6;
-
-    // Guía de columnas
-    doc.setFillColor(...C_BLUE_BG);
-    doc.roundedRect(14, y, 182, 20, 2, 2, "F");
-
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_PRIMARY);
-    doc.text("Guía de columnas:", 17, y + 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C_DARK);
-
-    const colDefs = [
-      "ID — Identificador único del proyecto en la base de datos.",
-      "Nombre — Denominación oficial del proyecto inmobiliario.",
-      "Sigla — Código abreviado de hasta 3 caracteres.",
-      "Ubicación — Dirección o zona geográfica del proyecto.",
-      "Lotes — Total de lotes registrados bajo este proyecto.",
-      "Disp. — Lotes sin venta activa asignada.",
-      "Vend. — Lotes con venta activa o finalizada.",
-      "Ocup.% — (Vendidos ÷ Total Lotes) × 100.",
-    ];
-    const half = Math.ceil(colDefs.length / 2);
-    const row1 = colDefs.slice(0, half).join("   ");
-    const row2 = colDefs.slice(half).join("   ");
-    doc.text(doc.splitTextToSize(row1, 174), 17, y + 11);
-    doc.text(doc.splitTextToSize(row2, 174), 17, y + 16);
-
-    y += 24;
+    y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Proyectos" });
 
     doc.autoTable({
       startY: y,
-      head: [["ID", "Nombre", "Sigla", "Ubicación", "Lotes", "Disp.", "Vend.", "Ocup.%"]],
+      head: [["ID", "Nombre", "Sigla", "Ubicación", "Lotes", "Disp.", "Vend.", "Ocup."]],
       body: rows.map(r => [
         r.id,
         r.nombre,
@@ -762,53 +466,20 @@
         r.vendidos,
         `${pct(r.vendidos, r.totalLotes)}%`,
       ]),
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-        lineColor: C_DIVIDER,
-        lineWidth: 0.2,
-        textColor: C_DARK,
-      },
-      headStyles: {
-        fillColor: C_PRIMARY,
-        textColor: C_WHITE,
-        fontStyle: "bold",
-        fontSize: 8.5,
-        halign: "center",
-      },
-      alternateRowStyles: { fillColor: C_LIGHT },
+      ...SX.tableTheme(),
       columnStyles: {
         0: { halign: "center", cellWidth: 12 },
-        1: { cellWidth: 48 },
+        1: { cellWidth: 50 },
         2: { halign: "center", cellWidth: 14 },
         3: { cellWidth: 48 },
         4: { halign: "center", cellWidth: 14 },
         5: { halign: "center", cellWidth: 14 },
         6: { halign: "center", cellWidth: 14 },
-        7: { halign: "center", cellWidth: 18 },
+        7: { halign: "center", cellWidth: 16 },
       },
-      margin: { left: 14, right: 14 },
     });
 
-    // ── Pie de página en todas las páginas ──────────────────────────────────
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      const pageH = doc.internal.pageSize.getHeight();
-
-      doc.setFillColor(...C_LIGHT);
-      doc.rect(0, pageH - 13, 210, 13, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.3);
-      doc.line(0, pageH - 13, 210, pageH - 13);
-
-      doc.setFontSize(7.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      doc.text("El Cóndor S.A.S. — Uso interno y confidencial", 14, pageH - 5);
-      doc.text(`Página ${i} de ${pageCount}`, 196, pageH - 5, { align: "right" });
-    }
-
+    SX.footer(doc);
     doc.save(`reporte_proyectos_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
