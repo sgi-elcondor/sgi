@@ -332,6 +332,7 @@ exports.emitirParaCuota = async (req, res) => {
       id_cuota, numero_cuota, valor_cuota, estado,
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
       cuota_factura(id_fraccion, factura:id_factura(id_factura, estado, numero_factura, valor_facturado)),
+      cuota_pago(valor_aplicado, pago:id_pago(estado)),
       venta:id_venta(
         id_venta, estado,
         lote:id_lote(proyecto:id_proyecto(sigla)),
@@ -396,14 +397,27 @@ exports.emitirParaCuota = async (req, res) => {
     });
   }
 
-  // No fracciones: emit for the full cuota value
+  // No fracciones: deduct any accepted abono payments already applied to this cuota
+  const yaPagado = (cuota.cuota_pago || [])
+    .filter(cp => cp.pago?.estado === 'aceptado')
+    .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+  const valorAFacturar = Math.max(0, Number(cuota.valor_cuota) - yaPagado);
+
+  if (valorAFacturar <= 0)
+    return res.status(400).json({ error: "Esta cuota ya tiene un abono que la cubre completamente" });
+
   const existing = (cuota.cuota_factura || [])
     .find(cf => cf.id_fraccion === null && cf.factura?.estado === "emitida");
   if (existing) {
+    if (Number(existing.factura.valor_facturado) !== valorAFacturar) {
+      await supabase.schema(SCHEMA).from("factura")
+        .update({ valor_facturado: valorAFacturar })
+        .eq("id_factura", existing.factura.id_factura);
+    }
     return res.json({
       id_factura:      existing.factura.id_factura,
       numero_factura:  existing.factura.numero_factura,
-      valor_facturado: existing.factura.valor_facturado,
+      valor_facturado: valorAFacturar,
     });
   }
 
@@ -417,7 +431,7 @@ exports.emitirParaCuota = async (req, res) => {
 
   const { data: factura, error: ef } = await supabase.schema(SCHEMA)
     .from("factura")
-    .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: cuota.valor_cuota, estado: "emitida" }])
+    .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: valorAFacturar, estado: "emitida" }])
     .select()
     .single();
 

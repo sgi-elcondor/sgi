@@ -8,7 +8,7 @@ const { verificarComision } = require("../services/comisiones.service");
 const { actualizarMora }    = require("../services/mora.service");
 
 async function aplicarPagoACuotas(pago, email) {
-  const { id_pago, id_venta, id_cuota_propuesta, valor_pago } = pago;
+  const { id_pago, id_venta, id_cuota_propuesta, valor_pago, tipo_pago } = pago;
 
   // If a DB trigger on pago UPDATE already inserted cuota_pago records, skip allocation entirely
   // to avoid double-applying the payment to subsequent cuotas.
@@ -18,13 +18,14 @@ async function aplicarPagoACuotas(pago, email) {
     .eq('id_pago', id_pago);
   if (yaAsignado > 0) return;
 
-  // Pending cuotas for this sale, ordered chronologically
+  // amortizacion payments apply to the last cuota first; regular payments apply forward
+  const ascending = tipo_pago !== 'amortizacion';
   const { data: cuotas } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select('id_cuota, numero_cuota, valor_cuota, estado')
     .eq('id_venta', id_venta)
     .not('estado', 'eq', 'pagada')
-    .order('numero_cuota');
+    .order('numero_cuota', { ascending });
 
   if (!cuotas || cuotas.length === 0) return;
 
@@ -618,7 +619,7 @@ exports.acceptBatch = async (req, res) => {
     // Fetch full pago details before updating
     const { data: pagoActual, error: eLeer } = await supabase.schema(SCHEMA)
       .from('pago')
-      .select('id_pago, valor_pago, id_venta, id_cuota_propuesta, estado')
+      .select('id_pago, valor_pago, id_venta, id_cuota_propuesta, estado, tipo_pago')
       .eq('id_pago', id_pago)
       .single();
 
