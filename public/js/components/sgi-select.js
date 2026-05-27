@@ -2,9 +2,25 @@
   const TYPEAHEAD_TIMEOUT = 500;
   const SEARCH_THRESHOLD  = 8;
 
+  function isMobile() {
+    return !!window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  }
+
+  function hasClippingAncestor(el) {
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+      const cs = getComputedStyle(node);
+      const overflow = cs.overflow + cs.overflowX + cs.overflowY;
+      if (/(auto|scroll|hidden)/.test(overflow)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
   const SGISelect = {
     enhance(sel) {
       if (!sel || sel._sgiEnhanced || sel.multiple || sel.hasAttribute("data-sgi-skip")) return;
+      if (isMobile()) return;
       sel._sgiEnhanced = true;
 
       const wrap = document.createElement("div");
@@ -64,6 +80,7 @@
       sel.classList.add("sgi-select-native");
 
       let highlighted = null;
+      let portaled = false;
 
       function updateLabel() {
         const opt = sel.options[sel.selectedIndex];
@@ -71,40 +88,53 @@
         label.textContent = opt.text;
       }
 
-      // Override .value setter so external `sel.value = "x"` keeps the trigger in sync
-      const proto       = Object.getPrototypeOf(sel);
-      const desc        = Object.getOwnPropertyDescriptor(proto, "value");
-      const nativeSet   = desc.set;
+      // External `sel.value = "x"` keeps the trigger in sync
+      const proto     = Object.getPrototypeOf(sel);
+      const desc      = Object.getOwnPropertyDescriptor(proto, "value");
+      const nativeSet = desc.set;
       Object.defineProperty(sel, "value", {
         get: desc.get,
         set(v) { nativeSet.call(this, v); updateLabel(); },
         configurable: true,
       });
 
+      function renderOptionItem(opt) {
+        const item = document.createElement("li");
+        item.className = "sgi-select-option";
+        item.setAttribute("role", "option");
+        item.dataset.value = opt.value;
+        if (opt.disabled) item.classList.add("is-disabled");
+
+        const txt = document.createElement("span");
+        txt.className = "sgi-select-option-text";
+        txt.textContent = opt.text || " ";
+        item.append(txt);
+
+        if (opt.value === sel.value) {
+          item.classList.add("is-selected");
+          item.setAttribute("aria-selected", "true");
+          const check = document.createElement("span");
+          check.className = "sgi-select-check";
+          check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+          item.append(check);
+        }
+        return item;
+      }
+
       function rebuildOptions() {
         list.innerHTML = "";
-        Array.from(sel.options).forEach((opt, i) => {
-          const item = document.createElement("li");
-          item.className = "sgi-select-option";
-          item.setAttribute("role", "option");
-          item.dataset.value = opt.value;
-          item.dataset.index = String(i);
-          if (opt.disabled) item.classList.add("is-disabled");
-
-          const txt = document.createElement("span");
-          txt.className = "sgi-select-option-text";
-          txt.textContent = opt.text || " ";
-          item.append(txt);
-
-          if (opt.value === sel.value) {
-            item.classList.add("is-selected");
-            item.setAttribute("aria-selected", "true");
-            const check = document.createElement("span");
-            check.className = "sgi-select-check";
-            check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-            item.append(check);
+        Array.from(sel.children).forEach(child => {
+          if (child.tagName === "OPTGROUP") {
+            const header = document.createElement("li");
+            header.className = "sgi-select-group";
+            header.textContent = child.label || "";
+            list.append(header);
+            Array.from(child.children).forEach(opt => {
+              if (opt.tagName === "OPTION") list.append(renderOptionItem(opt));
+            });
+          } else if (child.tagName === "OPTION") {
+            list.append(renderOptionItem(child));
           }
-          list.append(item);
         });
       }
 
@@ -158,14 +188,40 @@
       }
 
       function positionPanel() {
-        wrap.classList.remove("opens-up");
-        const r          = trigger.getBoundingClientRect();
+        if (!portaled) {
+          // Non-portal: rely on CSS absolute, just toggle opens-up
+          wrap.classList.remove("opens-up");
+          const r = trigger.getBoundingClientRect();
+          const spaceBelow = window.innerHeight - r.bottom - 8;
+          const spaceAbove = r.top - 8;
+          const desiredH   = panel.scrollHeight || 256;
+          if (spaceBelow < desiredH && spaceAbove > spaceBelow) {
+            wrap.classList.add("opens-up");
+          }
+          return;
+        }
+
+        // Portal mode: compute fixed coordinates from trigger rect
+        const r = trigger.getBoundingClientRect();
+        // If trigger is fully out of view, close
+        if (r.bottom < 0 || r.top > window.innerHeight) { close(); return; }
+
+        const desiredH   = Math.min(panel.scrollHeight || 256, 256);
         const spaceBelow = window.innerHeight - r.bottom - 8;
         const spaceAbove = r.top - 8;
-        const desiredH   = panel.scrollHeight || 256;
-        if (spaceBelow < desiredH && spaceAbove > spaceBelow) {
-          wrap.classList.add("opens-up");
+        const opensUp    = spaceBelow < desiredH && spaceAbove > spaceBelow;
+
+        panel.style.position = "fixed";
+        panel.style.left     = r.left + "px";
+        panel.style.width    = r.width + "px";
+        if (opensUp) {
+          panel.style.top    = "auto";
+          panel.style.bottom = (window.innerHeight - r.top + 4) + "px";
+        } else {
+          panel.style.top    = (r.bottom + 4) + "px";
+          panel.style.bottom = "auto";
         }
+        wrap.classList.toggle("opens-up", opensUp);
       }
 
       function open() {
@@ -173,15 +229,30 @@
         rebuildOptions();
         if (search) search.value = "";
         applySearch();
+
+        // Portal pattern: if any ancestor would clip the panel, render it to body
+        portaled = hasClippingAncestor(wrap);
+        if (portaled) {
+          document.body.appendChild(panel);
+          panel.classList.add("is-portal");
+        }
+
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
         wrap.classList.add("is-open");
         positionPanel();
+
         const sel0 = list.querySelector(".is-selected") || visibleItems()[0];
         highlight(sel0);
         if (search) setTimeout(() => search.focus(), 0);
+
         document.addEventListener("click", onDocClick, true);
         document.addEventListener("keydown", onKey);
+
+        if (portaled) {
+          window.addEventListener("scroll", positionPanel, true);
+          window.addEventListener("resize", positionPanel);
+        }
       }
 
       function close() {
@@ -190,11 +261,23 @@
         trigger.setAttribute("aria-expanded", "false");
         wrap.classList.remove("is-open", "opens-up");
         highlighted = null;
+
         document.removeEventListener("click", onDocClick, true);
         document.removeEventListener("keydown", onKey);
+
+        if (portaled) {
+          window.removeEventListener("scroll", positionPanel, true);
+          window.removeEventListener("resize", positionPanel);
+          panel.classList.remove("is-portal");
+          panel.style.cssText = "";
+          wrap.appendChild(panel);
+          portaled = false;
+        }
       }
 
-      function onDocClick(e) { if (!wrap.contains(e.target)) close(); }
+      function onDocClick(e) {
+        if (!wrap.contains(e.target) && !panel.contains(e.target)) close();
+      }
 
       let typeaheadBuffer = "";
       let typeaheadTimer = null;
@@ -261,11 +344,19 @@
         if (item) highlight(item);
       });
 
-      window.addEventListener("resize", () => { if (!panel.hidden) positionPanel(); });
-      window.addEventListener("scroll", () => { if (!panel.hidden) close(); }, true);
+      window.addEventListener("resize", () => { if (!panel.hidden && !portaled) positionPanel(); });
 
-      // Keep the trigger label in sync when options are added/removed dynamically
-      new MutationObserver(() => updateLabel()).observe(sel, { childList: true });
+      // Keep the trigger label AND the open panel in sync with option changes
+      new MutationObserver(() => {
+        updateLabel();
+        if (!panel.hidden) {
+          rebuildOptions();
+          if (search) applySearch();
+          const sel0 = list.querySelector(".is-selected") || visibleItems()[0];
+          highlight(sel0);
+          if (portaled) positionPanel();
+        }
+      }).observe(sel, { childList: true });
 
       updateLabel();
     },

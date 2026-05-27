@@ -219,3 +219,34 @@
   font-size: 0.8125rem;
   margin: 0;
 }
+
+/* <optgroup> rendered as a section header */
+.sgi-select-group {
+  padding: 0.5rem 0.625rem 0.25rem;
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  list-style: none;
+  user-select: none;
+}
+
+.sgi-select-list > .sgi-select-group:first-child {
+  padding-top: 0.25rem;
+}
+
+/* Suppress duplicate chevrons from wrappers (form-group / select-wrap) when the
+   inner <select> has been enhanced — avoids the X-shaped overlap with .sgi-select-arrow */
+.form-group:has(.sgi-select)::after,
+.select-wrap:has(.sgi-select)::after {
+  display: none;
+}
+
+/* Suppress duplicate chevrons from wrappers (form-group / select-wrap) when the
+   inner <select> has been enhanced — avoids the X-shaped overlap with .sgi-select-arrow */
+.form-group:has(.sgi-select)::after,
+.select-wrap:has(.sgi-select)::after {
+  display: none;
+}
