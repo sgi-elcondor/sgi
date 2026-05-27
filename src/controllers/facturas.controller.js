@@ -85,7 +85,7 @@ exports.getAll = async (req, res) => {
     };
   }));
 };
-
+  
 exports.getCuotasSinFactura = async (req, res) => {
   const hoy = new Date().toISOString().split("T")[0];
   const ESTADOS_FACTURABLES = ["activa", "pre_mora", "en_mora"];
