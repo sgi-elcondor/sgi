@@ -760,7 +760,7 @@ function renderMoraEscritura(ventas = []) {
               <div class="cuota-alert-icon">${window.SGIUI?.icon("award")??""}</div>
               <div class="cuota-alert-body">
                 <div class="cuota-alert-title">La escritura de tu inmueble esta disponible</div>
-                <div class="cuota-alert-text">Has pagado el ${(v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
+                <div class="cuota-alert-text">Has pagado el ${Math.min(100, v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
               </div>
             </div>` : ""}
           <div class="sale-hero">
@@ -772,7 +772,7 @@ function renderMoraEscritura(ventas = []) {
             <div class="progress-block">
               <div class="progress-labels">
                 <span class="progress-label-left">Avance de pago</span>
-                <span class="progress-label-right">${(v.porcentaje_pagado||0).toFixed(1)}%</span>
+                <span class="progress-label-right">${Math.min(100, v.porcentaje_pagado||0).toFixed(1)}%</span>
               </div>
               <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
             </div>

@@ -393,7 +393,7 @@
             kicker: "Mis cuotas",
             title: `${venta.lote?.proyecto?.nombre || "Mi inmueble"}`,
             subtitle: `Lote ${venta.lote?.codigo_lote || "—"}${venta.lote?.manzana ? " · Manzana " + venta.lote.manzana : ""}`,
-            actions: `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>`,
+            actions: venta.porcentaje_pagado < 100 ? `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>` : "",
             meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
           }) ?? ""}
           ${buildLoteSelector(idx)}
@@ -401,7 +401,7 @@
             <div style="padding:1rem 1.25rem">
               <div class="cuotas-progress-header">
                 <span style="font-size:0.8125rem;color:var(--text-muted)">Progreso general</span>
-                <strong>${(venta.porcentaje_pagado||0).toFixed(1)}%</strong>
+                <strong>${Math.min(100, venta.porcentaje_pagado||0).toFixed(1)}%</strong>
               </div>
               <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.min(100,venta.porcentaje_pagado||0)}%"></div></div>
             </div>

@@ -165,7 +165,7 @@ function _renderComisionCard(vc) {
           </div>
           <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.6rem">
             Pagado por el comprador: <strong>${UI.fmt(vc.total_pagado_venta)}</strong>
-            (${vc.porcentaje_pagado}% de ${UI.fmt(v.valor_total)}).
+            (${Math.min(100, vc.porcentaje_pagado||0).toFixed(1)}% de ${UI.fmt(v.valor_total)}).
             ${vc.ganada
               ? `Umbral del 30% alcanzado (${UI.fmt(vc.umbral_30pct)}).`
                 + (vc.fecha_ganada ? ` Ganada el ${UI.date(vc.fecha_ganada)}.` : "")
@@ -176,7 +176,7 @@ function _renderComisionCard(vc) {
             <div style="position:absolute;left:30%;top:0;width:1px;height:100%;background:var(--text-muted);opacity:.4"></div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-soft);margin-top:.25rem">
-            <span>${vc.porcentaje_pagado}% pagado</span>
+            <span>${Math.min(100, vc.porcentaje_pagado||0).toFixed(1)}% pagado</span>
             <span>&#9650; 30%</span>
             <span>100%</span>
           </div>
