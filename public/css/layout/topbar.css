@@ -864,3 +864,47 @@
   width: 0.75rem;
   height: 0.75rem;
 }
+
+/* ── Role switcher: integrate the SGI custom select with the pill container ── */
+
+.role-view-switcher .sgi-select {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.role-view-switcher .sgi-select-trigger {
+  padding: 0 1.75rem 0 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-height: 0;
+}
+
+.role-view-switcher .sgi-select-trigger:hover:not(:disabled),
+.role-view-switcher .sgi-select-trigger:focus-visible,
+.role-view-switcher .sgi-select.is-open > .sgi-select-trigger {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* The outer .role-view-switcher::after already provides the chevron */
+.role-view-switcher .sgi-select-arrow {
+  display: none;
+}
+
+/* Rotate the outer chevron when the panel is open */
+.role-view-switcher:has(.sgi-select.is-open)::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Anchor the dropdown panel to the right of the pill, with a sane minimum width */
+.role-view-switcher .sgi-select-panel {
+  right: 0;
+  left: auto;
+  min-width: 12rem;
+}
