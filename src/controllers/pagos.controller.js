@@ -5,6 +5,7 @@ const auditoria             = require("../services/auditoria.service");
 const recibos               = require("../services/recibos.service");
 const { marcarPagadaSiCubre } = require("../services/cuotas.service");
 const { verificarComision } = require("../services/comisiones.service");
+const { actualizarMora }    = require("../services/mora.service");
 
 async function aplicarPagoACuotas(pago, email) {
   const { id_pago, id_venta, id_cuota_propuesta, valor_pago } = pago;
@@ -259,6 +260,8 @@ exports.create = async (req, res) => {
     emitido_por: req.usuario.email,
   });
 
+  actualizarMora().catch(e => console.error('[mora]', e.message));
+
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
 
@@ -353,6 +356,8 @@ exports.createAbonoExtraordinario = async (req, res) => {
   }
 
   const { recibo, error: reciboError } = await recibos.crearParaPago({ id_pago: pago.id_pago, numero_pago: pagConsec.numero_pago, emitido_por: req.usuario?.email || "sistema" });
+
+  actualizarMora().catch(e => console.error('[mora]', e.message));
 
   return res.status(201).json({ message: "Abono extraordinario registrado correctamente", pago, recibo: recibo || null, recibo_error: reciboError || null, total_aplicado: totalAplicado, cuotas_afectadas: cuotasAfectadas });
 };
@@ -687,6 +692,8 @@ exports.acceptBatch = async (req, res) => {
 
     results.push({ id_pago, ok: true, pago, comision_causada });
   }
+
+  actualizarMora().catch(e => console.error('[mora]', e.message));
 
   res.json(results);
 };
