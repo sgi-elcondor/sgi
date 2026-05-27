@@ -440,6 +440,21 @@ exports.createCompradorPago = async (req, res) => {
     if (!vc) return res.status(403).json({ error: "No tienes acceso a esta venta" });
   }
 
+  if (id_cuota_propuesta) {
+    const { data: cuotaData } = await supabase.schema(SCHEMA)
+      .from("cuota").select("estado, numero_cuota").eq("id_cuota", id_cuota_propuesta).single();
+    if (cuotaData?.estado === "pagada")
+      return res.status(400).json({ error: `La cuota #${cuotaData.numero_cuota} ya está pagada` });
+
+    const { count: yaEnRevision } = await supabase.schema(SCHEMA)
+      .from("pago")
+      .select("id_pago", { count: "exact", head: true })
+      .eq("id_cuota_propuesta", id_cuota_propuesta)
+      .eq("estado", "pendiente_revision");
+    if (yaEnRevision > 0)
+      return res.status(400).json({ error: "Ya hay un comprobante en revisión para esta cuota" });
+  }
+
   const { data: pago, error: ep } = await supabase.schema(SCHEMA)
     .from("pago")
     .insert([{
