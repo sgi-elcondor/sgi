@@ -267,6 +267,17 @@
       if (v === "false") return "No";
       if (/^\d{4}-\d{2}-\d{2}$/.test(v))
         return new Date(`${v}T12:00:00`).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+      if (v.startsWith("{")) {
+        try {
+          const obj = JSON.parse(v);
+          const parts = [];
+          if (obj.valor != null) parts.push(fmtM(Number(obj.valor)));
+          if (obj.metodo)        parts.push(String(obj.metodo).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+          if (obj.tipo)          parts.push(String(obj.tipo).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+          if (parts.length) return parts.join(" · ");
+          return Object.entries(obj).map(([k, val]) => `${k}: ${val}`).join(" · ");
+        } catch (_) {}
+      }
       const n = Number(v);
       if (!isNaN(n) && n > 999) return fmtM(n);
       return v;
