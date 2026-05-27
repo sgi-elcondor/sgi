@@ -627,7 +627,7 @@ function renderMoraEscritura(ventas = []) {
       <section class="page-shell dashboard-page">
         ${window.SGIUI.pageHeader({
           kicker:   "Resumen operativo",
-          title:    "Centro de operacion",
+          title:    "Centro de operación",
           subtitle: "Estado de ventas, cartera, pagos, cuotas y comisiones.",
         })}
         ${visible.map((_, i) => `
