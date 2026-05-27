@@ -717,7 +717,7 @@ const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario;
 const valorTotal          = Number(v.valor_total);
 const saldoPendiente      = Math.max(0, valorTotal - totalPagado);
 const saldoPendienteReal  = Math.max(0, valorTotal - totalPagado);
-const porcentajePagado    = valorTotal > 0 ? (totalPagado / valorTotal) * 100 : 0;
+const porcentajePagado    = valorTotal > 0 ? Math.min(100, (totalPagado / valorTotal) * 100) : 0;
 
  
 

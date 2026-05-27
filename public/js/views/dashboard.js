@@ -267,6 +267,17 @@
       if (v === "false") return "No";
       if (/^\d{4}-\d{2}-\d{2}$/.test(v))
         return new Date(`${v}T12:00:00`).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+      if (v.startsWith("{")) {
+        try {
+          const obj = JSON.parse(v);
+          const parts = [];
+          if (obj.valor != null) parts.push(fmtM(Number(obj.valor)));
+          if (obj.metodo)        parts.push(String(obj.metodo).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+          if (obj.tipo)          parts.push(String(obj.tipo).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+          if (parts.length) return parts.join(" · ");
+          return Object.entries(obj).map(([k, val]) => `${k}: ${val}`).join(" · ");
+        } catch (_) {}
+      }
       const n = Number(v);
       if (!isNaN(n) && n > 999) return fmtM(n);
       return v;
@@ -616,7 +627,7 @@ function renderMoraEscritura(ventas = []) {
       <section class="page-shell dashboard-page">
         ${window.SGIUI.pageHeader({
           kicker:   "Resumen operativo",
-          title:    "Centro de operacion",
+          title:    "Centro de operación",
           subtitle: "Estado de ventas, cartera, pagos, cuotas y comisiones.",
         })}
         ${visible.map((_, i) => `
@@ -749,7 +760,7 @@ function renderMoraEscritura(ventas = []) {
               <div class="cuota-alert-icon">${window.SGIUI?.icon("award")??""}</div>
               <div class="cuota-alert-body">
                 <div class="cuota-alert-title">La escritura de tu inmueble esta disponible</div>
-                <div class="cuota-alert-text">Has pagado el ${(v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
+                <div class="cuota-alert-text">Has pagado el ${Math.min(100, v.porcentaje_pagado||0).toFixed(1)}% — superas el 30% requerido para escrituracion. Comunicate con la oficina.</div>
               </div>
             </div>` : ""}
           <div class="sale-hero">
@@ -761,7 +772,7 @@ function renderMoraEscritura(ventas = []) {
             <div class="progress-block">
               <div class="progress-labels">
                 <span class="progress-label-left">Avance de pago</span>
-                <span class="progress-label-right">${(v.porcentaje_pagado||0).toFixed(1)}%</span>
+                <span class="progress-label-right">${Math.min(100, v.porcentaje_pagado||0).toFixed(1)}%</span>
               </div>
               <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
             </div>

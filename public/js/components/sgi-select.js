@@ -213,7 +213,7 @@
 
         panel.style.position = "fixed";
         panel.style.left     = r.left + "px";
-        panel.style.width    = r.width + "px";
+        panel.style.width    = "max-content";  
         if (opensUp) {
           panel.style.top    = "auto";
           panel.style.bottom = (window.innerHeight - r.top + 4) + "px";

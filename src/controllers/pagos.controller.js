@@ -5,9 +5,10 @@ const auditoria             = require("../services/auditoria.service");
 const recibos               = require("../services/recibos.service");
 const { marcarPagadaSiCubre } = require("../services/cuotas.service");
 const { verificarComision } = require("../services/comisiones.service");
+const { actualizarMora }    = require("../services/mora.service");
 
 async function aplicarPagoACuotas(pago, email) {
-  const { id_pago, id_venta, id_cuota_propuesta, valor_pago } = pago;
+  const { id_pago, id_venta, id_cuota_propuesta, valor_pago, tipo_pago } = pago;
 
   // If a DB trigger on pago UPDATE already inserted cuota_pago records, skip allocation entirely
   // to avoid double-applying the payment to subsequent cuotas.
@@ -17,13 +18,14 @@ async function aplicarPagoACuotas(pago, email) {
     .eq('id_pago', id_pago);
   if (yaAsignado > 0) return;
 
-  // Pending cuotas for this sale, ordered chronologically
+  // amortizacion payments apply to the last cuota first; regular payments apply forward
+  const ascending = tipo_pago !== 'amortizacion';
   const { data: cuotas } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select('id_cuota, numero_cuota, valor_cuota, estado')
     .eq('id_venta', id_venta)
     .not('estado', 'eq', 'pagada')
-    .order('numero_cuota');
+    .order('numero_cuota', { ascending });
 
   if (!cuotas || cuotas.length === 0) return;
 
@@ -161,6 +163,13 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
+  const idsCuotas = cuotas.map(c => c.id_cuota);
+  const { data: cuotasCheck } = await supabase.schema(SCHEMA)
+    .from('cuota').select('id_cuota, numero_cuota, estado').in('id_cuota', idsCuotas);
+  const cuotaPagada = (cuotasCheck || []).find(c => c.estado === 'pagada');
+  if (cuotaPagada)
+    return res.status(400).json({ error: `La cuota #${cuotaPagada.numero_cuota} ya está completamente pagada` });
+
   const { data: cuotaInfo } = await supabase.schema(SCHEMA)
     .from("cuota").select("id_venta").eq("id_cuota", cuotas[0].id_cuota).single();
 
@@ -259,11 +268,22 @@ exports.create = async (req, res) => {
     emitido_por: req.usuario.email,
   });
 
+  const nombreOp = [req.usuario.nombres, req.usuario.apellidos].filter(Boolean).join(' ') || req.usuario.email;
+  await auditoria.log({
+    tabla: 'pago', id: pago.id_pago, campo: 'creacion',
+    anterior: null,
+    nuevo: JSON.stringify({ valor: valor_pago, metodo: metodo_pago, cuotas: idsCuotas }),
+    usuario: req.usuario.email,
+    motivo: `pago_directo:nombre:${nombreOp}:rol:${req.usuario.rol || 'operador'}`,
+  });
+
+  actualizarMora().catch(e => console.error('[mora]', e.message));
+
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
 
 exports.createAbonoExtraordinario = async (req, res) => {
-  const { id_venta, valor_abono, fecha_pago, metodo_pago, referencia } = req.body;
+  const { id_venta, valor_abono, fecha_pago, metodo_pago, referencia, url_baucher, numero_cuenta_origen } = req.body;
 
   if (!id_venta)
     return res.status(400).json({ error: "id_venta es obligatorio" });
@@ -334,7 +354,13 @@ exports.createAbonoExtraordinario = async (req, res) => {
   catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
 
   const { data: pago, error: errorPago } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{ fecha_pago, valor_pago: totalAplicado, metodo_pago, referencia: referencia || null, numero_pago: pagConsec.numero_pago, tipo_pago: "abono_extraordinario", estado: "aceptado", id_venta }])
+    .insert([{
+      fecha_pago, valor_pago: totalAplicado, metodo_pago,
+      referencia:           referencia           || null,
+      url_baucher:          url_baucher          || null,
+      numero_cuenta_origen: numero_cuenta_origen || null,
+      numero_pago: pagConsec.numero_pago, tipo_pago: "abono_extraordinario", estado: "aceptado", id_venta,
+    }])
     .select().single();
   if (errorPago) return res.status(400).json({ error: errorPago.message });
 
@@ -353,6 +379,8 @@ exports.createAbonoExtraordinario = async (req, res) => {
   }
 
   const { recibo, error: reciboError } = await recibos.crearParaPago({ id_pago: pago.id_pago, numero_pago: pagConsec.numero_pago, emitido_por: req.usuario?.email || "sistema" });
+
+  actualizarMora().catch(e => console.error('[mora]', e.message));
 
   return res.status(201).json({ message: "Abono extraordinario registrado correctamente", pago, recibo: recibo || null, recibo_error: reciboError || null, total_aplicado: totalAplicado, cuotas_afectadas: cuotasAfectadas });
 };
@@ -411,6 +439,21 @@ exports.createCompradorPago = async (req, res) => {
       .eq("id_usuario", id_usuario)
       .single();
     if (!vc) return res.status(403).json({ error: "No tienes acceso a esta venta" });
+  }
+
+  if (id_cuota_propuesta) {
+    const { data: cuotaData } = await supabase.schema(SCHEMA)
+      .from("cuota").select("estado, numero_cuota").eq("id_cuota", id_cuota_propuesta).single();
+    if (cuotaData?.estado === "pagada")
+      return res.status(400).json({ error: `La cuota #${cuotaData.numero_cuota} ya está pagada` });
+
+    const { count: yaEnRevision } = await supabase.schema(SCHEMA)
+      .from("pago")
+      .select("id_pago", { count: "exact", head: true })
+      .eq("id_cuota_propuesta", id_cuota_propuesta)
+      .eq("estado", "pendiente_revision");
+    if (yaEnRevision > 0)
+      return res.status(400).json({ error: "Ya hay un comprobante en revisión para esta cuota" });
   }
 
   const { data: pago, error: ep } = await supabase.schema(SCHEMA)
@@ -576,7 +619,7 @@ exports.acceptBatch = async (req, res) => {
     // Fetch full pago details before updating
     const { data: pagoActual, error: eLeer } = await supabase.schema(SCHEMA)
       .from('pago')
-      .select('id_pago, valor_pago, id_venta, id_cuota_propuesta, estado')
+      .select('id_pago, valor_pago, id_venta, id_cuota_propuesta, estado, tipo_pago')
       .eq('id_pago', id_pago)
       .single();
 
@@ -687,6 +730,8 @@ exports.acceptBatch = async (req, res) => {
 
     results.push({ id_pago, ok: true, pago, comision_causada });
   }
+
+  actualizarMora().catch(e => console.error('[mora]', e.message));
 
   res.json(results);
 };
