@@ -475,119 +475,58 @@
   // ── Exportación ───────────────────────────────────────────────────────────
 
   async function exportLotesExcel(filteredLotes, proyectos) {
-    const ORANGE      = "FFFF4E00";
-    const ORANGE_SOFT = "FFFFF2EE";
-    const ORANGE_MID  = "FFFFCFBD";
-    const DARK        = "FF1E2937";
-    const WHITE       = "FFFFFFFF";
-    const GRAY_LIGHT  = "FFF8F9FA";
+    const SX = window.SGIExport.xlsx;
+    const wb = SX.setup();
 
-    const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE } };
-    const subFill    = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_MID } };
-    const altFill    = { type: "pattern", pattern: "solid", fgColor: { argb: ORANGE_SOFT } };
-    const plainFill  = { type: "pattern", pattern: "solid", fgColor: { argb: WHITE } };
-    const titleFont  = { bold: true, size: 14, color: { argb: WHITE }, name: "Calibri" };
-    const headerFont = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
-    const subFont    = { bold: true, size: 10, color: { argb: ORANGE }, name: "Calibri" };
-    const bodyFont   = { size: 10, color: { argb: DARK }, name: "Calibri" };
-    const thinBorder = { style: "thin", color: { argb: ORANGE_MID } };
-    const cellBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
-
-    function applyTableRow(row, isAlt) {
-      row.eachCell({ includeEmpty: true }, cell => {
-        cell.fill      = isAlt ? altFill : plainFill;
-        cell.font      = bodyFont;
-        cell.border    = cellBorder;
-        cell.alignment = { vertical: "middle", wrapText: true };
-      });
-      row.height = 18;
-    }
-
-    function applyHeaderRow(row) {
-      row.eachCell({ includeEmpty: true }, cell => {
-        cell.fill      = headerFill;
-        cell.font      = headerFont;
-        cell.border    = cellBorder;
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      });
-      row.height = 22;
-    }
-
-    const totalDisp     = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "disponible").length;
-    const totalVend     = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "vendido").length;
+    const totalDisp      = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "disponible").length;
+    const totalVend      = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "vendido").length;
     const totalEntregado = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "entregado").length;
 
-    const wb = new ExcelJS.Workbook();
-    wb.creator = "SGI El Cóndor";
-    wb.created = new Date();
-
     // ── Hoja 1: Resumen ──────────────────────────────────────────────────────
-    const ws1 = wb.addWorksheet("Resumen", { tabColor: { argb: ORANGE } });
+    const ws1 = wb.addWorksheet("Resumen", { tabColor: { argb: SX.C.primary } });
     ws1.columns = [
-      { key: "a", width: 38 },
+      { key: "a", width: 36 },
       { key: "b", width: 16 },
-      { key: "c", width: 52 },
+      { key: "c", width: 16 },
+      { key: "d", width: 16 },
+      { key: "e", width: 16 },
     ];
 
-    ws1.mergeCells("A1:C1");
-    Object.assign(ws1.getCell("A1"), {
-      value:     "INVENTARIO DE LOTES — EL CÓNDOR S.A.S.",
-      fill:      headerFill,
-      font:      titleFont,
-      alignment: { horizontal: "center", vertical: "middle" },
+    SX.masthead(ws1, {
+      title:     "Inventario de Lotes",
+      subtitle:  "Estado actual aplicando los filtros activos al momento de exportar",
+      mergeCols: 5,
     });
-    ws1.getRow(1).height = 32;
 
-    ws1.mergeCells("A2:C2");
-    Object.assign(ws1.getCell("A2"), {
-      value:     "Sistema de Gestión Inmobiliaria (SGI)",
-      fill:      { type: "pattern", pattern: "solid", fgColor: { argb: "FFFF7733" } },
-      font:      { bold: false, size: 10, color: { argb: WHITE }, name: "Calibri" },
-      alignment: { horizontal: "center", vertical: "middle" },
-    });
-    ws1.getRow(2).height = 18;
+    SX.kpiRow(ws1, [
+      { label: "Total lotes", value: filteredLotes.length },
+      { label: "Disponibles", value: totalDisp },
+      { label: "Vendidos",    value: totalVend },
+      { label: "Entregados",  value: totalEntregado },
+      { label: "Ocupación",   value: filteredLotes.length ? (totalVend + totalEntregado) / filteredLotes.length : 0, percent: true },
+    ]);
 
-    ws1.mergeCells("A3:C3");
-    Object.assign(ws1.getCell("A3"), {
-      value:     `Generado: ${new Date().toLocaleString("es-CO")}`,
-      fill:      { type: "pattern", pattern: "solid", fgColor: { argb: GRAY_LIGHT } },
-      font:      { size: 9, color: { argb: "FF64748B" }, italic: true, name: "Calibri" },
-      alignment: { horizontal: "right", vertical: "middle" },
-    });
-    ws1.getRow(3).height = 16;
-
-    ws1.addRow([]);
-
-    ws1.mergeCells("A5:C5");
-    Object.assign(ws1.getCell("A5"), {
-      value:     "INDICADORES GLOBALES",
-      fill:      subFill,
-      font:      subFont,
-      alignment: { horizontal: "left", vertical: "middle" },
-    });
-    ws1.getRow(5).height = 20;
-
-    applyHeaderRow(ws1.addRow(["Indicador", "Valor", "Descripción"]));
+    SX.sectionHeader(ws1, "Indicadores", { mergeCols: 5 });
+    const indHead = ws1.addRow(["Indicador", "Valor", "Descripción", "", ""]);
+    ws1.mergeCells(indHead.number, 3, indHead.number, 5);
+    SX.styleHeader(indHead);
 
     [
-      ["Total de lotes en la vista actual",    filteredLotes.length, "Lotes mostrados con los filtros aplicados al exportar"],
-      ["Lotes disponibles para la venta",      totalDisp,            "Lotes sin venta activa asignada"],
-      ["Lotes vendidos",                       totalVend,            "Lotes con venta activa o finalizada en el sistema"],
-      ["Lotes entregados",                     totalEntregado,       "Lotes cuyo proceso de venta y entrega está finalizado"],
-    ].forEach((rowData, i) => applyTableRow(ws1.addRow(rowData), i % 2 !== 0));
-
-    ws1.addRow([]);
-    ws1.mergeCells(`A${ws1.rowCount + 1}:C${ws1.rowCount + 1}`);
-    const byProjCell = ws1.getCell(`A${ws1.rowCount}`);
-    Object.assign(byProjCell, {
-      value:     "LOTES POR PROYECTO",
-      fill:      subFill,
-      font:      subFont,
-      alignment: { horizontal: "left", vertical: "middle" },
+      ["Total de lotes en la vista actual", filteredLotes.length, "Lotes mostrados con los filtros aplicados al exportar"],
+      ["Lotes disponibles",                 totalDisp,            "Lotes sin venta activa asignada"],
+      ["Lotes vendidos",                    totalVend,            "Lotes con venta activa o finalizada en el sistema"],
+      ["Lotes entregados",                  totalEntregado,       "Lotes cuyo proceso de venta y entrega está finalizado"],
+    ].forEach((rowData, i) => {
+      const r = ws1.addRow(rowData);
+      ws1.mergeCells(r.number, 3, r.number, 5);
+      SX.styleBody(r, i % 2 !== 0);
+      r.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+      r.getCell(2).font = { name: "Calibri", bold: true, size: 11, color: { argb: SX.C.primary } };
     });
-    ws1.getRow(ws1.rowCount).height = 20;
 
-    applyHeaderRow(ws1.addRow(["Proyecto", "Total", "Disponibles", "Vendidos", "Entregados"]));
+    SX.sectionHeader(ws1, "Lotes por proyecto", { mergeCols: 5 });
+    const projHead = ws1.addRow(["Proyecto", "Total", "Disponibles", "Vendidos", "Entregados"]);
+    SX.styleHeader(projHead);
 
     const byProj = {};
     filteredLotes.forEach(l => {
@@ -600,42 +539,46 @@
       if (est === "entregado")  byProj[k].entr++;
     });
     Object.entries(byProj).forEach(([nombre, s], i) => {
-      applyTableRow(ws1.addRow([nombre, s.total, s.disp, s.vend, s.entr]), i % 2 !== 0);
+      const r = ws1.addRow([nombre, s.total, s.disp, s.vend, s.entr]);
+      SX.styleBody(r, i % 2 !== 0);
+      for (let col = 2; col <= 5; col++) {
+        r.getCell(col).alignment = { vertical: "middle", horizontal: "center" };
+      }
     });
+
+    ws1.views = [{ state: "frozen", ySplit: 5 }];
 
     // ── Hoja 2: Lotes ────────────────────────────────────────────────────────
-    const ws2 = wb.addWorksheet("Lotes", { tabColor: { argb: ORANGE } });
+    const ws2 = wb.addWorksheet("Lotes", { tabColor: { argb: SX.C.primary } });
     ws2.columns = [
-      { key: "proyecto",     width: 32 },
-      { key: "codigo",       width: 16 },
-      { key: "manzana",      width: 12 },
-      { key: "numero_lote",  width: 14 },
-      { key: "area",         width: 12 },
-      { key: "precio",       width: 18 },
-      { key: "estado",       width: 14 },
-      { key: "dimensiones",  width: 18 },
-      { key: "fechaCreacion", width: 18 },
-      { key: "descripcion",  width: 42 },
+      { key: "proyecto",      width: 28 },
+      { key: "codigo",        width: 16 },
+      { key: "manzana",       width: 12 },
+      { key: "numero_lote",   width: 12 },
+      { key: "area",          width: 12 },
+      { key: "precio",        width: 18 },
+      { key: "estado",        width: 14 },
+      { key: "dimensiones",   width: 18 },
+      { key: "fechaCreacion", width: 16 },
+      { key: "descripcion",   width: 42 },
     ];
 
-    ws2.mergeCells("A1:J1");
-    Object.assign(ws2.getCell("A1"), {
-      value:     "INVENTARIO DE LOTES — EL CÓNDOR S.A.S.",
-      fill:      headerFill,
-      font:      titleFont,
-      alignment: { horizontal: "center", vertical: "middle" },
+    SX.masthead(ws2, {
+      title:     "Inventario de Lotes — Detalle",
+      subtitle:  `${filteredLotes.length} lote${filteredLotes.length === 1 ? "" : "s"} exportado${filteredLotes.length === 1 ? "" : "s"}`,
+      mergeCols: 10,
     });
-    ws2.getRow(1).height = 28;
 
-    ws2.addRow([]);
-
-    applyHeaderRow(ws2.addRow([
+    ws2.addRow([]).height = 4;
+    const hRow = ws2.addRow([
       "Proyecto", "Código", "Manzana", "Núm. Lote", "Área (m²)",
       "Precio", "Estado", "Dimensiones", "Fecha creación", "Descripción",
-    ]));
+    ]);
+    SX.styleHeader(hRow);
+    const headerRowNum = hRow.number;
 
     filteredLotes.forEach((l, i) => {
-      applyTableRow(ws2.addRow([
+      const r = ws2.addRow([
         l.proyecto      || "",
         l.codigo        || "",
         l.manzana !== "—" ? l.manzana : "",
@@ -646,161 +589,52 @@
         l.dimensiones   || "",
         l.fechaCreacion ? new Date(l.fechaCreacion).toLocaleDateString("es-CO") : "",
         l.descripcion   || "",
-      ]), i % 2 !== 0);
+      ]);
+      SX.styleBody(r, i % 2 !== 0);
+      if (typeof l.area === "number")   r.getCell(5).numFmt = SX.NF.decimal;
+      if (typeof l.precio === "number") r.getCell(6).numFmt = SX.NF.money;
+      r.getCell(5).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      r.getCell(6).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
     });
 
-    ws2.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 10 } };
+    ws2.views = [{ state: "frozen", ySplit: headerRowNum }];
+    ws2.autoFilter = {
+      from: { row: headerRowNum, column: 1 },
+      to:   { row: headerRowNum, column: 10 },
+    };
 
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `lotes_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    await SX.download(wb, `lotes_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   function exportLotesPDF(filteredLotes) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const SX  = window.SGIExport.pdf;
 
     const totalDisp      = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "disponible").length;
     const totalVend      = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "vendido").length;
     const totalEntregado = filteredLotes.filter(l => sgiNormalizeText(l.estado) === "entregado").length;
+    const ocupacionPct   = filteredLotes.length
+      ? Math.round((totalVend + totalEntregado) / filteredLotes.length * 100)
+      : 0;
 
-    const C_PRIMARY = [255, 78, 0];
-    const C_DARK    = [30, 41, 59];
-    const C_GRAY    = [100, 116, 139];
-    const C_LIGHT   = [255, 248, 245];
-    const C_INFO_BG = [255, 242, 235];
-    const C_WHITE   = [255, 255, 255];
-    const C_DIVIDER = [255, 207, 189];
+    let y = SX.brand(doc);
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    doc.setFillColor(...C_PRIMARY);
-    doc.rect(0, 0, 297, 28, "F");
-
-    doc.setTextColor(...C_WHITE);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text("EL CÓNDOR S.A.S.", 14, 13);
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text("Sistema de Gestión Inmobiliaria — SGI", 14, 21);
-    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 283, 21, { align: "right" });
-
-    // ── Título ────────────────────────────────────────────────────────────────
-    doc.setTextColor(...C_DARK);
-    doc.setFontSize(15);
-    doc.setFont("helvetica", "bold");
-    doc.text("Reporte de Inventario de Lotes", 14, 40);
-
-    doc.setDrawColor(...C_PRIMARY);
-    doc.setLineWidth(0.6);
-    doc.line(14, 43, 283, 43);
-
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C_GRAY);
-    const introLines = doc.splitTextToSize(
-      "Este reporte presenta el inventario de lotes registrados en el sistema SGI El Cóndor. " +
-      "Incluye el estado de cada lote (disponible, vendido o entregado), sus características físicas y precio. " +
-      "Los datos reflejan el estado a la fecha de generación con los filtros activos al momento de exportar.",
-      269
-    );
-    doc.text(introLines, 14, 49);
-
-    // ── KPIs ──────────────────────────────────────────────────────────────────
-    let y = 63;
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Indicadores del Inventario", 14, y);
-
-    doc.setDrawColor(...C_DIVIDER);
-    doc.setLineWidth(0.3);
-    doc.line(14, y + 2, 283, y + 2);
-    y += 7;
-
-    const kpis = [
-      { value: String(filteredLotes.length), label: "Total Lotes",   desc: "Lotes en la vista exportada." },
-      { value: String(totalDisp),            label: "Disponibles",   desc: "Sin venta activa asignada." },
-      { value: String(totalVend),            label: "Vendidos",      desc: "Con venta activa o finalizada." },
-      { value: String(totalEntregado),       label: "Entregados",    desc: "Proceso de venta completado." },
-    ];
-
-    const cardW = 63;
-    const cardH = 22;
-    const gapX  = 3;
-
-    kpis.forEach((k, i) => {
-      const x = 14 + i * (cardW + gapX);
-      doc.setFillColor(...C_LIGHT);
-      doc.roundedRect(x, y, cardW, cardH, 2, 2, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.2);
-      doc.roundedRect(x, y, cardW, cardH, 2, 2, "S");
-
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_PRIMARY);
-      doc.text(k.value, x + cardW / 2, y + 10, { align: "center" });
-
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...C_DARK);
-      doc.text(k.label, x + cardW / 2, y + 16, { align: "center" });
-
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      doc.text(k.desc, x + cardW / 2, y + 20, { align: "center" });
+    y = SX.title(doc, y + 2, {
+      title:    "Inventario de Lotes",
+      subtitle: "Reporte del estado del inventario aplicando los filtros activos al momento de exportar.",
     });
 
-    y += cardH + 10;
+    y = SX.kpiCards(doc, y + 2, [
+      { label: "Total lotes", value: String(filteredLotes.length), desc: "En la vista exportada" },
+      { label: "Disponibles", value: String(totalDisp),            desc: "Sin venta activa" },
+      { label: "Vendidos",    value: String(totalVend),            desc: "Con venta activa o finalizada" },
+      { label: "Entregados",  value: String(totalEntregado),       desc: "Proceso completado" },
+      { label: "Ocupación",   value: `${ocupacionPct}%`,           desc: "Vendidos + Entregados / Total" },
+    ], { perRow: 5 });
 
-    // ── Guía de columnas ──────────────────────────────────────────────────────
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_DARK);
-    doc.text("Detalle del Inventario", 14, y);
+    y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Inventario por lote" });
 
-    doc.setDrawColor(...C_DIVIDER);
-    doc.setLineWidth(0.3);
-    doc.line(14, y + 2, 283, y + 2);
-    y += 6;
-
-    doc.setFillColor(...C_INFO_BG);
-    doc.roundedRect(14, y, 269, 16, 2, 2, "F");
-
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...C_PRIMARY);
-    doc.text("Guía de columnas:", 17, y + 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...C_DARK);
-    const colDefs = [
-      "Proyecto — Nombre del proyecto al que pertenece el lote.",
-      "Código — Identificador único del lote (incluye sigla, manzana y número).",
-      "Manzana — Bloque o manzana dentro del proyecto.",
-      "Núm. Lote — Número de lote dentro de la manzana.",
-      "Área — Superficie del lote en metros cuadrados.",
-      "Precio — Precio base de lista del lote.",
-      "Estado — Disponible: sin venta | Vendido: con venta activa | Entregado: proceso finalizado.",
-      "Fecha creación — Fecha en que el lote fue registrado en el sistema.",
-    ];
-    const half = Math.ceil(colDefs.length / 2);
-    doc.text(doc.splitTextToSize(colDefs.slice(0, half).join("   "), 260), 17, y + 10);
-    doc.text(doc.splitTextToSize(colDefs.slice(half).join("   "), 260), 17, y + 14);
-
-    y += 20;
-
-    // ── Tabla ─────────────────────────────────────────────────────────────────
     doc.autoTable({
       startY: y,
       head: [["Proyecto", "Código", "Manzana", "Núm. Lote", "Área (m²)", "Precio", "Estado", "Fecha creación"]],
@@ -814,51 +648,20 @@
         l.estado        || "—",
         l.fechaCreacion ? new Date(l.fechaCreacion).toLocaleDateString("es-CO") : "—",
       ]),
-      styles: {
-        fontSize: 7.5,
-        cellPadding: 2.5,
-        lineColor: C_DIVIDER,
-        lineWidth: 0.2,
-        textColor: C_DARK,
-      },
-      headStyles: {
-        fillColor: C_PRIMARY,
-        textColor: C_WHITE,
-        fontStyle: "bold",
-        fontSize: 8,
-        halign: "center",
-      },
-      alternateRowStyles: { fillColor: C_LIGHT },
+      ...SX.tableTheme(),
       columnStyles: {
-        0: { cellWidth: 42 },
-        1: { cellWidth: 28, halign: "center" },
+        0: { cellWidth: 50 },
+        1: { cellWidth: 30, halign: "center" },
         2: { cellWidth: 22, halign: "center" },
         3: { cellWidth: 22, halign: "center" },
-        4: { cellWidth: 20, halign: "center" },
-        5: { cellWidth: 34, halign: "right" },
-        6: { cellWidth: 24, halign: "center" },
-        7: { cellWidth: 26, halign: "center" },
+        4: { cellWidth: 22, halign: "right"  },
+        5: { cellWidth: 36, halign: "right"  },
+        6: { cellWidth: 28, halign: "center" },
+        7: { cellWidth: 30, halign: "center" },
       },
-      margin: { left: 14, right: 14 },
     });
 
-    // ── Pie de página ─────────────────────────────────────────────────────────
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      const pageH = doc.internal.pageSize.getHeight();
-      doc.setFillColor(...C_LIGHT);
-      doc.rect(0, pageH - 12, 297, 12, "F");
-      doc.setDrawColor(...C_DIVIDER);
-      doc.setLineWidth(0.3);
-      doc.line(0, pageH - 12, 297, pageH - 12);
-      doc.setFontSize(7.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...C_GRAY);
-      doc.text("El Cóndor S.A.S. — Uso interno y confidencial", 14, pageH - 4.5);
-      doc.text(`Página ${i} de ${pageCount}`, 283, pageH - 4.5, { align: "right" });
-    }
-
+    SX.footer(doc);
     doc.save(`reporte_lotes_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
