@@ -162,6 +162,13 @@ exports.create = async (req, res) => {
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
 
+  const idsCuotas = cuotas.map(c => c.id_cuota);
+  const { data: cuotasCheck } = await supabase.schema(SCHEMA)
+    .from('cuota').select('id_cuota, numero_cuota, estado').in('id_cuota', idsCuotas);
+  const cuotaPagada = (cuotasCheck || []).find(c => c.estado === 'pagada');
+  if (cuotaPagada)
+    return res.status(400).json({ error: `La cuota #${cuotaPagada.numero_cuota} ya está completamente pagada` });
+
   const { data: cuotaInfo } = await supabase.schema(SCHEMA)
     .from("cuota").select("id_venta").eq("id_cuota", cuotas[0].id_cuota).single();
 
@@ -260,13 +267,22 @@ exports.create = async (req, res) => {
     emitido_por: req.usuario.email,
   });
 
+  const nombreOp = [req.usuario.nombres, req.usuario.apellidos].filter(Boolean).join(' ') || req.usuario.email;
+  await auditoria.log({
+    tabla: 'pago', id: pago.id_pago, campo: 'creacion',
+    anterior: null,
+    nuevo: JSON.stringify({ valor: valor_pago, metodo: metodo_pago, cuotas: idsCuotas }),
+    usuario: req.usuario.email,
+    motivo: `pago_directo:nombre:${nombreOp}:rol:${req.usuario.rol || 'operador'}`,
+  });
+
   actualizarMora().catch(e => console.error('[mora]', e.message));
 
   res.status(201).json({ ...pago, recibo: recibo || null });
 };
 
 exports.createAbonoExtraordinario = async (req, res) => {
-  const { id_venta, valor_abono, fecha_pago, metodo_pago, referencia } = req.body;
+  const { id_venta, valor_abono, fecha_pago, metodo_pago, referencia, url_baucher, numero_cuenta_origen } = req.body;
 
   if (!id_venta)
     return res.status(400).json({ error: "id_venta es obligatorio" });
@@ -337,7 +353,13 @@ exports.createAbonoExtraordinario = async (req, res) => {
   catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
 
   const { data: pago, error: errorPago } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{ fecha_pago, valor_pago: totalAplicado, metodo_pago, referencia: referencia || null, numero_pago: pagConsec.numero_pago, tipo_pago: "abono_extraordinario", estado: "aceptado", id_venta }])
+    .insert([{
+      fecha_pago, valor_pago: totalAplicado, metodo_pago,
+      referencia:           referencia           || null,
+      url_baucher:          url_baucher          || null,
+      numero_cuenta_origen: numero_cuenta_origen || null,
+      numero_pago: pagConsec.numero_pago, tipo_pago: "abono_extraordinario", estado: "aceptado", id_venta,
+    }])
     .select().single();
   if (errorPago) return res.status(400).json({ error: errorPago.message });
 

@@ -50,7 +50,9 @@ exports.getAll = async (req, res) => {
     .order("fecha_emision", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json((data || []).map(f => {
+  res.json((data || [])
+    .filter(f => f.cuota_factura?.[0]?.cuota?.estado !== 'pagada')
+    .map(f => {
     const link  = f.cuota_factura?.[0];
     const cuota = link?.cuota;
     const lote  = cuota?.venta?.lote;
