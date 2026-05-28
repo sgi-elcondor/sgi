@@ -9,6 +9,56 @@
 
   const fmtPct = (v = 0) => `${(Number(v) * 100).toFixed(1)}%`;
 
+  // ── Welcome banner ───────────────────────────────────────────────────────────
+
+  const ROLE_DESCRIPTIONS = {
+    admin:              "administrar todas las funcionalidades de la plataforma, gestionar usuarios, roles y configuraciones, y supervisar la operación completa.",
+    asesor:             "registrar nuevas ventas pendientes de autorización, dar seguimiento al recorrido comercial de tus clientes, y consultar en tiempo real los lotes disponibles para ofertarlos junto con los proyectos abiertos.",
+    auxiliar_contable:  "registrar ventas, procesar pagos, emitir facturas y recibos, y mantener la operación contable al día.",
+    gerencia:           "consultar los reportes ejecutivos, indicadores de cartera y el desempeño global de la empresa.",
+    juridico:           "hacer seguimiento a ventas en mora, devoluciones y procesos jurídicos asociados a la cartera.",
+    comisionista:       "consultar tus comisiones causadas, pagadas y pendientes, así como su histórico de pago.",
+    auditoria:          "supervisar la trazabilidad y los movimientos críticos del sistema en tiempo real.",
+    comprador:          "consultar el estado de tu inmueble, tus cuotas, pagos realizados y recibos generados.",
+  };
+
+  function renderWelcomeBanner() {
+    const u         = window.currentUser || {};
+    const nombres   = (u.nombres   || "").trim();
+    const apellidos = (u.apellidos || "").trim();
+    const fullName  = [nombres, apellidos].filter(Boolean).join(" ")
+                    || u.email
+                    || "Usuario";
+    const rol       = u.rol || "";
+    const rolLabel  = window.humanizeRole ? window.humanizeRole(rol) : rol;
+    const desc      = ROLE_DESCRIPTIONS[rol] || "acceder a las funciones habilitadas para tu perfil.";
+    const initials  = ((nombres   || fullName).charAt(0)
+                    +  (apellidos || "").charAt(0)).toUpperCase() || "U";
+    const photo     = u.photo_url || "";
+
+    const avatar = photo
+      ? `<div class="welcome-avatar has-photo"><img src="${photo}" alt="${fullName}"></div>`
+      : `<div class="welcome-avatar">${initials}</div>`;
+
+    return `
+      <section class="welcome-banner">
+        <div class="welcome-banner-bg" aria-hidden="true"></div>
+        <div class="welcome-banner-inner">
+          ${avatar}
+          <div class="welcome-copy">
+            <span class="welcome-kicker">Bienvenido</span>
+            <h2 class="welcome-title">${fullName}</h2>
+            <p class="welcome-text">
+              Te damos la bienvenida a la plataforma de información, gestión y pagos de
+              <strong>El Cóndor S.A.S.</strong>, donde podrás consultar proyectos, lotes y cuotas.
+              Como <strong>${rolLabel}</strong> podrás ${desc}
+            </p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
   // ── Widget renderers ─────────────────────────────────────────────────────────
 
   function renderKpiOperacion(panel) {
@@ -615,9 +665,11 @@ function renderMoraEscritura(ventas = []) {
     const visible = WIDGETS.filter(w => AppState.can(w.resource, w.action));
 
     if (!visible.length) {
-      vc.innerHTML = `<section class="page-shell">
+      vc.innerHTML = `<section class="page-shell dashboard-page">
+        ${renderWelcomeBanner()}
         <div style="padding:2rem;color:var(--text-muted)">No hay widgets configurados para tu rol.</div>
       </section>`;
+      window.SGIUI?.hydrate();
       return;
     }
 
@@ -625,6 +677,7 @@ function renderMoraEscritura(ventas = []) {
 
     vc.innerHTML = `
       <section class="page-shell dashboard-page">
+        ${renderWelcomeBanner()}
         ${window.SGIUI.pageHeader({
           kicker:   "Resumen operativo",
           title:    "Centro de operación",
@@ -668,6 +721,7 @@ function renderMoraEscritura(ventas = []) {
 
     if (!ventas || !ventas.length) {
       vc.innerHTML = `<section class="page-shell comprador-dashboard">
+        ${renderWelcomeBanner()}
         ${window.SGIUI?.pageHeader({ kicker:"Mi cuenta", title:"Panel de comprador", subtitle:"Bienvenido al portal de seguimiento de tu inmueble." }) ?? ""}
         <div class="no-venta-state">${window.SGIUI?.icon("home") ?? ""}
           <h3>No tienes ventas registradas</h3>
@@ -748,6 +802,7 @@ function renderMoraEscritura(ventas = []) {
 
       vc.innerHTML = `
         <section class="page-shell comprador-dashboard">
+          ${renderWelcomeBanner()}
           ${window.SGIUI?.pageHeader({
             kicker: "Mi cuenta",
             title: `${v.lote?.proyecto?.nombre || "Mi inmueble"}`,
