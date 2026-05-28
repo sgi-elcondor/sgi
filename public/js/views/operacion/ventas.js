@@ -8,9 +8,12 @@ window.ventasView = async function() {
 
   const modoSolicitud = AppState.can('ventas', 'solicitar') && !AppState.can('ventas', 'actualizar');
   const canCreate     = AppState.can('ventas', 'crear') || AppState.can('ventas', 'solicitar');
+  const isJuridico    = (window.currentUser?.rol || "") === "juridico";
   const botonNueva    = !canCreate ? "" : modoSolicitud
     ? `<button class="btn btn-primary btn-sm" onclick="ventaFormSolicitud()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Solicitar Venta</button>`
     : `<button class="btn btn-primary btn-sm" onclick="ventaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Venta</button>`;
+
+  const ESTADOS_JURIDICO = ["pre_mora", "en_mora"];
 
   // Build query from filter state
   async function _cargarVentas() {
@@ -29,11 +32,15 @@ window.ventasView = async function() {
     const tbody = document.getElementById("fv_tbody");
     if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:16px">${UI.loader()}</td></tr>`;
 
-    const rows = await API.get(`/ventas${qs ? "?" + qs : ""}`).catch(e => {
+    let rows = await API.get(`/ventas${qs ? "?" + qs : ""}`).catch(e => {
       if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="color:var(--danger);padding:12px">${e.message}</td></tr>`;
       return null;
     });
     if (!rows) return;
+
+    if (isJuridico) {
+      rows = rows.filter(v => ESTADOS_JURIDICO.includes(v.estado));
+    }
 
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text-muted)">Sin resultados</td></tr>`;
@@ -64,14 +71,19 @@ window.ventasView = async function() {
     }).join("");
   }
 
-  const ESTADOS = ["activa","pre_mora","en_mora","cancelada","liquidada","pendiente_autorizacion"];
+  const ESTADOS = isJuridico
+    ? ["pre_mora", "en_mora"]
+    : ["activa","pre_mora","en_mora","cancelada","liquidada","pendiente_autorizacion"];
 
   vc.innerHTML = `
     <div class="table-wrap">
       <div class="table-header">
-        <h3>Ventas</h3>
+        <h3>Ventas${isJuridico ? " en mora" : ""}</h3>
         ${botonNueva}
       </div>
+      ${isJuridico ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
+        Solo se muestran ventas en estado <b>pre-mora</b> o <b>mora</b>.
+      </p>` : ""}
       ${modoSolicitud ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
         Puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que sean aprobadas.
       </p>` : ""}

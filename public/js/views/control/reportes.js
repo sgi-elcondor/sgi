@@ -19,7 +19,7 @@ window.reportesView = async function () {
   try {
     const mesActual = new Date().toISOString().slice(0, 7);
 
-    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesJefe, proyeccion] = await Promise.all([
+    const [cuotasVenc, cuotasPend, pagos, todasVentas, cartera, recaudo, lotes, comisionesSummary, comisionesGerencia, proyeccion] = await Promise.all([
       API.get("/cuotas/vencidas").catch(() => []),
       API.get("/cuotas/pendientes").catch(() => []),
       API.get("/pagos").catch(() => []),
@@ -28,11 +28,11 @@ window.reportesView = async function () {
       API.get("/reportes/recaudo").catch(() => []),
       API.get("/lotes").catch(() => []),
       API.get("/reportes/comisiones").catch(() => null),
-      API.get("/reportes/comisiones-jefe").catch(() => []),
+      API.get("/reportes/comisiones-gerencia").catch(() => []),
       API.get("/reportes/proyeccion-ingresos").catch(() => []),
     ]);
 
-    _repComisionesAll = comisionesJefe || [];
+    _repComisionesAll = comisionesGerencia || [];
 
     const ventasActivas = todasVentas.filter(v => v.estado === "activa").length;
     const casosMora     = todasVentas.filter(v => ["en_mora", "pre_mora", "devolucion"].includes(v.estado)).length;
@@ -237,7 +237,7 @@ window.reportesView = async function () {
         </div>
 
         ${_renderSeccionProyeccion(proyeccion || [])}
-        ${_renderSeccionComisiones(comisionesJefe || [])}
+        ${_renderSeccionComisiones(comisionesGerencia || [])}
       </section>
     `;
 

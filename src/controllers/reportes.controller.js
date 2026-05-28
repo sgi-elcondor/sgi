@@ -100,7 +100,7 @@ function _buildProjection(cuotas) {
   }));
 }
 
-exports.getComisionesJefe = async (req, res) => {
+exports.getComisionesGerencia = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .select(`

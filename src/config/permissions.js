@@ -58,7 +58,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/reportes/dir':               { recurso: 'reportes_dir', accion: 'leer' },
   'GET /api/v1/reportes/jur':               { recurso: 'alertas_jur',  accion: 'leer' },
   'GET /api/v1/reportes/juridico':          { recurso: 'alertas_jur',  accion: 'leer' },
-  'GET /api/v1/reportes/comisiones-jefe':       { recurso: 'reportes',     accion: 'leer' },
+  'GET /api/v1/reportes/comisiones-gerencia':   { recurso: 'reportes',     accion: 'leer' },
   'GET /api/v1/reportes/proyeccion-ingresos':   { recurso: 'reportes',     accion: 'leer' },
 
   'GET /api/v1/reportes/panel':             { recurso: 'dashboard', accion: 'ver_operacion' },

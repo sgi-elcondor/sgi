@@ -56,8 +56,8 @@ const STAFF_ROLES = [
   { email: 'asesor.top@elcondor.com',  rol: 'asesor' },
   { email: 'asesor.mid@elcondor.com',  rol: 'asesor' },
   { email: 'asesor.low@elcondor.com',  rol: 'asesor' },
-  { email: 'jefe@elcondor.com',        rol: 'jefe' },
-  { email: 'abogado@elcondor.com',     rol: 'abogado' },
+  { email: 'gerencia@elcondor.com',    rol: 'gerencia' },
+  { email: 'juridico@elcondor.com',    rol: 'juridico' },
   { email: 'auditoria@elcondor.com',   rol: 'auditoria' },
 ];
 

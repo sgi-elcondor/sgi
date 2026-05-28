@@ -26,8 +26,8 @@ La plataforma garantiza trazabilidad completa, acceso diferenciado por roles y a
 | **Compradores / Clientes** | Consultan estado de compras, cuotas y recibos desde su portal personal |
 | **Auxiliar Contable** | Usuario operativo principal; registra ventas, pagos y facturación |
 | **Asesores Comerciales** | Crean procesos de venta pendientes de autorización |
-| **Jefe / Gerencia** | Accede a reportes globales (solo lectura) |
-| **Abogado / Área Jurídica** | Consulta ventas en mora o devolución para gestión legal |
+| **Gerencia** | Accede a reportes globales (solo lectura) |
+| **Jurídico** | Consulta ventas en mora o devolución para gestión legal |
 | **Comisionistas** | Reciben comisiones automáticas al superar el 30% del valor del lote pagado |
 | **Administración / Operaciones** | Gestiona estructura de proyectos y lotes |
 | **Auditoría / Control Interno** | Supervisa trazabilidad de cambios críticos |

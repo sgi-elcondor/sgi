@@ -176,10 +176,9 @@
     });
   }
 
-  function sgiLoteBuildRows(lotes, { showActions = false } = {}) {
-    const cols = showActions ? 9 : 8;
+  function sgiLoteBuildRows(lotes) {
     if (!lotes.length) {
-      return `<tr><td colspan="${cols}" class="empty-row">No hay lotes que coincidan con los filtros actuales.</td></tr>`;
+      return `<tr><td colspan="8" class="empty-row">No hay lotes que coincidan con los filtros actuales.</td></tr>`;
     }
     return lotes.map(lote => `
       <tr>
@@ -191,7 +190,6 @@
         <td>${sgiLoteFormatCurrency(lote.precio)}</td>
         <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
         <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
-        ${showActions ? `<td><button class="btn btn-sm btn-ghost" disabled title="El estado del lote no se modifica manualmente">Solo lectura</button></td>` : ""}
       </tr>`
     ).join("");
   }
@@ -441,22 +439,21 @@
     { key: "fechaCreacion", label: "Fecha creación"  },
   ];
 
-  function buildLotesTableHTML(filteredLotes, sortState, canCreate) {
+  function buildLotesTableHTML(filteredLotes, sortState) {
     const thead = `<thead><tr>
       ${LOTE_COLS.map(c => {
         const active = sortState.sortCol === c.key;
         const cls    = active ? `sortable sort-${sortState.sortDir}` : "sortable";
         return `<th class="${cls}" data-col="${c.key}">${c.label} <span class="sort-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M423.5-574 289.29-439.79Q272-422.5 248.5-421.75t-41.48-16.75q-17.52-17.5-16.77-41t18.07-40.81L439.41-751.1q7.91-7.9 18.97-13.15 11.06-5.25 21.78-5.25 10.71 0 21.78 5.25Q513-759 520.5-751.5l232 232q19 19 19 40.75t-18.52 39.25Q735-422 712.08-422q-22.91 0-40.08-17.5L536.5-574v349.52q0 22.79-16.79 39.64Q502.92-168 480.21-168t-39.71-16.84q-17-16.85-17-39.64V-574Z"/></svg></span></th>`;
       }).join("")}
-      ${canCreate ? "<th>Acción</th>" : ""}
     </tr></thead>`;
 
     const sorted = sgiLoteSortByCol(filteredLotes, sortState.sortCol, sortState.sortDir);
-    const tbody  = `<tbody>${sgiLoteBuildRows(sorted, { showActions: canCreate })}</tbody>`;
+    const tbody  = `<tbody>${sgiLoteBuildRows(sorted)}</tbody>`;
     return thead + tbody;
   }
 
-  function wireLotesSortHeaders(tableEl, filteredLotes, sortState, canCreate) {
+  function wireLotesSortHeaders(tableEl, filteredLotes, sortState) {
     tableEl.querySelectorAll("th[data-col]").forEach(th => {
       th.addEventListener("click", () => {
         const col = th.dataset.col;
@@ -466,8 +463,8 @@
           sortState.sortCol = col;
           sortState.sortDir = "asc";
         }
-        tableEl.innerHTML = buildLotesTableHTML(filteredLotes, sortState, canCreate);
-        wireLotesSortHeaders(tableEl, filteredLotes, sortState, canCreate);
+        tableEl.innerHTML = buildLotesTableHTML(filteredLotes, sortState);
+        wireLotesSortHeaders(tableEl, filteredLotes, sortState);
       });
     });
   }
@@ -729,7 +726,7 @@
       if (!el) return;
       el.innerHTML = filteredLotes.length
         ? `<div class="table-header"><h3>Listado de lotes</h3></div>
-           <table id="lotes-table">${buildLotesTableHTML(filteredLotes, state, canCreate)}</table>`
+           <table id="lotes-table">${buildLotesTableHTML(filteredLotes, state)}</table>`
         : `<div class="table-header"><h3>Listado de lotes</h3></div>
            <div class="empty-state">
              <div class="empty-state-title">No hay resultados</div>
@@ -738,7 +735,7 @@
            </div>`;
 
       const lotesTable = document.getElementById("lotes-table");
-      if (lotesTable) wireLotesSortHeaders(lotesTable, filteredLotes, state, canCreate);
+      if (lotesTable) wireLotesSortHeaders(lotesTable, filteredLotes, state);
 
       document.getElementById("btnEmptyCreateLote")?.addEventListener("click", () => {
         sgiOpenCreateLoteModal(_proyectos, () => renderLotesScreen(true));

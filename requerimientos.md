@@ -80,7 +80,7 @@
 ### Retenciones y Comisiones
 
 * Falta implementar el manejo de  **retenciones** .
-* El jefe debe poder consultar el total de **comisiones** a pagar.
+* La gerencia debe poder consultar el total de **comisiones** a pagar.
 * Esta información debe quedar guardada en el sistema.
 
 ## 3. Cierre de Caja
