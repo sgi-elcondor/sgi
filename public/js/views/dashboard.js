@@ -620,36 +620,50 @@ function renderMoraEscritura(ventas = []) {
 
     const WIDGETS = [
     {
+      id:     "kpi-operacion",
+      roles:  ["admin", "auxiliar_contable", "gerencia", "asesor"],
       resource: "dashboard", action: "ver_operacion",
       fetch:  () => API.get("/reportes/panel"),
       render: renderKpiOperacion,
     },
     {
+      id:     "escrituras",
+      roles:  ["admin", "auxiliar_contable", "gerencia", "juridico"],
       resource: "dashboard", action: "ver_operacion",
       fetch:  () => API.get("/ventas/estado-financiero"),
       render: renderMoraEscritura,
     },
     {
+      id:     "kpi-cartera",
+      roles:  ["admin", "gerencia"],
       resource: "dashboard", action: "ver_cartera",
       fetch:  () => API.get("/reportes/cartera-hoy"),
       render: renderKpiCartera,
     },
     {
+      id:     "kpi-comisiones",
+      roles:  ["admin", "gerencia"],
       resource: "dashboard", action: "ver_comisiones",
       fetch:  () => API.get("/reportes/comisiones"),
       render: renderKpiComisiones,
     },
     {
+      id:     "alertas-juridicas",
+      roles:  ["admin", "juridico", "auditoria"],
       resource: "dashboard", action: "ver_juridico",
       fetch:  () => API.get("/reportes/alertas"),
       render: renderAlertasJuridicas,
     },
     {
+      id:     "cuotas-pendientes",
+      roles:  ["admin", "auxiliar_contable", "juridico"],
       resource: "cuotas", action: "leer",
       fetch:  () => API.get("/cuotas/pendientes"),
       render: renderCuotasPendientes,
     },
     {
+      id:     "ultimos-movimientos",
+      roles:  ["admin", "auxiliar_contable", "auditoria"],
       resource: "dashboard", action: "ver_operacion",
       fetch:  () => API.get("/reportes/auditoria"),
       render: renderUltimosMovimientos,
@@ -662,12 +676,15 @@ function renderMoraEscritura(ventas = []) {
     const vc = container || document.getElementById("viewContainer");
     vc.innerHTML = UI.loader();
 
-    const visible = WIDGETS.filter(w => AppState.can(w.resource, w.action));
+    const rol     = window.currentUser?.rol;
+    const visible = WIDGETS.filter(w =>
+      AppState.can(w.resource, w.action) &&
+      (!w.roles || w.roles.includes(rol))
+    );
 
     if (!visible.length) {
       vc.innerHTML = `<section class="page-shell dashboard-page">
         ${renderWelcomeBanner()}
-        <div style="padding:2rem;color:var(--text-muted)">No hay widgets configurados para tu rol.</div>
       </section>`;
       window.SGIUI?.hydrate();
       return;
