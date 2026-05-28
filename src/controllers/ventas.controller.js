@@ -5,6 +5,9 @@ const SCHEMA    = "condor";
 
 exports.getAll = async (req, res) => {
   const { estado, mes, proyecto, cliente } = req.query;
+  const rolUsuario = req.usuario?.rol || "";
+  const ESTADOS_JURIDICO = ["pre_mora", "en_mora"];
+  const restringirJuridico = rolUsuario === "juridico";
 
   let q = supabase.schema(SCHEMA).from("venta")
     .select(`*, lote(codigo_lote, manzana, numero_lote, proyecto(nombre)),
@@ -12,7 +15,16 @@ exports.getAll = async (req, res) => {
       venta_comisionista(valor_comision, usuario:id_usuario(nombres, apellidos))`)
     .order("fecha_venta", { ascending: false });
 
-  if (estado) q = q.eq("estado", estado);
+  if (restringirJuridico) {
+    const estadoSolicitado = estado && ESTADOS_JURIDICO.includes(estado) ? estado : null;
+    if (estadoSolicitado) {
+      q = q.eq("estado", estadoSolicitado);
+    } else {
+      q = q.in("estado", ESTADOS_JURIDICO);
+    }
+  } else if (estado) {
+    q = q.eq("estado", estado);
+  }
 
   if (mes && /^\d{4}-\d{2}$/.test(mes)) {
     const [anio, m] = mes.split("-").map(Number);

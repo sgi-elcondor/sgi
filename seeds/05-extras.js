@@ -88,7 +88,7 @@ async function seedObservaciones(ventas) {
         id_venta:       v.id_venta,
         descripcion:    pick(descs),
         estado_proceso: pick(estados),
-        usuario_db:     pick(['abogado@elcondor.com','auxiliar1@elcondor.com','admin@elcondor.com']),
+        usuario_db:     pick(['juridico@elcondor.com','auxiliar1@elcondor.com','admin@elcondor.com']),
         fecha_registro: fecha + 'T09:00:00',
       });
     }
@@ -102,7 +102,7 @@ async function seedObservaciones(ventas) {
 
 async function seedAuditoria(ventas, allPagos) {
   const rows = [];
-  const users = ['auxiliar1@elcondor.com','auxiliar2@elcondor.com','admin@elcondor.com','jefe@elcondor.com'];
+  const users = ['auxiliar1@elcondor.com','auxiliar2@elcondor.com','admin@elcondor.com','gerencia@elcondor.com'];
 
   // Cambios de estado en ventas
   for (const v of ventas) {

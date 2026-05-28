@@ -281,8 +281,8 @@ Al agregar un service nuevo, agregar también su archivo de test correspondiente
 | `comprador`           | Consulta sus cuotas, pagos y recibos            |
 | `asesor`              | Crea ventas pendientes de autorización          |
 | `auxiliar_contable`   | Operaciones completas: ventas, pagos, facturas  |
-| `jefe`                | Solo lectura en reportes globales               |
-| `abogado`             | Consulta ventas en mora o devolución            |
+| `gerencia`            | Solo lectura en reportes globales               |
+| `juridico`            | Consulta ventas en mora o devolución            |
 | `comisionista`        | Visualiza sus comisiones                        |
 | `admin`               | Acceso total a todas las funcionalidades        |
 | `auditoria`           | Supervisa trazabilidad de cambios críticos      |

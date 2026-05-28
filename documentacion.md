@@ -327,7 +327,6 @@ Módulos del área financiera:
 #### `control/`
 Módulos de administración y control interno:
 - `reportes.js` — indicadores ejecutivos y reportes consolidados
-- `alertas.js` — alertas jurídicas de ventas en mora o riesgo legal
 - `auditoria.js` — trazabilidad de cambios críticos en el sistema
 - `personal.js` — distribución del personal activo por rol
 - `usuarios.js` — gestión de accesos: crear, editar y desactivar usuarios, asignar roles
