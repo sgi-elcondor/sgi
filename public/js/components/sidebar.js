@@ -26,7 +26,6 @@ const SIDEBAR_GROUPS = [
   ]},
   { label: "Control", items: [
     { view: "reportes",  icon: "bar-chart-3",    label: "Reportes" },
-    { view: "alertas",   icon: "triangle-alert", label: "Alertas" },
     { view: "auditoria", icon: "shield-check",   label: "Auditoria" },
     { view: "personal",  icon: "users",          label: "Personal" },
     { view: "usuarios",  icon: "settings",       label: "Usuarios" },
