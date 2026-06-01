@@ -20,104 +20,261 @@ function _rFmtCOP(n) {
 
 function _buildReciboHTML(r) {
   const metodoLabel = {
-    transferencia: "Transferencia Bancaria",
+    transferencia: "Transferencia bancaria",
     efectivo:      "Efectivo",
     cheque:        "Cheque",
     permuta:       "Permuta",
   }[r.metodo_pago] || (r.metodo_pago || "—");
+
+  const valor      = Number(r.valor_pago || 0);
+  const valorTxt   = _rFmtCOP(valor);
+  const valorWords = (window.SGIExport && window.SGIExport.numToWordsES)
+    ? window.SGIExport.numToWordsES(valor)
+    : "";
+
+  const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
+  const waMsg    = `Hola, quiero obtener mas informacion acerca del recibo: ${r.numero_recibo || ""} por un valor de: ${_rFmtCOP(valor)} realizado en la fecha: ${r.fecha_emision || ""} a nombre de: ${r.comprador || ""}.`.trim();
+  const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
+  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <title>Recibo ${r.numero_recibo} — El Cóndor S.A.S.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --accent:        #ff4e00;
+      --accent-dark:   #c53c00;
+      --accent-soft:   #ffe9de;
+      --accent-line:   #ffcbb3;
+      --text:          #0f172a;
+      --text-soft:     #475569;
+      --muted:         #94a3b8;
+      --line:          #e2e8f0;
+      --line-soft:     #f1f5f9;
+      --bg:            #f1f4f8;
+      --surface:       #ffffff;
+    }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;padding:32px 16px;color:#111}
-    .page{max-width:680px;margin:0 auto;background:#fff;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,.13);padding:44px 52px}
-    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16a34a;padding-bottom:20px;margin-bottom:28px}
-    .co-name{font-size:22px;font-weight:700;color:#16a34a;margin-bottom:4px}
-    .co-sub{font-size:12px;color:#888;line-height:1.6}
-    .rec-head{text-align:right}
-    .rec-title{font-size:28px;font-weight:800;color:#16a34a;letter-spacing:.02em}
-    .rec-sub{font-size:11px;font-weight:700;color:#16a34a;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
-    .rec-num{font-size:15px;font-weight:700;margin-top:6px}
-    .rec-date{font-size:12px;color:#888;margin-top:2px}
-    .section{margin-bottom:22px}
-    .sec-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa;border-bottom:1px solid #eee;padding-bottom:5px;margin-bottom:10px}
-    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
-    .lbl{color:#777}
-    .val{font-weight:600;text-align:right}
-    .total-box{background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:20px}
-    .total-lbl{font-size:13px;color:#777}
-    .total-amt{font-size:26px;font-weight:800;color:#16a34a}
-    .stamp-wrap{display:flex;justify-content:flex-end;margin-bottom:20px}
-    .stamp{display:inline-block;border:3px solid #16a34a;color:#16a34a;font-size:18px;font-weight:800;padding:6px 20px;border-radius:6px;letter-spacing:.12em;transform:rotate(-8deg);opacity:.85}
-    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;line-height:1.7}
-    .actions{text-align:center;margin-top:28px}
-    .btn-p{background:#16a34a;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px}
-    .btn-c{background:#efefef;color:#333;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer}
-    @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0;padding:20px 28px}.actions{display:none}}
+    html,body{background:var(--bg)}
+    body{
+      font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+      color:var(--text);
+      padding:48px 16px 32px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .page{
+      max-width:780px;margin:0 auto;background:var(--surface);
+      border-radius:16px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04),0 12px 36px rgba(15,23,42,.08);
+      overflow:hidden;position:relative;
+    }
+    .page-inner{padding:48px 56px;position:relative;z-index:1}
+
+    /* ── Watermark ──────────────────────────────────────────────────────── */
+    .watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
+    .watermark span{
+      font-family:'DM Serif Display',Georgia,serif;
+      font-size:148px;color:var(--accent);opacity:.045;
+      transform:rotate(-22deg);white-space:nowrap;letter-spacing:-.02em;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+    .co{display:flex;flex-direction:column;gap:6px}
+    .co-name{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+    .co-sub{font-size:11.5px;color:var(--muted);line-height:1.6}
+    .rec{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    .rec-title{
+      font-family:'DM Serif Display','Playfair Display',Georgia,serif;
+      font-size:34px;font-weight:400;color:var(--text);line-height:1;
+    }
+    .rec-sub{font-size:10.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:600}
+
+    /* ── Hero amount ───────────────────────────────────────────────────── */
+    .hero{text-align:center;padding:42px 0 32px}
+    .hero-label{font-size:10px;text-transform:uppercase;letter-spacing:.24em;color:var(--muted);font-weight:700;margin-bottom:14px}
+    .hero-amount{
+      font-family:'DM Serif Display',Georgia,serif;
+      font-size:64px;font-weight:400;color:var(--accent-dark);
+      letter-spacing:-.025em;line-height:1;font-variant-numeric:tabular-nums;
+    }
+    .hero-words{
+      margin:18px auto 0;max-width:540px;
+      font-size:11px;text-transform:uppercase;letter-spacing:.18em;
+      color:var(--text-soft);font-weight:600;line-height:1.55;
+    }
+    .hero-meta{
+      margin-top:24px;font-size:12px;color:var(--text-soft);
+      display:flex;align-items:center;justify-content:center;gap:14px;
+    }
+    .hero-meta .dot{width:3px;height:3px;background:var(--muted);border-radius:50%}
+    .hero-meta strong{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+
+    /* ── Two-column body ───────────────────────────────────────────────── */
+    .body-grid{
+      display:grid;grid-template-columns:1fr 1fr;gap:48px;
+      padding-top:28px;border-top:1px solid var(--line);
+    }
+    .col-block + .col-block{margin-top:26px}
+    .sec-title{
+      font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+      color:var(--muted);margin-bottom:12px;
+    }
+    .row{
+      display:flex;justify-content:space-between;gap:12px;
+      padding:7px 0;font-size:13px;border-top:1px dashed var(--line-soft);
+    }
+    .col-block .row:first-of-type{border-top:0}
+    .lbl{color:var(--text-soft)}
+    .val{font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+
+    /* ── Observations ──────────────────────────────────────────────────── */
+    .obs{
+      margin-top:26px;padding:14px 16px;background:var(--line-soft);
+      border-left:3px solid var(--accent);border-radius:6px;
+      font-size:12.5px;color:var(--text-soft);line-height:1.6;
+    }
+    .obs strong{color:var(--text);font-weight:600;display:block;margin-bottom:3px}
+
+    /* ── Signatures ────────────────────────────────────────────────────── */
+    .signatures{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:52px}
+    .sig{text-align:center}
+    .sig-line{border-bottom:1px solid var(--text-soft);margin:32px 16px 10px}
+    .sig-role{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:700;margin-bottom:4px}
+    .sig-name{font-size:13px;color:var(--text);font-weight:600}
+    .sig-extra{font-size:11px;color:var(--text-soft);margin-top:2px}
+
+    /* ── Footer with QR ────────────────────────────────────────────────── */
+    .foot{
+      display:grid;grid-template-columns:auto 1fr;gap:20px;
+      margin-top:36px;padding-top:18px;border-top:1px solid var(--line);
+      align-items:center;
+    }
+    .qr-box{
+      width:84px;height:84px;padding:5px;background:#fff;
+      border:1px solid var(--line);border-radius:8px;flex-shrink:0;
+    }
+    .qr-box img{width:100%;height:100%;display:block}
+    .foot-text{font-size:10.5px;color:var(--muted);line-height:1.7}
+    .foot-text strong{color:var(--text-soft);font-weight:600}
+    .foot-text .url{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      color:var(--accent-dark);font-size:10px;
+    }
+
+    /* ── Actions (outside card) ─────────────────────────────────────────── */
+    .actions{display:flex;justify-content:center;gap:10px;margin-top:24px}
+    .btn{
+      font-family:inherit;cursor:pointer;border:none;border-radius:8px;
+      padding:11px 22px;font-size:13.5px;font-weight:600;letter-spacing:.01em;
+      transition:transform .12s ease,box-shadow .12s ease,background .15s;
+    }
+    .btn-p{background:var(--accent);color:#fff;box-shadow:0 1px 0 rgba(197,60,0,.3),0 6px 14px rgba(197,60,0,.18)}
+    .btn-p:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 2px 0 rgba(197,60,0,.3),0 10px 20px rgba(197,60,0,.22)}
+    .btn-c{background:#fff;color:var(--text-soft);border:1px solid var(--line)}
+    .btn-c:hover{background:var(--line-soft);color:var(--text)}
+
+    @media print{
+      html,body{background:#fff}
+      body{padding:0}
+      .page{box-shadow:none;border-radius:0;max-width:none}
+      .page-inner{padding:24px 28px}
+      .actions{display:none}
+    }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="top">
-      <div>
-        <div class="co-name">El C&oacute;ndor S.A.S.</div>
-        <div class="co-sub">Inmobiliaria &amp; Urbanizadora<br>NIT: 900.000.000-0</div>
+    <div class="watermark"><span>El Cóndor</span></div>
+    <div class="page-inner">
+
+      <div class="top">
+        <div class="co">
+          <div class="co-name">El C&oacute;ndor S.A.S.</div>
+          <div class="co-sub">Inversiones &amp; Construcciones &middot; NIT 901.708.415-1</div>
+        </div>
+        <div class="rec">
+          <div class="rec-title">Recibo</div>
+          <div class="rec-sub">Comprobante de Pago</div>
+        </div>
       </div>
-      <div class="rec-head">
-        <div class="rec-title">RECIBO</div>
-        <div class="rec-sub">Comprobante de Pago</div>
-        <div class="rec-num">N&deg; ${r.numero_recibo || "—"}</div>
-        <div class="rec-date">Emisi&oacute;n: ${r.fecha_emision || "—"}</div>
+
+      <div class="hero">
+        <div class="hero-label">Valor pagado</div>
+        <div class="hero-amount">${valorTxt}</div>
+        ${valorWords ? `<div class="hero-words">${valorWords}</div>` : ""}
+        <div class="hero-meta">
+          <span>N&deg; <strong>${r.numero_recibo || "—"}</strong></span>
+          <span class="dot"></span>
+          <span>Emisi&oacute;n <strong>${r.fecha_emision || "—"}</strong></span>
+        </div>
       </div>
-    </div>
 
-    <div class="stamp-wrap"><div class="stamp">PAGADO</div></div>
+      <div class="body-grid">
+        <div>
+          <div class="col-block">
+            <div class="sec-title">Recibido de</div>
+            <div class="row"><span class="lbl">Cliente</span><span class="val">${r.comprador || "—"}</span></div>
+            ${r.documento ? `<div class="row"><span class="lbl">Documento</span><span class="val">${r.documento}</span></div>` : ""}
+          </div>
+          <div class="col-block">
+            <div class="sec-title">Detalle del pago</div>
+            ${r.fecha_pago  ? `<div class="row"><span class="lbl">Fecha de pago</span><span class="val">${r.fecha_pago}</span></div>` : ""}
+            ${r.metodo_pago ? `<div class="row"><span class="lbl">Medio de pago</span><span class="val">${metodoLabel}</span></div>` : ""}
+            ${r.referencia  ? `<div class="row"><span class="lbl">Referencia</span><span class="val">${r.referencia}</span></div>` : ""}
+          </div>
+        </div>
+        <div>
+          <div class="col-block">
+            <div class="sec-title">Concepto del pago</div>
+            ${r.id_venta != null    ? `<div class="row"><span class="lbl">N&deg; Venta</span><span class="val">#${r.id_venta}</span></div>` : ""}
+            <div class="row"><span class="lbl">Proyecto</span><span class="val">${r.proyecto || "—"}</span></div>
+            <div class="row"><span class="lbl">Lote</span><span class="val">${r.codigo_lote || "—"}</span></div>
+            ${r.numero_cuota != null ? `<div class="row"><span class="lbl">Cuota N&deg;</span><span class="val">${r.numero_cuota}</span></div>` : ""}
+            ${r.numero_factura       ? `<div class="row"><span class="lbl">Factura</span><span class="val">${_rFmtFactNum(r.numero_factura)}</span></div>` : ""}
+          </div>
+        </div>
+      </div>
 
-    <div class="section">
-      <div class="sec-title">Recibido de</div>
-      <div class="row"><span class="lbl">Cliente</span><span class="val">${r.comprador || "—"}</span></div>
-      ${r.documento ? `<div class="row"><span class="lbl">Documento</span><span class="val">${r.documento}</span></div>` : ""}
-    </div>
+      ${r.observaciones ? `<div class="obs"><strong>Observaciones</strong>${r.observaciones}</div>` : ""}
 
-    <div class="section">
-      <div class="sec-title">Concepto del pago</div>
-      ${r.id_venta != null ? `<div class="row"><span class="lbl">N&deg; Venta</span><span class="val">#${r.id_venta}</span></div>` : ""}
-      <div class="row"><span class="lbl">Proyecto</span><span class="val">${r.proyecto || "—"}</span></div>
-      <div class="row"><span class="lbl">Lote</span><span class="val">${r.codigo_lote || "—"}</span></div>
-      ${r.numero_cuota != null ? `<div class="row"><span class="lbl">Cuota N&deg;</span><span class="val">${r.numero_cuota}</span></div>` : ""}
-      ${r.numero_factura ? `<div class="row"><span class="lbl">Factura</span><span class="val">${_rFmtFactNum(r.numero_factura)}</span></div>` : ""}
-    </div>
+      <div class="signatures">
+        <div class="sig">
+          <div class="sig-line"></div>
+          <div class="sig-role">Recibi&oacute;</div>
+          <div class="sig-name">${r.comprador || "—"}</div>
+          <div class="sig-extra">Comprador</div>
+        </div>
+        <div class="sig">
+          <div class="sig-line"></div>
+          <div class="sig-role">Emiti&oacute;</div>
+          <div class="sig-name">${r.emitido_por || "Sistema SGI"}</div>
+          <div class="sig-extra">El C&oacute;ndor S.A.S.</div>
+        </div>
+      </div>
 
-    <div class="section">
-      <div class="sec-title">Detalle del pago</div>
-      ${r.fecha_pago ? `<div class="row"><span class="lbl">Fecha de pago</span><span class="val">${r.fecha_pago}</span></div>` : ""}
-      ${r.metodo_pago ? `<div class="row"><span class="lbl">Medio de pago</span><span class="val">${metodoLabel}</span></div>` : ""}
-      ${r.referencia ? `<div class="row"><span class="lbl">Referencia</span><span class="val">${r.referencia}</span></div>` : ""}
-    </div>
+      <div class="foot">
+        <div class="qr-box">
+          <img src="${qrUrl}" alt="C&oacute;digo de verificaci&oacute;n" loading="lazy">
+        </div>
+        <div class="foot-text">
+          <strong>Documento generado por SGI El C&oacute;ndor</strong> &middot; ${new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}<br>
+          V&aacute;lido como comprobante de pago.<br>
+          Escanee el c&oacute;digo QR para escribirnos por WhatsApp por si tienes dudas con tu recibo.
+        </div>
+      </div>
 
-    <div class="total-box">
-      <span class="total-lbl">Valor recibido</span>
-      <span class="total-amt">${_rFmtCOP(r.valor_pago)}</span>
-    </div>
-
-    ${r.observaciones ? `<div style="margin-top:16px;padding:10px 14px;background:#f9fafb;border-radius:6px;font-size:12px;color:#666">
-      <strong>Observaciones:</strong> ${r.observaciones}
-    </div>` : ""}
-
-    <div class="footer">
-      Emitido por: ${r.emitido_por || "Sistema SGI"} &bull;
-      ${new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}<br>
-      Documento generado por SGI El C&oacute;ndor &bull; Este recibo es v&aacute;lido como comprobante de pago.
     </div>
   </div>
 
   <div class="actions">
-    <button class="btn-p" onclick="window.print()">Imprimir / Descargar PDF</button>
-    <button class="btn-c" onclick="window.close()">Cerrar</button>
+    <button class="btn btn-p" onclick="window.print()">Imprimir o Descargar PDF</button>
+    <button class="btn btn-c" onclick="window.close()">Cerrar</button>
   </div>
 </body>
 </html>`;
