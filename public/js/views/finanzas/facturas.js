@@ -144,7 +144,7 @@ function _buildFacturaHTML(f) {
     <div class="top">
       <div>
         <div class="co-name">El C&oacute;ndor S.A.S.</div>
-        <div class="co-sub">Inmobiliaria &amp; Urbanizadora<br>NIT: 900.000.000-0</div>
+        <div class="co-sub">Inversiones &amp; Construcciones<br>NIT: 901.708.415-1</div>
       </div>
       <div class="inv-head">
         <div class="inv-title">FACTURA</div>

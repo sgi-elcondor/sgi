@@ -438,5 +438,66 @@
     },
   };
 
-  window.SGIExport = { pdf: PDF, xlsx: XLSX };
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Number → words (Spanish, Colombian pesos). Used by the receipt templates.
+  // ─────────────────────────────────────────────────────────────────────────────
+  function numToWordsES(n) {
+    if (!Number.isFinite(n)) return "";
+    n = Math.round(Math.abs(n));
+    if (n === 0) return "CERO PESOS COLOMBIANOS";
+
+    const UNI = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+    const ESP = {
+      10: "DIEZ", 11: "ONCE", 12: "DOCE", 13: "TRECE", 14: "CATORCE", 15: "QUINCE",
+      16: "DIECISÉIS", 17: "DIECISIETE", 18: "DIECIOCHO", 19: "DIECINUEVE",
+      20: "VEINTE", 21: "VEINTIUNO", 22: "VEINTIDÓS", 23: "VEINTITRÉS", 24: "VEINTICUATRO",
+      25: "VEINTICINCO", 26: "VEINTISÉIS", 27: "VEINTISIETE", 28: "VEINTIOCHO", 29: "VEINTINUEVE",
+    };
+    const DEC = ["", "", "", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+    const CEN = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS",
+                 "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+    function u1k(x) {
+      if (x === 0) return "";
+      if (x === 100) return "CIEN";
+      let s = "";
+      const h = Math.floor(x / 100);
+      const r = x % 100;
+      if (h > 0) s += CEN[h];
+      if (r > 0) {
+        if (s) s += " ";
+        if (ESP[r]) s += ESP[r];
+        else {
+          const d = Math.floor(r / 10);
+          const u = r % 10;
+          let part = DEC[d];
+          if (u > 0) part += (part ? " Y " : "") + UNI[u];
+          s += part;
+        }
+      }
+      return s;
+    }
+
+    let out = "";
+    const ml = Math.floor(n / 1_000_000);
+    const k  = Math.floor((n % 1_000_000) / 1000);
+    const r  = n % 1000;
+
+    if (ml > 0) out += (ml === 1 ? "UN MILLÓN" : u1k(ml) + " MILLONES") + " ";
+    if (k  > 0) out += (k  === 1 ? "MIL"       : u1k(k)  + " MIL")      + " ";
+    if (r  > 0) out += u1k(r);
+
+    return out.trim() + " PESOS COLOMBIANOS";
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Datos de contacto del negocio.
+  // EDITAR el número de WhatsApp con el real de atención al cliente de El Cóndor.
+  // Formato: código de país (57 = Colombia) + número celular sin "+" ni espacios.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const CONTACT = {
+    whatsapp: "573218905216",
+  };
+
+  window.SGIExport = { pdf: PDF, xlsx: XLSX, numToWordsES, CONTACT };
 })();
