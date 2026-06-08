@@ -6,6 +6,21 @@ const recibos               = require("../services/recibos.service");
 const { marcarPagadaSiCubre } = require("../services/cuotas.service");
 const { verificarComision } = require("../services/comisiones.service");
 const { actualizarMora }    = require("../services/mora.service");
+const saldos                = require("../services/saldos.service");
+
+// Recompute and persist the estado of the active facturas of a cuota from the canonical
+// saldo (RN-03/§4.2): emitida -> parcialmente_pagada -> pagada. 'anulada' is left as-is.
+async function refrescarFacturasDeCuota(id_cuota) {
+  const { data: links } = await supabase.schema(SCHEMA)
+    .from('cuota_factura').select('id_factura, factura:id_factura(estado)').eq('id_cuota', id_cuota);
+  for (const link of (links || [])) {
+    if (link.factura?.estado === 'anulada') continue;
+    const nuevo = await saldos.getEstadoFactura(link.id_factura);
+    if (nuevo && nuevo !== link.factura?.estado) {
+      await supabase.schema(SCHEMA).from('factura').update({ estado: nuevo }).eq('id_factura', link.id_factura);
+    }
+  }
+}
 
 async function aplicarPagoACuotas(pago, email) {
   const { id_pago, id_venta, id_cuota_propuesta, valor_pago, tipo_pago } = pago;
@@ -94,15 +109,11 @@ async function aplicarPagoACuotas(pago, email) {
 
   for (const id_cuota of cuotasAMarcarPagas) {
     await supabase.schema(SCHEMA).from('cuota').update({ estado: 'pagada' }).eq('id_cuota', id_cuota);
-    const { data: facturaLinks } = await supabase.schema(SCHEMA)
-      .from('cuota_factura').select('id_factura').eq('id_cuota', id_cuota);
-    if (facturaLinks?.length) {
-      await supabase.schema(SCHEMA).from('factura')
-        .update({ estado: 'pagada' })
-        .in('id_factura', facturaLinks.map(f => f.id_factura))
-        .eq('estado', 'emitida');
-    }
   }
+
+  // Refresh factura estado for every cuota touched by this payment (RN-03/§4.2).
+  const cuotasTocadas = [...new Set(filasCuotaPago.map(f => f.id_cuota))];
+  for (const id_cuota of cuotasTocadas) await refrescarFacturasDeCuota(id_cuota);
 }
 
 exports.getAll = async (req, res) => {
@@ -654,18 +665,15 @@ exports.acceptBatch = async (req, res) => {
             .eq('id_cuota', cuotaSnapshot.id_cuota);
         }
       } else {
-        // Fully paid — ensure cuota is 'pagada' and mark all linked facturas
+        // Fully paid — ensure cuota is 'pagada'. Factura estado is refreshed below.
         await supabase.schema(SCHEMA).from('cuota')
           .update({ estado: 'pagada' }).eq('id_cuota', cuotaSnapshot.id_cuota);
-        const { data: facturaLinks } = await supabase.schema(SCHEMA)
-          .from('cuota_factura').select('id_factura').eq('id_cuota', cuotaSnapshot.id_cuota);
-        if (facturaLinks?.length) {
-          await supabase.schema(SCHEMA).from('factura')
-            .update({ estado: 'pagada' })
-            .in('id_factura', facturaLinks.map(f => f.id_factura))
-            .eq('estado', 'emitida');
-        }
       }
+    }
+
+    // Refresh factura estado from the canonical saldo (RN-03/§4.2).
+    if (pagoActual.id_cuota_propuesta) {
+      await refrescarFacturasDeCuota(pagoActual.id_cuota_propuesta);
     }
 
     // Auto-generate receipt using the standard service (RC-YYYYMM-NNNNN format)
@@ -727,22 +735,8 @@ exports.rejectBatch = async (req, res) => {
       motivo:         motivo ? `rechazo_manual:${motivo}` : 'rechazo_manual',
     }]);
 
-    if (pagoActual.id_cuota_propuesta) {
-      const { data: cfLinks } = await supabase.schema(SCHEMA)
-        .from('cuota_factura')
-        .select('id_factura, factura:id_factura(estado)')
-        .eq('id_cuota', pagoActual.id_cuota_propuesta);
-      const idsToAnnul = (cfLinks || [])
-        .filter(cf => cf.factura?.estado === 'emitida')
-        .map(cf => cf.id_factura);
-      if (idsToAnnul.length > 0) {
-        await supabase.schema(SCHEMA)
-          .from('factura')
-          .update({ estado: 'anulada' })
-          .in('id_factura', idsToAnnul);
-      }
-    }
-
+    // RN-09: rejecting a payment does NOT annul the factura. It stays 'emitida' (or
+    // 'parcialmente_pagada'), ready for the comprador to register a new payment.
     results.push({ id_pago, ok: true });
   }
 
