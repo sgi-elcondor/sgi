@@ -1,6 +1,7 @@
 const supabase            = require("../config/supabase");
 const SCHEMA              = "condor";
 const { actualizarMora }  = require("../services/mora.service");
+const saldos              = require("../services/saldos.service");
 
 exports.getPanelDiario = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("v_aux_panel_operaciones_diarias").select("*").single();
@@ -62,13 +63,23 @@ exports.getProyeccionIngresos = async (req, res) => {
     const { data: cuotas, error } = await supabase
       .schema(SCHEMA)
       .from("cuota")
-      .select("id_venta, valor_cuota, fecha_vencimiento")
+      .select("id_venta, valor_cuota, fecha_vencimiento, cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))")
       .neq("estado", "pagada")
       .in("id_venta", ventaIds)
       .not("fecha_vencimiento", "is", null);
 
     if (error) return res.status(500).json({ error: error.message });
-    res.json(_buildProjection(cuotas || []));
+
+    // RN-10: project the remaining saldo (value minus accepted receipts), not the gross cuota.
+    const pendientes = (cuotas || [])
+      .map(c => ({
+        id_venta:          c.id_venta,
+        fecha_vencimiento: c.fecha_vencimiento,
+        valor_cuota:       Math.max(0, Number(c.valor_cuota) - saldos._sumRecibosAceptados(c.cuota_pago)),
+      }))
+      .filter(c => c.valor_cuota > 0);
+
+    res.json(_buildProjection(pendientes));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -120,16 +131,17 @@ exports.getComisionesGerencia = async (req, res) => {
   const ventaIds = rows.map(r => r.id_venta).filter(Boolean);
 
   if (ventaIds.length > 0) {
-    const [{ data: micropagos }, { data: cuotas }] = await Promise.all([
+    const [{ data: micropagos }, { data: pagosVenta }] = await Promise.all([
       supabase.schema(SCHEMA)
         .from("pago_comision")
         .select("id_venta, id_pago_comision, valor, fecha, nota, numero_pago")
         .in("id_venta", ventaIds)
         .order("fecha", { ascending: true }),
       supabase.schema(SCHEMA)
-        .from("cuota")
-        .select("id_venta, estado, valor_cuota")
-        .in("id_venta", ventaIds),
+        .from("pago")
+        .select("id_venta, valor_pago, estado, recibo_pago(id_recibo)")
+        .in("id_venta", ventaIds)
+        .eq("estado", "aceptado"),
     ]);
 
     const microMap       = {};
@@ -139,9 +151,11 @@ exports.getComisionesGerencia = async (req, res) => {
       if (!microMap[m.id_venta]) microMap[m.id_venta] = [];
       microMap[m.id_venta].push(m);
     }
-    for (const c of cuotas || []) {
-      if (c.estado === "pagada")
-        pagadoPorVenta[c.id_venta] = (pagadoPorVenta[c.id_venta] || 0) + Number(c.valor_cuota);
+    // RN-10/RN-19: total paid per venta = receipt-backed payments, same criterion as
+    // verificarComision and the cuota views (single source of truth).
+    for (const p of pagosVenta || []) {
+      if (saldos.pagoLiquidado(p))
+        pagadoPorVenta[p.id_venta] = (pagadoPorVenta[p.id_venta] || 0) + Number(p.valor_pago);
     }
 
     rows.forEach(r => {

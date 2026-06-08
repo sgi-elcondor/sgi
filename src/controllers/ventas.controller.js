@@ -539,7 +539,8 @@ exports.getEstadoFinanciero = async (req, res) => {
             pago:id_pago (
               id_pago,
               fecha_pago,
-              estado
+              estado,
+              recibo_pago(id_recibo)
             )
           )
         )
@@ -564,14 +565,8 @@ exports.getEstadoFinanciero = async (req, res) => {
         let pagadoEnCuota = 0;
 
         pagosCuota.forEach((cp) => {
-          const estadoPago = cp.pago?.estado;
-
-          const pagoValido =
-            !estadoPago ||
-            estadoPago === "aceptado" ||
-            estadoPago === "pagado";
-
-          if (!pagoValido) return;
+          // RN-10/RN-19: only receipt-backed payments count, the single source criterion.
+          if (!saldos.pagoLiquidado(cp.pago)) return;
 
           const valorAplicado = Number(cp.valor_aplicado) || 0;
 
@@ -582,14 +577,6 @@ exports.getEstadoFinanciero = async (req, res) => {
             fecha: cp.pago?.fecha_pago || cuota.fecha_vencimiento,
           });
         });
-
-        if (pagadoEnCuota === 0 && ["pagada", "pagado"].includes(cuota.estado)) {
-          pagadoEnCuota = Number(cuota.valor_cuota) || 0;
-
-          pagosAplicados.push({
-            valor: pagadoEnCuota,
-            fecha: cuota.fecha_vencimiento,          });
-        }
 
         totalPagado += pagadoEnCuota;
       });
