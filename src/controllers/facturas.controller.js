@@ -227,9 +227,14 @@ exports.getCuotasSinFactura = async (req, res) => {
   res.json(result);
 };
 
+// Proactive model: bill overdue cuotas and those about to fall due within N days.
+const PROACTIVE_DIAS = 10;
+
 exports.generarPendientes = async (req, res) => {
   const ESTADOS_FACTURABLES = ["activa", "pre_mora", "en_mora"];
-  const hoy = new Date().toISOString().split("T")[0];
+  const limite = new Date();
+  limite.setDate(limite.getDate() + PROACTIVE_DIAS);
+  const limiteStr = limite.toISOString().split("T")[0];
 
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
@@ -239,7 +244,7 @@ exports.generarPendientes = async (req, res) => {
       cuota_factura(id_cuota),
       venta(id_venta, estado)
     `)
-    .lte("fecha_vencimiento", hoy)
+    .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
