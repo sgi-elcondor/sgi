@@ -612,6 +612,12 @@ exports.rejectBatch = async (req, res) => {
   const results = [];
 
   for (const { id_pago, motivo } of pagos) {
+    // RN-07/RN-20: rejecting a payment requires a documented, explicit motivo.
+    if (!motivo || String(motivo).trim().length < 5) {
+      results.push({ id_pago, ok: false, error: 'El motivo del rechazo es obligatorio (mín. 5 caracteres)' });
+      continue;
+    }
+
     const { data: pagoActual, error: eLeer } = await supabase.schema(SCHEMA)
       .from('pago')
       .select('id_pago, estado, id_venta, id_cuota_propuesta')
@@ -645,7 +651,7 @@ exports.rejectBatch = async (req, res) => {
       valor_anterior: 'pendiente_revision',
       valor_nuevo:    'rechazado',
       usuario_db:     req.usuario.email,
-      motivo:         motivo ? `rechazo_manual:${motivo}` : 'rechazo_manual',
+      motivo:         `rechazo_manual:${String(motivo).trim()}`,
     }]);
 
     // RN-09: rejecting a payment does NOT annul the factura. It stays 'emitida' (or

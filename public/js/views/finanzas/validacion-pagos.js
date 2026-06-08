@@ -221,7 +221,7 @@ window.pvRejectOne = function(idPago) {
         El comprador recibirá una notificación y podrá volver a registrar su comprobante.
       </p>
       <div class="form-group">
-        <label>Motivo del rechazo (opcional)</label>
+        <label>Motivo del rechazo *</label>
         <input id="pv-reject-motivo" type="text" placeholder="Ej: Monto incorrecto, baucher ilegible…" />
       </div>
       <div class="form-actions">
@@ -231,7 +231,11 @@ window.pvRejectOne = function(idPago) {
     </div>`);
 
   document.getElementById('pv-reject-confirm')?.addEventListener('click', async () => {
-    const motivo = document.getElementById('pv-reject-motivo')?.value.trim() || null;
+    const motivo = document.getElementById('pv-reject-motivo')?.value.trim() || '';
+    if (motivo.length < 5) {
+      window.SGIUI?.toast('Indica el motivo del rechazo (mín. 5 caracteres)', 'error', 'Motivo requerido');
+      return;
+    }
     const btn = document.getElementById('pv-reject-confirm');
     btn.disabled = true; btn.textContent = 'Rechazando...';
     try {
