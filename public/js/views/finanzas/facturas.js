@@ -529,13 +529,42 @@ window.facturasDeVentaView = function(grupo) {
     </div>`;
 };
 
+// RN-18/RN-20: annulment requires a documented motivo, recorded in the audit trail.
+function _modalMotivoAnular(onConfirm) {
+  UI.openModal("Anular factura", `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.84rem;line-height:1.5">
+        La anulación es <b>excepcional</b>: solo para corregir errores de datos de una factura emitida sin pagos. Queda registrada en auditoría con tu usuario.
+      </div>
+      <div class="form-group">
+        <label>Motivo de la anulación *</label>
+        <textarea id="anular-motivo" rows="3" placeholder="Describe el error que obliga a anular (mín. 5 caracteres)"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+        <button class="btn btn-danger" id="anular-confirmar">Anular factura</button>
+      </div>
+    </div>`);
+  document.getElementById("anular-confirmar")?.addEventListener("click", async () => {
+    const motivo = document.getElementById("anular-motivo")?.value.trim() || "";
+    if (motivo.length < 5) return UI.toast("Indica el motivo (mín. 5 caracteres)", "error");
+    const btn = document.getElementById("anular-confirmar");
+    btn.disabled = true; btn.textContent = "Anulando...";
+    try {
+      await onConfirm(motivo);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Anular factura";
+      UI.toast(e.message, "error");
+    }
+  });
+}
+
 // Anular desde la vista de detalle y volver al mismo detalle
-window.anularFacturaDetalle = async function(id) {
-  if (!confirm("¿Anular esta factura?")) return;
-  try {
-    await API.patch(`/facturas/${id}/anular`, {});
+window.anularFacturaDetalle = function(id) {
+  _modalMotivoAnular(async (motivo) => {
+    await API.patch(`/facturas/${id}/anular`, { motivo });
+    UI.closeModal();
     UI.toast("Factura anulada", "ok");
-    // Reload data and rebuild the detail group
     const updatedData = await API.get("/facturas").catch(() => []);
     window._facturasMap = {};
     updatedData.forEach(f => { window._facturasMap[f.id_factura] = f; });
@@ -546,9 +575,7 @@ window.anularFacturaDetalle = async function(id) {
     } else {
       facturasView();
     }
-  } catch(e) {
-    UI.toast(e.message, "error");
-  }
+  });
 };
 
 // ── Formulario ────────────────────────────────────────────────────────────────
@@ -660,15 +687,13 @@ window.guardarFactura = async function() {
   }
 };
 
-window.anularFactura = async function(id) {
-  if (!confirm("¿Anular esta factura?")) return;
-  try {
-    await API.patch(`/facturas/${id}/anular`, {});
+window.anularFactura = function(id) {
+  _modalMotivoAnular(async (motivo) => {
+    await API.patch(`/facturas/${id}/anular`, { motivo });
+    UI.closeModal();
     UI.toast("Factura anulada", "ok");
     facturasView();
-  } catch(e) {
-    UI.toast(e.message, "error");
-  }
+  });
 };
 
 })();

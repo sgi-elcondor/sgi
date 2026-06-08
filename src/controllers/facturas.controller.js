@@ -522,8 +522,36 @@ exports.resolverSolicitud = async (req, res) => {
   res.json({ id_solicitud, estado: nuevoEstado, factura });
 };
 
+// §4.2/§4.3: a factura is annulled only to fix data errors, and only while 'emitida'
+// (no receipts applied). RN-18/RN-20: the annulment is recorded with user and motivo.
 exports.anular = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("factura").update({ estado: "anulada" }).eq("id_factura", req.params.id).select().single();
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: "id de factura inválido" });
+
+  const { motivo } = req.body;
+  if (!motivo || String(motivo).trim().length < 5)
+    return res.status(400).json({ error: "Debes indicar el motivo de la anulación" });
+
+  const { data: factura, error: ef } = await supabase.schema(SCHEMA)
+    .from("factura").select("id_factura, estado").eq("id_factura", id).single();
+  if (ef || !factura) return res.status(404).json({ error: "Factura no encontrada" });
+  if (factura.estado !== "emitida")
+    return res.status(400).json({ error: "Solo se puede anular una factura emitida sin pagos aplicados" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("factura").update({ estado: "anulada" }).eq("id_factura", id).select().single();
   if (error) return res.status(400).json({ error: error.message });
+
+  await supabase.schema(SCHEMA).from("auditoria").insert([{
+    tabla_afectada: "factura",
+    id_registro:    id,
+    campo:          "anulacion",
+    valor_anterior: factura.estado,
+    valor_nuevo:    "anulada",
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         String(motivo).trim(),
+  }]);
+
   res.json(data);
 };
