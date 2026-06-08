@@ -13,7 +13,7 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
-  async function abrirModalPago({ idVenta, idCuota, cuota, soloAmortizacion = false, onSuccess } = {}) {
+  async function abrirModalPago({ idVenta, idCuota, cuota, valorPagar, numeroFactura, soloAmortizacion = false, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
@@ -235,14 +235,11 @@
     }
 
     // ── Cuota payment ────────────────────────────────────────────────────────
-    UI.openModal("Preparando factura...", `<div style="display:flex;justify-content:center;padding:2.5rem">${UI.loader()}</div>`);
-
-    let facturaData;
-    try {
-      facturaData = await API.post("/facturas/emitir-para-cuota", { id_cuota: idCuota });
-    } catch (e) {
-      UI.closeModal();
-      window.SGIUI?.toast(e.message || "Error al emitir la factura.", "error");
+    // RN-06: the comprador never emits a factura. The cuota must already have an active
+    // one (proactive emission or an aux-resolved request). We pay the current saldo.
+    const valorAPagar = Number(valorPagar ?? cuota?.valor_pendiente ?? cuota?.valor_cuota ?? 0);
+    if (!valorAPagar || valorAPagar <= 0) {
+      window.SGIUI?.toast("Esta cuota no tiene saldo pendiente.", "error");
       return;
     }
 
@@ -250,10 +247,10 @@
       <div style="display:flex;flex-direction:column;gap:18px">
         <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div>
-            <div style="font-size:.78rem;color:var(--text-muted)">${facturaData.numero_factura}</div>
+            ${numeroFactura ? `<div style="font-size:.78rem;color:var(--text-muted)">${numeroFactura}</div>` : ""}
             <div style="font-size:.875rem;font-weight:600">Cuota #${cuota?.numero_cuota ?? idCuota}${cuota?.es_extraordinaria ? " · Extraordinaria" : ""}${cuota?.tiene_fracciones && cuota?.fraccion_actual ? ` · Subdivisión ${cuota.fraccion_actual}/${cuota.total_fracciones}` : ""}</div>
           </div>
-          <strong style="font-size:1.05rem;white-space:nowrap;color:var(--accent,#ff6a00)">${fmt(facturaData.valor_facturado)}</strong>
+          <strong style="font-size:1.05rem;white-space:nowrap;color:var(--accent,#ff6a00)">${fmt(valorAPagar)}</strong>
         </div>
         ${paymentFields}
       </div>`);
@@ -261,7 +258,7 @@
     _wireEvents(async ({ cuenta, fechaPago, ref, uploadedUrl }) => {
       await API.post("/pagos/comprador", {
         fecha_pago:           fechaPago,
-        valor_pago:           facturaData.valor_facturado,
+        valor_pago:           valorAPagar,
         metodo_pago:          "transferencia",
         numero_cuenta_origen: cuenta,
         url_baucher:          uploadedUrl,
@@ -272,6 +269,41 @@
       });
     });
   }
+
+  // RN-06/RN-11: for a cuota without an active factura the comprador only manifests intent.
+  async function solicitarPago(cuota, idVenta) {
+    UI.openModal("Solicitar pago", `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p style="font-size:.88rem;color:var(--text-muted);line-height:1.5">
+          La factura la emite el equipo contable. Al solicitar, registramos tu intención de pagar la
+          <strong>Cuota #${cuota.numero_cuota}</strong>${cuota.tiene_fracciones ? "" : ` por ${fmt(cuota.valor_cuota)}`}
+          y la emitirán para que puedas pagarla.
+        </p>
+        <div class="form-group">
+          <label>Nota (opcional)</label>
+          <textarea id="sol-nota" rows="2" placeholder="Ej: Quiero adelantar esta cuota."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+          <button class="btn btn-primary" id="sol-enviar">Enviar solicitud</button>
+        </div>
+      </div>`);
+
+    document.getElementById("sol-enviar")?.addEventListener("click", async () => {
+      const nota = document.getElementById("sol-nota")?.value.trim() || undefined;
+      const btn  = document.getElementById("sol-enviar");
+      btn.disabled = true; btn.textContent = "Enviando...";
+      try {
+        await API.post("/facturas/solicitar", { id_cuota: cuota.id_cuota, nota });
+        UI.closeModal();
+        window.SGIUI?.toast("Solicitud enviada. El equipo contable emitirá tu factura.", "success", "Solicitud registrada");
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "Enviar solicitud";
+        window.SGIUI?.toast(e.message, "error", "Error");
+      }
+    });
+  }
+  window._solicitarPagoCuota = solicitarPago;
 
   // ── Comprador cuotas view ──────────────────────────────────────────────────
   window.compradorCuotasView = async function (container) {
@@ -328,10 +360,11 @@
         if (!isPagada) {
           if (enRevision) {
             actionBtn = `<button class="btn btn-sm" disabled style="opacity:.6;cursor:not-allowed;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)">${window.SGIUI?.icon("clock") ?? ""} En revision</button>`;
-          } else if (isCurrent || pagoRechazado) {
-            actionBtn = `<button class="btn btn-primary btn-sm btn-pagar-cuota" data-cuota-idx="${i}">Pagar</button>`;
+          } else if (c.tiene_factura) {
+            const esActual = isCurrent || pagoRechazado;
+            actionBtn = `<button class="btn ${esActual ? "btn-primary" : "btn-ghost"} btn-sm btn-pagar-cuota" data-cuota-idx="${i}">${esActual ? "Pagar" : `${window.SGIUI?.icon("zap") ?? ""} Adelantar`}</button>`;
           } else {
-            actionBtn = `<button class="btn btn-ghost btn-sm btn-pagar-cuota" data-cuota-idx="${i}">${window.SGIUI?.icon("zap") ?? ""} Adelantar</button>`;
+            actionBtn = `<button class="btn btn-ghost btn-sm btn-solicitar-cuota" data-cuota-idx="${i}">${window.SGIUI?.icon("file-text") ?? ""} Solicitar pago</button>`;
           }
         }
         const fraccionBadge = c.tiene_fracciones && c.fraccion_actual
@@ -424,7 +457,13 @@
       document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
         btn.addEventListener("click", () => {
           const cuota = cuotas[Number(btn.dataset.cuotaIdx)];
-          abrirModalPago({ cuota, idVenta: venta.id_venta, idCuota: cuota.id_cuota });
+          abrirModalPago({ cuota, idVenta: venta.id_venta, idCuota: cuota.id_cuota, valorPagar: cuota.valor_pendiente });
+        });
+      });
+      document.querySelectorAll(".btn-solicitar-cuota").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const cuota = cuotas[Number(btn.dataset.cuotaIdx)];
+          solicitarPago(cuota, venta.id_venta);
         });
       });
     }

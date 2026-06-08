@@ -65,7 +65,8 @@ window.misFacturasView = async function (container) {
              ${window.SGIUI?.icon("clock") ?? ""} En revision
            </button>`
         : `<button class="btn btn-primary btn-sm btn-pagar-factura"
-             data-venta="${f.id_venta}" data-cuota="${f.id_cuota}" data-factura="${f.id_factura}">
+             data-venta="${f.id_venta}" data-cuota="${f.id_cuota}" data-factura="${f.id_factura}"
+             data-valor="${f.valor_facturado}" data-num="${f.numero_factura || ""}">
              ${window.SGIUI?.icon("wallet") ?? ""} Pagar
            </button>`;
       return `
@@ -148,9 +149,10 @@ window.misFacturasView = async function (container) {
       btn.addEventListener("click", () => {
         if (typeof window._abrirModalPago !== "function") return;
         window._abrirModalPago({
-          idVenta:   Number(btn.dataset.venta),
-          idCuota:   Number(btn.dataset.cuota),
-          idFactura: Number(btn.dataset.factura),
+          idVenta:       Number(btn.dataset.venta),
+          idCuota:       Number(btn.dataset.cuota),
+          valorPagar:    Number(btn.dataset.valor),
+          numeroFactura: btn.dataset.num || undefined,
           onSuccess: () => {
             btn.disabled = true;
             btn.textContent = "En revision";
