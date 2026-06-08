@@ -74,7 +74,7 @@ exports.getComisionesDetail = async (req, res) => {
     .select(`
       id_venta, id_usuario, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
       venta:id_venta(
-        id_venta, valor_total, fecha_venta, estado,
+        id_venta, valor_total, total_permutas, fecha_venta, estado,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
       )
@@ -127,7 +127,8 @@ exports.getComisionesDetail = async (req, res) => {
 
   const result = (comisiones || []).map(vc => {
     const venta       = vc.venta;
-    const totalPagado = pagadoPorVenta[vc.id_venta] || 0;
+    // Permutas count as payment toward the 30% threshold (business rule).
+    const totalPagado = (pagadoPorVenta[vc.id_venta] || 0) + (Number(venta?.total_permutas) || 0);
     const valorTotal  = Number(venta?.valor_total) || 0;
     const umbral30    = valorTotal * 0.3;
     const ganada      = vc.estado === "ganada" || vc.estado === "pagada"

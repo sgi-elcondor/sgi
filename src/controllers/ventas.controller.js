@@ -590,6 +590,10 @@ exports.getEstadoFinanciero = async (req, res) => {
         totalPagado += pagadoEnCuota;
       });
 
+      // Permutas count as payment toward the lote value (business rule).
+      const totalPermutas = Number(venta.total_permutas) || 0;
+      totalPagado += totalPermutas;
+
       const valorTotal = Number(venta.valor_total) || 0;
       const porcentajePagado = valorTotal > 0
         ? Number(((totalPagado / valorTotal) * 100).toFixed(2))
@@ -599,8 +603,8 @@ exports.getEstadoFinanciero = async (req, res) => {
         .filter((p) => p.fecha)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
-      let acumulado = 0;
-      let fechaCruce30 = null;
+      let acumulado = totalPermutas;
+      let fechaCruce30 = (valorTotal > 0 && acumulado >= valorTotal * 0.3) ? venta.fecha_venta : null;
 
       for (const pago of pagosOrdenados) {
         acumulado += Number(pago.valor) || 0;
@@ -721,7 +725,9 @@ const totalAbonadoExtraordinario = cuotas.reduce((sum, c) => {
   return sum + aplicadoExtraordinario;
 }, 0);
 
-const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario;
+// Permutas count as payment toward the lote value (business rule).
+const totalPermutasVenta = Number(v.total_permutas) || 0;
+const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario + totalPermutasVenta;
 
 const valorTotal          = Number(v.valor_total);
 const saldoPendiente      = Math.max(0, valorTotal - totalPagado);

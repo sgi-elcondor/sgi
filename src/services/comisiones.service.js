@@ -8,7 +8,7 @@ async function verificarComision(id_venta, email) {
   // Load venta value and comisionista links
   const { data: venta, error: ev } = await supabase.schema(SCHEMA)
     .from('venta')
-    .select('valor_total, venta_comisionista(id_usuario, valor_comision, causada)')
+    .select('valor_total, total_permutas, venta_comisionista(id_usuario, valor_comision, causada)')
     .eq('id_venta', id_venta)
     .single();
 
@@ -31,9 +31,11 @@ async function verificarComision(id_venta, email) {
 
   if (ep) return;
 
+  // Permutas count as payment toward the 30% threshold (business rule).
   const totalPagado = (pagos || [])
     .filter(p => saldos.pagoLiquidado(p))
-    .reduce((s, p) => s + Number(p.valor_pago), 0);
+    .reduce((s, p) => s + Number(p.valor_pago), 0)
+    + (Number(venta.total_permutas) || 0);
   const umbral      = Number(venta.valor_total) * UMBRAL_COMISION;
 
   if (totalPagado < umbral) return false;

@@ -118,7 +118,7 @@ exports.getComisionesGerencia = async (req, res) => {
       id_venta, valor_comision, pagada, fecha_ganada, fecha_pagado, estado,
       usuario:id_usuario(nombres, apellidos),
       venta:id_venta(
-        id_venta, fecha_venta, valor_total,
+        id_venta, fecha_venta, valor_total, total_permutas,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
@@ -160,7 +160,8 @@ exports.getComisionesGerencia = async (req, res) => {
 
     rows.forEach(r => {
       const micros      = microMap[r.id_venta] || [];
-      const totalPagado = pagadoPorVenta[r.id_venta] || 0;
+      // Permutas count as payment toward the 30% threshold (business rule).
+      const totalPagado = (pagadoPorVenta[r.id_venta] || 0) + (Number(r.venta?.total_permutas) || 0);
       const valorTotal  = Number(r.venta?.valor_total) || 0;
       const umbral30    = valorTotal * 0.3;
 
