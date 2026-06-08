@@ -39,7 +39,6 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/facturas':              { recurso: 'facturas',      accion: 'actualizar' },
 
   'GET /api/v1/recibos':                        { recurso: 'recibos', accion: 'leer' },
-  'POST /api/v1/recibos':                       { recurso: 'recibos', accion: 'crear' },
   'POST /api/v1/recibos/generar-pendientes':    { recurso: 'recibos', accion: 'crear' },
 
   'GET /api/v1/compradores':                  { recurso: 'compradores',   accion: 'leer' },
