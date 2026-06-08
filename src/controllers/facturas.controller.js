@@ -116,18 +116,10 @@ exports.getAll = async (req, res) => {
     .order("fecha_emision", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
 
-  const { data: pagosEnRevision } = await supabase.schema(SCHEMA)
-    .from('pago')
-    .select('id_cuota_propuesta')
-    .eq('estado', 'pendiente_revision')
-    .not('id_cuota_propuesta', 'is', null);
-  const cuotasEnRevision = new Set((pagosEnRevision || []).map(p => p.id_cuota_propuesta));
-
+  // RN-19: the aux sees every active factura, including those whose cuota has a payment
+  // under review (so a freshly emitted factura is never hidden from the aux list).
   res.json((data || [])
-    .filter(f => {
-      const cuota = f.cuota_factura?.[0]?.cuota;
-      return cuota?.estado !== 'pagada' && !cuotasEnRevision.has(cuota?.id_cuota);
-    })
+    .filter(f => f.cuota_factura?.[0]?.cuota?.estado !== 'pagada')
     .map(f => {
     const link  = f.cuota_factura?.[0];
     const cuota = link?.cuota;
