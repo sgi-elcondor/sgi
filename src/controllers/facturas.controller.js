@@ -154,6 +154,7 @@ exports.getCuotasSinFactura = async (req, res) => {
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
       cuota_factura(id_cuota, id_fraccion, factura:id_factura(estado)),
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
       venta(
         id_venta,
         estado,
@@ -186,12 +187,16 @@ exports.getCuotasSinFactura = async (req, res) => {
       comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
     };
 
+    const totalRecibos       = saldos._sumRecibosAceptados(c.cuota_pago);
     const fracciones         = c.cuota_fraccion || [];
     const facturasExistentes = c.cuota_factura  || [];
 
     if (fracciones.length === 0) {
-      if (!facturasExistentes.some(cf => cf.id_fraccion === null && ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado))) {
-        result.push({ ...base, valor_cuota: c.valor_cuota, tiene_fracciones: false });
+      // RN-10: only offer a cuota with no active factura AND a real pending saldo.
+      const tieneActiva = facturasExistentes.some(cf => cf.id_fraccion === null && ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+      const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+      if (!tieneActiva && saldo > 0) {
+        result.push({ ...base, valor_cuota: saldo, tiene_fracciones: false });
       }
     } else {
       const fraccionesFacturadas = new Set(
@@ -200,18 +205,19 @@ exports.getCuotasSinFactura = async (req, res) => {
           .map(cf => cf.id_fraccion)
           .filter(Boolean)
       );
-      for (const f of fracciones) {
-        if (!fraccionesFacturadas.has(f.id_fraccion)) {
-          result.push({
-            ...base,
-            id_fraccion:       f.id_fraccion,
-            numero_fraccion:   f.numero_fraccion,
-            total_fracciones:  fracciones.length,
-            valor_cuota:       f.valor_fraccion,
-            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
-            tiene_fracciones:  true,
-          });
-        }
+      // Offer only fracciones that are neither already billed nor already covered by receipts.
+      for (const fc of saldos._coberturaFracciones(fracciones, totalRecibos)) {
+        if (fraccionesFacturadas.has(fc.id_fraccion)) continue;
+        if (fc.saldo_pendiente <= 0) continue;
+        result.push({
+          ...base,
+          id_fraccion:       fc.id_fraccion,
+          numero_fraccion:   fc.numero_fraccion,
+          total_fracciones:  fracciones.length,
+          valor_cuota:       fc.saldo_pendiente,
+          fecha_vencimiento: fc.fecha_propuesta || c.fecha_vencimiento,
+          tiene_fracciones:  true,
+        });
       }
     }
   }
