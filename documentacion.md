@@ -135,22 +135,23 @@ Gestión de las cuotas del plan de pago:
 - Las cuotas se generan automáticamente al crear una venta (via `cuotas.service.js`)
 
 #### `pagos.controller.js`
-Registro y consulta de pagos:
-- Registrar un pago aplicado a una o más cuotas
+Registro, validación y consulta de pagos. Según el manual de reglas (v2.0), **todo pago nace en estado `En Revisión`**, sin importar si lo registra el comprador o el auxiliar; ninguno nace aceptado:
+- Registrar un pago contra una cuota que ya tiene una factura activa (RN-01)
 - Consultar el historial de pagos de una venta
-- Registrar pagos extraordinarios (abonos al capital)
-- Cada pago genera automáticamente un recibo
+- Contrastar pagos con transacciones bancarias y aceptarlos o rechazarlos por lotes
+- El recibo y la aplicación del pago a la cuota ocurren **solo al aceptar** el pago (RN-02/RN-07)
 
 #### `facturas.controller.js`
-Emisión y consulta de facturas:
-- Crear facturas asociadas a ventas
-- Listar y filtrar facturas por período o estado
+Emisión y consulta de facturas. **Solo el auxiliar contable emite facturas** (RN-06); el comprador nunca:
+- Emitir la única factura activa de una cuota o fracción, por su saldo real (RN-03/RN-10)
+- Emisión proactiva de facturas vencidas y próximas a vencer
+- Gestionar las **solicitudes de pago** del comprador (intención de pagar una cuota futura): el comprador las crea y el auxiliar las atiende emitiendo la factura
+- Anular una factura emitida con motivo documentado (RN-18/RN-20)
 
 #### `recibos.controller.js`
-Consulta de recibos de pago:
-- Listar recibos emitidos
-- Descargar o visualizar un recibo específico
-- Los recibos se crean automáticamente al registrar un pago (via `recibos.service.js`)
+Consulta de recibos de pago. El recibo es el único documento con poder liberatorio:
+- Listar recibos emitidos — la misma fuente para el auxiliar y el comprador (RN-19)
+- Los recibos se crean **automáticamente al aceptar un pago** (via `recibos.service.js`), con numeración única `RC-YYYYMM-NNNNN` (RN-02/RN-21). No existen recibos provisionales ni con ID negativo
 
 #### `comisionistas.controller.js`
 Seguimiento de comisiones:
@@ -215,6 +216,12 @@ Genera los números únicos de documentos del sistema con el formato `PREFIJO-YY
 
 #### `recibos.service.js`
 Maneja la creación de recibos asociados a pagos. Si el recibo ya existe (por un fallo anterior que dejó datos a medias), lo reutiliza en lugar de crear uno duplicado. Esto garantiza idempotencia en el proceso de emisión de recibos.
+
+#### `saldos.service.js`
+Es la **fuente única de verdad del saldo** de todo el sistema (RN-10 / Principio de Fuente Única). Ningún otro módulo recalcula el saldo por su cuenta: todos consumen este servicio.
+- `getSaldoCuota()` / `getSaldoFraccion()` — saldo pendiente = valor − suma de recibos aceptados vinculados. Los pagos en revisión nunca cuentan
+- `clasificarMora()` — deriva el estado contable (`vigente` / `pre_mora` / `en_mora`) a partir de los días vencidos
+- `getEstadoCuota()` / `getEstadoFactura()` — derivan el estado (no se almacena): la cuota pasa a `pagada` solo con el 100% de recibos; la factura a `parcialmente_pagada` / `pagada` según los recibos que la cubren
 
 ---
 
@@ -419,11 +426,13 @@ El rol `admin` tiene acceso a todo sin restricciones. Adicionalmente, el admin t
 
 ## Flujo de una Venta (ejemplo de proceso completo)
 
+La cadena documental es estricta: **Cuota → Factura → Pago → Recibo**. Ningún documento existe sin su predecesor.
+
 1. Un **asesor** crea una solicitud de venta con el lote, el comprador y las condiciones
 2. Un **auxiliar contable** aprueba y formaliza la venta — en este momento se genera automáticamente el plan de pago con todas las cuotas
-3. Cada mes, el comprador paga sus cuotas — el auxiliar registra el pago en el sistema
-4. Al registrar el pago, se genera automáticamente el recibo con número único
-5. El sistema actualiza el estado de las cuotas pagadas
+3. El **auxiliar** emite la factura de la cuota (automáticamente al acercarse el vencimiento, o atendiendo una solicitud del comprador para una cuota futura). El comprador nunca emite facturas
+4. El **comprador** registra su pago contra esa factura (o el auxiliar lo registra en oficina) — el pago queda **En Revisión**, no genera ingreso todavía
+5. El **auxiliar** valida el pago contra el banco o el dinero recibido y lo **acepta**; solo entonces se genera el recibo con número único y la cuota/factura pasa a `pagada` o `parcialmente_pagada`
 6. Si el comprador se atrasa, el módulo jurídico lo detecta y genera alertas
 
 ---
