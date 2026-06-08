@@ -503,6 +503,113 @@ exports.emitirParaCuota = async (req, res) => {
   });
 };
 
+// RN-06/RN-11: the comprador never emits a factura. For a cuota with no active factura
+// (typically an early payment of a future cuota), the comprador requests it and the aux emits.
+exports.solicitarFactura = async (req, res) => {
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
+
+  const { id_cuota, nota } = req.body;
+  if (!id_cuota) return res.status(400).json({ error: "id_cuota requerido" });
+
+  const { data: cuota } = await supabase.schema(SCHEMA)
+    .from("cuota")
+    .select("id_cuota, estado, venta:id_venta(venta_comprador(id_usuario))")
+    .eq("id_cuota", id_cuota)
+    .single();
+  if (!cuota) return res.status(404).json({ error: "Cuota no encontrada" });
+
+  const owns = (cuota.venta?.venta_comprador || []).some(vc => vc.id_usuario === id_usuario);
+  if (!owns) return res.status(403).json({ error: "No tienes acceso a esta cuota" });
+  if (cuota.estado === "pagada") return res.status(400).json({ error: "Esta cuota ya está pagada" });
+
+  const activa = await _facturaActivaDe(id_cuota, null);
+  if (activa) return res.status(400).json({ error: "Esta cuota ya tiene una factura activa; puedes pagarla directamente" });
+
+  const { data: existente } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .select("id_solicitud")
+    .eq("id_cuota", id_cuota)
+    .eq("id_usuario", id_usuario)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  if (existente) return res.status(200).json({ ...existente, ya_existia: true });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .insert([{ id_cuota, id_usuario, nota: nota || null }])
+    .select()
+    .single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data);
+};
+
+exports.getSolicitudes = async (req, res) => {
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .select(`
+      id_solicitud, id_cuota, nota, created_at,
+      usuario:id_usuario(nombres, apellidos, documento),
+      cuota:id_cuota(
+        numero_cuota, fecha_vencimiento, valor_cuota, estado,
+        venta:id_venta(id_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
+      )
+    `)
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json((data || []).map(s => {
+    const comp  = s.usuario;
+    const cuota = s.cuota;
+    const lote  = cuota?.venta?.lote;
+    return {
+      id_solicitud:      s.id_solicitud,
+      id_cuota:          s.id_cuota,
+      id_venta:          cuota?.venta?.id_venta ?? null,
+      numero_cuota:      cuota?.numero_cuota ?? null,
+      fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
+      valor_cuota:       cuota?.valor_cuota ?? null,
+      nota:              s.nota,
+      created_at:        s.created_at,
+      comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+      documento:         comp?.documento ?? null,
+      proyecto:          lote?.proyecto?.nombre ?? "—",
+      codigo_lote:       lote?.codigo_lote ?? "—",
+    };
+  }));
+};
+
+exports.resolverSolicitud = async (req, res) => {
+  const id_solicitud = Number(req.params.id);
+  if (!id_solicitud) return res.status(400).json({ error: "id de solicitud inválido" });
+
+  const { accion } = req.body;
+  if (!["atender", "descartar"].includes(accion))
+    return res.status(400).json({ error: "accion debe ser 'atender' o 'descartar'" });
+
+  const { data: sol, error: es } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura").select("id_solicitud, id_cuota, estado").eq("id_solicitud", id_solicitud).single();
+  if (es || !sol) return res.status(404).json({ error: "Solicitud no encontrada" });
+  if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue resuelta" });
+
+  let factura = null;
+  if (accion === "atender") {
+    const r = await _emitirFactura(sol.id_cuota, null);
+    if (r.error) return res.status(400).json({ error: r.error });
+    factura = r.factura;
+  }
+
+  const nuevoEstado = accion === "atender" ? "atendida" : "descartada";
+  const { error: eu } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .update({ estado: nuevoEstado, resolved_at: new Date().toISOString() })
+    .eq("id_solicitud", id_solicitud);
+  if (eu) return res.status(400).json({ error: eu.message });
+
+  res.json({ id_solicitud, estado: nuevoEstado, factura });
+};
+
 exports.anular = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("factura").update({ estado: "anulada" }).eq("id_factura", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
