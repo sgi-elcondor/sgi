@@ -721,7 +721,14 @@ const porcentajePagado    = valorTotal > 0 ? Math.min(100, (totalPagado / valorT
 
  
 
-    const cuotaActual = cuotas.find(c => c.estado !== "pagada") || null;
+    // RN-16: a cuota is paid when receipts cover it, derived, not from the stored estado.
+    const cuotaEstaPagada = (c) => {
+      const r = (c.cuota_pago || [])
+        .filter(cp => saldos.pagoLiquidado(cp.pago))
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      return Number(c.valor_cuota) - r <= 0;
+    };
+    const cuotaActual = cuotas.find(c => !cuotaEstaPagada(c)) || null;
 
     let diasCuotaActual = null;
     if (cuotaActual) {
@@ -739,7 +746,7 @@ return {
   porcentaje_propiedad:         vc.porcentaje,
   lote:                         v.lote,
   total_cuotas:                 cuotas.length,
-  cuotas_pagadas:               cuotas.filter(c => c.estado === "pagada").length,
+  cuotas_pagadas:               cuotas.filter(cuotaEstaPagada).length,
 
   total_pagado:                 totalPagado,
   total_abonado_extraordinario: totalAbonadoExtraordinario,
