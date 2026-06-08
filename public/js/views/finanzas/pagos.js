@@ -645,7 +645,7 @@
         numero_cuenta_origen: numero_cuenta_origen || null,
       });
       UI.closeModal();
-      UI.toast("Pago registrado. Recibo generado automáticamente.", "ok");
+      UI.toast("Pago registrado. Queda en revisión: acéptalo en Validación de pagos para emitir el recibo.", "ok");
       if (pagoOrigen === "cuotas" && typeof window.cuotasView === "function") {
         window.cuotasView();
       } else {

@@ -160,18 +160,19 @@ exports.create = async (req, res) => {
 
   if (!cuotas || cuotas.length === 0)
     return res.status(400).json({ error: "Debe seleccionar al menos una cuota" });
+  if (!fecha_pago)  return res.status(400).json({ error: "fecha_pago es obligatorio" });
+  if (!metodo_pago) return res.status(400).json({ error: "metodo_pago es obligatorio" });
 
   const valor_pago = cuotas.reduce((s, c) => s + Number(c.valor_aplicado), 0);
+  if (!valor_pago || valor_pago <= 0)
+    return res.status(400).json({ error: "El valor del pago debe ser mayor a 0" });
 
-  const idsCuotas = cuotas.map(c => c.id_cuota);
-  const { data: cuotasCheck } = await supabase.schema(SCHEMA)
-    .from('cuota').select('id_cuota, numero_cuota, estado').in('id_cuota', idsCuotas);
-  const cuotaPagada = (cuotasCheck || []).find(c => c.estado === 'pagada');
-  if (cuotaPagada)
-    return res.status(400).json({ error: `La cuota #${cuotaPagada.numero_cuota} ya está completamente pagada` });
+  const id_cuota_propuesta = cuotas[0].id_cuota;
 
   const { data: cuotaInfo } = await supabase.schema(SCHEMA)
-    .from("cuota").select("id_venta").eq("id_cuota", cuotas[0].id_cuota).single();
+    .from("cuota").select("id_venta, numero_cuota, estado").eq("id_cuota", id_cuota_propuesta).single();
+  if (cuotaInfo?.estado === "pagada")
+    return res.status(400).json({ error: `La cuota #${cuotaInfo.numero_cuota} ya está completamente pagada` });
 
   const id_venta = cuotaInfo?.id_venta ?? null;
   let id_usuario_comprador = null;
@@ -181,105 +182,44 @@ exports.create = async (req, res) => {
     id_usuario_comprador = vc?.id_usuario ?? null;
   }
 
-  let consec;
-  try { consec = await consecutivos.nextPago(); }
-  catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
+  // RN-22: a cuota with a payment already under review cannot receive another.
+  const { count: yaEnRevision } = await supabase.schema(SCHEMA)
+    .from("pago")
+    .select("id_pago", { count: "exact", head: true })
+    .eq("id_cuota_propuesta", id_cuota_propuesta)
+    .eq("estado", "pendiente_revision");
+  if (yaEnRevision > 0)
+    return res.status(400).json({ error: "Ya hay un pago en revisión para esta cuota" });
 
-  // 1. Crear registro de pago
+  // RN-08: every payment is born 'pendiente_revision', even when the aux registers it
+  // in the office. Allocation to cuotas and recibo generation happen ONLY on acceptance
+  // (acceptBatch), which is the single path where a payment becomes income (RN-02/RN-07).
   const { data: pago, error: ep } = await supabase.schema(SCHEMA).from("pago")
     .insert([{
       fecha_pago,
       valor_pago,
       metodo_pago,
       referencia:           referencia || null,
-      numero_pago:          consec.numero_pago,
-      estado:               "aceptado",
+      estado:               "pendiente_revision",
       id_venta,
       id_usuario:           id_usuario_comprador,
+      id_cuota_propuesta,
+      tipo_pago:            "cuota",
       url_baucher:          url_baucher          || null,
       numero_cuenta_origen: numero_cuenta_origen || null,
     }]).select().single();
   if (ep) return res.status(400).json({ error: ep.message });
 
-  if (id_usuario_comprador && id_venta) {
-    await supabase.schema(SCHEMA)
-      .from('pago')
-      .update({ estado: 'aceptado' })
-      .eq('id_usuario', id_usuario_comprador)
-      .eq('id_venta', id_venta)
-      .eq('estado', 'pendiente_revision')
-      .neq('id_pago', pago.id_pago);
-  }
-
-  // 4. Vincular cuotas al pago
-  const ids = cuotas.map(c => c.id_cuota);
-
-  // Capture estado before inserting so we can undo a DB trigger that fires on cuota_pago INSERT
-  const { data: cuotasPreInsert } = await supabase.schema(SCHEMA)
-    .from("cuota").select("id_cuota, valor_cuota, estado").in("id_cuota", ids);
-  const estadoOrig = {};
-  for (const c of (cuotasPreInsert || [])) estadoOrig[c.id_cuota] = c.estado;
-
-  const cuotaRows = cuotas.map(c => ({
-    id_pago:        pago.id_pago,
-    id_cuota:       c.id_cuota,
-    valor_aplicado: Number(c.valor_aplicado),
-  }));
-  const { error: ec } = await supabase.schema(SCHEMA).from("cuota_pago").insert(cuotaRows);
-  if (ec) return res.status(400).json({ error: ec.message });
-
-  // 5. Mark cuotas as paid based on cumulative accepted payments; undo trigger for partial payments
-  const { data: cuotasDB } = await supabase.schema(SCHEMA)
-    .from("cuota").select("id_cuota, valor_cuota").in("id_cuota", ids);
-  const { data: pagosAplicados } = await supabase.schema(SCHEMA)
-    .from("cuota_pago").select("id_cuota, valor_aplicado, pago:id_pago(estado)").in("id_cuota", ids);
-
-  for (const db of (cuotasDB || [])) {
-    const totalPagado = (pagosAplicados || [])
-      .filter(cp => cp.id_cuota === db.id_cuota && cp.pago?.estado === "aceptado")
-      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-    if (totalPagado >= Number(db.valor_cuota)) {
-      await supabase.schema(SCHEMA).from("cuota")
-        .update({ estado: "pagada" }).eq("id_cuota", db.id_cuota);
-      const { data: facturaLinks } = await supabase.schema(SCHEMA)
-        .from("cuota_factura").select("id_factura").eq("id_cuota", db.id_cuota);
-      if (facturaLinks?.length) {
-        await supabase.schema(SCHEMA).from("factura")
-          .update({ estado: "pagada" })
-          .in("id_factura", facturaLinks.map(f => f.id_factura))
-          .eq("estado", "emitida");
-      }
-    } else {
-      // The DB trigger may have incorrectly set estado='pagada' — restore original estado
-      const { data: chk } = await supabase.schema(SCHEMA)
-        .from("cuota").select("estado").eq("id_cuota", db.id_cuota).single();
-      if (chk?.estado === "pagada") {
-        await supabase.schema(SCHEMA).from("cuota")
-          .update({ estado: estadoOrig[db.id_cuota] || "activa" })
-          .eq("id_cuota", db.id_cuota);
-      }
-    }
-  }
-
-  // 4. Auto-generar recibo con consecutivo correcto
-  const { recibo } = await recibos.crearParaPago({
-    id_pago:     pago.id_pago,
-    numero_pago: consec.numero_pago,
-    emitido_por: req.usuario.email,
-  });
-
   const nombreOp = [req.usuario.nombres, req.usuario.apellidos].filter(Boolean).join(' ') || req.usuario.email;
   await auditoria.log({
     tabla: 'pago', id: pago.id_pago, campo: 'creacion',
     anterior: null,
-    nuevo: JSON.stringify({ valor: valor_pago, metodo: metodo_pago, cuotas: idsCuotas }),
+    nuevo: JSON.stringify({ valor: valor_pago, metodo: metodo_pago, cuota: id_cuota_propuesta }),
     usuario: req.usuario.email,
-    motivo: `pago_directo:nombre:${nombreOp}:rol:${req.usuario.rol || 'operador'}`,
+    motivo: `registro_pago_oficina:nombre:${nombreOp}:rol:${req.usuario.rol || 'auxiliar_contable'}`,
   });
 
-  actualizarMora().catch(e => console.error('[mora]', e.message));
-
-  res.status(201).json({ ...pago, recibo: recibo || null });
+  res.status(201).json(pago);
 };
 
 exports.createAbonoExtraordinario = async (req, res) => {
@@ -490,11 +430,12 @@ exports.createCompradorPago = async (req, res) => {
 };
 
 exports.getContrast = async (req, res) => {
+  // All payments under review, regardless of method (RN-08). Transferencias get a bank
+  // cross-match; efectivo/cheque/permuta always go to manual review.
   const { data: payments, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
     .select('*, usuario:id_usuario(nombres, apellidos), venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre))), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
-    .eq('estado', 'pendiente_revision')
-    .eq('metodo_pago', 'transferencia');
+    .eq('estado', 'pendiente_revision');
 
   if (ep) return res.status(500).json({ error: ep.message });
 
@@ -510,6 +451,10 @@ exports.getContrast = async (req, res) => {
   const candidatePerPago = {};
 
   for (const pago of (payments || [])) {
+    // Only transferencias are cross-matched against bank transactions; the rest fall
+    // through to the manual-review block below.
+    if (pago.metodo_pago !== 'transferencia') continue;
+
     const pagoAmount = Math.abs(Number(pago.valor_pago));
     const pagoRef    = (pago.referencia || '').replace(/\s+/g, '').toLowerCase();
     const pagoDate   = new Date(pago.fecha_pago);
@@ -665,10 +610,12 @@ exports.acceptBatch = async (req, res) => {
       pago = updated;
     }
 
-    await supabase.schema(SCHEMA)
-      .from('bank_transaction')
-      .update({ id_pago, updated_at: new Date().toISOString() })
-      .eq('id_transaction', id_transaction);
+    if (id_transaction) {
+      await supabase.schema(SCHEMA)
+        .from('bank_transaction')
+        .update({ id_pago, updated_at: new Date().toISOString() })
+        .eq('id_transaction', id_transaction);
+    }
 
     await supabase.schema(SCHEMA).from('auditoria').insert([{
       tabla_afectada: 'pago',
