@@ -7,6 +7,5 @@ router.get("/:id/fracciones",        ctrl.getFracciones);
 router.post("/:id/fracciones",       ctrl.setFracciones);
 router.delete("/:id/fracciones",     ctrl.deleteFracciones);
 router.post("/",                     ctrl.create);
-router.patch("/:id/estado",          ctrl.updateEstado);
 router.patch("/:id/valores",         ctrl.updateValores);
 module.exports = router;

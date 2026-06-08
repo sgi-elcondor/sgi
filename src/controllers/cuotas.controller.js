@@ -27,14 +27,6 @@ const { data, error } = await supabase.schema(SCHEMA).from("cuota")
   res.status(201).json(data);
 };
 
-exports.updateEstado = async (req, res) => {
-  const { estado } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("cuota")
-    .update({ estado }).eq("id_cuota", req.params.id).select().single();
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
-};
-
 exports.updateValores = async (req, res) => {
   if (req.usuario.rol !== 'auxiliar_contable') {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
