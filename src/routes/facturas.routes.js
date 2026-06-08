@@ -4,7 +4,6 @@ router.get("/mis-facturas",            ctrl.getMisFacturas);
 router.get("/cuotas-sin-factura",      ctrl.getCuotasSinFactura);
 router.get("/solicitudes",             ctrl.getSolicitudes);
 router.post("/generar-pendientes",     ctrl.generarPendientes);
-router.post("/emitir-para-cuota",      ctrl.emitirParaCuota);
 router.post("/solicitar",              ctrl.solicitarFactura);
 router.patch("/solicitudes/:id",       ctrl.resolverSolicitud);
 router.get("/",             ctrl.getAll);

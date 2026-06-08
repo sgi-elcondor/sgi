@@ -82,7 +82,7 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
 
   'GET /api/v1/facturas/mis-facturas':      { recurso: 'mis_facturas', accion: 'leer' },
-  'POST /api/v1/facturas/emitir-para-cuota': { recurso: 'mis_facturas', accion: 'crear' },
+  'POST /api/v1/facturas/solicitar':        { recurso: 'mis_facturas', accion: 'leer' },
 
   'GET /api/v1/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
 
