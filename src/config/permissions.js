@@ -32,14 +32,14 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/v1/pagos':                       { recurso: 'pagos', accion: 'leer' },
   'POST /api/v1/pagos':                      { recurso: 'pagos', accion: 'crear' },
-  'POST /api/v1/pagos/abono-extraordinario': { recurso: 'pagos', accion: 'crear' },
 
   'GET /api/v1/facturas':              { recurso: 'facturas',      accion: 'leer' },
   'POST /api/v1/facturas':             { recurso: 'facturas',      accion: 'crear' },
   'PUT /api/v1/facturas':              { recurso: 'facturas',      accion: 'actualizar' },
+  'GET /api/v1/facturas/solicitudes':  { recurso: 'facturas',      accion: 'leer' },
+  'PATCH /api/v1/facturas/solicitudes': { recurso: 'facturas',     accion: 'crear' },
 
   'GET /api/v1/recibos':                        { recurso: 'recibos', accion: 'leer' },
-  'POST /api/v1/recibos':                       { recurso: 'recibos', accion: 'crear' },
   'POST /api/v1/recibos/generar-pendientes':    { recurso: 'recibos', accion: 'crear' },
 
   'GET /api/v1/compradores':                  { recurso: 'compradores',   accion: 'leer' },
@@ -81,7 +81,7 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
 
   'GET /api/v1/facturas/mis-facturas':      { recurso: 'mis_facturas', accion: 'leer' },
-  'POST /api/v1/facturas/emitir-para-cuota': { recurso: 'mis_facturas', accion: 'crear' },
+  'POST /api/v1/facturas/solicitar':        { recurso: 'mis_facturas', accion: 'leer' },
 
   'GET /api/v1/recibos/mis-recibos': { recurso: 'mis_recibos', accion: 'leer' },
 

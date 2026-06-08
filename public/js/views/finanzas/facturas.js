@@ -209,12 +209,13 @@ window.facturasView = async function() {
 
   const puedeEscribir = AppState.can('facturas', 'crear');
 
-  const [data, sinFactura] = await Promise.all([
+  const [data, sinFactura, solicitudes] = await Promise.all([
     API.get("/facturas").catch(e => {
       vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
       return null;
     }),
     API.get("/facturas/cuotas-sin-factura").catch(() => []),
+    API.get("/facturas/solicitudes").catch(() => []),
   ]);
   if (!data) return;
 
@@ -263,8 +264,54 @@ window.facturasView = async function() {
     </tr>`;
   }
 
+  const solicitudesHtml = (puedeEscribir && solicitudes.length)
+    ? `<div class="facturas-sin-banner" id="solicitudes-banner">
+        <div class="fsb-head">
+          <div class="fsb-head-info">
+            <span class="fsb-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </span>
+            <div>
+              <strong class="fsb-title">${solicitudes.length} solicitud${solicitudes.length>1?"es":""} de pago</strong>
+              <span class="fsb-sub">Compradores que quieren pagar y necesitan factura. Emítela para habilitar su pago.</span>
+            </div>
+          </div>
+        </div>
+        <div class="fsb-table-wrap">
+          <table class="fsb-table">
+            <thead>
+              <tr>
+                <th>Comprador</th>
+                <th>Proyecto / Lote</th>
+                <th class="fsb-center">Cuota #</th>
+                <th>Vencimiento</th>
+                <th class="fsb-right">Valor</th>
+                <th>Nota</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${solicitudes.map(s => `
+                <tr data-solicitud="${s.id_solicitud}">
+                  <td>${s.comprador}</td>
+                  <td>${s.proyecto} · <strong>${s.codigo_lote}</strong></td>
+                  <td class="fsb-center">${s.numero_cuota ?? "—"}</td>
+                  <td>${UI.date(s.fecha_vencimiento)}</td>
+                  <td class="fsb-right">${UI.fmt(s.valor_cuota)}</td>
+                  <td style="font-size:.82rem;color:var(--text-muted)">${s.nota || "—"}</td>
+                  <td class="fsb-right" style="white-space:nowrap">
+                    <button class="btn btn-primary btn-sm btn-emitir-solicitud">Emitir</button>
+                    <button class="btn btn-ghost btn-sm btn-descartar-solicitud">Descartar</button>
+                  </td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`
+    : "";
+
   const bannerHtml = sinFactura.length
-    ? `<div class="facturas-sin-banner">
+    ? `<div class="facturas-sin-banner" id="sin-factura-banner">
         <div class="fsb-head">
           <div class="fsb-head-info">
             <span class="fsb-icon">
@@ -319,6 +366,7 @@ window.facturasView = async function() {
         ${puedeEscribir ? `<button class="btn btn-primary btn-sm" onclick="facturaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
 
+      ${solicitudesHtml}
       ${bannerHtml}
 
       <div class="table-filters">
@@ -372,7 +420,30 @@ window.facturasView = async function() {
     if (g) facturasDeVentaView(g);
   });
 
-  const banner = vc.querySelector(".facturas-sin-banner");
+  const solBanner = document.getElementById("solicitudes-banner");
+  if (solBanner) {
+    solBanner.addEventListener("click", async e => {
+      const emitir    = e.target.closest(".btn-emitir-solicitud");
+      const descartar = e.target.closest(".btn-descartar-solicitud");
+      if (!emitir && !descartar) return;
+      const row = e.target.closest("tr[data-solicitud]");
+      const id  = row?.dataset.solicitud;
+      if (!id) return;
+      const accion = emitir ? "atender" : "descartar";
+      const btn = e.target.closest("button");
+      btn.disabled = true; btn.textContent = emitir ? "Emitiendo..." : "Descartando...";
+      try {
+        await API.patch(`/facturas/solicitudes/${id}`, { accion });
+        UI.toast(emitir ? "Factura emitida para la solicitud" : "Solicitud descartada", "ok");
+        facturasView();
+      } catch (err) {
+        UI.toast(err.message, "error");
+        btn.disabled = false; btn.textContent = emitir ? "Emitir" : "Descartar";
+      }
+    });
+  }
+
+  const banner = document.getElementById("sin-factura-banner");
   if (banner) {
     banner.addEventListener("click", async e => {
       if (e.target.closest(".btn-generar-todas")) {

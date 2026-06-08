@@ -229,11 +229,7 @@
             <button class="btn btn-ghost btn-sm" onclick="_volverPagosView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
             <h3>Pagos &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
           </div>
-          ${canWrite ? `
-            <div style="display:flex;gap:.5rem">
-              <button class="btn btn-ghost btn-sm" onclick="abonoExtraordinarioForm(${grupo.id_venta ?? "null"})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg> Abono a capital</button>
-              <button class="btn btn-primary btn-sm" onclick="pagoForm(${grupo.id_venta ?? "null"})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>
-            </div>` : ""}
+          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm(${grupo.id_venta ?? "null"})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
         </div>
         <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:.88rem;display:flex;gap:24px;flex-wrap:wrap">
           <span><span style="color:var(--text-muted)">Cliente:</span> <strong>${grupo.comprador}</strong></span>
@@ -645,7 +641,7 @@
         numero_cuenta_origen: numero_cuenta_origen || null,
       });
       UI.closeModal();
-      UI.toast("Pago registrado. Recibo generado automáticamente.", "ok");
+      UI.toast("Pago registrado. Queda en revisión: acéptalo en Validación de pagos para emitir el recibo.", "ok");
       if (pagoOrigen === "cuotas" && typeof window.cuotasView === "function") {
         window.cuotasView();
       } else {
@@ -676,207 +672,6 @@
         </div>
       </div>`;
   }
-
-  // ── Abono a capital (auxiliar) ────────────────────────────────────────────────
-
-  window.abonoExtraordinarioForm = async function(id_venta) {
-    if (!id_venta) return UI.toast("Seleccione una venta para realizar el abono", "error");
-    const hoy = new Date().toISOString().split("T")[0];
-    _baucherFile = null;
-    _baucherUrl  = null;
-
-    const iU = window.SGIUI?.icon("upload-cloud") ?? "";
-
-    UI.openModal("Abono a capital", `
-      <div class="form-grid">
-        <div class="form-group" style="grid-column:1/-1">
-          <label>Valor del abono *</label>
-          <input id="pf_abono_valor" type="text" inputmode="numeric" placeholder="Ej: 5.000.000">
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1">
-          <label>Método de pago *</label>
-          <div class="pago-method-tabs">
-            <button type="button" class="pago-method-tab active" data-method="transferencia">${window.SGIUI?.icon("smartphone") ?? ""} Electrónico</button>
-            <button type="button" class="pago-method-tab" data-method="efectivo">${window.SGIUI?.icon("banknote") ?? ""} Efectivo</button>
-            <button type="button" class="pago-method-tab" data-method="permuta">${window.SGIUI?.icon("arrow-left-right") ?? ""} Permuta</button>
-          </div>
-        </div>
-
-        <div id="pf-fields-transferencia" style="grid-column:1/-1">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-            <div class="form-group">
-              <label>Fecha del pago *</label>
-              <input id="pf_fecha_trans" type="date" value="${hoy}">
-            </div>
-            <div class="form-group">
-              <label>N° cuenta / celular origen</label>
-              <input id="pf_cuenta" type="text" placeholder="Ej: 3001234567">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Referencia / N° transacción *</label>
-            <input id="pf_ref_trans" type="text" placeholder="Ej: TRF-123456">
-          </div>
-        </div>
-
-        <div id="pf-fields-efectivo" style="grid-column:1/-1;display:none">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-            <div class="form-group">
-              <label>Fecha de recepción *</label>
-              <input id="pf_fecha_efect" type="date" value="${hoy}">
-            </div>
-            <div class="form-group">
-              <label>N° recibo físico *</label>
-              <input id="pf_ref_efect" type="text" placeholder="Ej: RC-001">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Observaciones</label>
-            <textarea id="pf_obs_efect" rows="2" style="resize:vertical;min-height:4rem" placeholder="Detalles adicionales del recibo en efectivo"></textarea>
-          </div>
-        </div>
-
-        <div id="pf-fields-permuta" style="grid-column:1/-1;display:none">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-            <div class="form-group">
-              <label>Fecha de la permuta *</label>
-              <input id="pf_fecha_perm" type="date" value="${hoy}">
-            </div>
-            <div class="form-group">
-              <label>N° documento / referencia</label>
-              <input id="pf_ref_perm" type="text" placeholder="Ej: CONT-001">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Descripción del bien o activo *</label>
-            <textarea id="pf_desc_perm" rows="2" style="resize:vertical;min-height:4rem" placeholder="Ej: Vehículo Toyota Corolla 2020, placas ABC123"></textarea>
-          </div>
-        </div>
-
-        <div class="form-group" style="grid-column:1/-1">
-          <label id="pf-baucher-label">Comprobante de pago (baucher)</label>
-          <div class="baucher-upload-area" id="pf-baucher-area">
-            <input type="file" id="pf-baucher-input" accept="image/jpeg,image/png,image/webp,application/pdf">
-            <div id="pf-baucher-empty">
-              <div class="baucher-upload-icon">${iU}</div>
-              <div class="baucher-upload-label">Arrastra el soporte aquí o haz clic para subir</div>
-              <button type="button" class="btn btn-ghost btn-sm" id="pf-baucher-click">${iU} Subir archivo</button>
-            </div>
-            <div id="pf-baucher-preview" style="display:none"></div>
-          </div>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button id="pf_btn_guardar" class="btn btn-primary" onclick="_guardarAbono(${id_venta})">Registrar abono</button>
-      </div>`);
-
-    document.querySelectorAll(".pago-method-tab").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".pago-method-tab").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        const m = btn.dataset.method;
-        document.getElementById("pf-fields-transferencia").style.display = m === "transferencia" ? "block" : "none";
-        document.getElementById("pf-fields-efectivo").style.display      = m === "efectivo"      ? "block" : "none";
-        document.getElementById("pf-fields-permuta").style.display       = m === "permuta"       ? "block" : "none";
-        const lbl = document.getElementById("pf-baucher-label");
-        if (lbl) lbl.textContent = m === "transferencia" ? "Comprobante de pago (baucher)" : "Imagen de soporte (opcional)";
-      });
-    });
-
-    _wireBaucherAdmin();
-
-    const inputAbono = document.getElementById("pf_abono_valor");
-    if (inputAbono && window.MoneyInput) MoneyInput.init(inputAbono);
-
-    window._guardarAbono = async function(ventaId) {
-      const inputEl = document.getElementById("pf_abono_valor");
-      const valor = window.MoneyInput ? MoneyInput.parse(inputEl?.value) : Number(String(inputEl?.value || "0").replace(/\./g, "").replace(",", "."));
-      if (!valor || isNaN(valor) || valor <= 0) return UI.toast("El valor del abono debe ser mayor a 0", "error");
-
-      const metodo = document.querySelector(".pago-method-tab.active")?.dataset.method || "transferencia";
-      let fecha_pago, referencia, numero_cuenta_origen = null;
-
-      if (metodo === "transferencia") {
-        fecha_pago           = document.getElementById("pf_fecha_trans")?.value;
-        referencia           = document.getElementById("pf_ref_trans")?.value.trim();
-        numero_cuenta_origen = document.getElementById("pf_cuenta")?.value.trim() || null;
-        if (!fecha_pago) return UI.toast("Ingrese la fecha del pago", "error");
-        if (!referencia) return UI.toast("La referencia de la transacción es obligatoria", "error");
-      } else if (metodo === "efectivo") {
-        fecha_pago     = document.getElementById("pf_fecha_efect")?.value;
-        const ref      = document.getElementById("pf_ref_efect")?.value.trim();
-        const obs      = document.getElementById("pf_obs_efect")?.value.trim();
-        if (!fecha_pago) return UI.toast("Ingrese la fecha de recepción", "error");
-        if (!ref)        return UI.toast("El número de recibo físico es obligatorio", "error");
-        referencia = obs ? `${ref} — ${obs}` : ref;
-      } else if (metodo === "permuta") {
-        fecha_pago   = document.getElementById("pf_fecha_perm")?.value;
-        const desc   = document.getElementById("pf_desc_perm")?.value.trim();
-        const ref    = document.getElementById("pf_ref_perm")?.value.trim();
-        if (!fecha_pago) return UI.toast("Ingrese la fecha de la permuta", "error");
-        if (!desc)       return UI.toast("Ingrese la descripción del bien o activo", "error");
-        referencia = ref ? `${desc} — ${ref}` : desc;
-      }
-
-      const btn = document.getElementById("pf_btn_guardar");
-      if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
-
-      let url_baucher = null;
-      if (_baucherFile) {
-        if (btn) btn.textContent = "Subiendo soporte...";
-        try {
-          let token = localStorage.getItem("fb_token") || "";
-          try {
-            const fbUser = window._firebaseAuth?.currentUser;
-            if (fbUser) token = await fbUser.getIdToken(false);
-          } catch (_) {}
-          const fd = new FormData();
-          fd.append("baucher", _baucherFile);
-          const res = await fetch("/api/v1/uploads/baucher", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
-          });
-          if (!res.ok) throw new Error(`Error ${res.status} al subir el soporte`);
-          const d = await res.json().catch(() => null);
-          if (!d?.url) throw new Error("El servidor no devolvió la URL del soporte");
-          url_baucher = d.url;
-        } catch (e) {
-          if (btn) { btn.disabled = false; btn.textContent = "Registrar abono"; }
-          UI.toast(e.message || "Error al subir el soporte", "error");
-          return;
-        }
-      }
-
-      if (btn) btn.textContent = "Guardando...";
-      try {
-        await API.post("/pagos/abono-extraordinario", {
-          id_venta:             ventaId,
-          valor_abono:          valor,
-          fecha_pago,
-          metodo_pago:          metodo,
-          referencia:           referencia           || null,
-          url_baucher:          url_baucher          || null,
-          numero_cuenta_origen: numero_cuenta_origen || null,
-        });
-        UI.closeModal();
-        UI.toast("Abono a capital registrado. Recibo generado automáticamente.", "ok");
-        if (window._pagosDetalleGrupo) {
-          const grupoActual = window._pagosDetalleGrupo;
-          const updated = await API.get("/pagos").catch(() => null);
-          if (updated) {
-            const pagosVenta = updated.filter(p => p.id_venta === grupoActual.id_venta);
-            window.pagosDeVentaView({ ...grupoActual, pagos: pagosVenta });
-          }
-        }
-      } catch (e) {
-        if (btn) { btn.disabled = false; btn.textContent = "Registrar abono"; }
-        UI.toast(e.message || "Error al registrar el abono.", "error");
-      }
-    };
-  };
 
   // ── Entry point ───────────────────────────────────────────────────────────────
 

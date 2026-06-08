@@ -1,5 +1,8 @@
 const supabase = require("../config/supabase");
+const saldos   = require("../services/saldos.service");
 const SCHEMA   = "condor";
+
+const ESTADOS_FACTURA_ACTIVA = ["emitida", "parcialmente_pagada"];
 
 function _periodo() {
   const d = new Date();
@@ -30,6 +33,69 @@ async function _buildNumFactura(id_cuota) {
   return `FV-${periodo}-${sigla}-${String(n).padStart(5, "0")}`;
 }
 
+// RN-10: the value to bill is the current saldo (cuota or fracción), discounting receipts.
+async function _saldoParaFactura(id_cuota, id_fraccion) {
+  if (id_fraccion) {
+    const f = await saldos.getSaldoFraccion(id_fraccion);
+    return f ? Number(f.saldo_pendiente) : 0;
+  }
+  const c = await saldos.getSaldoCuota(id_cuota);
+  return c ? Number(c.saldo_pendiente) : 0;
+}
+
+// RN-03: at most one active factura (emitida/parcialmente_pagada) per cuota/fracción.
+async function _facturaActivaDe(id_cuota, id_fraccion) {
+  const { data } = await supabase.schema(SCHEMA)
+    .from("cuota_factura")
+    .select("id_fraccion, factura:id_factura(id_factura, numero_factura, valor_facturado, estado)")
+    .eq("id_cuota", id_cuota);
+  const match = (data || []).find(cf =>
+    (id_fraccion ? cf.id_fraccion === id_fraccion : cf.id_fraccion === null) &&
+    ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado)
+  );
+  return match?.factura || null;
+}
+
+// Emits the single active factura for a cuota/fracción, or reuses the existing one
+// (RN-03). valor defaults to the current saldo; an explicit valorAcordado (<= saldo)
+// supports a partial-payment agreement (Modalidad A, 8.1). Only the aux reaches this.
+async function _emitirFactura(id_cuota, id_fraccion = null, opts = {}) {
+  const { valorAcordado = null, observaciones = null, fecha_emision = null } = opts;
+
+  const existing = await _facturaActivaDe(id_cuota, id_fraccion);
+  if (existing) return { factura: existing, reused: true };
+
+  const saldo = await _saldoParaFactura(id_cuota, id_fraccion);
+  if (saldo <= 0) return { error: "La cuota ya está cubierta; no hay saldo para facturar" };
+
+  let valor = saldo;
+  if (valorAcordado != null) {
+    if (valorAcordado <= 0)    return { error: "El valor a facturar debe ser mayor a 0" };
+    if (valorAcordado > saldo) return { error: "El valor a facturar no puede superar el saldo pendiente" };
+    valor = valorAcordado;
+  }
+
+  let numero_factura;
+  try { numero_factura = await _buildNumFactura(id_cuota); }
+  catch (e) { return { error: `Error al generar número de factura: ${e.message}` }; }
+
+  const { data: factura, error } = await supabase.schema(SCHEMA).from("factura")
+    .insert([{
+      numero_factura,
+      fecha_emision: fecha_emision || new Date().toISOString().split("T")[0],
+      valor_facturado: valor,
+      estado: "emitida",
+      observaciones,
+    }])
+    .select().single();
+  if (error) return { error: error.message };
+
+  await supabase.schema(SCHEMA).from("cuota_factura")
+    .insert([{ id_factura: factura.id_factura, id_cuota, id_fraccion: id_fraccion || null }]);
+
+  return { factura, reused: false };
+}
+
 exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("factura")
@@ -50,18 +116,10 @@ exports.getAll = async (req, res) => {
     .order("fecha_emision", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
 
-  const { data: pagosEnRevision } = await supabase.schema(SCHEMA)
-    .from('pago')
-    .select('id_cuota_propuesta')
-    .eq('estado', 'pendiente_revision')
-    .not('id_cuota_propuesta', 'is', null);
-  const cuotasEnRevision = new Set((pagosEnRevision || []).map(p => p.id_cuota_propuesta));
-
+  // RN-19: the aux sees every active factura, including those whose cuota has a payment
+  // under review (so a freshly emitted factura is never hidden from the aux list).
   res.json((data || [])
-    .filter(f => {
-      const cuota = f.cuota_factura?.[0]?.cuota;
-      return cuota?.estado !== 'pagada' && !cuotasEnRevision.has(cuota?.id_cuota);
-    })
+    .filter(f => f.cuota_factura?.[0]?.cuota?.estado !== 'pagada')
     .map(f => {
     const link  = f.cuota_factura?.[0];
     const cuota = link?.cuota;
@@ -96,6 +154,7 @@ exports.getCuotasSinFactura = async (req, res) => {
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
       cuota_factura(id_cuota, id_fraccion, factura:id_factura(estado)),
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
       venta(
         id_venta,
         estado,
@@ -128,32 +187,37 @@ exports.getCuotasSinFactura = async (req, res) => {
       comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
     };
 
+    const totalRecibos       = saldos._sumRecibosAceptados(c.cuota_pago);
     const fracciones         = c.cuota_fraccion || [];
     const facturasExistentes = c.cuota_factura  || [];
 
     if (fracciones.length === 0) {
-      if (!facturasExistentes.some(cf => cf.id_fraccion === null && cf.factura?.estado === 'emitida')) {
-        result.push({ ...base, valor_cuota: c.valor_cuota, tiene_fracciones: false });
+      // RN-10: only offer a cuota with no active factura AND a real pending saldo.
+      const tieneActiva = facturasExistentes.some(cf => cf.id_fraccion === null && ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+      const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+      if (!tieneActiva && saldo > 0) {
+        result.push({ ...base, valor_cuota: saldo, tiene_fracciones: false });
       }
     } else {
       const fraccionesFacturadas = new Set(
         facturasExistentes
-          .filter(cf => cf.factura?.estado === 'emitida')
+          .filter(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado))
           .map(cf => cf.id_fraccion)
           .filter(Boolean)
       );
-      for (const f of fracciones) {
-        if (!fraccionesFacturadas.has(f.id_fraccion)) {
-          result.push({
-            ...base,
-            id_fraccion:       f.id_fraccion,
-            numero_fraccion:   f.numero_fraccion,
-            total_fracciones:  fracciones.length,
-            valor_cuota:       f.valor_fraccion,
-            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
-            tiene_fracciones:  true,
-          });
-        }
+      // Offer only fracciones that are neither already billed nor already covered by receipts.
+      for (const fc of saldos._coberturaFracciones(fracciones, totalRecibos)) {
+        if (fraccionesFacturadas.has(fc.id_fraccion)) continue;
+        if (fc.saldo_pendiente <= 0) continue;
+        result.push({
+          ...base,
+          id_fraccion:       fc.id_fraccion,
+          numero_fraccion:   fc.numero_fraccion,
+          total_fracciones:  fracciones.length,
+          valor_cuota:       fc.saldo_pendiente,
+          fecha_vencimiento: fc.fecha_propuesta || c.fecha_vencimiento,
+          tiene_fracciones:  true,
+        });
       }
     }
   }
@@ -161,70 +225,73 @@ exports.getCuotasSinFactura = async (req, res) => {
   res.json(result);
 };
 
+// Proactive model: bill overdue cuotas and those about to fall due within N days.
+const PROACTIVE_DIAS = 10;
+
 exports.generarPendientes = async (req, res) => {
   const ESTADOS_FACTURABLES = ["activa", "pre_mora", "en_mora"];
-  const hoy    = new Date().toISOString().split("T")[0];
-  const periodo = _periodo();
+  const limite = new Date();
+  limite.setDate(limite.getDate() + PROACTIVE_DIAS);
+  const limiteStr = limite.toISOString().split("T")[0];
 
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
       id_cuota, id_venta, numero_cuota, valor_cuota,
-      cuota_fraccion(id_fraccion),
-      cuota_factura(id_cuota),
-      venta(id_venta, estado, lote:id_lote(proyecto:id_proyecto(sigla)))
+      cuota_fraccion(id_fraccion, numero_fraccion),
+      cuota_factura(id_fraccion, factura:id_factura(estado)),
+      venta(id_venta, estado)
     `)
-    .lte("fecha_vencimiento", hoy)
+    .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
-  const pendientes = (cuotas || []).filter(c =>
-    !c.cuota_factura?.length &&
-    !c.cuota_fraccion?.length &&
-    ESTADOS_FACTURABLES.includes(c.venta?.estado)
-  );
-  if (!pendientes.length) return res.json({ generadas: 0 });
-
+  // Bill each cuota (or each of its fracciones) that has no ACTIVE factura. An anulada
+  // factura does not count, so a previously-rejected cuota gets billed again.
   let generadas = 0;
-  for (const c of pendientes) {
-    const sigla = c.venta?.lote?.proyecto?.sigla || "GEN";
-    try {
-      const n = await _nextConsec("FV", periodo);
-      const numero_factura = `FV-${periodo}-${sigla}-${String(n).padStart(5, "0")}`;
-      const { data: f, error: ef } = await supabase.schema(SCHEMA).from("factura")
-        .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: c.valor_cuota, estado: "emitida" }])
-        .select("id_factura").single();
-      if (!ef && f) {
-        await supabase.schema(SCHEMA).from("cuota_factura")
-          .insert([{ id_factura: f.id_factura, id_cuota: c.id_cuota }]);
-        generadas++;
+  for (const c of (cuotas || [])) {
+    if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
+
+    const fracciones = c.cuota_fraccion || [];
+    if (fracciones.length) {
+      const facturadas = new Set(
+        (c.cuota_factura || [])
+          .filter(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado))
+          .map(cf => cf.id_fraccion)
+          .filter(Boolean)
+      );
+      for (const f of fracciones) {
+        if (facturadas.has(f.id_fraccion)) continue;
+        const { factura, reused } = await _emitirFactura(c.id_cuota, f.id_fraccion);
+        if (factura && !reused) generadas++;
       }
-    } catch {}
+    } else {
+      const tieneActiva = (c.cuota_factura || [])
+        .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+      if (tieneActiva) continue;
+      const { factura, reused } = await _emitirFactura(c.id_cuota, null);
+      if (factura && !reused) generadas++;
+    }
   }
 
   res.json({ generadas });
 };
 
 exports.create = async (req, res) => {
-  const { fecha_emision, valor_facturado, estado, observaciones, id_cuota, id_fraccion } = req.body;
-  let numero_factura;
-  try {
-    numero_factura = await _buildNumFactura(id_cuota || null);
-  } catch(e) {
-    return res.status(500).json({ error: `Error al generar número de factura: ${e.message}` });
-  }
-  const { data: factura, error: ef } = await supabase.schema(SCHEMA).from("factura")
-    .insert([{ numero_factura, fecha_emision, valor_facturado, estado: estado || "emitida", observaciones }])
-    .select().single();
-  if (ef) return res.status(400).json({ error: ef.message });
-  if (id_cuota) {
-    await supabase.schema(SCHEMA).from("cuota_factura").insert([{
-      id_cuota,
-      id_factura:  factura.id_factura,
-      id_fraccion: id_fraccion || null,
-    }]);
-  }
-  res.status(201).json(factura);
+  const { fecha_emision, valor_facturado, observaciones, id_cuota, id_fraccion } = req.body;
+  if (!id_cuota) return res.status(400).json({ error: "id_cuota requerido" });
+
+  const { data: cuota } = await supabase.schema(SCHEMA)
+    .from("cuota").select("estado").eq("id_cuota", id_cuota).single();
+  if (!cuota) return res.status(404).json({ error: "Cuota no encontrada" });
+  if (cuota.estado === "pagada") return res.status(400).json({ error: "La cuota ya está pagada" });
+
+  const valorAcordado = valor_facturado != null && Number(valor_facturado) > 0 ? Number(valor_facturado) : null;
+  const { factura, reused, error } = await _emitirFactura(id_cuota, id_fraccion || null, {
+    valorAcordado, observaciones: observaciones || null, fecha_emision: fecha_emision || null,
+  });
+  if (error) return res.status(400).json({ error });
+  res.status(reused ? 200 : 201).json(factura);
 };
 
 exports.getMisFacturas = async (req, res) => {
@@ -257,7 +324,7 @@ exports.getMisFacturas = async (req, res) => {
     const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
 
     const facturasEmitidas = (c.cuota_factura || [])
-      .filter(cf => cf.factura?.estado === "emitida")
+      .filter(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado))
       .map(cf => ({ ...cf.factura, id_fraccion: cf.id_fraccion }));
 
     if (!facturasEmitidas.length) continue;
@@ -320,133 +387,111 @@ exports.getMisFacturas = async (req, res) => {
   res.json(result);
 };
 
-exports.emitirParaCuota = async (req, res) => {
-  const { id_cuota } = req.body;
+// RN-06/RN-11: the comprador never emits a factura. For a cuota with no active factura
+// (typically an early payment of a future cuota), the comprador requests it and the aux emits.
+exports.solicitarFactura = async (req, res) => {
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
+
+  const { id_cuota, nota } = req.body;
   if (!id_cuota) return res.status(400).json({ error: "id_cuota requerido" });
 
-  const id_usuario = req.usuario.id_usuario;
-
-  const { data: cuota, error: ec } = await supabase.schema(SCHEMA)
+  const { data: cuota } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select(`
-      id_cuota, numero_cuota, valor_cuota, estado,
-      cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
-      cuota_factura(id_fraccion, factura:id_factura(id_factura, estado, numero_factura, valor_facturado)),
-      cuota_pago(valor_aplicado, pago:id_pago(estado)),
-      venta:id_venta(
-        id_venta, estado,
-        lote:id_lote(proyecto:id_proyecto(sigla)),
-        venta_comprador(id_usuario)
-      )
-    `)
+    .select("id_cuota, estado, venta:id_venta(venta_comprador(id_usuario))")
     .eq("id_cuota", id_cuota)
     .single();
+  if (!cuota) return res.status(404).json({ error: "Cuota no encontrada" });
 
-  if (ec || !cuota) return res.status(404).json({ error: "Cuota no encontrada" });
+  const owns = (cuota.venta?.venta_comprador || []).some(vc => vc.id_usuario === id_usuario);
+  if (!owns) return res.status(403).json({ error: "No tienes acceso a esta cuota" });
+  if (cuota.estado === "pagada") return res.status(400).json({ error: "Esta cuota ya está pagada" });
 
-  const ownsVenta = (cuota.venta?.venta_comprador || []).some(vc => vc.id_usuario === id_usuario);
-  if (!ownsVenta) return res.status(403).json({ error: "No tienes acceso a esta cuota" });
+  const activa = await _facturaActivaDe(id_cuota, null);
+  if (activa) return res.status(400).json({ error: "Esta cuota ya tiene una factura activa; puedes pagarla directamente" });
 
-  if (cuota.estado === "pagada") return res.status(400).json({ error: "Esta cuota ya esta pagada" });
+  const { data: existente } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .select("id_solicitud")
+    .eq("id_cuota", id_cuota)
+    .eq("id_usuario", id_usuario)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  if (existente) return res.status(200).json({ ...existente, ya_existia: true });
 
-  const fracciones = (cuota.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
-  const fraccionesFacturadas = new Set(
-    (cuota.cuota_factura || [])
-      .filter(cf => cf.factura?.estado !== 'anulada')
-      .map(cf => cf.id_fraccion)
-      .filter(Boolean)
-  );
-  const fraccionPendiente = fracciones.find(f => !fraccionesFacturadas.has(f.id_fraccion)) || null;
-
-  if (fraccionPendiente) {
-    const existingFrac = (cuota.cuota_factura || [])
-      .find(cf => cf.id_fraccion === fraccionPendiente.id_fraccion && cf.factura?.estado === "emitida");
-    if (existingFrac) {
-      return res.json({
-        id_factura:       existingFrac.factura.id_factura,
-        numero_factura:   existingFrac.factura.numero_factura,
-        valor_facturado:  existingFrac.factura.valor_facturado,
-        numero_fraccion:  fraccionPendiente.numero_fraccion,
-        total_fracciones: fracciones.length,
-      });
-    }
-
-    const hoy = new Date().toISOString().split("T")[0];
-    let numero_factura;
-    try { numero_factura = await _buildNumFactura(id_cuota); }
-    catch (e) { return res.status(500).json({ error: `Error al generar numero de factura: ${e.message}` }); }
-
-    const { data: factura, error: ef } = await supabase.schema(SCHEMA)
-      .from("factura")
-      .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: fraccionPendiente.valor_fraccion, estado: "emitida" }])
-      .select().single();
-    if (ef) return res.status(500).json({ error: ef.message });
-
-    await supabase.schema(SCHEMA).from("cuota_factura").insert([{
-      id_factura:  factura.id_factura,
-      id_cuota,
-      id_fraccion: fraccionPendiente.id_fraccion,
-    }]);
-
-    return res.status(201).json({
-      id_factura:       factura.id_factura,
-      numero_factura:   factura.numero_factura,
-      valor_facturado:  factura.valor_facturado,
-      numero_fraccion:  fraccionPendiente.numero_fraccion,
-      total_fracciones: fracciones.length,
-    });
-  }
-
-  // No fracciones: deduct any accepted abono payments already applied to this cuota
-  const yaPagado = (cuota.cuota_pago || [])
-    .filter(cp => cp.pago?.estado === 'aceptado')
-    .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-  const valorAFacturar = Math.max(0, Number(cuota.valor_cuota) - yaPagado);
-
-  if (valorAFacturar <= 0)
-    return res.status(400).json({ error: "Esta cuota ya tiene un abono que la cubre completamente" });
-
-  const existing = (cuota.cuota_factura || [])
-    .find(cf => cf.id_fraccion === null && cf.factura?.estado === "emitida");
-  if (existing) {
-    if (Number(existing.factura.valor_facturado) !== valorAFacturar) {
-      await supabase.schema(SCHEMA).from("factura")
-        .update({ valor_facturado: valorAFacturar })
-        .eq("id_factura", existing.factura.id_factura);
-    }
-    return res.json({
-      id_factura:      existing.factura.id_factura,
-      numero_factura:  existing.factura.numero_factura,
-      valor_facturado: valorAFacturar,
-    });
-  }
-
-  const hoy = new Date().toISOString().split("T")[0];
-  let numero_factura;
-  try {
-    numero_factura = await _buildNumFactura(id_cuota);
-  } catch (e) {
-    return res.status(500).json({ error: `Error al generar numero de factura: ${e.message}` });
-  }
-
-  const { data: factura, error: ef } = await supabase.schema(SCHEMA)
-    .from("factura")
-    .insert([{ numero_factura, fecha_emision: hoy, valor_facturado: valorAFacturar, estado: "emitida" }])
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .insert([{ id_cuota, id_usuario, nota: nota || null }])
     .select()
     .single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data);
+};
 
-  if (ef) return res.status(500).json({ error: ef.message });
+exports.getSolicitudes = async (req, res) => {
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .select(`
+      id_solicitud, id_cuota, nota, created_at,
+      usuario:id_usuario(nombres, apellidos, documento),
+      cuota:id_cuota(
+        numero_cuota, fecha_vencimiento, valor_cuota, estado,
+        venta:id_venta(id_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
+      )
+    `)
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
 
-  await supabase.schema(SCHEMA).from("cuota_factura").insert([{
-    id_factura: factura.id_factura,
-    id_cuota,
-  }]);
+  res.json((data || []).map(s => {
+    const comp  = s.usuario;
+    const cuota = s.cuota;
+    const lote  = cuota?.venta?.lote;
+    return {
+      id_solicitud:      s.id_solicitud,
+      id_cuota:          s.id_cuota,
+      id_venta:          cuota?.venta?.id_venta ?? null,
+      numero_cuota:      cuota?.numero_cuota ?? null,
+      fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
+      valor_cuota:       cuota?.valor_cuota ?? null,
+      nota:              s.nota,
+      created_at:        s.created_at,
+      comprador:         comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
+      documento:         comp?.documento ?? null,
+      proyecto:          lote?.proyecto?.nombre ?? "—",
+      codigo_lote:       lote?.codigo_lote ?? "—",
+    };
+  }));
+};
 
-  res.status(201).json({
-    id_factura:      factura.id_factura,
-    numero_factura:  factura.numero_factura,
-    valor_facturado: factura.valor_facturado,
-  });
+exports.resolverSolicitud = async (req, res) => {
+  const id_solicitud = Number(req.params.id);
+  if (!id_solicitud) return res.status(400).json({ error: "id de solicitud inválido" });
+
+  const { accion } = req.body;
+  if (!["atender", "descartar"].includes(accion))
+    return res.status(400).json({ error: "accion debe ser 'atender' o 'descartar'" });
+
+  const { data: sol, error: es } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura").select("id_solicitud, id_cuota, estado").eq("id_solicitud", id_solicitud).single();
+  if (es || !sol) return res.status(404).json({ error: "Solicitud no encontrada" });
+  if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue resuelta" });
+
+  let factura = null;
+  if (accion === "atender") {
+    const r = await _emitirFactura(sol.id_cuota, null);
+    if (r.error) return res.status(400).json({ error: r.error });
+    factura = r.factura;
+  }
+
+  const nuevoEstado = accion === "atender" ? "atendida" : "descartada";
+  const { error: eu } = await supabase.schema(SCHEMA)
+    .from("solicitud_factura")
+    .update({ estado: nuevoEstado, resolved_at: new Date().toISOString() })
+    .eq("id_solicitud", id_solicitud);
+  if (eu) return res.status(400).json({ error: eu.message });
+
+  res.json({ id_solicitud, estado: nuevoEstado, factura });
 };
 
 exports.anular = async (req, res) => {

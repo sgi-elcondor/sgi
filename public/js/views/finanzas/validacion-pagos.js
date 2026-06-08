@@ -180,7 +180,8 @@ window.pvAcceptSelected = async function() {
     const comisionesCausadas = results.filter(r => r.ok && r.comision_causada).length;
 
     if (failed.length) {
-      window.SGIUI?.toast(`${ok} aceptados, ${failed.length} fallidos`, 'error', 'Resultado parcial');
+      const detalle = failed[0]?.error ? `: ${failed[0].error}` : '';
+      window.SGIUI?.toast(`${ok} aceptados, ${failed.length} fallidos${detalle}`, 'error', 'Resultado parcial');
       if (btn) { btn.disabled = false; btn.textContent = 'Aceptar pagos seleccionados'; }
       return;
     }
