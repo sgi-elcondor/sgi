@@ -330,34 +330,42 @@ exports.getMisFacturas = async (req, res) => {
     if (!facturasEmitidas.length) continue;
 
     const lote = c.venta?.lote;
-    let visibleFacturas = facturasEmitidas;
+    const totalAceptado = (c.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
 
+    // Per-fracción remaining saldo (greedy) and the set already covered.
+    const saldoPorFraccion  = {};
+    const coveredFracciones = new Set();
     if (fracciones.length > 0) {
-      const totalAceptado = (c.cuota_pago || [])
-        .filter(cp => cp.pago?.estado === "aceptado")
-        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-
-      const coveredFracciones = new Set();
       let remaining = totalAceptado;
       for (const f of fracciones) {
-        if (remaining >= Number(f.valor_fraccion)) {
-          coveredFracciones.add(f.id_fraccion);
-          remaining -= Number(f.valor_fraccion);
-        } else {
-          break;
-        }
+        const v      = Number(f.valor_fraccion);
+        const pagado = Math.min(v, Math.max(0, remaining));
+        remaining    = Math.max(0, remaining - v);
+        saldoPorFraccion[f.id_fraccion] = Math.max(0, v - pagado);
+        if (pagado >= v) coveredFracciones.add(f.id_fraccion);
       }
-
-      visibleFacturas = facturasEmitidas.filter(f => !coveredFracciones.has(f.id_fraccion));
     }
+    const saldoCuota = Math.max(0, Number(c.valor_cuota) - totalAceptado);
+
+    const visibleFacturas = fracciones.length > 0
+      ? facturasEmitidas.filter(f => !coveredFracciones.has(f.id_fraccion))
+      : facturasEmitidas;
 
     if (!visibleFacturas.length) continue;
 
     for (const factura of visibleFacturas) {
+      // RN-10: pay the remaining saldo, never more than the factura value.
+      const saldoBase    = factura.id_fraccion
+        ? (saldoPorFraccion[factura.id_fraccion] ?? Number(factura.valor_facturado))
+        : saldoCuota;
+      const valorAPagar  = Math.min(Number(factura.valor_facturado), saldoBase);
       result.push({
         id_factura:        factura.id_factura,
         numero_factura:    factura.numero_factura,
         valor_facturado:   factura.valor_facturado,
+        valor_a_pagar:     valorAPagar,
         fecha_emision:     factura.fecha_emision,
         id_cuota:          c.id_cuota,
         numero_cuota:      c.numero_cuota,

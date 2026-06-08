@@ -66,7 +66,7 @@ window.misFacturasView = async function (container) {
            </button>`
         : `<button class="btn btn-primary btn-sm btn-pagar-factura"
              data-venta="${f.id_venta}" data-cuota="${f.id_cuota}" data-factura="${f.id_factura}"
-             data-valor="${f.valor_facturado}" data-num="${f.numero_factura || ""}">
+             data-valor="${f.valor_a_pagar ?? f.valor_facturado}" data-num="${f.numero_factura || ""}">
              ${window.SGIUI?.icon("wallet") ?? ""} Pagar
            </button>`;
       return `
@@ -80,7 +80,7 @@ window.misFacturasView = async function (container) {
             <span class="factura-card-vence ${dl.cls}">${dl.text}</span>
           </div>
           <div class="factura-card-bottom">
-            <span class="factura-card-valor">${fmt(f.valor_facturado)}</span>
+            <span class="factura-card-valor">${fmt(f.valor_a_pagar ?? f.valor_facturado)}</span>
             ${btnPagar}
           </div>
         </div>`;
