@@ -233,18 +233,22 @@ exports.generarPendientes = async (req, res) => {
     .select(`
       id_cuota, id_venta, numero_cuota, valor_cuota,
       cuota_fraccion(id_fraccion),
-      cuota_factura(id_cuota),
+      cuota_factura(factura:id_factura(estado)),
       venta(id_venta, estado)
     `)
     .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
-  const pendientes = (cuotas || []).filter(c =>
-    !c.cuota_factura?.length &&
-    !c.cuota_fraccion?.length &&
-    ESTADOS_FACTURABLES.includes(c.venta?.estado)
-  );
+  // Bill cuotas with no ACTIVE factura (an anulada one does not count). Fractioned cuotas
+  // are billed per fracción, not here.
+  const pendientes = (cuotas || []).filter(c => {
+    if (c.cuota_fraccion?.length) return false;
+    if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) return false;
+    const tieneActiva = (c.cuota_factura || [])
+      .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+    return !tieneActiva;
+  });
   if (!pendientes.length) return res.json({ generadas: 0 });
 
   let generadas = 0;
