@@ -105,7 +105,7 @@ exports.getAll = async (req, res) => {
         id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
-          cuota_pago(valor_aplicado, pago:id_pago(estado)),
+          cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
           cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
             id_venta,
@@ -129,9 +129,7 @@ exports.getAll = async (req, res) => {
     const comp  = cuota?.venta?.venta_comprador?.[0]?.usuario;
 
     // RN-10: remaining saldo to settle this factura (cuota- or fracción-level).
-    const totalAceptado = (cuota?.cuota_pago || [])
-      .filter(cp => cp.pago?.estado === "aceptado")
-      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const totalAceptado = saldos._sumRecibosAceptados(cuota?.cuota_pago);
     let saldoBase = Math.max(0, Number(cuota?.valor_cuota ?? f.valor_facturado) - totalAceptado);
     if (link?.id_fraccion) {
       let remaining = totalAceptado;
@@ -331,7 +329,7 @@ exports.getMisFacturas = async (req, res) => {
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, id_venta,
       cuota_factura(id_fraccion, factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
-      cuota_pago(valor_aplicado, pago:id_pago(estado)),
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
       venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
     `)
     .in("id_venta", ventaIds)
@@ -350,9 +348,7 @@ exports.getMisFacturas = async (req, res) => {
     if (!facturasEmitidas.length) continue;
 
     const lote = c.venta?.lote;
-    const totalAceptado = (c.cuota_pago || [])
-      .filter(cp => cp.pago?.estado === "aceptado")
-      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const totalAceptado = saldos._sumRecibosAceptados(c.cuota_pago);
 
     // Per-fracción remaining saldo (greedy) and the set already covered.
     const saldoPorFraccion  = {};

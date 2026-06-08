@@ -113,7 +113,7 @@ exports.getPendientes = async (req, res) => {
       *,
       venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento, rango_pago))),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
-      cuota_pago(valor_aplicado, pago:id_pago(estado))
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))
     `)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
@@ -142,14 +142,15 @@ exports.getPendientes = async (req, res) => {
       estado:            saldos.clasificarMora(dias),
     };
 
-    const fracciones = c.cuota_fraccion || [];
+    const fracciones   = c.cuota_fraccion || [];
+    const totalRecibos = saldos._sumRecibosAceptados(c.cuota_pago);
 
     if (fracciones.length === 0) {
-      result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: c.valor_cuota, tiene_fracciones: false });
+      // RN-10: pending = value minus accepted receipts (single source criterion).
+      const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+      result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: saldo, tiene_fracciones: false });
     } else {
-      const pagadoAceptado = (c.cuota_pago || [])
-        .filter(cp => cp.pago?.estado === 'aceptado')
-        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      const pagadoAceptado = totalRecibos;
       let acumuladoFrac = 0;
       const fraccionesCompletadas = new Set();
       for (const f of fracciones) {

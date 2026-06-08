@@ -676,7 +676,7 @@ exports.getMisVentas = async (req, res) => {
           cuota_fraccion ( id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta ),
           cuota_pago (
             valor_aplicado,
-            pago:id_pago ( estado, tipo_pago, fecha_pago )
+            pago:id_pago ( estado, tipo_pago, fecha_pago, recibo_pago(id_recibo) )
           ),
           cuota_factura (
             id_fraccion,
@@ -706,7 +706,7 @@ exports.getMisVentas = async (req, res) => {
    const totalPagadoRegular = cuotas.reduce((sum, c) => {
    const aplicadoAceptado = (c.cuota_pago || [])
     .filter(cp =>
-      cp.pago?.estado === "aceptado" &&
+      saldos.pagoLiquidado(cp.pago) &&
       cp.pago?.tipo_pago !== "abono_extraordinario"
     )
     .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
@@ -717,7 +717,7 @@ exports.getMisVentas = async (req, res) => {
 const totalAbonadoExtraordinario = cuotas.reduce((sum, c) => {
   const aplicadoExtraordinario = (c.cuota_pago || [])
     .filter(cp =>
-      cp.pago?.estado === "aceptado" &&
+      saldos.pagoLiquidado(cp.pago) &&
       cp.pago?.tipo_pago === "abono_extraordinario"
     )
     .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
@@ -770,11 +770,11 @@ return {
   } : null,
       cuotas: cuotas.map(c => {
         const pagadoAceptado = (c.cuota_pago || [])
-          .filter(cp => cp.pago?.estado === "aceptado")
+          .filter(cp => saldos.pagoLiquidado(cp.pago))
           .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
         // RN-12: a cuota fully paid before its due date is "pagada anticipadamente".
         const ultimaFechaPago = (c.cuota_pago || [])
-          .filter(cp => cp.pago?.estado === "aceptado" && cp.pago?.fecha_pago)
+          .filter(cp => saldos.pagoLiquidado(cp.pago) && cp.pago?.fecha_pago)
           .reduce((max, cp) => (cp.pago.fecha_pago > max ? cp.pago.fecha_pago : max), "");
         const pagadaAnticipada = c.estado === "pagada" && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
         const pagadoPendiente = (v.pago || [])
