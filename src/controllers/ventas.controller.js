@@ -1,6 +1,7 @@
 const supabase  = require("../config/supabase");
 const cuotasSvc = require("../services/cuotas.service");
 const auditoria = require("../services/auditoria.service");
+const saldos    = require("../services/saldos.service");
 const SCHEMA    = "condor";
 
 exports.getAll = async (req, res) => {
@@ -806,7 +807,8 @@ return {
           tipo:              c.tipo,
           fecha_vencimiento: fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento,
           valor_cuota:       valorAMostrar,
-          estado:            c.estado,
+          // §3.1/RN-19: calculated contable state, same source the aux sees.
+          estado:            c.estado === "pagada" ? "pagada" : saldos.clasificarMora(-dias),
           pagada_anticipada: pagadaAnticipada,
           valor_pagado:      fraccionPendiente ? pagadoEnFracActual : pagadoAceptado,
           valor_pendiente:   Math.max(0, valorAMostrar - (fraccionPendiente ? pagadoEnFracActual : pagadoAceptado)),

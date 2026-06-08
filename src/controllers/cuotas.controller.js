@@ -1,4 +1,5 @@
 const supabase = require("../config/supabase");
+const saldos   = require("../services/saldos.service");
 const SCHEMA   = "condor";
 
 exports.getByVenta = async (req, res) => {
@@ -145,7 +146,8 @@ exports.getPendientes = async (req, res) => {
       numero_cuota:      c.numero_cuota,
       fecha_vencimiento: c.fecha_vencimiento,
       dias_atraso:       dias,
-      estado:            c.estado,
+      // §3.1/RN-19: show the calculated contable state, not the stored flag.
+      estado:            saldos.clasificarMora(dias),
     };
 
     const fracciones = c.cuota_fraccion || [];
