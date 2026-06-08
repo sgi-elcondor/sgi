@@ -232,29 +232,40 @@ exports.generarPendientes = async (req, res) => {
     .from("cuota")
     .select(`
       id_cuota, id_venta, numero_cuota, valor_cuota,
-      cuota_fraccion(id_fraccion),
-      cuota_factura(factura:id_factura(estado)),
+      cuota_fraccion(id_fraccion, numero_fraccion),
+      cuota_factura(id_fraccion, factura:id_factura(estado)),
       venta(id_venta, estado)
     `)
     .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
-  // Bill cuotas with no ACTIVE factura (an anulada one does not count). Fractioned cuotas
-  // are billed per fracción, not here.
-  const pendientes = (cuotas || []).filter(c => {
-    if (c.cuota_fraccion?.length) return false;
-    if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) return false;
-    const tieneActiva = (c.cuota_factura || [])
-      .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
-    return !tieneActiva;
-  });
-  if (!pendientes.length) return res.json({ generadas: 0 });
-
+  // Bill each cuota (or each of its fracciones) that has no ACTIVE factura. An anulada
+  // factura does not count, so a previously-rejected cuota gets billed again.
   let generadas = 0;
-  for (const c of pendientes) {
-    const { factura, reused } = await _emitirFactura(c.id_cuota, null);
-    if (factura && !reused) generadas++;
+  for (const c of (cuotas || [])) {
+    if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
+
+    const fracciones = c.cuota_fraccion || [];
+    if (fracciones.length) {
+      const facturadas = new Set(
+        (c.cuota_factura || [])
+          .filter(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado))
+          .map(cf => cf.id_fraccion)
+          .filter(Boolean)
+      );
+      for (const f of fracciones) {
+        if (facturadas.has(f.id_fraccion)) continue;
+        const { factura, reused } = await _emitirFactura(c.id_cuota, f.id_fraccion);
+        if (factura && !reused) generadas++;
+      }
+    } else {
+      const tieneActiva = (c.cuota_factura || [])
+        .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+      if (tieneActiva) continue;
+      const { factura, reused } = await _emitirFactura(c.id_cuota, null);
+      if (factura && !reused) generadas++;
+    }
   }
 
   res.json({ generadas });
