@@ -105,6 +105,8 @@ exports.getAll = async (req, res) => {
         id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
+          cuota_pago(valor_aplicado, pago:id_pago(estado)),
+          cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
             id_venta,
             lote(codigo_lote, proyecto(nombre)),
@@ -125,11 +127,29 @@ exports.getAll = async (req, res) => {
     const cuota = link?.cuota;
     const lote  = cuota?.venta?.lote;
     const comp  = cuota?.venta?.venta_comprador?.[0]?.usuario;
+
+    // RN-10: remaining saldo to settle this factura (cuota- or fracción-level).
+    const totalAceptado = (cuota?.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    let saldoBase = Math.max(0, Number(cuota?.valor_cuota ?? f.valor_facturado) - totalAceptado);
+    if (link?.id_fraccion) {
+      let remaining = totalAceptado;
+      for (const fr of (cuota?.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion)) {
+        const v = Number(fr.valor_fraccion);
+        const pagado = Math.min(v, Math.max(0, remaining));
+        remaining = Math.max(0, remaining - v);
+        if (fr.id_fraccion === link.id_fraccion) { saldoBase = Math.max(0, v - pagado); break; }
+      }
+    }
+    const valorAPagar = Math.min(Number(f.valor_facturado), saldoBase);
+
     return {
       id_factura:        f.id_factura,
       numero_factura:    f.numero_factura,
       fecha_emision:     f.fecha_emision,
       valor_facturado:   f.valor_facturado,
+      valor_a_pagar:     valorAPagar,
       estado:            f.estado,
       observaciones:     f.observaciones,
       id_fraccion:       link?.id_fraccion         ?? null,
