@@ -1,9 +1,7 @@
 const supabase              = require("../config/supabase");
 const SCHEMA                = "condor";
-const consecutivos          = require("../services/consecutivos.service");
 const auditoria             = require("../services/auditoria.service");
 const recibos               = require("../services/recibos.service");
-const { marcarPagadaSiCubre } = require("../services/cuotas.service");
 const { verificarComision } = require("../services/comisiones.service");
 const { actualizarMora }    = require("../services/mora.service");
 const saldos                = require("../services/saldos.service");
@@ -241,109 +239,6 @@ exports.create = async (req, res) => {
   res.status(201).json(pago);
 };
 
-exports.createAbonoExtraordinario = async (req, res) => {
-  const { id_venta, valor_abono, fecha_pago, metodo_pago, referencia, url_baucher, numero_cuenta_origen } = req.body;
-
-  if (!id_venta)
-    return res.status(400).json({ error: "id_venta es obligatorio" });
-  if (!valor_abono || Number(valor_abono) <= 0)
-    return res.status(400).json({ error: "valor_abono debe ser mayor a 0" });
-  if (!fecha_pago)
-    return res.status(400).json({ error: "fecha_pago es obligatorio" });
-  if (!metodo_pago)
-    return res.status(400).json({ error: "metodo_pago es obligatorio" });
-
-  const allowedMethods = ["transferencia", "efectivo", "cheque", "permuta"];
-  if (!allowedMethods.includes(metodo_pago))
-    return res.status(400).json({ error: "metodo_pago invalido" });
-
-  const valorAbono = Number(valor_abono);
-
-  const { data: cuotasPendientes, error: errorCuotas } = await supabase
-    .schema(SCHEMA).from("cuota")
-    .select("id_cuota, id_venta, numero_cuota, valor_cuota, estado")
-    .eq("id_venta", id_venta).not("estado", "eq", "pagada")
-    .order("numero_cuota", { ascending: false });
-
-  if (errorCuotas) return res.status(500).json({ error: errorCuotas.message });
-  if (!cuotasPendientes || cuotasPendientes.length === 0)
-    return res.status(400).json({ error: "La venta no tiene cuotas pendientes para aplicar el abono extraordinario" });
-
-  const idsCuotas = cuotasPendientes.map(c => c.id_cuota);
-  const { data: pagosPrevios, error: errorPagosPrevios } = await supabase
-    .schema(SCHEMA).from("cuota_pago").select("id_cuota, valor_aplicado").in("id_cuota", idsCuotas);
-  if (errorPagosPrevios) return res.status(500).json({ error: errorPagosPrevios.message });
-
-  const totalPagadoPorCuota = {};
-  for (const pp of (pagosPrevios || [])) {
-    totalPagadoPorCuota[pp.id_cuota] = (totalPagadoPorCuota[pp.id_cuota] || 0) + Number(pp.valor_aplicado || 0);
-  }
-
-  let valorRestante = valorAbono;
-  const cuotasAfectadas = [];
-  for (const cuota of cuotasPendientes) {
-    if (valorRestante <= 0) break;
-    const valorCuota    = Number(cuota.valor_cuota);
-    const totalPagado   = totalPagadoPorCuota[cuota.id_cuota] || 0;
-    const saldoCuota    = Math.max(valorCuota - totalPagado, 0);
-    if (saldoCuota <= 0) continue;
-    const valorAplicado = Math.min(valorRestante, saldoCuota);
-    cuotasAfectadas.push({
-      id_cuota: cuota.id_cuota,
-      numero_cuota: cuota.numero_cuota,
-      valor_cuota: valorCuota,
-      total_pagado_previo: totalPagado,
-      saldo_cuota: saldoCuota,
-      valor_aplicado: valorAplicado,
-      estado_anterior: cuota.estado,
-      estado_resultante: valorAplicado >= saldoCuota ? "pagada" : "pendiente",
-    });
-    valorRestante -= valorAplicado;
-  }
-
-  if (cuotasAfectadas.length === 0)
-    return res.status(400).json({ error: "No se encontraron saldos pendientes para aplicar el abono extraordinario" });
-  if (valorRestante > 0)
-    return res.status(400).json({ error: "El valor del abono excede el saldo pendiente de las cuotas", valor_abono: valorAbono, valor_sin_aplicar: valorRestante, cuotas_afectadas: cuotasAfectadas });
-
-  const totalAplicado = cuotasAfectadas.reduce((t, c) => t + Number(c.valor_aplicado), 0);
-
-  let pagConsec;
-  try { pagConsec = await consecutivos.nextPago(); }
-  catch (e) { return res.status(500).json({ error: `Error al generar consecutivo: ${e.message}` }); }
-
-  const { data: pago, error: errorPago } = await supabase.schema(SCHEMA).from("pago")
-    .insert([{
-      fecha_pago, valor_pago: totalAplicado, metodo_pago,
-      referencia:           referencia           || null,
-      url_baucher:          url_baucher          || null,
-      numero_cuenta_origen: numero_cuenta_origen || null,
-      numero_pago: pagConsec.numero_pago, tipo_pago: "abono_extraordinario", estado: "aceptado", id_venta,
-    }])
-    .select().single();
-  if (errorPago) return res.status(400).json({ error: errorPago.message });
-
-  const registrosCuotaPago = cuotasAfectadas.map(c => ({ id_pago: pago.id_pago, id_cuota: c.id_cuota, valor_aplicado: Number(c.valor_aplicado) }));
-  const { error: errorCuotaPago } = await supabase.schema(SCHEMA).from("cuota_pago").insert(registrosCuotaPago);
-  if (errorCuotaPago) return res.status(400).json({ error: errorCuotaPago.message });
-
-  for (const cuota of cuotasAfectadas) {
-    await marcarPagadaSiCubre(cuota.id_cuota, cuota.valor_aplicado);
-    await auditoria.log({
-      tabla: "cuota", id: cuota.id_cuota, campo: "abono_extraordinario",
-      anterior: cuota.estado_anterior,
-      nuevo: JSON.stringify({ id_pago: pago.id_pago, numero_pago: pagConsec.numero_pago, id_venta, numero_cuota: cuota.numero_cuota, valor_aplicado: cuota.valor_aplicado, estado_resultante: cuota.estado_resultante }),
-      usuario: req.usuario?.email || "sistema", motivo: "abono_extraordinario",
-    });
-  }
-
-  const { recibo, error: reciboError } = await recibos.crearParaPago({ id_pago: pago.id_pago, numero_pago: pagConsec.numero_pago, emitido_por: req.usuario?.email || "sistema" });
-
-  actualizarMora().catch(e => console.error('[mora]', e.message));
-
-  return res.status(201).json({ message: "Abono extraordinario registrado correctamente", pago, recibo: recibo || null, recibo_error: reciboError || null, total_aplicado: totalAplicado, cuotas_afectadas: cuotasAfectadas });
-};
-
 exports.getMisPagos = async (req, res) => {
   const id_usuario = req.usuario.id_usuario;
   if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
@@ -376,13 +271,15 @@ exports.createCompradorPago = async (req, res) => {
   const {
     fecha_pago, valor_pago, metodo_pago,
     numero_cuenta_origen, url_baucher,
-    id_venta, id_cuota_propuesta, tipo_pago,
+    id_venta, id_cuota_propuesta,
     referencia,
   } = req.body;
 
   if (!fecha_pago)   return res.status(400).json({ error: "fecha_pago es obligatorio" });
   if (!valor_pago || Number(valor_pago) <= 0) return res.status(400).json({ error: "valor_pago debe ser mayor a 0" });
   if (!metodo_pago)  return res.status(400).json({ error: "metodo_pago es obligatorio" });
+  // RN-01: every comprador payment targets a specific cuota with an active factura.
+  if (!id_cuota_propuesta) return res.status(400).json({ error: "Debes seleccionar la cuota a pagar" });
 
   const allowed = ["transferencia", "efectivo", "cheque", "permuta"];
   if (!allowed.includes(metodo_pago)) return res.status(400).json({ error: "metodo_pago invalido" });
@@ -433,7 +330,7 @@ exports.createCompradorPago = async (req, res) => {
       estado:               "pendiente_revision",
       url_baucher:          url_baucher || null,
       numero_cuenta_origen: numero_cuenta_origen || null,
-      tipo_pago:            tipo_pago || "cuota",
+      tipo_pago:            "cuota",
       id_usuario,
       id_venta:             id_venta || null,
       id_cuota_propuesta:   id_cuota_propuesta || null,
@@ -448,7 +345,7 @@ exports.createCompradorPago = async (req, res) => {
     id_registro:    pago.id_pago,
     campo:          "creacion_comprobante",
     valor_anterior: null,
-    valor_nuevo:    JSON.stringify({ valor: pago.valor_pago, metodo: metodo_pago, tipo: tipo_pago }),
+    valor_nuevo:    JSON.stringify({ valor: pago.valor_pago, metodo: metodo_pago, tipo: "cuota" }),
     usuario_db:     req.usuario.email,
     motivo:         "comprobante_comprador",
   }]);

@@ -32,7 +32,6 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/v1/pagos':                       { recurso: 'pagos', accion: 'leer' },
   'POST /api/v1/pagos':                      { recurso: 'pagos', accion: 'crear' },
-  'POST /api/v1/pagos/abono-extraordinario': { recurso: 'pagos', accion: 'crear' },
 
   'GET /api/v1/facturas':              { recurso: 'facturas',      accion: 'leer' },
   'POST /api/v1/facturas':             { recurso: 'facturas',      accion: 'crear' },

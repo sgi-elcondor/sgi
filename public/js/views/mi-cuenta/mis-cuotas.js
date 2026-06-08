@@ -13,7 +13,7 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
-  async function abrirModalPago({ idVenta, idCuota, cuota, valorPagar, numeroFactura, soloAmortizacion = false, onSuccess } = {}) {
+  async function abrirModalPago({ idVenta, idCuota, cuota, valorPagar, numeroFactura, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
     const iconCash    = window.SGIUI?.icon("banknote")      ?? "";
@@ -212,28 +212,6 @@
       });
     }
 
-    // ── Amortizacion ──────────────────────────────────────────────────────────
-    if (soloAmortizacion) {
-      UI.openModal("Abono a capital", `
-        <div style="display:flex;flex-direction:column;gap:18px">
-          <div class="form-group">
-            <label>Valor del abono *</label>
-            <input type="number" id="mp-valor" min="1" placeholder="Ej: 5000000" />
-          </div>
-          ${paymentFields}
-        </div>`);
-      _wireEvents(async ({ cuenta, fechaPago, ref, uploadedUrl }) => {
-        const valor = Number(document.getElementById("mp-valor").value);
-        if (!valor || valor <= 0) throw new Error("El valor del abono debe ser mayor a 0.");
-        await API.post("/pagos/comprador", {
-          fecha_pago: fechaPago, valor_pago: valor, metodo_pago: "transferencia",
-          numero_cuenta_origen: cuenta, url_baucher: uploadedUrl, referencia: ref,
-          id_venta: idVenta || undefined, tipo_pago: "amortizacion",
-        });
-      });
-      return;
-    }
-
     // ── Cuota payment ────────────────────────────────────────────────────────
     // RN-06: the comprador never emits a factura. The cuota must already have an active
     // one (proactive emission or an aux-resolved request). We pay the current saldo.
@@ -426,7 +404,7 @@
             kicker: "Mis cuotas",
             title: `${venta.lote?.proyecto?.nombre || "Mi inmueble"}`,
             subtitle: `Lote ${venta.lote?.codigo_lote || "—"}${venta.lote?.manzana ? " · Manzana " + venta.lote.manzana : ""}`,
-            actions: venta.porcentaje_pagado < 100 ? `<button class="btn btn-ghost" id="btn-amortizacion">${window.SGIUI?.icon("zap") ?? ""} Abono a capital</button>` : "",
+            actions: "",
             meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
           }) ?? ""}
           ${buildLoteSelector(idx)}
@@ -451,9 +429,6 @@
         });
       });
 
-      document.getElementById("btn-amortizacion")?.addEventListener("click", () =>
-        abrirModalPago({ idVenta: venta.id_venta, soloAmortizacion: true })
-      );
       document.querySelectorAll(".btn-pagar-cuota").forEach(btn => {
         btn.addEventListener("click", () => {
           const cuota = cuotas[Number(btn.dataset.cuotaIdx)];
