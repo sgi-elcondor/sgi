@@ -185,6 +185,14 @@ exports.create = async (req, res) => {
   if (cuotaInfo?.estado === "pagada")
     return res.status(400).json({ error: `La cuota #${cuotaInfo.numero_cuota} ya está completamente pagada` });
 
+  // RN-01: a payment requires an active factura for the cuota.
+  const { data: cfLinks } = await supabase.schema(SCHEMA)
+    .from("cuota_factura").select("factura:id_factura(estado)").eq("id_cuota", id_cuota_propuesta);
+  const tieneFacturaActiva = (cfLinks || [])
+    .some(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
+  if (!tieneFacturaActiva)
+    return res.status(400).json({ error: "Esta cuota no tiene una factura activa. Emite la factura antes de registrar el pago." });
+
   const id_venta = cuotaInfo?.id_venta ?? null;
   let id_usuario_comprador = null;
   if (id_venta) {
@@ -405,6 +413,14 @@ exports.createCompradorPago = async (req, res) => {
       .eq("estado", "pendiente_revision");
     if (yaEnRevision > 0)
       return res.status(400).json({ error: "Ya hay un comprobante en revisión para esta cuota" });
+
+    // RN-01: a payment requires an active factura for the cuota.
+    const { data: cfLinks } = await supabase.schema(SCHEMA)
+      .from("cuota_factura").select("factura:id_factura(estado)").eq("id_cuota", id_cuota_propuesta);
+    const tieneFacturaActiva = (cfLinks || [])
+      .some(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
+    if (!tieneFacturaActiva)
+      return res.status(400).json({ error: "Esta cuota no tiene una factura activa. Solicita su emisión antes de pagar." });
   }
 
   const { data: pago, error: ep } = await supabase.schema(SCHEMA)

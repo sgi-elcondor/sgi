@@ -311,7 +311,7 @@ exports.getMisFacturas = async (req, res) => {
     const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
 
     const facturasEmitidas = (c.cuota_factura || [])
-      .filter(cf => cf.factura?.estado === "emitida")
+      .filter(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado))
       .map(cf => ({ ...cf.factura, id_fraccion: cf.id_fraccion }));
 
     if (!facturasEmitidas.length) continue;
