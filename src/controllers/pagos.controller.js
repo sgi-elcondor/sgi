@@ -570,10 +570,21 @@ exports.acceptBatch = async (req, res) => {
       motivo:         `validacion_transaccion_bancaria:${id_transaction}`,
     }]);
 
-    // Allocate payment to cuotas and check commission threshold
-    let comision_causada = false;
+    // Allocate the payment to cuotas.
     if (pagoActual.id_venta) {
       await aplicarPagoACuotas(pagoActual, req.usuario.email);
+    }
+
+    // RN-02: emit the receipt BEFORE the commission check so this payment counts toward
+    // the 30% threshold under the single receipt-backed criterion (RN-19).
+    await recibos.crearParaPago({
+      id_pago,
+      numero_pago: pago.numero_pago,
+      emitido_por: req.usuario.email,
+    });
+
+    let comision_causada = false;
+    if (pagoActual.id_venta) {
       comision_causada = await verificarComision(pagoActual.id_venta, req.usuario.email).catch(() => false);
     }
 
@@ -607,13 +618,6 @@ exports.acceptBatch = async (req, res) => {
     if (pagoActual.id_cuota_propuesta) {
       await refrescarFacturasDeCuota(pagoActual.id_cuota_propuesta);
     }
-
-    // Auto-generate receipt using the standard service (RC-YYYYMM-NNNNN format)
-    await recibos.crearParaPago({
-      id_pago,
-      numero_pago: pago.numero_pago,
-      emitido_por: req.usuario.email,
-    });
 
     results.push({ id_pago, ok: true, pago, comision_causada });
   }
