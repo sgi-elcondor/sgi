@@ -75,8 +75,6 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/v1/ventas/mis-ventas':   { recurso: 'mis_ventas',  accion: 'leer' },
 
-  'GET /api/v1/cuotas/mis-cuotas':   { recurso: 'mis_cuotas',  accion: 'leer' },
-
   'GET /api/v1/pagos/mis-pagos':     { recurso: 'mis_pagos',   accion: 'leer' },
   'POST /api/v1/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
 

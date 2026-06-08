@@ -1,6 +1,5 @@
 ﻿const router = require("express").Router();
 const ctrl   = require("../controllers/cuotas.controller");
-router.get("/mis-cuotas",            ctrl.getMisCuotas);
 router.get("/pendientes",            ctrl.getPendientes);
 router.get("/vencidas",              ctrl.getVencidas);
 router.get("/venta/:idVenta",        ctrl.getByVenta);
