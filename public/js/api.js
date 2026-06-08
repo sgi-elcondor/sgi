@@ -4,7 +4,7 @@ async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem("fb_token");
 
   if (!token) {
-    window.location.href = "/login.html";
+    window.location.href = "/login";
     return;
   }
 
@@ -35,13 +35,13 @@ async function apiFetch(endpoint, options = {}) {
       } else {
         // Only redirect if Firebase confirms there is no active session
         localStorage.removeItem("fb_token");
-        window.location.href = "/login.html";
+        window.location.href = "/login";
         return;
       }
     } catch {
       // Token refresh error — only redirect if there is no active session
       if (!window._firebaseAuth?.currentUser) {
-        window.location.href = "/login.html";
+        window.location.href = "/login";
         return;
       }
     }

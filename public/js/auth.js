@@ -63,7 +63,7 @@ async function loginGoogle() {
 async function logout() {
   await signOut(auth);
   localStorage.removeItem('fb_token');
-  window.location.href = '/login.html';
+  window.location.href = '/login';
 }
 
 // Waits for Firebase — used in login.html to detect an active session
