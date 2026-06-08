@@ -37,16 +37,17 @@ window.reportesView = async function () {
     const ventasActivas = todasVentas.filter(v => v.estado === "activa").length;
     const casosMora     = todasVentas.filter(v => ["en_mora", "pre_mora", "devolucion"].includes(v.estado)).length;
 
-    const pagosDeEsteMes  = pagos.filter(p => p.estado === "aceptado" && String(p.fecha_pago || "").slice(0, 7) === mesActual);
+    // RN-10/RN-19: only receipt-backed accepted payments count as realized income.
+    const pagosDeEsteMes  = pagos.filter(p => p.estado === "aceptado" && p.numero_recibo && String(p.fecha_pago || "").slice(0, 7) === mesActual);
     const totalRecaudado  = pagosDeEsteMes.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
 
-    const capitalPendiente = cuotasPend.reduce((s, c) => s + Number(c.valor_pendiente || c.valor_cuota || 0), 0);
+    const capitalPendiente = cuotasPend.reduce((s, c) => s + Number(c.valor_pendiente ?? c.valor_cuota ?? 0), 0);
 
-    const cuotasVencidas = cuotasVenc.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+    const cuotasVencidas = cuotasVenc.reduce((s, c) => s + Number(c.valor_pendiente ?? c.valor_cuota ?? 0), 0);
     const numCuotasVenc  = cuotasVenc.length;
 
     const vencMes      = cuotasVenc.filter(c => String(c.fecha_vencimiento || "").slice(0, 7) === mesActual);
-    const totalVencMes = vencMes.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+    const totalVencMes = vencMes.reduce((s, c) => s + Number(c.valor_pendiente ?? c.valor_cuota ?? 0), 0);
     const base         = totalRecaudado + totalVencMes;
     const cumplimiento = base > 0 ? (totalRecaudado / base) * 100 : 0;
 
@@ -283,7 +284,7 @@ function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
     }
     const byMonth = {};
     months.forEach(m => { byMonth[m] = 0; });
-    (pagos || []).filter(p => p.estado === "aceptado").forEach(p => {
+    (pagos || []).filter(p => p.estado === "aceptado" && p.numero_recibo).forEach(p => {
       const m = String(p.fecha_pago || "").slice(0, 7);
       if (Object.prototype.hasOwnProperty.call(byMonth, m)) byMonth[m] += Number(p.valor_pago || 0);
     });

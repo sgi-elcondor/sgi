@@ -83,11 +83,20 @@ exports.getById = async (req, res) => {
     .select(`*, lote(*, proyecto(nombre)),
       venta_comprador(*, usuario:id_usuario(*)),
       venta_comisionista(*, usuario:id_usuario(*)),
-      cuota(*)`)
+      cuota(*, cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))))`)
     .eq("id_venta", id)
     .single();
 
   if (error) return res.status(404).json({ error: error.message });
+
+  // RN-10/RN-19: attach the receipt-backed paid amount and derived paid flag per cuota,
+  // so the ventas module shows the same reality as every other view (no stored-estado trust).
+  for (const c of (data.cuota || [])) {
+    const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
+    c.valor_pagado    = pagado;
+    c.valor_pendiente = Math.max(0, Number(c.valor_cuota) - pagado);
+    c.pagada          = c.valor_pendiente <= 0;
+  }
 
   res.json(data);
 };
