@@ -57,14 +57,14 @@
           ${g.facturas.map(f => `
             <label style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-top:1px solid var(--border);cursor:pointer">
               <input type="radio" name="factura_sel" value="${f.id_factura}"
-                data-valor="${f.valor_facturado}" style="flex-shrink:0">
+                data-valor="${f.valor_a_pagar ?? f.valor_facturado}" style="flex-shrink:0">
               <span style="flex:1;font-size:.83rem;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
                 <span>
                   Factura <strong>${fmtFactNum(f.numero_factura)}</strong>
                   &bull; Cuota #${f.numero_cuota ?? "—"}
                   &bull; Vence: ${UI.date(f.fecha_vencimiento)}
                 </span>
-                <span style="font-weight:600;white-space:nowrap">${UI.fmt(f.valor_facturado)}</span>
+                <span style="font-weight:600;white-space:nowrap">${UI.fmt(f.valor_a_pagar ?? f.valor_facturado)}</span>
               </span>
             </label>`).join("")}
         </div>
@@ -522,7 +522,7 @@
         <div class="form-group" style="grid-column:1/-1">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border)">
             <span style="color:var(--text-muted)">Valor a pagar:</span>
-            <strong id="pf_valor" style="font-size:1.1rem">${cuotaFactura ? UI.fmt(cuotaFactura.valor_facturado) : "—"}</strong>
+            <strong id="pf_valor" style="font-size:1.1rem">${cuotaFactura ? UI.fmt(cuotaFactura.valor_a_pagar ?? cuotaFactura.valor_facturado) : "—"}</strong>
           </div>
         </div>
       </div>
@@ -629,7 +629,7 @@
 
     if (btn) btn.textContent = "Guardando...";
 
-    const cuotas = [{ id_cuota: factura.id_cuota, id_factura: factura.id_factura, valor_aplicado: Number(factura.valor_facturado) }];
+    const cuotas = [{ id_cuota: factura.id_cuota, id_factura: factura.id_factura, valor_aplicado: Number(factura.valor_a_pagar ?? factura.valor_facturado) }];
 
     try {
       await API.post("/pagos", {

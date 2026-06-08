@@ -105,6 +105,8 @@ exports.getAll = async (req, res) => {
         id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
+          cuota_pago(valor_aplicado, pago:id_pago(estado)),
+          cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
             id_venta,
             lote(codigo_lote, proyecto(nombre)),
@@ -125,11 +127,29 @@ exports.getAll = async (req, res) => {
     const cuota = link?.cuota;
     const lote  = cuota?.venta?.lote;
     const comp  = cuota?.venta?.venta_comprador?.[0]?.usuario;
+
+    // RN-10: remaining saldo to settle this factura (cuota- or fracción-level).
+    const totalAceptado = (cuota?.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    let saldoBase = Math.max(0, Number(cuota?.valor_cuota ?? f.valor_facturado) - totalAceptado);
+    if (link?.id_fraccion) {
+      let remaining = totalAceptado;
+      for (const fr of (cuota?.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion)) {
+        const v = Number(fr.valor_fraccion);
+        const pagado = Math.min(v, Math.max(0, remaining));
+        remaining = Math.max(0, remaining - v);
+        if (fr.id_fraccion === link.id_fraccion) { saldoBase = Math.max(0, v - pagado); break; }
+      }
+    }
+    const valorAPagar = Math.min(Number(f.valor_facturado), saldoBase);
+
     return {
       id_factura:        f.id_factura,
       numero_factura:    f.numero_factura,
       fecha_emision:     f.fecha_emision,
       valor_facturado:   f.valor_facturado,
+      valor_a_pagar:     valorAPagar,
       estado:            f.estado,
       observaciones:     f.observaciones,
       id_fraccion:       link?.id_fraccion         ?? null,
@@ -330,34 +350,42 @@ exports.getMisFacturas = async (req, res) => {
     if (!facturasEmitidas.length) continue;
 
     const lote = c.venta?.lote;
-    let visibleFacturas = facturasEmitidas;
+    const totalAceptado = (c.cuota_pago || [])
+      .filter(cp => cp.pago?.estado === "aceptado")
+      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
 
+    // Per-fracción remaining saldo (greedy) and the set already covered.
+    const saldoPorFraccion  = {};
+    const coveredFracciones = new Set();
     if (fracciones.length > 0) {
-      const totalAceptado = (c.cuota_pago || [])
-        .filter(cp => cp.pago?.estado === "aceptado")
-        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
-
-      const coveredFracciones = new Set();
       let remaining = totalAceptado;
       for (const f of fracciones) {
-        if (remaining >= Number(f.valor_fraccion)) {
-          coveredFracciones.add(f.id_fraccion);
-          remaining -= Number(f.valor_fraccion);
-        } else {
-          break;
-        }
+        const v      = Number(f.valor_fraccion);
+        const pagado = Math.min(v, Math.max(0, remaining));
+        remaining    = Math.max(0, remaining - v);
+        saldoPorFraccion[f.id_fraccion] = Math.max(0, v - pagado);
+        if (pagado >= v) coveredFracciones.add(f.id_fraccion);
       }
-
-      visibleFacturas = facturasEmitidas.filter(f => !coveredFracciones.has(f.id_fraccion));
     }
+    const saldoCuota = Math.max(0, Number(c.valor_cuota) - totalAceptado);
+
+    const visibleFacturas = fracciones.length > 0
+      ? facturasEmitidas.filter(f => !coveredFracciones.has(f.id_fraccion))
+      : facturasEmitidas;
 
     if (!visibleFacturas.length) continue;
 
     for (const factura of visibleFacturas) {
+      // RN-10: pay the remaining saldo, never more than the factura value.
+      const saldoBase    = factura.id_fraccion
+        ? (saldoPorFraccion[factura.id_fraccion] ?? Number(factura.valor_facturado))
+        : saldoCuota;
+      const valorAPagar  = Math.min(Number(factura.valor_facturado), saldoBase);
       result.push({
         id_factura:        factura.id_factura,
         numero_factura:    factura.numero_factura,
         valor_facturado:   factura.valor_facturado,
+        valor_a_pagar:     valorAPagar,
         fecha_emision:     factura.fecha_emision,
         id_cuota:          c.id_cuota,
         numero_cuota:      c.numero_cuota,
@@ -494,8 +522,36 @@ exports.resolverSolicitud = async (req, res) => {
   res.json({ id_solicitud, estado: nuevoEstado, factura });
 };
 
+// §4.2/§4.3: a factura is annulled only to fix data errors, and only while 'emitida'
+// (no receipts applied). RN-18/RN-20: the annulment is recorded with user and motivo.
 exports.anular = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("factura").update({ estado: "anulada" }).eq("id_factura", req.params.id).select().single();
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: "id de factura inválido" });
+
+  const { motivo } = req.body;
+  if (!motivo || String(motivo).trim().length < 5)
+    return res.status(400).json({ error: "Debes indicar el motivo de la anulación" });
+
+  const { data: factura, error: ef } = await supabase.schema(SCHEMA)
+    .from("factura").select("id_factura, estado").eq("id_factura", id).single();
+  if (ef || !factura) return res.status(404).json({ error: "Factura no encontrada" });
+  if (factura.estado !== "emitida")
+    return res.status(400).json({ error: "Solo se puede anular una factura emitida sin pagos aplicados" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("factura").update({ estado: "anulada" }).eq("id_factura", id).select().single();
   if (error) return res.status(400).json({ error: error.message });
+
+  await supabase.schema(SCHEMA).from("auditoria").insert([{
+    tabla_afectada: "factura",
+    id_registro:    id,
+    campo:          "anulacion",
+    valor_anterior: factura.estado,
+    valor_nuevo:    "anulada",
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         String(motivo).trim(),
+  }]);
+
   res.json(data);
 };

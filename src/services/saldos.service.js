@@ -32,13 +32,17 @@ function _diasVencida(fechaVencimiento, hoy = new Date()) {
   return Math.floor((hoy - venc) / 86_400_000);
 }
 
+// RN-14/15: classify an unpaid cuota by days overdue.
+function clasificarMora(diasVencida) {
+  if (diasVencida <= 0)         return 'vigente';
+  if (diasVencida <= MORA_DIAS) return 'pre_mora';
+  return 'en_mora';
+}
+
 // RN-04/14/15/16: cuota state is derived from saldo + days, never stored.
 function _clasificarEstado({ valorCuota, totalRecibos, fechaVencimiento, hoy = new Date() }) {
   if (_saldo(valorCuota, totalRecibos) <= 0) return 'pagada';
-  const dias = _diasVencida(fechaVencimiento, hoy);
-  if (dias <= 0)         return 'vigente';
-  if (dias <= MORA_DIAS) return 'pre_mora';
-  return 'en_mora';
+  return clasificarMora(_diasVencida(fechaVencimiento, hoy));
 }
 
 // RN-03 / 4.2: factura state derived from the receipts covering its value.
@@ -193,6 +197,7 @@ async function getEstadoFactura(id_factura) {
 
 module.exports = {
   MORA_DIAS,
+  clasificarMora,
   getSaldoCuota,
   getResumenCuota,
   getEstadoCuota,

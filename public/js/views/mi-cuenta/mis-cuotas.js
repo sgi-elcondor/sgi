@@ -310,7 +310,7 @@
 
     function diasLabel(c) {
       const d = c.dias_restantes;
-      if (c.estado === "pagada") return { text: "Pagada", cls: "muted" };
+      if (c.estado === "pagada") return { text: c.pagada_anticipada ? "Pagada anticipadamente" : "Pagada", cls: "muted" };
       if (d < 0)   return { text: `Vencida hace ${Math.abs(d)} dia${Math.abs(d)!==1?"s":""}`, cls: "danger" };
       if (d === 0) return { text: "Vence hoy", cls: "warning" };
       if (d <= 3)  return { text: `Vence en ${d} dia${d!==1?"s":""}`, cls: "warning" };
@@ -390,7 +390,11 @@
               ${pagoRechazado && !enRevision ? `<div class="cuota-card-rechazado">${window.SGIUI?.icon("x-circle") ?? ""} Comprobante rechazado — vuelve a registrar tu pago</div>` : ""}
             </div>
             <div class="cuota-card-right">
-              ${isPagada ? '<span class="badge badge-success">Pagada</span>' : UI.badge(c.estado)}
+              ${isPagada
+                ? (c.pagada_anticipada
+                    ? '<span class="badge badge-info">Pagada anticipadamente</span>'
+                    : '<span class="badge badge-success">Pagada</span>')
+                : UI.badge(c.estado)}
               ${actionBtn}
             </div>
           </div>`;

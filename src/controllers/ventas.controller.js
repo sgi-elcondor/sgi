@@ -1,6 +1,7 @@
 const supabase  = require("../config/supabase");
 const cuotasSvc = require("../services/cuotas.service");
 const auditoria = require("../services/auditoria.service");
+const saldos    = require("../services/saldos.service");
 const SCHEMA    = "condor";
 
 exports.getAll = async (req, res) => {
@@ -675,7 +676,7 @@ exports.getMisVentas = async (req, res) => {
           cuota_fraccion ( id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta ),
           cuota_pago (
             valor_aplicado,
-            pago:id_pago ( estado, tipo_pago )
+            pago:id_pago ( estado, tipo_pago, fecha_pago )
           ),
           cuota_factura (
             id_fraccion,
@@ -771,6 +772,11 @@ return {
         const pagadoAceptado = (c.cuota_pago || [])
           .filter(cp => cp.pago?.estado === "aceptado")
           .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+        // RN-12: a cuota fully paid before its due date is "pagada anticipadamente".
+        const ultimaFechaPago = (c.cuota_pago || [])
+          .filter(cp => cp.pago?.estado === "aceptado" && cp.pago?.fecha_pago)
+          .reduce((max, cp) => (cp.pago.fecha_pago > max ? cp.pago.fecha_pago : max), "");
+        const pagadaAnticipada = c.estado === "pagada" && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
         const pagadoPendiente = (v.pago || [])
           .filter(p => p.estado === "pendiente_revision" && p.id_cuota_propuesta === c.id_cuota)
           .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
@@ -801,7 +807,9 @@ return {
           tipo:              c.tipo,
           fecha_vencimiento: fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento,
           valor_cuota:       valorAMostrar,
-          estado:            c.estado,
+          // §3.1/RN-19: calculated contable state, same source the aux sees.
+          estado:            c.estado === "pagada" ? "pagada" : saldos.clasificarMora(-dias),
+          pagada_anticipada: pagadaAnticipada,
           valor_pagado:      fraccionPendiente ? pagadoEnFracActual : pagadoAceptado,
           valor_pendiente:   Math.max(0, valorAMostrar - (fraccionPendiente ? pagadoEnFracActual : pagadoAceptado)),
           valor_en_revision: pagadoPendiente,

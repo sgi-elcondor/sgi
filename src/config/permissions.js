@@ -38,6 +38,7 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/facturas':              { recurso: 'facturas',      accion: 'actualizar' },
   'GET /api/v1/facturas/solicitudes':  { recurso: 'facturas',      accion: 'leer' },
   'PATCH /api/v1/facturas/solicitudes': { recurso: 'facturas',     accion: 'crear' },
+  'PATCH /api/v1/facturas/anular':     { recurso: 'facturas',      accion: 'crear' },
 
   'GET /api/v1/recibos':                        { recurso: 'recibos', accion: 'leer' },
   'POST /api/v1/recibos/generar-pendientes':    { recurso: 'recibos', accion: 'crear' },
@@ -74,8 +75,6 @@ const ROUTE_PERMISSIONS = {
 
 
   'GET /api/v1/ventas/mis-ventas':   { recurso: 'mis_ventas',  accion: 'leer' },
-
-  'GET /api/v1/cuotas/mis-cuotas':   { recurso: 'mis_cuotas',  accion: 'leer' },
 
   'GET /api/v1/pagos/mis-pagos':     { recurso: 'mis_pagos',   accion: 'leer' },
   'POST /api/v1/pagos/comprador':    { recurso: 'mis_pagos',   accion: 'crear' },
