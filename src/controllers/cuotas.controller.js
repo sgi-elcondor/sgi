@@ -182,17 +182,27 @@ exports.getVencidas = async (req, res) => {
   const hoy = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))")
+    .select(`
+      id_cuota, numero_cuota, fecha_vencimiento, valor_cuota,
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))
+    `)
     .lt("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json((data || []).map(c => {
+  const result = [];
+  for (const c of (data || [])) {
+    // RN-10/RN-16: real saldo and state derived from receipts, never from the stored estado.
+    const totalRecibos = saldos._sumRecibosAceptados(c.cuota_pago);
+    const saldo        = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+    if (saldo <= 0) continue;
+
     const lote      = c.venta?.lote;
     const comprador = c.venta?.venta_comprador?.[0]?.usuario;
     const dias      = Math.floor((Date.now() - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
-    return {
+    result.push({
       id_cuota:          c.id_cuota,
       proyecto:          lote?.proyecto?.nombre || "—",
       codigo_lote:       lote?.codigo_lote      || "—",
@@ -201,10 +211,11 @@ exports.getVencidas = async (req, res) => {
       fecha_vencimiento: c.fecha_vencimiento,
       dias_atraso:       dias,
       valor_cuota:       c.valor_cuota,
-      valor_pendiente:   c.valor_cuota,
-      estado:            c.estado,
-    };
-  }));
+      valor_pendiente:   saldo,
+      estado:            saldos.clasificarMora(dias),
+    });
+  }
+  res.json(result);
 };
 
 

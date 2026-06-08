@@ -776,7 +776,9 @@ return {
         const ultimaFechaPago = (c.cuota_pago || [])
           .filter(cp => saldos.pagoLiquidado(cp.pago) && cp.pago?.fecha_pago)
           .reduce((max, cp) => (cp.pago.fecha_pago > max ? cp.pago.fecha_pago : max), "");
-        const pagadaAnticipada = c.estado === "pagada" && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
+        // RN-16: paid state derived from receipts, not from the stored estado column.
+        const cuotaPagada = Number(c.valor_cuota) - pagadoAceptado <= 0;
+        const pagadaAnticipada = cuotaPagada && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
         const pagadoPendiente = (v.pago || [])
           .filter(p => p.estado === "pendiente_revision" && p.id_cuota_propuesta === c.id_cuota)
           .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
@@ -808,7 +810,7 @@ return {
           fecha_vencimiento: fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento,
           valor_cuota:       valorAMostrar,
           // §3.1/RN-19: calculated contable state, same source the aux sees.
-          estado:            c.estado === "pagada" ? "pagada" : saldos.clasificarMora(-dias),
+          estado:            cuotaPagada ? "pagada" : saldos.clasificarMora(-dias),
           pagada_anticipada: pagadaAnticipada,
           valor_pagado:      fraccionPendiente ? pagadoEnFracActual : pagadoAceptado,
           valor_pendiente:   Math.max(0, valorAMostrar - (fraccionPendiente ? pagadoEnFracActual : pagadoAceptado)),
