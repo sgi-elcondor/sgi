@@ -197,18 +197,18 @@ async function iniciarApp() {
       }),
     ]);
   } catch (e) {
-    redirigirConDelay("/login.html");
+    redirigirConDelay("/login");
     return;
   }
 
-  if (!firebaseUser) { window.location.href = "/login.html"; return; }
+  if (!firebaseUser) { window.location.href = "/login"; return; }
 
   try {
     const token = await firebaseUser.getIdToken(true);
     localStorage.setItem("fb_token", token);
   } catch (e) {
     console.error("Could not refresh token:", e.message);
-    window.location.href = "/login.html";
+    window.location.href = "/login";
     return;
   }
 
@@ -244,7 +244,7 @@ async function iniciarApp() {
   } catch (err) {
     console.error("Error loading profile:", err.message);
     const fbUser = window._firebaseAuth?.currentUser;
-    if (!fbUser) { localStorage.removeItem("fb_token"); redirigirConDelay("/login.html"); return; }
+    if (!fbUser) { localStorage.removeItem("fb_token"); redirigirConDelay("/login"); return; }
     const vc = document.getElementById("viewContainer");
     if (vc) vc.innerHTML =
       '<section class="table-wrap" style="padding:24px"><div class="table-header"><h3>Error al cargar el perfil</h3></div>' +

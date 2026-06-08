@@ -73,7 +73,7 @@ function initUserMenu(perfil) {
       await signOut(auth);
     }
     localStorage.removeItem("fb_token");
-    window.location.href = "/login.html";
+    window.location.href = "/login";
   });
 
   if (canEdit) {

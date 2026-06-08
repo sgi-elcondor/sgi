@@ -23,7 +23,17 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(connectLivereload());
 }
 
-app.use(express.static(path.join(__dirname, "..", "public")));
+// Redirect *.html to extensionless clean URLs (301 for SEO canonical)
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.path.endsWith('.html')) {
+    let clean = req.path.slice(0, -'.html'.length);
+    if (clean === '/index') clean = '/';
+    return res.redirect(301, clean + req.originalUrl.slice(req.path.length));
+  }
+  next();
+});
+
+app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 
 // Servir favicon.ico sin requerir token â€” evita 401
 app.get('/favicon.ico', (req, res) => {

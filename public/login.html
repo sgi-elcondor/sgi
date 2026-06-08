@@ -4,6 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciar sesión — El Cóndor</title>
+  <meta name="description" content="Inicia sesión en el Sistema de Gestión Inmobiliaria de El Cóndor S.A.S." />
+  <meta name="theme-color" content="#ff6a00" />
+  <meta name="robots" content="index, follow" />
+
+  <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
+  <link rel="canonical" href="https://sgi.somoselcondor.com/login" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SGI El Cóndor" />
+  <meta property="og:title" content="SGI · El Cóndor" />
+  <meta property="og:description" content="Sistema de Gestión Inmobiliaria El Cóndor S.A.S." />
+  <meta property="og:url" content="https://sgi.somoselcondor.com/login" />
+  <meta property="og:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="SGI · El Cóndor" />
+  <meta name="twitter:description" content="Sistema de Gestión Inmobiliaria El Cóndor S.A.S." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -154,7 +169,7 @@
   } from '/js/auth.js';
 
   esperarAuthListo().then(user => {
-    if (user) window.location.href = '/index.html';
+    if (user) window.location.href = '/';
   });
 
   const ERROR_MSG = {
@@ -170,6 +185,7 @@
     'auth/cancelled-popup-request': null,
     'auth/popup-blocked':           'El navegador bloqueó la ventana. Permite popups para este sitio.',
     'auth/network-request-failed':  'Sin conexión. Verifica tu red.',
+    'auth/unauthorized-domain':     'Este dominio no está autorizado para iniciar sesión. Contacta al administrador.',
   };
 
   function mensajeError(err) {
@@ -244,7 +260,7 @@
 
     try {
       await loginEmail(email, pwd);
-      window.location.href = '/index.html';
+      window.location.href = '/';
     } catch (err) {
       showError('l-error', err);
     } finally {
@@ -263,7 +279,7 @@
 
     try {
       await loginGoogle();
-      window.location.href = '/index.html';
+      window.location.href = '/';
     } catch (err) {
       showError('l-error', err);
     } finally {
@@ -303,7 +319,7 @@
 
     try {
       await registerEmail(email, pwd);
-      window.location.href = '/index.html';
+      window.location.href = '/';
     } catch (err) {
       showError('r-error', err);
     } finally {
@@ -318,7 +334,7 @@
 
     try {
       await loginGoogle();
-      window.location.href = '/index.html';
+      window.location.href = '/';
     } catch (err) {
       showError('r-error', err);
     } finally {
