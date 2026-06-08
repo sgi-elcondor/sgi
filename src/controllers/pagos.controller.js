@@ -6,6 +6,25 @@ const { verificarComision } = require("../services/comisiones.service");
 const { actualizarMora }    = require("../services/mora.service");
 const saldos                = require("../services/saldos.service");
 
+const ESTADOS_FACTURA_ACTIVA = ["emitida", "parcialmente_pagada"];
+
+// RN-01/§5.3: returns the active factura of a cuota and its payable saldo, taken from the
+// canonical saldos.service (fracción- or cuota-level), or null if there is no active factura.
+async function _facturaActivaConSaldo(id_cuota) {
+  const { data: links } = await supabase.schema(SCHEMA)
+    .from("cuota_factura")
+    .select("id_fraccion, factura:id_factura(id_factura, estado, valor_facturado)")
+    .eq("id_cuota", id_cuota);
+  const link = (links || []).find(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
+  if (!link) return null;
+
+  const base = link.id_fraccion
+    ? await saldos.getSaldoFraccion(link.id_fraccion)
+    : await saldos.getSaldoCuota(id_cuota);
+  const saldoBase = base ? Number(base.saldo_pendiente) : 0;
+  return { factura: link.factura, id_fraccion: link.id_fraccion || null, saldo: Math.min(Number(link.factura.valor_facturado), saldoBase) };
+}
+
 // Recompute and persist the estado of the active facturas of a cuota from the canonical
 // saldo (RN-03/§4.2): emitida -> parcialmente_pagada -> pagada. 'anulada' is left as-is.
 async function refrescarFacturasDeCuota(id_cuota) {
@@ -184,12 +203,12 @@ exports.create = async (req, res) => {
     return res.status(400).json({ error: `La cuota #${cuotaInfo.numero_cuota} ya está completamente pagada` });
 
   // RN-01: a payment requires an active factura for the cuota.
-  const { data: cfLinks } = await supabase.schema(SCHEMA)
-    .from("cuota_factura").select("factura:id_factura(estado)").eq("id_cuota", id_cuota_propuesta);
-  const tieneFacturaActiva = (cfLinks || [])
-    .some(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
-  if (!tieneFacturaActiva)
+  const facturaActiva = await _facturaActivaConSaldo(id_cuota_propuesta);
+  if (!facturaActiva)
     return res.status(400).json({ error: "Esta cuota no tiene una factura activa. Emite la factura antes de registrar el pago." });
+  // §5.3/RN-10: the payment cannot exceed the factura's pending saldo.
+  if (valor_pago > facturaActiva.saldo + 1)
+    return res.status(400).json({ error: "El valor del pago supera el saldo pendiente de la factura" });
 
   const id_venta = cuotaInfo?.id_venta ?? null;
   let id_usuario_comprador = null;
@@ -312,12 +331,12 @@ exports.createCompradorPago = async (req, res) => {
       return res.status(400).json({ error: "Ya hay un comprobante en revisión para esta cuota" });
 
     // RN-01: a payment requires an active factura for the cuota.
-    const { data: cfLinks } = await supabase.schema(SCHEMA)
-      .from("cuota_factura").select("factura:id_factura(estado)").eq("id_cuota", id_cuota_propuesta);
-    const tieneFacturaActiva = (cfLinks || [])
-      .some(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
-    if (!tieneFacturaActiva)
+    const facturaActiva = await _facturaActivaConSaldo(id_cuota_propuesta);
+    if (!facturaActiva)
       return res.status(400).json({ error: "Esta cuota no tiene una factura activa. Solicita su emisión antes de pagar." });
+    // §5.3/RN-10: the payment cannot exceed the factura's pending saldo.
+    if (Number(valor_pago) > facturaActiva.saldo + 1)
+      return res.status(400).json({ error: "El valor del pago supera el saldo pendiente de la factura" });
   }
 
   const { data: pago, error: ep } = await supabase.schema(SCHEMA)
