@@ -20,6 +20,7 @@
     comisionista:       "consultar tus comisiones causadas, pagadas y pendientes, así como su histórico de pago.",
     auditoria:          "supervisar la trazabilidad y los movimientos críticos del sistema en tiempo real.",
     comprador:          "consultar el estado de tu inmueble, tus cuotas, pagos realizados y recibos generados.",
+    almacenista:        "recibir los materiales asociados a requerimientos desembolsados, actualizar el stock y registrar entregas parciales hasta cubrirlas en su totalidad.",
   };
 
   function renderWelcomeBanner() {
