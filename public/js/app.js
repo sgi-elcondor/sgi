@@ -24,6 +24,7 @@ const VIEWS = {
   "bank-transactions": { fn: "bankTransactionsView",  title: "Transacciones Bancarias" },
   "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
   gastos:              { fn: "gastosView",             title: "Gastos Operativos" },
+  recepciones:         { fn: "recepcionesView",        title: "Recepción de Materiales" },
 };
 
 const TOPBAR_SUBTITLES = {
@@ -50,6 +51,7 @@ const TOPBAR_SUBTITLES = {
   "payment-validation":"Contraste y aprobacion de pagos",
   gastos:              "Registro y control de gastos operativos por proyecto",
   juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
+  recepciones:         "Registro de entrega de materiales y actualizacion de stock",
 };
 
 window.currentUser    = null;

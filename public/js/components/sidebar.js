@@ -8,6 +8,7 @@ const SIDEBAR_GROUPS = [
     { view: "lotes",       icon: "map",        label: "Lotes" },
     { view: "compradores", icon: "users",      label: "Compradores" },
     { view: "ventas",      icon: "briefcase",  label: "Ventas" },
+    { view: "recepciones", icon: "package",    label: "Recepciones" },
   ]},
   { label: "Finanzas", items: [
     { view: "cuotas",             icon: "calendar",      label: "Cuotas" },

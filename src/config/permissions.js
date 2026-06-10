@@ -103,6 +103,10 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/gastos':                  { recurso: 'gastos', accion: 'crear' },
   'PUT /api/v1/gastos':                   { recurso: 'gastos', accion: 'actualizar' },
 
+  'GET /api/v1/recepciones/pendientes':   { recurso: 'recepciones', accion: 'leer' },
+  'GET /api/v1/recepciones':              { recurso: 'recepciones', accion: 'leer' },
+  'POST /api/v1/recepciones':             { recurso: 'recepciones', accion: 'crear' },
+
 };
 
 module.exports = ROUTE_PERMISSIONS;
