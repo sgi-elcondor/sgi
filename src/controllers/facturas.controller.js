@@ -56,6 +56,48 @@ async function _facturaActivaDe(id_cuota, id_fraccion) {
   return match?.factura || null;
 }
 
+// §4.3/RN-03: when a cuota is restructured (subdivided or un-subdivided), the active
+// facturas of the opposite scope must not coexist. Annuls the 'emitida' ones (audited).
+// Returns { blocked: true } without changes if any matched factura is 'parcialmente_pagada'
+// (has receipts) — those cannot be annulled for operational reasons.
+// scope: 'cuota' → cuota-level facturas (id_fraccion null); 'fracciones' → fracción-level.
+async function anularFacturasActivas(id_cuota, { scope, motivo, usuario }) {
+  const { data } = await supabase.schema(SCHEMA)
+    .from("cuota_factura")
+    .select("id_fraccion, factura:id_factura(id_factura, estado)")
+    .eq("id_cuota", id_cuota);
+
+  const matched = (data || []).filter(cf => {
+    if (!ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado)) return false;
+    if (scope === "cuota")      return cf.id_fraccion === null;
+    if (scope === "fracciones") return cf.id_fraccion !== null;
+    return true; // 'all'
+  });
+
+  if (matched.some(cf => cf.factura.estado === "parcialmente_pagada")) {
+    return { blocked: true, annulled: [] };
+  }
+
+  const annulled = [];
+  for (const cf of matched) {
+    await supabase.schema(SCHEMA).from("factura")
+      .update({ estado: "anulada" }).eq("id_factura", cf.factura.id_factura);
+    await supabase.schema(SCHEMA).from("auditoria").insert([{
+      tabla_afectada: "factura",
+      id_registro:    cf.factura.id_factura,
+      campo:          "anulacion",
+      valor_anterior: cf.factura.estado,
+      valor_nuevo:    "anulada",
+      usuario_db:     usuario,
+      fecha_cambio:   new Date().toISOString(),
+      motivo,
+    }]);
+    annulled.push(cf.factura.id_factura);
+  }
+  return { blocked: false, annulled };
+}
+exports.anularFacturasActivas = anularFacturasActivas;
+
 // Emits the single active factura for a cuota/fracción, or reuses the existing one
 // (RN-03). valor defaults to the current saldo; an explicit valorAcordado (<= saldo)
 // supports a partial-payment agreement (Modalidad A, 8.1). Only the aux reaches this.

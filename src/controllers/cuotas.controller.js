@@ -1,5 +1,6 @@
 const supabase = require("../config/supabase");
 const saldos   = require("../services/saldos.service");
+const facturas = require("./facturas.controller");
 const SCHEMA   = "condor";
 
 exports.getByVenta = async (req, res) => {
@@ -270,6 +271,16 @@ exports.setFracciones = async (req, res) => {
     });
   }
 
+  // B/§4.3: (re)defining the subdivision invalidates every active factura of the cuota
+  // (whole-cuota and any previous fracción). Annul the 'emitida' ones; block if any has
+  // receipts (those cannot be annulled).
+  const facPrevia = await facturas.anularFacturasActivas(id, {
+    scope: 'all', usuario: req.usuario.email, motivo: 'subdivision_cuota',
+  });
+  if (facPrevia.blocked) {
+    return res.status(400).json({ error: 'No se puede subdividir: ya hay una factura con pagos registrados para esta cuota o una de sus fracciones. Termina o anula ese cobro antes de subdividir.' });
+  }
+
   const { error: delErr } = await supabase.schema(SCHEMA)
     .from('cuota_fraccion')
     .delete()
@@ -323,6 +334,14 @@ exports.deleteFracciones = async (req, res) => {
   if (cuotaErr || !cuota) return res.status(404).json({ error: 'Cuota not found' });
   if (cuota.estado === 'pagada') {
     return res.status(400).json({ error: 'Cannot modify fractions of a paid cuota' });
+  }
+
+  // §4.3: reverting to a whole cuota — annul the fracción facturas; block if any has receipts.
+  const facFrac = await facturas.anularFacturasActivas(id, {
+    scope: 'fracciones', usuario: req.usuario.email, motivo: 'eliminar_subdivision_cuota',
+  });
+  if (facFrac.blocked) {
+    return res.status(400).json({ error: 'No se puede eliminar la subdivisión: una fracción tiene factura con pagos. Termina o anula ese cobro primero.' });
   }
 
   const { error: delErr } = await supabase.schema(SCHEMA)
