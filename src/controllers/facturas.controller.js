@@ -270,14 +270,17 @@ exports.getCuotasSinFactura = async (req, res) => {
       for (const fc of saldos._coberturaFracciones(fracciones, totalRecibos)) {
         if (fraccionesFacturadas.has(fc.id_fraccion)) continue;
         if (fc.saldo_pendiente <= 0) continue;
-        if ((fc.fecha_propuesta || c.fecha_vencimiento) > hoy) continue;
+        const fFecha = fc.fecha_propuesta || c.fecha_vencimiento;
+        if (fFecha > hoy) continue;
+        const diasFrac = Math.floor((Date.now() - new Date(fFecha).getTime()) / 86_400_000);
         result.push({
           ...base,
           id_fraccion:       fc.id_fraccion,
           numero_fraccion:   fc.numero_fraccion,
           total_fracciones:  fracciones.length,
           valor_cuota:       fc.saldo_pendiente,
-          fecha_vencimiento: fc.fecha_propuesta || c.fecha_vencimiento,
+          fecha_vencimiento: fFecha,
+          estado:            saldos.clasificarMora(diasFrac),
           tiene_fracciones:  true,
         });
       }
