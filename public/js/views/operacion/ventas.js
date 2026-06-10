@@ -276,7 +276,8 @@ window.verVenta = async function(id) {
       </tr>
     </thead>`;
 
-  const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
+  const canExport     = EXPORT_ROLES.includes(window.currentUser?.rol);
+  const puedeEliminar = ["auxiliar_contable", "admin"].includes(window.currentUser?.rol);
 
   const lote = v.lote || {};
 
@@ -472,6 +473,12 @@ window.verVenta = async function(id) {
           Exportar PDF
         </button>
       </div>` : ""}
+
+      ${puedeEliminar ? `
+      <div class="form-actions" style="margin-top:.75rem;padding-top:1rem;border-top:1px solid var(--border);justify-content:flex-end;gap:.5rem">
+        <button class="btn btn-ghost btn-sm" id="btnVentaCancelar" style="color:var(--warning,#e8570c)">Cancelar venta</button>
+        <button class="btn btn-danger btn-sm" id="btnVentaEliminar">Eliminar venta</button>
+      </div>` : ""}
     </div>`;
 
   UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
@@ -481,6 +488,76 @@ window.verVenta = async function(id) {
     document.getElementById("btnVentaPDF")?.addEventListener("click",   () => _exportVentaPDF(v, cuotas, fin));
     document.getElementById("btnVentaExcel")?.addEventListener("click", () => _exportVentaExcel(v, cuotas, fin));
   }
+  if (puedeEliminar) {
+    document.getElementById("btnVentaEliminar")?.addEventListener("click", () => _eliminarVenta(v.id_venta));
+    document.getElementById("btnVentaCancelar")?.addEventListener("click", () => _cancelarVenta(v.id_venta));
+  }
+};
+
+// Point 6: delete a clean venta, or fall back to cancel when it has receipts.
+window._eliminarVenta = function(id) {
+  UI.openModal("Eliminar venta", `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.86rem;line-height:1.5">
+        Esto <b>elimina</b> la venta #${id} y su plan de cuotas. Solo es posible si la venta
+        <b>no tiene pagos aceptados ni recibos</b>. La acción queda en auditoría.
+      </div>
+      <div class="form-group">
+        <label>Motivo (opcional)</label>
+        <input id="del-venta-motivo" type="text" placeholder="Ej: venta duplicada / registrada por error" />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+        <button class="btn btn-danger" id="del-venta-confirm">Eliminar venta</button>
+      </div>
+    </div>`);
+  document.getElementById("del-venta-confirm")?.addEventListener("click", async () => {
+    const motivo = document.getElementById("del-venta-motivo")?.value.trim() || undefined;
+    const btn = document.getElementById("del-venta-confirm");
+    btn.disabled = true; btn.textContent = "Eliminando...";
+    try {
+      await API.delete(`/ventas/${id}`, motivo ? { motivo } : undefined);
+      UI.closeModal();
+      UI.toast("Venta eliminada", "ok");
+      if (typeof window.ventasView === "function") window.ventasView();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Eliminar venta";
+      UI.toast(e.message || "No se pudo eliminar la venta", "error");
+    }
+  });
+};
+
+window._cancelarVenta = function(id) {
+  UI.openModal("Cancelar venta", `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.86rem;line-height:1.5">
+        La venta #${id} se marcará como <b>cancelada</b>. No se elimina nada: se conservan
+        cuotas, facturas y recibos. Queda registrado en auditoría.
+      </div>
+      <div class="form-group">
+        <label>Motivo de la cancelación *</label>
+        <textarea id="cancel-venta-motivo" rows="2" placeholder="Describe el motivo (mín. 5 caracteres)"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Volver</button>
+        <button class="btn btn-primary" id="cancel-venta-confirm">Cancelar venta</button>
+      </div>
+    </div>`);
+  document.getElementById("cancel-venta-confirm")?.addEventListener("click", async () => {
+    const motivo = document.getElementById("cancel-venta-motivo")?.value.trim() || "";
+    if (motivo.length < 5) return UI.toast("Indica el motivo (mín. 5 caracteres)", "error");
+    const btn = document.getElementById("cancel-venta-confirm");
+    btn.disabled = true; btn.textContent = "Cancelando...";
+    try {
+      await API.patch(`/ventas/${id}/cancelar`, { motivo });
+      UI.closeModal();
+      UI.toast("Venta cancelada", "ok");
+      if (typeof window.ventasView === "function") window.ventasView();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Cancelar venta";
+      UI.toast(e.message || "No se pudo cancelar la venta", "error");
+    }
+  });
 };
 
 window._editarFinanciero = function(id, vtActual, ciActual) {

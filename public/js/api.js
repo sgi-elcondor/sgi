@@ -99,8 +99,8 @@ const API = {
     return this.request(path, { method: "PATCH", body });
   },
 
-  delete(path) {
-    return this.request(path, { method: "DELETE" });
+  delete(path, body) {
+    return this.request(path, { method: "DELETE", body });
   },
 };
 

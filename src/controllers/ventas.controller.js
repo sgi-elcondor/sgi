@@ -510,6 +510,99 @@ exports.updateFinanciero = async (req, res) => {
   res.json(data);
 };
 
+const ROLES_ELIMINAR_VENTA = ["auxiliar_contable", "admin"];
+
+// Hard-delete a venta ONLY when no income has been realized (no accepted payments and no
+// receipts). Receipts are immutable (RN-05); a venta with receipts must be cancelled instead.
+exports.remove = async (req, res) => {
+  if (!ROLES_ELIMINAR_VENTA.includes(req.usuario?.rol)) {
+    return res.status(403).json({ error: "No tienes permiso para eliminar ventas" });
+  }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });
+
+  const { data: venta, error: eRead } = await supabase.schema(SCHEMA)
+    .from("venta").select("id_venta").eq("id_venta", id).single();
+  if (eRead || !venta) return res.status(404).json({ error: "Venta no encontrada" });
+
+  // RN-05: block deletion when there is realized income (accepted payments / receipts).
+  const { data: pagos } = await supabase.schema(SCHEMA)
+    .from("pago").select("id_pago, estado, recibo_pago(id_recibo)").eq("id_venta", id);
+  const hayIngreso = (pagos || []).some(p => p.estado === "aceptado" || (p.recibo_pago || []).length > 0);
+  if (hayIngreso) {
+    return res.status(409).json({ error: "La venta tiene pagos aceptados o recibos emitidos; no puede eliminarse. Puedes cancelarla." });
+  }
+
+  const { data: cuotas } = await supabase.schema(SCHEMA)
+    .from("cuota").select("id_cuota, cuota_factura(id_factura)").eq("id_venta", id);
+  const cuotaIds   = (cuotas || []).map(c => c.id_cuota);
+  const facturaIds = (cuotas || []).flatMap(c => (c.cuota_factura || []).map(cf => cf.id_factura)).filter(Boolean);
+
+  // Delete children before parents (FK-safe order).
+  if (cuotaIds.length) {
+    await supabase.schema(SCHEMA).from("cuota_factura").delete().in("id_cuota", cuotaIds);
+    await supabase.schema(SCHEMA).from("cuota_fraccion").delete().in("id_cuota", cuotaIds);
+    await supabase.schema(SCHEMA).from("cuota_pago").delete().in("id_cuota", cuotaIds);
+  }
+  if (facturaIds.length) await supabase.schema(SCHEMA).from("factura").delete().in("id_factura", facturaIds);
+  await supabase.schema(SCHEMA).from("pago").delete().eq("id_venta", id);
+  await supabase.schema(SCHEMA).from("cuota").delete().eq("id_venta", id);
+  await supabase.schema(SCHEMA).from("venta_comisionista").delete().eq("id_venta", id);
+  await supabase.schema(SCHEMA).from("venta_comprador").delete().eq("id_venta", id);
+
+  const { error: eDel } = await supabase.schema(SCHEMA).from("venta").delete().eq("id_venta", id);
+  if (eDel) return res.status(400).json({ error: eDel.message });
+
+  await supabase.schema(SCHEMA).from("auditoria").insert([{
+    tabla_afectada: "venta",
+    id_registro:    id,
+    campo:          "eliminacion",
+    valor_anterior: "activa",
+    valor_nuevo:    null,
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         (req.body?.motivo || "eliminacion_venta").toString().trim(),
+  }]);
+
+  res.json({ ok: true, id_venta: id });
+};
+
+// Soft-cancel: keeps the venta and all its documents, marks it 'cancelada' (audited).
+exports.cancelar = async (req, res) => {
+  if (!ROLES_ELIMINAR_VENTA.includes(req.usuario?.rol)) {
+    return res.status(403).json({ error: "No tienes permiso para cancelar ventas" });
+  }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });
+
+  const { motivo } = req.body;
+  if (!motivo || String(motivo).trim().length < 5) {
+    return res.status(400).json({ error: "Debes indicar el motivo de la cancelación (mín. 5 caracteres)" });
+  }
+
+  const { data: venta, error: eRead } = await supabase.schema(SCHEMA)
+    .from("venta").select("estado").eq("id_venta", id).single();
+  if (eRead || !venta) return res.status(404).json({ error: "Venta no encontrada" });
+  if (venta.estado === "cancelada") return res.status(400).json({ error: "La venta ya está cancelada" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("venta").update({ estado: "cancelada" }).eq("id_venta", id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  await supabase.schema(SCHEMA).from("auditoria").insert([{
+    tabla_afectada: "venta",
+    id_registro:    id,
+    campo:          "estado",
+    valor_anterior: venta.estado,
+    valor_nuevo:    "cancelada",
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         String(motivo).trim(),
+  }]);
+
+  res.json(data);
+};
+
 exports.create = (req, res) => crearVenta(req, res, null);
 
 exports.createSolicitud = (req, res) => crearVenta(req, res, "pendiente_autorizacion");
