@@ -238,3 +238,10 @@ window.UI = UI;
 })();
 
 document.getElementById("modalClose").addEventListener("click", UI.closeModal);
+
+// Press ESC to close any open detail modal / popup window.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const overlay = document.getElementById("modalOverlay");
+  if (overlay && overlay.classList.contains("open")) UI.closeModal();
+});
