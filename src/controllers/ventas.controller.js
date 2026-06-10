@@ -83,7 +83,10 @@ exports.getById = async (req, res) => {
     .select(`*, lote(*, proyecto(nombre)),
       venta_comprador(*, usuario:id_usuario(*)),
       venta_comisionista(*, usuario:id_usuario(*)),
-      cuota(*, cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))))`)
+      cuota(*,
+        cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+        cuota_fraccion(id_fraccion),
+        cuota_factura(id_fraccion, factura:id_factura(estado)))`)
     .eq("id_venta", id)
     .single();
 
@@ -91,11 +94,16 @@ exports.getById = async (req, res) => {
 
   // RN-10/RN-19: attach the receipt-backed paid amount and derived paid flag per cuota,
   // so the ventas module shows the same reality as every other view (no stored-estado trust).
+  // tiene_fracciones / factura_activa let the plan editor lock cuotas whose value cannot
+  // change without breaking their fracciones (§3.3) or active factura (§4.3).
   for (const c of (data.cuota || [])) {
     const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
     c.valor_pagado    = pagado;
     c.valor_pendiente = Math.max(0, Number(c.valor_cuota) - pagado);
     c.pagada          = c.valor_pendiente <= 0;
+    c.tiene_fracciones = (c.cuota_fraccion || []).length > 0;
+    c.factura_activa   = (c.cuota_factura || []).some(cf =>
+      ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
   }
 
   res.json(data);

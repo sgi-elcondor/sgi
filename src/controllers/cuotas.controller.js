@@ -132,7 +132,10 @@ exports.rebalanceValores = async (req, res) => {
 
   const { data: cuotas, error: cErr } = await supabase.schema(SCHEMA)
     .from('cuota')
-    .select('id_cuota, numero_cuota, valor_cuota, fecha_vencimiento, estado, cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))')
+    .select(`id_cuota, numero_cuota, valor_cuota, fecha_vencimiento, estado,
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+      cuota_fraccion(id_fraccion),
+      cuota_factura(id_fraccion, factura:id_factura(estado))`)
     .eq('id_venta', idVenta);
   if (cErr) return res.status(500).json({ error: cErr.message });
 
@@ -142,16 +145,25 @@ exports.rebalanceValores = async (req, res) => {
     const c = byId.get(Number(ch.id_cuota));
     if (!c) return res.status(400).json({ error: `La cuota ${ch.id_cuota} no pertenece a esta venta` });
 
+    const cambiaValor = ch.valor_cuota !== undefined && Number(ch.valor_cuota) !== Number(c.valor_cuota);
     if (ch.valor_cuota !== undefined) {
       if (typeof ch.valor_cuota !== 'number' || ch.valor_cuota <= 0) {
         return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
       }
-      if (c.estado === 'pagada' && Number(ch.valor_cuota) !== Number(c.valor_cuota)) {
+      if (cambiaValor && c.estado === 'pagada') {
         return res.status(400).json({ error: `La cuota #${c.numero_cuota} está pagada y su valor no puede cambiar` });
       }
       const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
       if (Number(ch.valor_cuota) < pagado) {
         return res.status(400).json({ error: `La cuota #${c.numero_cuota} ya tiene recibos por ${pagado}; su valor no puede ser menor` });
+      }
+      // §3.3/§4.3: a subdivided cuota or one with an active factura cannot change its value
+      // here, or its fracciones / factura would be left inconsistent.
+      if (cambiaValor && (c.cuota_fraccion || []).length > 0) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} está subdividida; ajusta sus fracciones desde "Subdividir".` });
+      }
+      if (cambiaValor && (c.cuota_factura || []).some(cf => ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado))) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} tiene una factura activa; anúlala antes de cambiar su valor.` });
       }
     }
     if (ch.fecha_vencimiento !== undefined && isNaN(Date.parse(ch.fecha_vencimiento))) {

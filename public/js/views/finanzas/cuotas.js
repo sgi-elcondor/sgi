@@ -246,16 +246,25 @@ window.cuotasView = async function() {
     const financiado = Math.max(0, Number(venta.valor_total || 0) - Number(venta.total_permutas || 0));
     const tol        = Math.max(1, cuotasV.length);
 
-    const rows = cuotasV.map(c => ({
-      id_cuota:   c.id_cuota,
-      numero:     c.numero_cuota,
-      pagada:     c.pagada === true || c.estado === "pagada",
-      valor:      Number(c.valor_cuota),
-      fecha:      c.fecha_vencimiento,
-      minValor:   Number(c.valor_pagado || 0),
-      orig_valor: Number(c.valor_cuota),
-      orig_fecha: c.fecha_vencimiento,
-    }));
+    const rows = cuotasV.map(c => {
+      const pagada      = c.pagada === true || c.estado === "pagada";
+      const valorLocked = pagada || c.tiene_fracciones === true || c.factura_activa === true;
+      const hint        = pagada               ? "Pagada"
+                        : c.tiene_fracciones    ? "Subdividida"
+                        : c.factura_activa      ? "Con factura activa"
+                        : Number(c.valor_pagado || 0) > 0 ? `mín ${UI.fmt(c.valor_pagado)}` : "";
+      return {
+        id_cuota:   c.id_cuota,
+        numero:     c.numero_cuota,
+        pagada,
+        valorLocked,
+        hint,
+        valor:      Number(c.valor_cuota),
+        fecha:      c.fecha_vencimiento,
+        orig_valor: Number(c.valor_cuota),
+        orig_fecha: c.fecha_vencimiento,
+      };
+    });
 
     const sumTotal = () => rows.reduce((s, r) => s + (Number(r.valor) || 0), 0);
     const balanced = () => Math.abs(financiado - sumTotal()) <= tol;
@@ -284,19 +293,20 @@ window.cuotasView = async function() {
       if (btn) btn.disabled = !balanced() || motivo.length < 20;
     }
 
-    const rowsHTML = () => rows.map((r, i) => r.pagada
-      ? `<tr style="opacity:.55">
-           <td style="padding:.35rem;text-align:center">${r.numero}</td>
-           <td style="padding:.35rem">${UI.date(r.fecha)}</td>
-           <td style="padding:.35rem;text-align:right;font-weight:600">${UI.fmt(r.valor)}</td>
-           <td style="padding:.35rem;text-align:center"><span class="badge badge-success">Pagada</span></td>
-         </tr>`
-      : `<tr>
-           <td style="padding:.35rem;text-align:center">${r.numero}</td>
-           <td style="padding:.35rem"><input type="date" class="rp-fecha" data-idx="${i}" value="${r.fecha || ""}" style="width:148px"></td>
-           <td style="padding:.35rem"><input type="text" inputmode="numeric" class="rp-valor" data-idx="${i}" value="${MoneyInput.format(r.valor)}" style="width:140px;text-align:right"></td>
-           <td style="padding:.35rem;text-align:center;font-size:.75rem;color:var(--text-muted)">${r.minValor > 0 ? `mín ${UI.fmt(r.minValor)}` : "—"}</td>
-         </tr>`).join("");
+    const rowsHTML = () => rows.map((r, i) => {
+      const fechaCell = r.pagada
+        ? `<td style="padding:.35rem">${UI.date(r.fecha)}</td>`
+        : `<td style="padding:.35rem"><input type="date" class="rp-fecha" data-idx="${i}" value="${r.fecha || ""}" style="width:148px"></td>`;
+      const valorCell = r.valorLocked
+        ? `<td style="padding:.35rem;text-align:right;font-weight:600">${UI.fmt(r.valor)}</td>`
+        : `<td style="padding:.35rem"><input type="text" inputmode="numeric" class="rp-valor" data-idx="${i}" value="${MoneyInput.format(r.valor)}" style="width:140px;text-align:right"></td>`;
+      return `<tr${r.pagada ? ' style="opacity:.55"' : ""}>
+        <td style="padding:.35rem;text-align:center">${r.numero}</td>
+        ${fechaCell}
+        ${valorCell}
+        <td style="padding:.35rem;text-align:center;font-size:.74rem;color:var(--text-muted)">${r.hint || "—"}</td>
+      </tr>`;
+    }).join("");
 
     document.getElementById("modalBody").innerHTML = `
       <div style="margin-bottom:.75rem;padding:.625rem .875rem;background:var(--surface-2,#f0f4f8);border-radius:.5rem;font-size:.84rem;line-height:1.6">
@@ -346,8 +356,13 @@ window.cuotasView = async function() {
       if (!balanced() || motivo.length < 20) return;
 
       const cambios = rows
-        .filter(r => !r.pagada && (Number(r.valor) !== r.orig_valor || r.fecha !== r.orig_fecha))
-        .map(r => ({ id_cuota: r.id_cuota, valor_cuota: Number(r.valor), fecha_vencimiento: r.fecha }));
+        .filter(r => !r.pagada && ((!r.valorLocked && Number(r.valor) !== r.orig_valor) || r.fecha !== r.orig_fecha))
+        .map(r => {
+          const ch = { id_cuota: r.id_cuota };
+          if (!r.valorLocked && Number(r.valor) !== r.orig_valor) ch.valor_cuota = Number(r.valor);
+          if (r.fecha !== r.orig_fecha) ch.fecha_vencimiento = r.fecha;
+          return ch;
+        });
       if (!cambios.length) { window.SGIUI?.toast("No se detectaron cambios.", "warning", "Aviso"); return; }
 
       const btn = document.getElementById("rp-guardar");
