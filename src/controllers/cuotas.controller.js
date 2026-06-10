@@ -38,14 +38,16 @@ exports.updateValores = async (req, res) => {
 
   const { valor_cuota, fecha_vencimiento, motivo } = req.body;
 
-  if (valor_cuota !== undefined && (typeof valor_cuota !== 'number' || valor_cuota <= 0)) {
-    return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
+  // A/RN-17: changing a single cuota value in isolation would break the total debt
+  // (Σcuotas = financed value). Value changes must go through the balanced plan endpoint.
+  if (valor_cuota !== undefined) {
+    return res.status(400).json({ error: 'Para cambiar el valor usa el reajuste del plan de cuotas (debe cuadrar con el valor financiado).' });
   }
   if (fecha_vencimiento !== undefined && isNaN(Date.parse(fecha_vencimiento))) {
     return res.status(400).json({ error: 'fecha_vencimiento no es una fecha válida' });
   }
-  if (valor_cuota === undefined && fecha_vencimiento === undefined) {
-    return res.status(400).json({ error: 'Debe enviar valor_cuota o fecha_vencimiento' });
+  if (fecha_vencimiento === undefined) {
+    return res.status(400).json({ error: 'Debe enviar fecha_vencimiento' });
   }
 
   const { data: actual, error: readErr } = await supabase
@@ -103,6 +105,97 @@ exports.updateValores = async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
+};
+
+// A/RN-17/§8.4: editing cuota values must preserve the total debt. The sum of ALL the
+// venta's cuotas must stay equal to the financed value (valor_total − permutas). The aux
+// sends a balanced batch of changes; if it does not balance, the whole change is rejected.
+exports.rebalanceValores = async (req, res) => {
+  if (req.usuario.rol !== 'auxiliar_contable') {
+    return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
+  }
+
+  const idVenta = Number(req.params.idVenta);
+  if (!idVenta) return res.status(400).json({ error: 'ID de venta inválido' });
+
+  const { cambios, motivo } = req.body;
+  if (!Array.isArray(cambios) || cambios.length === 0) {
+    return res.status(400).json({ error: 'Debes enviar al menos un cambio' });
+  }
+  if (!motivo || String(motivo).trim().length < 20) {
+    return res.status(400).json({ error: 'El motivo es obligatorio (mín. 20 caracteres)' });
+  }
+
+  const { data: venta, error: vErr } = await supabase.schema(SCHEMA)
+    .from('venta').select('valor_total, total_permutas').eq('id_venta', idVenta).single();
+  if (vErr || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+  const { data: cuotas, error: cErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select('id_cuota, numero_cuota, valor_cuota, fecha_vencimiento, estado, cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))')
+    .eq('id_venta', idVenta);
+  if (cErr) return res.status(500).json({ error: cErr.message });
+
+  const byId = new Map((cuotas || []).map(c => [c.id_cuota, c]));
+
+  for (const ch of cambios) {
+    const c = byId.get(Number(ch.id_cuota));
+    if (!c) return res.status(400).json({ error: `La cuota ${ch.id_cuota} no pertenece a esta venta` });
+
+    if (ch.valor_cuota !== undefined) {
+      if (typeof ch.valor_cuota !== 'number' || ch.valor_cuota <= 0) {
+        return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
+      }
+      if (c.estado === 'pagada' && Number(ch.valor_cuota) !== Number(c.valor_cuota)) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} está pagada y su valor no puede cambiar` });
+      }
+      const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
+      if (Number(ch.valor_cuota) < pagado) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} ya tiene recibos por ${pagado}; su valor no puede ser menor` });
+      }
+    }
+    if (ch.fecha_vencimiento !== undefined && isNaN(Date.parse(ch.fecha_vencimiento))) {
+      return res.status(400).json({ error: 'fecha_vencimiento no es una fecha válida' });
+    }
+  }
+
+  // The sum of all cuotas (after applying value changes) must equal the financed value.
+  const nuevoValor = new Map((cuotas || []).map(c => [c.id_cuota, Number(c.valor_cuota)]));
+  for (const ch of cambios) {
+    if (ch.valor_cuota !== undefined) nuevoValor.set(Number(ch.id_cuota), Number(ch.valor_cuota));
+  }
+  const sumTotal   = [...nuevoValor.values()].reduce((s, v) => s + v, 0);
+  const financiado = Number(venta.valor_total) - (Number(venta.total_permutas) || 0);
+  const tolerancia = Math.max(1, (cuotas || []).length);
+  if (Math.abs(sumTotal - financiado) > tolerancia) {
+    return res.status(400).json({
+      error: `El plan no cuadra: las cuotas suman ${sumTotal} y deben sumar ${financiado} (valor financiado). Ajusta los valores para repartir la diferencia.`,
+      sum_actual:  sumTotal,
+      financiado,
+    });
+  }
+
+  const registros = [];
+  const now = new Date().toISOString();
+  for (const ch of cambios) {
+    const c = byId.get(Number(ch.id_cuota));
+    const updates = {};
+    if (ch.valor_cuota !== undefined && Number(ch.valor_cuota) !== Number(c.valor_cuota)) {
+      updates.valor_cuota = Number(ch.valor_cuota);
+      registros.push({ tabla_afectada: 'cuota', id_registro: c.id_cuota, campo: 'valor_cuota', valor_anterior: String(c.valor_cuota), valor_nuevo: String(ch.valor_cuota), usuario_db: req.usuario.email, fecha_cambio: now, motivo: String(motivo).trim() });
+    }
+    if (ch.fecha_vencimiento !== undefined && ch.fecha_vencimiento !== c.fecha_vencimiento) {
+      updates.fecha_vencimiento = ch.fecha_vencimiento;
+      registros.push({ tabla_afectada: 'cuota', id_registro: c.id_cuota, campo: 'fecha_vencimiento', valor_anterior: c.fecha_vencimiento, valor_nuevo: ch.fecha_vencimiento, usuario_db: req.usuario.email, fecha_cambio: now, motivo: String(motivo).trim() });
+    }
+    if (Object.keys(updates).length) {
+      const { error: uErr } = await supabase.schema(SCHEMA).from('cuota').update(updates).eq('id_cuota', c.id_cuota);
+      if (uErr) return res.status(400).json({ error: uErr.message });
+    }
+  }
+  if (registros.length) await supabase.schema(SCHEMA).from('auditoria').insert(registros);
+
+  res.json({ ok: true, financiado, sum: sumTotal, cambios: registros.length });
 };
 
 exports.getPendientes = async (req, res) => {

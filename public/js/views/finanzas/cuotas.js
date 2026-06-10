@@ -16,7 +16,6 @@ window.cuotasView = async function() {
 
   const cuotasMap = {};
   data.forEach(c => { cuotasMap[c.id_cuota] = c; });
-  let motivoPendiente = "";
 
   function norm(s) {
     return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -56,28 +55,6 @@ window.cuotasView = async function() {
       <td>${UI.fmt(c.valor_pendiente)}</td>
       <td>${UI.badge(c.estado)}</td>
       ${accionesCell}
-    </tr>`;
-  }
-
-  function fmtMiles(n) {
-    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
-  function filaEdicion(c) {
-    return `<tr data-id="${c.id_cuota}">
-      <td>${c.proyecto}</td>
-      <td>${c.codigo_lote}</td>
-      <td>${c.comprador}</td>
-      <td>${c.numero_cuota}</td>
-      <td><input type="date" class="cuota-input-fecha" value="${c.fecha_vencimiento}" style="width:140px"></td>
-      <td>${diasCell(c.dias_atraso)}</td>
-      <td><input type="text" inputmode="numeric" class="cuota-input-valor" value="${fmtMiles(c.valor_cuota)}" style="width:130px"></td>
-      <td>${UI.fmt(c.valor_pendiente)}</td>
-      <td>${UI.badge(c.estado)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-primary btn-sm btn-cuota-guardar" data-id="${c.id_cuota}">Guardar</button>
-        <button class="btn btn-ghost btn-sm btn-cuota-cancelar" data-id="${c.id_cuota}" style="margin-left:4px">Cancelar</button>
-      </td>
     </tr>`;
   }
 
@@ -181,12 +158,9 @@ window.cuotasView = async function() {
       return;
     }
 
-    const fila = tbody.querySelector(`tr[data-id="${id}"]`);
-    if (!fila) return;
-
-    // ── Editar ──
+    // ── Editar (reajuste de plan con cuadre) ──
     if (btn.classList.contains("btn-cuota-editar")) {
-      abrirModalJustificacion(cuotasMap[id], fila);
+      abrirModalReajustePlan(cuotasMap[id]);
       return;
     }
 
@@ -194,101 +168,6 @@ window.cuotasView = async function() {
     if (btn.classList.contains("btn-cuota-fraccionar")) {
       abrirModalFracciones(cuotasMap[id]);
       return;
-    }
-
-    // ── Cancelar ──
-    if (btn.classList.contains("btn-cuota-cancelar")) {
-      fila.outerHTML = filaVista(cuotasMap[id]);
-      motivoPendiente = "";
-      return;
-    }
-
-    // ── Guardar ──
-    if (btn.classList.contains("btn-cuota-guardar")) {
-      const inputFecha = fila.querySelector(".cuota-input-fecha");
-      const inputValor = fila.querySelector(".cuota-input-valor");
-      const nuevaFecha = inputFecha.value.trim();
-      const nuevoValor = Number(inputValor.value.replace(/\./g, ""));
-
-      if (!nuevaFecha || isNaN(Date.parse(nuevaFecha))) {
-        window.SGIUI?.toast("La fecha de vencimiento no es válida.", "error", "Error");
-        return;
-      }
-      if (!nuevoValor || nuevoValor <= 0) {
-        window.SGIUI?.toast("El valor de la cuota debe ser mayor a 0.", "error", "Error");
-        return;
-      }
-
-      const c = cuotasMap[id];
-      const valorCambio = nuevoValor !== Number(c.valor_cuota);
-      const fechaCambio = nuevaFecha !== c.fecha_vencimiento;
-
-      if (!valorCambio && !fechaCambio) {
-        window.SGIUI?.toast("No se detectaron cambios.", "warning", "Aviso");
-        fila.outerHTML = filaVista(c);
-        motivoPendiente = "";
-        return;
-      }
-
-      const diffRows = [
-        valorCambio ? `<tr>
-          <td style="padding:4px 12px 4px 0;color:var(--text-muted)">Valor</td>
-          <td style="padding:4px 12px 4px 0">${UI.fmt(c.valor_cuota)}</td>
-          <td style="padding:4px 0;font-weight:700;color:var(--primary,#ff6a00)">${UI.fmt(nuevoValor)}</td>
-        </tr>` : "",
-        fechaCambio ? `<tr>
-          <td style="padding:4px 12px 4px 0;color:var(--text-muted)">Vencimiento</td>
-          <td style="padding:4px 12px 4px 0">${UI.date(c.fecha_vencimiento)}</td>
-          <td style="padding:4px 0;font-weight:700;color:var(--primary,#ff6a00)">${UI.date(nuevaFecha)}</td>
-        </tr>` : "",
-      ].join("");
-
-      UI.openModal("Confirmar edición de cuota", `
-        <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.625rem 1rem;margin-bottom:1rem;font-size:.84rem">
-          <b>Cuota #${c.numero_cuota}</b> · ${c.proyecto} · Lote ${c.codigo_lote}<br>
-          <span style="color:var(--text-muted);font-size:.8rem">${c.comprador}</span>
-        </div>
-        <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em;font-weight:600">Cambios a aplicar</p>
-        <table style="font-size:.88rem;border-collapse:collapse;margin-bottom:1.25rem;width:100%">
-          <thead>
-            <tr style="font-size:.75rem;color:var(--text-muted)">
-              <th style="padding:0 12px 6px 0;text-align:left;font-weight:500">Campo</th>
-              <th style="padding:0 12px 6px 0;text-align:left;font-weight:500">Antes</th>
-              <th style="padding:0 0 6px;text-align:left;font-weight:500">Después</th>
-            </tr>
-          </thead>
-          <tbody>${diffRows}</tbody>
-        </table>
-        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:.375rem;padding:.625rem .875rem;font-size:.84rem;margin-bottom:1.25rem">
-          <span style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)">Motivo registrado en auditoría</span><br>
-          <span>${motivoPendiente}</span>
-        </div>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost" onclick="UI.closeModal()">← Volver</button>
-          <button class="btn btn-primary" onclick="_confirmarGuardarCuota()">✓ Confirmar cambio</button>
-        </div>
-      `);
-
-      window._confirmarGuardarCuota = async function() {
-        UI.closeModal();
-        try {
-          await API.patch(`/cuotas/${id}/valores`, {
-            valor_cuota:       nuevoValor,
-            fecha_vencimiento: nuevaFecha,
-            motivo:            motivoPendiente,
-          });
-          c.valor_cuota       = nuevoValor;
-          c.valor_pendiente   = nuevoValor;
-          c.fecha_vencimiento = nuevaFecha;
-          c.dias_atraso       = Math.floor((Date.now() - new Date(nuevaFecha).getTime()) / 86_400_000);
-          const filaActual = tbody.querySelector(`tr[data-id="${id}"]`);
-          if (filaActual) filaActual.outerHTML = filaVista(c);
-          motivoPendiente = "";
-          window.SGIUI?.toast("Cuota actualizada correctamente.", "success", "Éxito");
-        } catch (err) {
-          window.SGIUI?.toast(err.message || "Error al guardar la cuota.", "error", "Error");
-        }
-      };
     }
   });
 
@@ -347,57 +226,142 @@ window.cuotasView = async function() {
       </div>`;
   }
 
-  // ── Edit justification modal ──────────────────────────────────────────────────
+  // ── Reajuste de plan con cuadre manual (A/RN-17) ──────────────────────────────
+  // Editar valores no cambia la deuda total: Σcuotas debe seguir = valor financiado.
 
-  function abrirModalJustificacion(cuota, fila) {
-    UI.openModal("Editar cuota — Justificación requerida", `
-      <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:.5rem;padding:.75rem 1rem;margin-bottom:1rem;font-size:.84rem;line-height:1.5">
-        La edición de cuotas es una operación <b>excepcional</b>. Aplica solo para corregir
-        errores de registro. El cambio quedará registrado en auditoría con tu usuario.
-      </div>
-      <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.625rem .875rem;margin-bottom:1rem;font-size:.84rem">
-        <b>Cuota #${cuota.numero_cuota}</b> · ${UI.fmt(cuota.valor_cuota)} · ${cuota.proyecto} · Lote ${cuota.codigo_lote}<br>
-        <span style="color:var(--text-muted);font-size:.8rem">${cuota.comprador}</span>
-      </div>
-      <div class="form-group">
-        <label style="font-weight:600">Motivo del cambio *</label>
-        <textarea id="motivo-edicion" rows="3"
-          placeholder="Describe claramente por qué debes editar esta cuota (mín. 20 caracteres)"
-          oninput="_motivoEdicionInput(this)"
-          style="resize:vertical;font-size:.88rem;margin-top:.25rem"></textarea>
-        <small id="motivo-counter" style="color:var(--text-muted);font-size:.78rem;display:block;margin-top:.25rem">0 / 20 caracteres mínimo</small>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:1rem">
-        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
-        <button class="btn btn-primary" id="btn-continuar-edicion" disabled
-                onclick="_continuarEdicion()">Continuar →</button>
-      </div>
-    `);
+  async function abrirModalReajustePlan(cuotaCtx) {
+    const idVenta = cuotaCtx?.id_venta;
+    if (!idVenta) return window.SGIUI?.toast("No se pudo identificar la venta.", "error", "Error");
 
-    window._motivoEdicionInput = function(el) {
-      const len = el.value.trim().length;
-      const counter = document.getElementById("motivo-counter");
-      if (counter) {
-        counter.textContent = `${len} / 20 caracteres mínimo`;
-        counter.style.color = len >= 20 ? "var(--success,#22c55e)" : "var(--text-muted)";
+    UI.openModal(`Reajustar plan — Venta #${idVenta}`, UI.loader());
+
+    let venta;
+    try { venta = await API.get(`/ventas/${idVenta}`); }
+    catch (e) {
+      document.getElementById("modalBody").innerHTML = `<p style="color:var(--danger);padding:1rem">${e.message}</p>`;
+      return;
+    }
+
+    const cuotasV    = (venta.cuota || []).slice().sort((a, b) => a.numero_cuota - b.numero_cuota);
+    const financiado = Math.max(0, Number(venta.valor_total || 0) - Number(venta.total_permutas || 0));
+    const tol        = Math.max(1, cuotasV.length);
+
+    const rows = cuotasV.map(c => ({
+      id_cuota:   c.id_cuota,
+      numero:     c.numero_cuota,
+      pagada:     c.pagada === true || c.estado === "pagada",
+      valor:      Number(c.valor_cuota),
+      fecha:      c.fecha_vencimiento,
+      minValor:   Number(c.valor_pagado || 0),
+      orig_valor: Number(c.valor_cuota),
+      orig_fecha: c.fecha_vencimiento,
+    }));
+
+    const sumTotal = () => rows.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    const balanced = () => Math.abs(financiado - sumTotal()) <= tol;
+
+    function summaryHTML() {
+      const diff  = financiado - sumTotal();
+      const ok    = Math.abs(diff) <= tol;
+      const color = ok ? "var(--success,#22c55e)" : "var(--danger,#ef4444)";
+      const msg   = ok ? "✓ El plan cuadra"
+                  : diff > 0 ? `Faltan ${UI.fmt(diff)} por repartir`
+                  :            `Sobran ${UI.fmt(-diff)}`;
+      return `Suma de cuotas: <b>${UI.fmt(sumTotal())}</b> de <b>${UI.fmt(financiado)}</b> (financiado)
+        &nbsp;—&nbsp;<span style="color:${color};font-weight:600">${msg}</span>`;
+    }
+
+    function refreshState() {
+      const s = document.getElementById("rp-summary");
+      if (s) s.innerHTML = summaryHTML();
+      const motivo = (document.getElementById("rp-motivo")?.value || "").trim();
+      const mc = document.getElementById("rp-motivo-counter");
+      if (mc) {
+        mc.textContent = `${motivo.length} / 20 caracteres mínimo`;
+        mc.style.color = motivo.length >= 20 ? "var(--success,#22c55e)" : "var(--text-muted)";
       }
-      const continuar = document.getElementById("btn-continuar-edicion");
-      if (continuar) continuar.disabled = len < 20;
-    };
+      const btn = document.getElementById("rp-guardar");
+      if (btn) btn.disabled = !balanced() || motivo.length < 20;
+    }
 
-    window._continuarEdicion = function() {
-      const motivo = document.getElementById("motivo-edicion").value.trim();
-      if (motivo.length < 20) return;
-      motivoPendiente = motivo;
-      UI.closeModal();
+    const rowsHTML = () => rows.map((r, i) => r.pagada
+      ? `<tr style="opacity:.55">
+           <td style="padding:.35rem;text-align:center">${r.numero}</td>
+           <td style="padding:.35rem">${UI.date(r.fecha)}</td>
+           <td style="padding:.35rem;text-align:right;font-weight:600">${UI.fmt(r.valor)}</td>
+           <td style="padding:.35rem;text-align:center"><span class="badge badge-success">Pagada</span></td>
+         </tr>`
+      : `<tr>
+           <td style="padding:.35rem;text-align:center">${r.numero}</td>
+           <td style="padding:.35rem"><input type="date" class="rp-fecha" data-idx="${i}" value="${r.fecha || ""}" style="width:148px"></td>
+           <td style="padding:.35rem"><input type="text" inputmode="numeric" class="rp-valor" data-idx="${i}" value="${MoneyInput.format(r.valor)}" style="width:140px;text-align:right"></td>
+           <td style="padding:.35rem;text-align:center;font-size:.75rem;color:var(--text-muted)">${r.minValor > 0 ? `mín ${UI.fmt(r.minValor)}` : "—"}</td>
+         </tr>`).join("");
 
-      fila.outerHTML = filaEdicion(cuota);
-      const nuevaFila = tbody.querySelector(`tr[data-id="${cuota.id_cuota}"]`);
-      const inputV = nuevaFila?.querySelector(".cuota-input-valor");
-      if (inputV) MoneyInput.init(inputV, {
-        dependsOn: () => Number(cuota.valor_cuota),
+    document.getElementById("modalBody").innerHTML = `
+      <div style="margin-bottom:.75rem;padding:.625rem .875rem;background:var(--surface-2,#f0f4f8);border-radius:.5rem;font-size:.84rem;line-height:1.6">
+        Editar valores <b>no cambia la deuda total</b>. La suma de las cuotas debe seguir siendo
+        <b>${UI.fmt(financiado)}</b> (valor financiado): reparte la diferencia entre las cuotas no pagadas.
+      </div>
+      <div style="max-height:42vh;overflow-y:auto;border:1px solid var(--border);border-radius:.5rem">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="font-size:.72rem;color:var(--text-muted);position:sticky;top:0;background:var(--surface)">
+              <th style="padding:.4rem;text-align:center">Cuota</th>
+              <th style="padding:.4rem;text-align:left">Vencimiento</th>
+              <th style="padding:.4rem;text-align:right">Valor</th>
+              <th style="padding:.4rem;text-align:center"></th>
+            </tr>
+          </thead>
+          <tbody id="rp-rows">${rowsHTML()}</tbody>
+        </table>
+      </div>
+      <div id="rp-summary" style="padding:.5rem .75rem;background:var(--surface-2,#f0f4f8);border-radius:.375rem;font-size:.85rem;margin:.75rem 0">${summaryHTML()}</div>
+      <div class="form-group">
+        <label style="font-weight:600">Motivo del reajuste *</label>
+        <textarea id="rp-motivo" rows="2" placeholder="Describe por qué se reajusta el plan (mín. 20 caracteres)" style="resize:vertical"></textarea>
+        <small id="rp-motivo-counter" style="color:var(--text-muted);font-size:.78rem">0 / 20 caracteres mínimo</small>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+        <button class="btn btn-primary" id="rp-guardar" disabled>Guardar reajuste</button>
+      </div>`;
+
+    document.querySelectorAll("#rp-rows .rp-valor").forEach(inp => {
+      const i = Number(inp.dataset.idx);
+      MoneyInput.init(inp, {
+        dependsOn: () => financiado,
+        onChange: () => { rows[i].valor = MoneyInput.parse(inp.value); refreshState(); },
       });
-    };
+    });
+    document.querySelectorAll("#rp-rows .rp-fecha").forEach(inp => {
+      const i = Number(inp.dataset.idx);
+      inp.addEventListener("input", () => { rows[i].fecha = inp.value; });
+    });
+    document.getElementById("rp-motivo")?.addEventListener("input", refreshState);
+    refreshState();
+
+    document.getElementById("rp-guardar")?.addEventListener("click", async () => {
+      const motivo = (document.getElementById("rp-motivo")?.value || "").trim();
+      if (!balanced() || motivo.length < 20) return;
+
+      const cambios = rows
+        .filter(r => !r.pagada && (Number(r.valor) !== r.orig_valor || r.fecha !== r.orig_fecha))
+        .map(r => ({ id_cuota: r.id_cuota, valor_cuota: Number(r.valor), fecha_vencimiento: r.fecha }));
+      if (!cambios.length) { window.SGIUI?.toast("No se detectaron cambios.", "warning", "Aviso"); return; }
+
+      const btn = document.getElementById("rp-guardar");
+      btn.disabled = true; btn.textContent = "Guardando...";
+      try {
+        await API.patch(`/cuotas/venta/${idVenta}/valores`, { cambios, motivo });
+        UI.closeModal();
+        window.SGIUI?.toast("Plan de cuotas reajustado.", "success", "Listo");
+        window.cuotasView();
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "Guardar reajuste";
+        window.SGIUI?.toast(e.message || "Error al guardar.", "error", "Error");
+      }
+    });
   }
 
   // ── Subdivision modal ─────────────────────────────────────────────────────────

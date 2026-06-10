@@ -3,6 +3,7 @@ const ctrl   = require("../controllers/cuotas.controller");
 router.get("/pendientes",            ctrl.getPendientes);
 router.get("/vencidas",              ctrl.getVencidas);
 router.get("/venta/:idVenta",        ctrl.getByVenta);
+router.patch("/venta/:idVenta/valores", ctrl.rebalanceValores);
 router.get("/:id/fracciones",        ctrl.getFracciones);
 router.post("/:id/fracciones",       ctrl.setFracciones);
 router.delete("/:id/fracciones",     ctrl.deleteFracciones);
