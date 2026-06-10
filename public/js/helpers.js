@@ -48,6 +48,22 @@ function smartConvert(rawInput, valorReferencia) {
   return null; // > 1000, already a large number
 }
 
+// Shared search helper — accent-insensitive, multi-field matching used by every list view
+// so a single "buscar" box matches by name, document, lote code, project, etc. (points 5/7).
+const SGISearch = {
+  normalize(s) {
+    return String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  },
+  // True when the (normalized) query is contained in any of the provided values.
+  matches(query, ...values) {
+    const q = SGISearch.normalize(query);
+    if (!q) return true;
+    const hay = SGISearch.normalize(values.filter(v => v != null).join(""));
+    return hay.includes(q);
+  },
+};
+window.SGISearch = SGISearch;
+
 // Expose globally so all views can access them.
 window.SGIHelpers = { fmtMiles, parseMiles, applyMoneyInput, smartConvert };
 

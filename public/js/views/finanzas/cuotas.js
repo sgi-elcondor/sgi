@@ -80,10 +80,8 @@ window.cuotasView = async function() {
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
-        <input id="f-lote" type="text" class="filter-input" placeholder="Buscar lote..."
-          style="flex:1;min-width:8rem">
-        <input id="f-comprador" type="text" class="filter-input" placeholder="Buscar comprador..."
-          style="flex:2;min-width:11rem">
+        <input id="f-buscar" type="text" class="filter-input" placeholder="Buscar comprador, documento, lote..."
+          style="flex:3;min-width:14rem">
         <select id="f-estado" class="select-sm" style="flex:1;min-width:8.75rem">
           <option value="">Todos los estados</option>
           ${optsEstado}
@@ -112,17 +110,15 @@ window.cuotasView = async function() {
 
   function aplicarFiltros() {
     const fProyecto     = document.getElementById("f-proyecto").value;
-    const fLote         = norm(document.getElementById("f-lote").value);
-    const fComprador    = norm(document.getElementById("f-comprador").value);
+    const fBuscar       = document.getElementById("f-buscar").value;
     const fEstado       = document.getElementById("f-estado").value;
     const fSubdivididas = document.getElementById("f-subdivididas").checked;
 
     const visibles = data.filter(c => {
-      if (fProyecto     && c.proyecto    !== fProyecto)                    return false;
-      if (fLote         && !norm(c.codigo_lote).includes(fLote))           return false;
-      if (fComprador    && !norm(c.comprador).includes(fComprador))        return false;
-      if (fEstado       && c.estado      !== fEstado)                      return false;
-      if (fSubdivididas && !c.tiene_fracciones)                            return false;
+      if (fProyecto     && c.proyecto !== fProyecto)                                  return false;
+      if (!SGISearch.matches(fBuscar, c.comprador, c.documento, c.codigo_lote, c.proyecto)) return false;
+      if (fEstado       && c.estado   !== fEstado)                                    return false;
+      if (fSubdivididas && !c.tiene_fracciones)                                       return false;
       return true;
     });
 
@@ -134,9 +130,7 @@ window.cuotasView = async function() {
   ["f-proyecto", "f-estado"].forEach(id =>
     document.getElementById(id).addEventListener("change", aplicarFiltros)
   );
-  ["f-lote", "f-comprador"].forEach(id =>
-    document.getElementById(id).addEventListener("input", aplicarFiltros)
-  );
+  document.getElementById("f-buscar").addEventListener("input", aplicarFiltros);
   document.getElementById("f-subdivididas").addEventListener("change", aplicarFiltros);
 
   tbody.addEventListener("click", async e => {

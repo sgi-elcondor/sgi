@@ -52,21 +52,17 @@ exports.getAll = async (req, res) => {
   }
 
   if (cliente) {
-    const cn = cliente
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
+    const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const cn = norm(cliente);
 
-    result = result.filter(v =>
-      (v.venta_comprador || []).some(vc => {
-        const full = `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""} ${vc.usuario?.documento || ""}`
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[̀-ͯ]/g, "");
-
-        return full.includes(cn);
-      })
-    );
+    // Point 5/7: search by comprador name/document, lote code or project in a single box.
+    result = result.filter(v => {
+      const compradores = (v.venta_comprador || [])
+        .map(vc => `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""} ${vc.usuario?.documento || ""}`)
+        .join(" ");
+      const haystack = `${compradores} ${v.lote?.codigo_lote || ""} ${v.lote?.proyecto?.nombre || ""}`;
+      return norm(haystack).includes(cn);
+    });
   }
 
   res.json(result);

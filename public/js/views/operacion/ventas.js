@@ -94,7 +94,7 @@ window.ventasView = async function() {
         </div>
         <div class="form-group" style="margin:0;flex:1;min-width:150px">
           <label style="font-size:.78rem;margin-bottom:2px">Cliente (cédula o nombre)</label>
-          <input id="fv_cliente" type="text" placeholder="Buscar cliente…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
+          <input id="fv_cliente" type="text" placeholder="Buscar cliente, lote…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
         </div>
         <div class="form-group" style="margin:0;min-width:160px">
           <label style="font-size:.78rem;margin-bottom:2px">Estado</label>
