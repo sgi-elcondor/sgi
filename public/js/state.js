@@ -26,6 +26,11 @@
 
     getUser()              { return _user; },
     can(resource, action)  { return _can.has(`${resource}:${action}`); },
-    hasVista(key)          { return _vistas.has(key); },
+    hasVista(key) {
+      if (_vistas.has(key)) return true;
+      // A comprador (anyone with the mis-cuotas vista) can also reach Mis Facturas.
+      if (key === "mis-facturas" && _vistas.has("mis-cuotas")) return true;
+      return false;
+    },
   };
 })();
