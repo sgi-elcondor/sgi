@@ -145,7 +145,7 @@
             <option value="">Todos los proyectos</option>
             ${optsProyecto}
           </select>
-          <input id="pv-comprador" type="text" placeholder="Buscar comprador..."
+          <input id="pv-comprador" type="text" placeholder="Buscar comprador, lote, proyecto..."
             style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
         </div>
         <div style="overflow-x:auto">
@@ -167,10 +167,10 @@
 
     function aplicarFiltros() {
       const fProyecto = document.getElementById("pv-proyecto").value;
-      const fComp     = norm(document.getElementById("pv-comprador").value);
+      const fBuscar   = document.getElementById("pv-comprador").value;
       const visibles  = grupos.filter(g => {
-        if (fProyecto && g.proyecto !== fProyecto)             return false;
-        if (fComp && !norm(g.comprador).includes(fComp))      return false;
+        if (fProyecto && g.proyecto !== fProyecto) return false;
+        if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
         return true;
       });
       tbody.innerHTML = visibles.map(filaVenta).join("");

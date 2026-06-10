@@ -32,7 +32,7 @@ async function cargarUsuariosTabla() {
       <div class="table-wrap">
         <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem;">
           <div style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap;">
-            <input id="filtro-email" type="text" placeholder="Buscar por email..."
+            <input id="filtro-email" type="text" placeholder="Buscar por nombre, documento o email..."
               style="padding:.4rem .8rem; border:1px solid var(--border); border-radius:8px;
                      font-size:.875rem; background:var(--surface); color:var(--text); width:200px;"
               oninput="filtrarUsuarios()" />
@@ -175,7 +175,7 @@ function filtrarUsuarios() {
   const estado = document.getElementById('filtro-estado')?.value ?? '';
 
   const filtrados = _todosUsuarios.filter(u => {
-    const okEmail  = !email  || u.email.toLowerCase().includes(email);
+    const okEmail  = SGISearch.matches(email, u.email, u.nombres, u.apellidos, u.documento);
     const okRol    = !rol    || u.roles?.nombre === rol;
     const okEstado = !estado
       || (estado === 'activo'   &&  u.activo)

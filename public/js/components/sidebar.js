@@ -20,9 +20,10 @@ const SIDEBAR_GROUPS = [
     { view: "gastos",             icon: "trending-down", label: "Gastos" },
   ]},
   { label: "Mi cuenta", items: [
-    { view: "dashboard",   icon: "home",     label: "Mi Lote" },
-    { view: "mis-cuotas",  icon: "calendar", label: "Mis Cuotas" },
-    { view: "mis-recibos", icon: "wallet",   label: "Mis Pagos" },
+    { view: "dashboard",    icon: "home",     label: "Mi Lote" },
+    { view: "mis-cuotas",   icon: "calendar", label: "Mis Cuotas" },
+    { view: "mis-facturas", icon: "receipt",  label: "Mis Facturas" },
+    { view: "mis-recibos",  icon: "wallet",   label: "Mis Pagos" },
   ]},
   { label: "Control", items: [
     { view: "reportes",  icon: "bar-chart-3",    label: "Reportes" },
@@ -48,7 +49,10 @@ function renderSidebar(vistas, simulatedRol) {
 
   SIDEBAR_GROUPS.forEach(function(group) {
     const visible = group.items.filter(function(item) {
-      if (!allowed.has(item.view)) return false;
+      // A comprador always sees "Mis Facturas" (they hold the mis_facturas permission used
+      // when requesting an invoice); it does not require a separate granted vista.
+      const compFactura = isComprador && item.view === "mis-facturas";
+      if (!allowed.has(item.view) && !compFactura) return false;
       if (rendered.has(item.view)) return false;
       if (isComprador && group.label === "General" && item.view === "dashboard") return false;
       return true;

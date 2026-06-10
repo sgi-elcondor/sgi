@@ -359,7 +359,7 @@ window.recibosView = async function() {
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
-        <input id="rv-comprador" type="text" placeholder="Buscar comprador..."
+        <input id="rv-comprador" type="text" placeholder="Buscar comprador, lote, proyecto..."
           style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
       </div>
 
@@ -404,10 +404,10 @@ window.recibosView = async function() {
 
   function aplicarFiltros() {
     const fProyecto = document.getElementById("rv-proyecto").value;
-    const fComp     = _rNorm(document.getElementById("rv-comprador").value);
+    const fBuscar   = document.getElementById("rv-comprador").value;
     const visibles  = grupos.filter(g => {
-      if (fProyecto && g.proyecto !== fProyecto)              return false;
-      if (fComp     && !_rNorm(g.comprador).includes(fComp)) return false;
+      if (fProyecto && g.proyecto !== fProyecto) return false;
+      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
       return true;
     });
     tbody.innerHTML = visibles.map(filaVenta).join("");

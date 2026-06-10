@@ -374,8 +374,8 @@ window.facturasView = async function() {
           <option value="">Todos los proyectos</option>
           ${optsProyecto}
         </select>
-        <input id="ff-comprador" type="text" class="filter-input" placeholder="Buscar comprador..."
-          style="flex:2;min-width:11rem">
+        <input id="ff-comprador" type="text" class="filter-input" placeholder="Buscar comprador, lote, proyecto..."
+          style="flex:2;min-width:13rem">
       </div>
 
       <div style="overflow-x:auto">
@@ -397,10 +397,10 @@ window.facturasView = async function() {
 
   function aplicarFiltros() {
     const fProyecto  = document.getElementById("ff-proyecto").value;
-    const fComprador = _fNorm(document.getElementById("ff-comprador").value);
+    const fBuscar    = document.getElementById("ff-comprador").value;
     const visibles   = grupos.filter(g => {
-      if (fProyecto  && g.proyecto  !== fProyecto)                return false;
-      if (fComprador && !_fNorm(g.comprador).includes(fComprador)) return false;
+      if (fProyecto && g.proyecto !== fProyecto) return false;
+      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
       return true;
     });
     tbody.innerHTML = visibles.map(filaVenta).join("");

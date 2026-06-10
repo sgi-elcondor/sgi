@@ -13,6 +13,70 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
+  // Point 13: comprador downloads a PDF of the payment plan from "Mis Cuotas".
+  function _planCuotasPDF(venta) {
+    const jsPDFCtor = window.jspdf?.jsPDF;
+    if (!jsPDFCtor) { window.SGIUI?.toast("No se pudo generar el PDF.", "error"); return; }
+
+    const doc    = new jsPDFCtor({ unit: "mm", format: "a4" });
+    const PAGE_W = 210, M = 14;
+    const proyecto = venta.lote?.proyecto?.nombre || "Inmueble";
+    const lote     = venta.lote?.codigo_lote || "—";
+    const u        = window.currentUser || {};
+    const nombre   = `${u.nombres || ""} ${u.apellidos || ""}`.trim();
+
+    let y = 18;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(255, 106, 0);
+    doc.text("El Cóndor S.A.S.", M, y);
+    doc.setTextColor(17, 17, 17); doc.setFontSize(13); y += 8;
+    doc.text("Plan de cuotas", M, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(90, 90, 90); y += 7;
+    doc.text(`${proyecto}  ·  Lote ${lote}${venta.lote?.manzana ? "  ·  Manzana " + venta.lote.manzana : ""}`, M, y); y += 5;
+    if (nombre) { doc.text(`Comprador: ${nombre}`, M, y); y += 5; }
+    doc.text(`Generado: ${new Date().toLocaleDateString("es-CO")}`, M, y); y += 8;
+
+    const cols = [
+      { x: M,       w: 12, label: "#",           align: "left"  },
+      { x: M + 12,  w: 32, label: "Vencimiento", align: "left"  },
+      { x: M + 44,  w: 38, label: "Valor",       align: "right" },
+      { x: M + 82,  w: 38, label: "Pagado",      align: "right" },
+      { x: M + 120, w: 34, label: "Pendiente",   align: "right" },
+      { x: M + 158, w: 24, label: "Estado",      align: "left"  },
+    ];
+    const cellX = c => (c.align === "right" ? c.x + c.w : c.x);
+    function drawHeader() {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
+      cols.forEach(c => doc.text(c.label, cellX(c), y, { align: c.align }));
+      y += 2; doc.setDrawColor(220, 220, 220); doc.line(M, y, PAGE_W - M, y); y += 4;
+      doc.setFont("helvetica", "normal"); doc.setTextColor(40, 40, 40);
+    }
+    drawHeader();
+    doc.setFontSize(8.5);
+
+    let totVal = 0, totPag = 0;
+    (venta.cuotas || []).forEach(c => {
+      if (y > 272) { doc.addPage(); y = 18; drawHeader(); doc.setFontSize(8.5); }
+      const tieneFrac = c.tiene_fracciones;
+      const valor  = Number(tieneFrac ? (c.valor_total_cuota ?? c.valor_cuota) : c.valor_cuota) || 0;
+      const pagado = Number(tieneFrac ? (c.total_pagado_cuota ?? c.valor_pagado) : c.valor_pagado) || 0;
+      totVal += valor; totPag += pagado;
+      const estado = c.estado === "pagada"
+        ? (c.pagada_anticipada ? "Pagada ant." : "Pagada")
+        : (c.dias_restantes < 0 ? "Vencida" : "Pendiente");
+      const cells = [String(c.numero_cuota), fmtDateShort(c.fecha_vencimiento), fmt(valor), fmt(pagado), fmt(Math.max(0, valor - pagado)), estado];
+      cols.forEach((col, i) => doc.text(cells[i], cellX(col), y, { align: col.align }));
+      y += 5.5;
+    });
+
+    y += 2; doc.setDrawColor(220, 220, 220); doc.line(M, y, PAGE_W - M, y); y += 6;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(17, 17, 17);
+    doc.text(`Total: ${fmt(totVal)}    Pagado: ${fmt(totPag)}    Pendiente: ${fmt(Math.max(0, totVal - totPag))}`, M, y);
+    y += 5; doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
+    doc.text(`${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas (${Math.min(100, venta.porcentaje_pagado || 0).toFixed(1)}%)`, M, y);
+
+    doc.save(`plan_cuotas_lote_${lote}.pdf`);
+  }
+
   async function abrirModalPago({ idVenta, idCuota, cuota, valorPagar, numeroFactura, onSuccess } = {}) {
     const iconSend    = window.SGIUI?.icon("send")          ?? "";
     const iconPhone   = window.SGIUI?.icon("smartphone")    ?? "";
@@ -408,7 +472,7 @@
             kicker: "Mis cuotas",
             title: `${venta.lote?.proyecto?.nombre || "Mi inmueble"}`,
             subtitle: `Lote ${venta.lote?.codigo_lote || "—"}${venta.lote?.manzana ? " · Manzana " + venta.lote.manzana : ""}`,
-            actions: "",
+            actions: `<button class="btn btn-ghost btn-sm" id="btn-plan-pdf">${window.SGIUI?.icon("download") ?? ""} Descargar plan (PDF)</button>`,
             meta: `<span class="results-chip">${window.SGIUI?.icon("check-circle") ?? ""} ${venta.cuotas_pagadas} de ${venta.total_cuotas} cuotas pagadas</span>`,
           }) ?? ""}
           ${buildLoteSelector(idx)}
@@ -425,6 +489,8 @@
         </section>`;
 
       window.SGIUI?.hydrate();
+
+      document.getElementById("btn-plan-pdf")?.addEventListener("click", () => _planCuotasPDF(venta));
 
       vc.querySelectorAll(".lote-tab").forEach(btn => {
         btn.addEventListener("click", () => {
