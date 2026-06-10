@@ -222,7 +222,6 @@ exports.getCuotasSinFactura = async (req, res) => {
         venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
     `)
-    .lte("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
 
@@ -252,7 +251,8 @@ exports.getCuotasSinFactura = async (req, res) => {
     const facturasExistentes = c.cuota_factura  || [];
 
     if (fracciones.length === 0) {
-      // RN-10: only offer a cuota with no active factura AND a real pending saldo.
+      // RN-10: only offer a due cuota (parent date reached) with no active factura AND saldo.
+      if (c.fecha_vencimiento > hoy) continue;
       const tieneActiva = facturasExistentes.some(cf => cf.id_fraccion === null && ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
       const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
       if (!tieneActiva && saldo > 0) {
@@ -265,10 +265,12 @@ exports.getCuotasSinFactura = async (req, res) => {
           .map(cf => cf.id_fraccion)
           .filter(Boolean)
       );
-      // Offer only fracciones that are neither already billed nor already covered by receipts.
+      // §3.3: offer each fracción by its OWN due date (fecha_propuesta), not the parent's,
+      // and only those neither already billed nor already covered by receipts.
       for (const fc of saldos._coberturaFracciones(fracciones, totalRecibos)) {
         if (fraccionesFacturadas.has(fc.id_fraccion)) continue;
         if (fc.saldo_pendiente <= 0) continue;
+        if ((fc.fecha_propuesta || c.fecha_vencimiento) > hoy) continue;
         result.push({
           ...base,
           id_fraccion:       fc.id_fraccion,
@@ -297,17 +299,17 @@ exports.generarPendientes = async (req, res) => {
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
-      id_cuota, id_venta, numero_cuota, valor_cuota,
-      cuota_fraccion(id_fraccion, numero_fraccion),
+      id_cuota, id_venta, numero_cuota, valor_cuota, fecha_vencimiento,
+      cuota_fraccion(id_fraccion, numero_fraccion, fecha_propuesta),
       cuota_factura(id_fraccion, factura:id_factura(estado)),
       venta(id_venta, estado)
     `)
-    .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
-  // Bill each cuota (or each of its fracciones) that has no ACTIVE factura. An anulada
-  // factura does not count, so a previously-rejected cuota gets billed again.
+  // Bill each cuota (or each of its fracciones) due within the window and without an ACTIVE
+  // factura. §3.3: each fracción is evaluated by its OWN fecha_propuesta, not the parent's.
+  // An anulada factura does not count, so a previously-rejected item gets billed again.
   let generadas = 0;
   for (const c of (cuotas || [])) {
     if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
@@ -322,10 +324,12 @@ exports.generarPendientes = async (req, res) => {
       );
       for (const f of fracciones) {
         if (facturadas.has(f.id_fraccion)) continue;
+        if ((f.fecha_propuesta || c.fecha_vencimiento) > limiteStr) continue;
         const { factura, reused } = await _emitirFactura(c.id_cuota, f.id_fraccion);
         if (factura && !reused) generadas++;
       }
     } else {
+      if (c.fecha_vencimiento > limiteStr) continue;
       const tieneActiva = (c.cuota_factura || [])
         .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
       if (tieneActiva) continue;

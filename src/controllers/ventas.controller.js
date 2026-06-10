@@ -799,8 +799,6 @@ return {
         const pagadoPendiente = (v.pago || [])
           .filter(p => p.estado === "pendiente_revision" && p.id_cuota_propuesta === c.id_cuota)
           .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
-        const dias = Math.floor((new Date(c.fecha_vencimiento + "T12:00:00") - hoy) / 86_400_000);
-
         const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
         let acumuladoFrac = 0;
         const fraccionesCompletadas = new Set();
@@ -809,6 +807,9 @@ return {
           if (pagadoAceptado >= acumuladoFrac) fraccionesCompletadas.add(f.id_fraccion);
         }
         const fraccionPendiente = fracciones.find(f => !fraccionesCompletadas.has(f.id_fraccion)) || null;
+        // §3.3: for a subdivided cuota, days and mora state come from the active fracción's date.
+        const fechaEfectiva = fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento;
+        const dias = Math.floor((new Date(fechaEfectiva + "T12:00:00") - hoy) / 86_400_000);
 
         const valorAMostrar = fraccionPendiente
           ? Number(fraccionPendiente.valor_fraccion)

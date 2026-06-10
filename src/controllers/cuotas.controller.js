@@ -265,6 +265,10 @@ exports.getPendientes = async (req, res) => {
       }
       for (const f of fracciones) {
         if (!fraccionesCompletadas.has(f.id_fraccion)) {
+          // §3.3: each fracción has its own due date, so its mora state is derived from
+          // fecha_propuesta, not the parent cuota's fecha_vencimiento.
+          const fFecha   = f.fecha_propuesta || c.fecha_vencimiento;
+          const diasFrac = Math.floor((hoy - new Date(fFecha).getTime()) / 86_400_000);
           result.push({
             ...base,
             id_fraccion:       f.id_fraccion,
@@ -272,7 +276,9 @@ exports.getPendientes = async (req, res) => {
             total_fracciones:  fracciones.length,
             valor_cuota:       f.valor_fraccion,
             valor_pendiente:   f.valor_fraccion,
-            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
+            fecha_vencimiento: fFecha,
+            dias_atraso:       diasFrac,
+            estado:            saldos.clasificarMora(diasFrac),
             tiene_fracciones:  true,
           });
         }
