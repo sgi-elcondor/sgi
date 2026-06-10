@@ -48,7 +48,15 @@ window.paymentValidationView = async function() {
             <h3>Validacion de Pagos</h3>
             <p style="color:var(--text-muted);font-size:13px;margin:2px 0 0">${matches.length} coincidencia(s) encontrada(s)</p>
           </div>
-          ${canWrite ? `<button class="btn btn-primary" onclick="pvAcceptSelected()">Aceptar pagos seleccionados</button>` : ""}
+          ${canWrite ? `
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="pv-checkbox-wrap" style="cursor:pointer">
+              <input type="checkbox" id="pv-select-all" onchange="pvSelectAll(this.checked)">
+              <span class="pv-chk-label">Seleccionar todos</span>
+            </label>
+            <button class="btn btn-ghost btn-sm" onclick="pvSelectHigh()" title="Selecciona las coincidencias de confianza alta (score &ge; 80)">Solo confianza alta</button>
+            <button class="btn btn-primary" onclick="pvAcceptSelected()">Aceptar seleccionados</button>
+          </div>` : ""}
         </div>
       </div>
       <div class="pv-cards" id="pv-cards-container">${matches.map((m, i) => _pvCard(m, i)).join('')}</div>
@@ -119,6 +127,7 @@ function _pvCard(m, i) {
           <label class="pv-checkbox-wrap">
             <input type="checkbox" class="pv-accept-chk" id="pv-chk-${i}"
               data-pago="${pago.id_pago}" data-tx="${transaction ? transaction.id_transaction : ''}"
+              data-score="${score}"
               onchange="_pvUpdateCount()">
             <span class="pv-chk-label">Aceptar</span>
           </label>
@@ -151,6 +160,23 @@ window._pvUpdateCount = function() {
   const total   = document.querySelectorAll('.pv-accept-chk').length;
   const el = document.getElementById('pv-accept-count');
   if (el) el.textContent = `${checked} de ${total} seleccionados`;
+  const all = document.getElementById('pv-select-all');
+  if (all) {
+    all.checked       = total > 0 && checked === total;
+    all.indeterminate = checked > 0 && checked < total;
+  }
+};
+
+// Quick selection for high-volume validation (point 9).
+window.pvSelectAll = function(flag) {
+  document.querySelectorAll('.pv-accept-chk').forEach(chk => { chk.checked = flag; });
+  _pvUpdateCount();
+};
+window.pvSelectHigh = function() {
+  document.querySelectorAll('.pv-accept-chk').forEach(chk => {
+    chk.checked = Number(chk.dataset.score || 0) >= 80;
+  });
+  _pvUpdateCount();
 };
 
 window.pvZoomBaucher = function(url) {
