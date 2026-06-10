@@ -1,5 +1,6 @@
 const supabase = require("../config/supabase");
 const saldos   = require("../services/saldos.service");
+const facturas = require("./facturas.controller");
 const SCHEMA   = "condor";
 
 exports.getByVenta = async (req, res) => {
@@ -27,14 +28,6 @@ const { data, error } = await supabase.schema(SCHEMA).from("cuota")
   res.status(201).json(data);
 };
 
-exports.updateEstado = async (req, res) => {
-  const { estado } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("cuota")
-    .update({ estado }).eq("id_cuota", req.params.id).select().single();
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
-};
-
 exports.updateValores = async (req, res) => {
   if (req.usuario.rol !== 'auxiliar_contable') {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
@@ -45,14 +38,16 @@ exports.updateValores = async (req, res) => {
 
   const { valor_cuota, fecha_vencimiento, motivo } = req.body;
 
-  if (valor_cuota !== undefined && (typeof valor_cuota !== 'number' || valor_cuota <= 0)) {
-    return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
+  // A/RN-17: changing a single cuota value in isolation would break the total debt
+  // (Σcuotas = financed value). Value changes must go through the balanced plan endpoint.
+  if (valor_cuota !== undefined) {
+    return res.status(400).json({ error: 'Para cambiar el valor usa el reajuste del plan de cuotas (debe cuadrar con el valor financiado).' });
   }
   if (fecha_vencimiento !== undefined && isNaN(Date.parse(fecha_vencimiento))) {
     return res.status(400).json({ error: 'fecha_vencimiento no es una fecha válida' });
   }
-  if (valor_cuota === undefined && fecha_vencimiento === undefined) {
-    return res.status(400).json({ error: 'Debe enviar valor_cuota o fecha_vencimiento' });
+  if (fecha_vencimiento === undefined) {
+    return res.status(400).json({ error: 'Debe enviar fecha_vencimiento' });
   }
 
   const { data: actual, error: readErr } = await supabase
@@ -112,6 +107,109 @@ exports.updateValores = async (req, res) => {
   res.json(data);
 };
 
+// A/RN-17/§8.4: editing cuota values must preserve the total debt. The sum of ALL the
+// venta's cuotas must stay equal to the financed value (valor_total − permutas). The aux
+// sends a balanced batch of changes; if it does not balance, the whole change is rejected.
+exports.rebalanceValores = async (req, res) => {
+  if (req.usuario.rol !== 'auxiliar_contable') {
+    return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
+  }
+
+  const idVenta = Number(req.params.idVenta);
+  if (!idVenta) return res.status(400).json({ error: 'ID de venta inválido' });
+
+  const { cambios, motivo } = req.body;
+  if (!Array.isArray(cambios) || cambios.length === 0) {
+    return res.status(400).json({ error: 'Debes enviar al menos un cambio' });
+  }
+  if (!motivo || String(motivo).trim().length < 20) {
+    return res.status(400).json({ error: 'El motivo es obligatorio (mín. 20 caracteres)' });
+  }
+
+  const { data: venta, error: vErr } = await supabase.schema(SCHEMA)
+    .from('venta').select('valor_total, total_permutas').eq('id_venta', idVenta).single();
+  if (vErr || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+  const { data: cuotas, error: cErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select(`id_cuota, numero_cuota, valor_cuota, fecha_vencimiento, estado,
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+      cuota_fraccion(id_fraccion),
+      cuota_factura(id_fraccion, factura:id_factura(estado))`)
+    .eq('id_venta', idVenta);
+  if (cErr) return res.status(500).json({ error: cErr.message });
+
+  const byId = new Map((cuotas || []).map(c => [c.id_cuota, c]));
+
+  for (const ch of cambios) {
+    const c = byId.get(Number(ch.id_cuota));
+    if (!c) return res.status(400).json({ error: `La cuota ${ch.id_cuota} no pertenece a esta venta` });
+
+    const cambiaValor = ch.valor_cuota !== undefined && Number(ch.valor_cuota) !== Number(c.valor_cuota);
+    if (ch.valor_cuota !== undefined) {
+      if (typeof ch.valor_cuota !== 'number' || ch.valor_cuota <= 0) {
+        return res.status(400).json({ error: 'valor_cuota debe ser un número mayor a 0' });
+      }
+      if (cambiaValor && c.estado === 'pagada') {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} está pagada y su valor no puede cambiar` });
+      }
+      const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
+      if (Number(ch.valor_cuota) < pagado) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} ya tiene recibos por ${pagado}; su valor no puede ser menor` });
+      }
+      // §3.3/§4.3: a subdivided cuota or one with an active factura cannot change its value
+      // here, or its fracciones / factura would be left inconsistent.
+      if (cambiaValor && (c.cuota_fraccion || []).length > 0) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} está subdividida; ajusta sus fracciones desde "Subdividir".` });
+      }
+      if (cambiaValor && (c.cuota_factura || []).some(cf => ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado))) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} tiene una factura activa; anúlala antes de cambiar su valor.` });
+      }
+    }
+    if (ch.fecha_vencimiento !== undefined && isNaN(Date.parse(ch.fecha_vencimiento))) {
+      return res.status(400).json({ error: 'fecha_vencimiento no es una fecha válida' });
+    }
+  }
+
+  // The sum of all cuotas (after applying value changes) must equal the financed value.
+  const nuevoValor = new Map((cuotas || []).map(c => [c.id_cuota, Number(c.valor_cuota)]));
+  for (const ch of cambios) {
+    if (ch.valor_cuota !== undefined) nuevoValor.set(Number(ch.id_cuota), Number(ch.valor_cuota));
+  }
+  const sumTotal   = [...nuevoValor.values()].reduce((s, v) => s + v, 0);
+  const financiado = Number(venta.valor_total) - (Number(venta.total_permutas) || 0);
+  const tolerancia = Math.max(1, (cuotas || []).length);
+  if (Math.abs(sumTotal - financiado) > tolerancia) {
+    return res.status(400).json({
+      error: `El plan no cuadra: las cuotas suman ${sumTotal} y deben sumar ${financiado} (valor financiado). Ajusta los valores para repartir la diferencia.`,
+      sum_actual:  sumTotal,
+      financiado,
+    });
+  }
+
+  const registros = [];
+  const now = new Date().toISOString();
+  for (const ch of cambios) {
+    const c = byId.get(Number(ch.id_cuota));
+    const updates = {};
+    if (ch.valor_cuota !== undefined && Number(ch.valor_cuota) !== Number(c.valor_cuota)) {
+      updates.valor_cuota = Number(ch.valor_cuota);
+      registros.push({ tabla_afectada: 'cuota', id_registro: c.id_cuota, campo: 'valor_cuota', valor_anterior: String(c.valor_cuota), valor_nuevo: String(ch.valor_cuota), usuario_db: req.usuario.email, fecha_cambio: now, motivo: String(motivo).trim() });
+    }
+    if (ch.fecha_vencimiento !== undefined && ch.fecha_vencimiento !== c.fecha_vencimiento) {
+      updates.fecha_vencimiento = ch.fecha_vencimiento;
+      registros.push({ tabla_afectada: 'cuota', id_registro: c.id_cuota, campo: 'fecha_vencimiento', valor_anterior: c.fecha_vencimiento, valor_nuevo: ch.fecha_vencimiento, usuario_db: req.usuario.email, fecha_cambio: now, motivo: String(motivo).trim() });
+    }
+    if (Object.keys(updates).length) {
+      const { error: uErr } = await supabase.schema(SCHEMA).from('cuota').update(updates).eq('id_cuota', c.id_cuota);
+      if (uErr) return res.status(400).json({ error: uErr.message });
+    }
+  }
+  if (registros.length) await supabase.schema(SCHEMA).from('auditoria').insert(registros);
+
+  res.json({ ok: true, financiado, sum: sumTotal, cambios: registros.length });
+};
+
 exports.getPendientes = async (req, res) => {
   const { rango_pago } = req.query;
 
@@ -121,7 +219,7 @@ exports.getPendientes = async (req, res) => {
       *,
       venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento, rango_pago))),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
-      cuota_pago(valor_aplicado, pago:id_pago(estado))
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))
     `)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
@@ -150,14 +248,15 @@ exports.getPendientes = async (req, res) => {
       estado:            saldos.clasificarMora(dias),
     };
 
-    const fracciones = c.cuota_fraccion || [];
+    const fracciones   = c.cuota_fraccion || [];
+    const totalRecibos = saldos._sumRecibosAceptados(c.cuota_pago);
 
     if (fracciones.length === 0) {
-      result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: c.valor_cuota, tiene_fracciones: false });
+      // RN-10: pending = value minus accepted receipts (single source criterion).
+      const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+      result.push({ ...base, valor_cuota: c.valor_cuota, valor_pendiente: saldo, tiene_fracciones: false });
     } else {
-      const pagadoAceptado = (c.cuota_pago || [])
-        .filter(cp => cp.pago?.estado === 'aceptado')
-        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      const pagadoAceptado = totalRecibos;
       let acumuladoFrac = 0;
       const fraccionesCompletadas = new Set();
       for (const f of fracciones) {
@@ -166,6 +265,10 @@ exports.getPendientes = async (req, res) => {
       }
       for (const f of fracciones) {
         if (!fraccionesCompletadas.has(f.id_fraccion)) {
+          // §3.3: each fracción has its own due date, so its mora state is derived from
+          // fecha_propuesta, not the parent cuota's fecha_vencimiento.
+          const fFecha   = f.fecha_propuesta || c.fecha_vencimiento;
+          const diasFrac = Math.floor((hoy - new Date(fFecha).getTime()) / 86_400_000);
           result.push({
             ...base,
             id_fraccion:       f.id_fraccion,
@@ -173,7 +276,9 @@ exports.getPendientes = async (req, res) => {
             total_fracciones:  fracciones.length,
             valor_cuota:       f.valor_fraccion,
             valor_pendiente:   f.valor_fraccion,
-            fecha_vencimiento: f.fecha_propuesta || c.fecha_vencimiento,
+            fecha_vencimiento: fFecha,
+            dias_atraso:       diasFrac,
+            estado:            saldos.clasificarMora(diasFrac),
             tiene_fracciones:  true,
           });
         }
@@ -189,17 +294,27 @@ exports.getVencidas = async (req, res) => {
   const hoy = new Date().toISOString().split("T")[0];
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
-    .select("*, venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))")
+    .select(`
+      id_cuota, numero_cuota, fecha_vencimiento, valor_cuota,
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))
+    `)
     .lt("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json((data || []).map(c => {
+  const result = [];
+  for (const c of (data || [])) {
+    // RN-10/RN-16: real saldo and state derived from receipts, never from the stored estado.
+    const totalRecibos = saldos._sumRecibosAceptados(c.cuota_pago);
+    const saldo        = Math.max(0, Number(c.valor_cuota) - totalRecibos);
+    if (saldo <= 0) continue;
+
     const lote      = c.venta?.lote;
     const comprador = c.venta?.venta_comprador?.[0]?.usuario;
     const dias      = Math.floor((Date.now() - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
-    return {
+    result.push({
       id_cuota:          c.id_cuota,
       proyecto:          lote?.proyecto?.nombre || "—",
       codigo_lote:       lote?.codigo_lote      || "—",
@@ -208,10 +323,11 @@ exports.getVencidas = async (req, res) => {
       fecha_vencimiento: c.fecha_vencimiento,
       dias_atraso:       dias,
       valor_cuota:       c.valor_cuota,
-      valor_pendiente:   c.valor_cuota,
-      estado:            c.estado,
-    };
-  }));
+      valor_pendiente:   saldo,
+      estado:            saldos.clasificarMora(dias),
+    });
+  }
+  res.json(result);
 };
 
 
@@ -264,6 +380,16 @@ exports.setFracciones = async (req, res) => {
     return res.status(400).json({
       error: `Sum of fractions (${sum}) must equal cuota value (${cuota.valor_cuota}) ±1`,
     });
+  }
+
+  // B/§4.3: (re)defining the subdivision invalidates every active factura of the cuota
+  // (whole-cuota and any previous fracción). Annul the 'emitida' ones; block if any has
+  // receipts (those cannot be annulled).
+  const facPrevia = await facturas.anularFacturasActivas(id, {
+    scope: 'all', usuario: req.usuario.email, motivo: 'subdivision_cuota',
+  });
+  if (facPrevia.blocked) {
+    return res.status(400).json({ error: 'No se puede subdividir: ya hay una factura con pagos registrados para esta cuota o una de sus fracciones. Termina o anula ese cobro antes de subdividir.' });
   }
 
   const { error: delErr } = await supabase.schema(SCHEMA)
@@ -319,6 +445,14 @@ exports.deleteFracciones = async (req, res) => {
   if (cuotaErr || !cuota) return res.status(404).json({ error: 'Cuota not found' });
   if (cuota.estado === 'pagada') {
     return res.status(400).json({ error: 'Cannot modify fractions of a paid cuota' });
+  }
+
+  // §4.3: reverting to a whole cuota — annul the fracción facturas; block if any has receipts.
+  const facFrac = await facturas.anularFacturasActivas(id, {
+    scope: 'fracciones', usuario: req.usuario.email, motivo: 'eliminar_subdivision_cuota',
+  });
+  if (facFrac.blocked) {
+    return res.status(400).json({ error: 'No se puede eliminar la subdivisión: una fracción tiene factura con pagos. Termina o anula ese cobro primero.' });
   }
 
   const { error: delErr } = await supabase.schema(SCHEMA)

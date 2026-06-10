@@ -1,5 +1,6 @@
 const supabase     = require("../config/supabase");
 const consecutivos = require("../services/consecutivos.service");
+const saldos       = require("../services/saldos.service");
 const SCHEMA       = "condor";
 
 async function comisionistaRolId() {
@@ -73,7 +74,7 @@ exports.getComisionesDetail = async (req, res) => {
     .select(`
       id_venta, id_usuario, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
       venta:id_venta(
-        id_venta, valor_total, fecha_venta, estado,
+        id_venta, valor_total, total_permutas, fecha_venta, estado,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
       )
@@ -89,8 +90,11 @@ exports.getComisionesDetail = async (req, res) => {
   let pagadoPorVenta = {};
 
   if (ventaIds.length > 0) {
-    const { data: cuotas } = await supabase.schema(SCHEMA)
-      .from("cuota").select("id_venta, estado, valor_cuota").in("id_venta", ventaIds);
+    const { data: pagosVenta } = await supabase.schema(SCHEMA)
+      .from("pago")
+      .select("id_venta, valor_pago, estado, recibo_pago(id_recibo)")
+      .in("id_venta", ventaIds)
+      .eq("estado", "aceptado");
 
     let micropagos;
     const { data: mpFull, error: mpErr } = await supabase.schema(SCHEMA)
@@ -113,16 +117,18 @@ exports.getComisionesDetail = async (req, res) => {
       micropagosMap[m.id_venta].push(m);
     }
 
-    for (const c of cuotas || []) {
-      if (c.estado === "pagada") {
-        pagadoPorVenta[c.id_venta] = (pagadoPorVenta[c.id_venta] || 0) + Number(c.valor_cuota);
+    // RN-10/RN-19: total paid per venta = receipt-backed payments (single source criterion).
+    for (const p of pagosVenta || []) {
+      if (saldos.pagoLiquidado(p)) {
+        pagadoPorVenta[p.id_venta] = (pagadoPorVenta[p.id_venta] || 0) + Number(p.valor_pago);
       }
     }
   }
 
   const result = (comisiones || []).map(vc => {
     const venta       = vc.venta;
-    const totalPagado = pagadoPorVenta[vc.id_venta] || 0;
+    // Permutas count as payment toward the 30% threshold (business rule).
+    const totalPagado = (pagadoPorVenta[vc.id_venta] || 0) + (Number(venta?.total_permutas) || 0);
     const valorTotal  = Number(venta?.valor_total) || 0;
     const umbral30    = valorTotal * 0.3;
     const ganada      = vc.estado === "ganada" || vc.estado === "pagada"

@@ -177,11 +177,8 @@ window.verVenta = async function(id) {
   const cuotasIni = cuotas.filter(c => c.tipo === "inicial");
   const cuotasReg = cuotas.filter(c => c.tipo === "regular");
 
-  const pagada = c =>
-    c.pagado === true ||
-    c.fecha_pago != null ||
-    c.estado === "pagado" ||
-    c.estado === "pagada";
+  // RN-16: paid state derived from receipts by the backend (getById), not the stored estado.
+  const pagada = c => c.pagada === true;
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -199,8 +196,9 @@ window.verVenta = async function(id) {
 
   const sumVal = arr => arr.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
 
-  const totalPagadoIni = sumVal(pagIni);
-  const totalPagadoReg = sumVal(pagReg);
+  // RN-10: count receipt-backed amounts (includes partial payments), the single criterion.
+  const totalPagadoIni = cuotasIni.reduce((s, c) => s + Number(c.valor_pagado || 0), 0);
+  const totalPagadoReg = cuotasReg.reduce((s, c) => s + Number(c.valor_pagado || 0), 0);
 
   // ── Financiero ──
   const vt = Number(v.valor_total) || 0;
@@ -1731,7 +1729,7 @@ function _exportVentaPDF(v, cuotas, fin) {
   const fmtDate = d => d
     ? new Date(String(d).length === 10 ? d + "T12:00:00" : d).toLocaleDateString("es-CO")
     : "—";
-  const pagada  = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
+  const pagada  = c => c.pagada === true;
 
   const lote = v.lote || {};
   const { vt, ci, tp, totalPagado, saldo, pct, cumple, escrit, cuotasIni, cuotasReg, pagIni, pagReg, sumVal } = fin;
@@ -1872,7 +1870,7 @@ async function _exportVentaExcel(v, cuotas, fin) {
   const SX = window.SGIExport.xlsx;
   const wb = SX.setup();
 
-  const pagada  = c => c.pagado === true || c.fecha_pago != null || c.estado === "pagado" || c.estado === "pagada";
+  const pagada  = c => c.pagada === true;
   const fmtDate = d => d
     ? new Date(String(d).length === 10 ? d + "T12:00:00" : d).toLocaleDateString("es-CO")
     : "—";
@@ -1996,7 +1994,8 @@ async function _exportVentaExcel(v, cuotas, fin) {
   });
 
   ws2.addRow([]).height = 6;
-  const totPagado = sumVal(allCuotas.filter(pagada));
+  // RN-10: total collected = receipt-backed amounts (includes partial payments).
+  const totPagado = allCuotas.reduce((s, c) => s + Number(c.valor_pagado || 0), 0);
   const totRow = ws2.addRow(["", "", "Total recaudado", totPagado, "", ""]);
   totRow.getCell(3).font = { name: "Calibri", bold: true, size: 11, color: { argb: SX.C.dark } };
   totRow.getCell(3).alignment = { vertical: "middle", horizontal: "right", indent: 1 };

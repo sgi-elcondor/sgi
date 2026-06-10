@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const saldos   = require('./saldos.service');
 const SCHEMA   = 'condor';
 
 const UMBRAL_COMISION = 0.30;
@@ -7,7 +8,7 @@ async function verificarComision(id_venta, email) {
   // Load venta value and comisionista links
   const { data: venta, error: ev } = await supabase.schema(SCHEMA)
     .from('venta')
-    .select('valor_total, venta_comisionista(id_usuario, valor_comision, causada)')
+    .select('valor_total, total_permutas, venta_comisionista(id_usuario, valor_comision, causada)')
     .eq('id_venta', id_venta)
     .single();
 
@@ -20,16 +21,21 @@ async function verificarComision(id_venta, email) {
   const pendientes = comisiones.filter(c => !c.causada);
   if (pendientes.length === 0) return;
 
-  // Sum all accepted payments for this venta
+  // RN-10/RN-19: only receipt-backed payments count toward the venta total, the same
+  // criterion every other module uses (single source of truth).
   const { data: pagos, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
-    .select('valor_pago')
+    .select('valor_pago, estado, recibo_pago(id_recibo)')
     .eq('id_venta', id_venta)
     .eq('estado', 'aceptado');
 
   if (ep) return;
 
-  const totalPagado = (pagos || []).reduce((s, p) => s + Number(p.valor_pago), 0);
+  // Permutas count as payment toward the 30% threshold (business rule).
+  const totalPagado = (pagos || [])
+    .filter(p => saldos.pagoLiquidado(p))
+    .reduce((s, p) => s + Number(p.valor_pago), 0)
+    + (Number(venta.total_permutas) || 0);
   const umbral      = Number(venta.valor_total) * UMBRAL_COMISION;
 
   if (totalPagado < umbral) return false;

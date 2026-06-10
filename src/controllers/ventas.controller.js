@@ -83,11 +83,28 @@ exports.getById = async (req, res) => {
     .select(`*, lote(*, proyecto(nombre)),
       venta_comprador(*, usuario:id_usuario(*)),
       venta_comisionista(*, usuario:id_usuario(*)),
-      cuota(*)`)
+      cuota(*,
+        cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+        cuota_fraccion(id_fraccion),
+        cuota_factura(id_fraccion, factura:id_factura(estado)))`)
     .eq("id_venta", id)
     .single();
 
   if (error) return res.status(404).json({ error: error.message });
+
+  // RN-10/RN-19: attach the receipt-backed paid amount and derived paid flag per cuota,
+  // so the ventas module shows the same reality as every other view (no stored-estado trust).
+  // tiene_fracciones / factura_activa let the plan editor lock cuotas whose value cannot
+  // change without breaking their fracciones (§3.3) or active factura (§4.3).
+  for (const c of (data.cuota || [])) {
+    const pagado = saldos._sumRecibosAceptados(c.cuota_pago);
+    c.valor_pagado    = pagado;
+    c.valor_pendiente = Math.max(0, Number(c.valor_cuota) - pagado);
+    c.pagada          = c.valor_pendiente <= 0;
+    c.tiene_fracciones = (c.cuota_fraccion || []).length > 0;
+    c.factura_activa   = (c.cuota_factura || []).some(cf =>
+      ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
+  }
 
   res.json(data);
 };
@@ -539,7 +556,8 @@ exports.getEstadoFinanciero = async (req, res) => {
             pago:id_pago (
               id_pago,
               fecha_pago,
-              estado
+              estado,
+              recibo_pago(id_recibo)
             )
           )
         )
@@ -564,14 +582,8 @@ exports.getEstadoFinanciero = async (req, res) => {
         let pagadoEnCuota = 0;
 
         pagosCuota.forEach((cp) => {
-          const estadoPago = cp.pago?.estado;
-
-          const pagoValido =
-            !estadoPago ||
-            estadoPago === "aceptado" ||
-            estadoPago === "pagado";
-
-          if (!pagoValido) return;
+          // RN-10/RN-19: only receipt-backed payments count, the single source criterion.
+          if (!saldos.pagoLiquidado(cp.pago)) return;
 
           const valorAplicado = Number(cp.valor_aplicado) || 0;
 
@@ -583,16 +595,12 @@ exports.getEstadoFinanciero = async (req, res) => {
           });
         });
 
-        if (pagadoEnCuota === 0 && ["pagada", "pagado"].includes(cuota.estado)) {
-          pagadoEnCuota = Number(cuota.valor_cuota) || 0;
-
-          pagosAplicados.push({
-            valor: pagadoEnCuota,
-            fecha: cuota.fecha_vencimiento,          });
-        }
-
         totalPagado += pagadoEnCuota;
       });
+
+      // Permutas count as payment toward the lote value (business rule).
+      const totalPermutas = Number(venta.total_permutas) || 0;
+      totalPagado += totalPermutas;
 
       const valorTotal = Number(venta.valor_total) || 0;
       const porcentajePagado = valorTotal > 0
@@ -603,8 +611,8 @@ exports.getEstadoFinanciero = async (req, res) => {
         .filter((p) => p.fecha)
         .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
-      let acumulado = 0;
-      let fechaCruce30 = null;
+      let acumulado = totalPermutas;
+      let fechaCruce30 = (valorTotal > 0 && acumulado >= valorTotal * 0.3) ? venta.fecha_venta : null;
 
       for (const pago of pagosOrdenados) {
         acumulado += Number(pago.valor) || 0;
@@ -676,7 +684,7 @@ exports.getMisVentas = async (req, res) => {
           cuota_fraccion ( id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta ),
           cuota_pago (
             valor_aplicado,
-            pago:id_pago ( estado, tipo_pago, fecha_pago )
+            pago:id_pago ( estado, tipo_pago, fecha_pago, recibo_pago(id_recibo) )
           ),
           cuota_factura (
             id_fraccion,
@@ -706,7 +714,7 @@ exports.getMisVentas = async (req, res) => {
    const totalPagadoRegular = cuotas.reduce((sum, c) => {
    const aplicadoAceptado = (c.cuota_pago || [])
     .filter(cp =>
-      cp.pago?.estado === "aceptado" &&
+      saldos.pagoLiquidado(cp.pago) &&
       cp.pago?.tipo_pago !== "abono_extraordinario"
     )
     .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
@@ -717,7 +725,7 @@ exports.getMisVentas = async (req, res) => {
 const totalAbonadoExtraordinario = cuotas.reduce((sum, c) => {
   const aplicadoExtraordinario = (c.cuota_pago || [])
     .filter(cp =>
-      cp.pago?.estado === "aceptado" &&
+      saldos.pagoLiquidado(cp.pago) &&
       cp.pago?.tipo_pago === "abono_extraordinario"
     )
     .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
@@ -725,7 +733,9 @@ const totalAbonadoExtraordinario = cuotas.reduce((sum, c) => {
   return sum + aplicadoExtraordinario;
 }, 0);
 
-const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario;
+// Permutas count as payment toward the lote value (business rule).
+const totalPermutasVenta = Number(v.total_permutas) || 0;
+const totalPagado = totalPagadoRegular + totalAbonadoExtraordinario + totalPermutasVenta;
 
 const valorTotal          = Number(v.valor_total);
 const saldoPendiente      = Math.max(0, valorTotal - totalPagado);
@@ -734,7 +744,14 @@ const porcentajePagado    = valorTotal > 0 ? Math.min(100, (totalPagado / valorT
 
  
 
-    const cuotaActual = cuotas.find(c => c.estado !== "pagada") || null;
+    // RN-16: a cuota is paid when receipts cover it, derived, not from the stored estado.
+    const cuotaEstaPagada = (c) => {
+      const r = (c.cuota_pago || [])
+        .filter(cp => saldos.pagoLiquidado(cp.pago))
+        .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+      return Number(c.valor_cuota) - r <= 0;
+    };
+    const cuotaActual = cuotas.find(c => !cuotaEstaPagada(c)) || null;
 
     let diasCuotaActual = null;
     if (cuotaActual) {
@@ -752,7 +769,7 @@ return {
   porcentaje_propiedad:         vc.porcentaje,
   lote:                         v.lote,
   total_cuotas:                 cuotas.length,
-  cuotas_pagadas:               cuotas.filter(c => c.estado === "pagada").length,
+  cuotas_pagadas:               cuotas.filter(cuotaEstaPagada).length,
 
   total_pagado:                 totalPagado,
   total_abonado_extraordinario: totalAbonadoExtraordinario,
@@ -770,18 +787,18 @@ return {
   } : null,
       cuotas: cuotas.map(c => {
         const pagadoAceptado = (c.cuota_pago || [])
-          .filter(cp => cp.pago?.estado === "aceptado")
+          .filter(cp => saldos.pagoLiquidado(cp.pago))
           .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
         // RN-12: a cuota fully paid before its due date is "pagada anticipadamente".
         const ultimaFechaPago = (c.cuota_pago || [])
-          .filter(cp => cp.pago?.estado === "aceptado" && cp.pago?.fecha_pago)
+          .filter(cp => saldos.pagoLiquidado(cp.pago) && cp.pago?.fecha_pago)
           .reduce((max, cp) => (cp.pago.fecha_pago > max ? cp.pago.fecha_pago : max), "");
-        const pagadaAnticipada = c.estado === "pagada" && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
+        // RN-16: paid state derived from receipts, not from the stored estado column.
+        const cuotaPagada = Number(c.valor_cuota) - pagadoAceptado <= 0;
+        const pagadaAnticipada = cuotaPagada && !!ultimaFechaPago && ultimaFechaPago < c.fecha_vencimiento;
         const pagadoPendiente = (v.pago || [])
           .filter(p => p.estado === "pendiente_revision" && p.id_cuota_propuesta === c.id_cuota)
           .reduce((s, p) => s + Number(p.valor_pago || 0), 0);
-        const dias = Math.floor((new Date(c.fecha_vencimiento + "T12:00:00") - hoy) / 86_400_000);
-
         const fracciones = (c.cuota_fraccion || []).sort((a, b) => a.numero_fraccion - b.numero_fraccion);
         let acumuladoFrac = 0;
         const fraccionesCompletadas = new Set();
@@ -790,6 +807,9 @@ return {
           if (pagadoAceptado >= acumuladoFrac) fraccionesCompletadas.add(f.id_fraccion);
         }
         const fraccionPendiente = fracciones.find(f => !fraccionesCompletadas.has(f.id_fraccion)) || null;
+        // §3.3: for a subdivided cuota, days and mora state come from the active fracción's date.
+        const fechaEfectiva = fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento;
+        const dias = Math.floor((new Date(fechaEfectiva + "T12:00:00") - hoy) / 86_400_000);
 
         const valorAMostrar = fraccionPendiente
           ? Number(fraccionPendiente.valor_fraccion)
@@ -808,7 +828,7 @@ return {
           fecha_vencimiento: fraccionPendiente?.fecha_propuesta || c.fecha_vencimiento,
           valor_cuota:       valorAMostrar,
           // §3.1/RN-19: calculated contable state, same source the aux sees.
-          estado:            c.estado === "pagada" ? "pagada" : saldos.clasificarMora(-dias),
+          estado:            cuotaPagada ? "pagada" : saldos.clasificarMora(-dias),
           pagada_anticipada: pagadaAnticipada,
           valor_pagado:      fraccionPendiente ? pagadoEnFracActual : pagadoAceptado,
           valor_pendiente:   Math.max(0, valorAMostrar - (fraccionPendiente ? pagadoEnFracActual : pagadoAceptado)),

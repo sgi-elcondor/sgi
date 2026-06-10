@@ -98,7 +98,8 @@ window.juridicoView = async function () {
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     return (venta.cuota || [])
       .filter(c => {
-        if (c.estado === "pagada") return false;
+        // RN-16: derived paid flag from receipts, not the stored estado.
+        if (c.pagada) return false;
         const f = c.fecha_vencimiento ? new Date(c.fecha_vencimiento + "T12:00:00") : null;
         return f && f < hoy;
       })
@@ -155,7 +156,7 @@ window.juridicoView = async function () {
     };
 
     const cuotasVencidas = getCuotasVencidas(venta);
-    const totalVencido   = cuotasVencidas.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+    const totalVencido   = cuotasVencidas.reduce((s, c) => s + Number(c.valor_pendiente ?? c.valor_cuota ?? 0), 0);
 
     const pdfButton = (() => {
       if (venta.estado === "pre_mora") {

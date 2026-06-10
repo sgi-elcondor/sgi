@@ -13,13 +13,15 @@ function _tieneRecibo(pago) {
   return Array.isArray(rp) ? rp.length > 0 : !!rp;
 }
 
+// RN-10/RN-19: the single rule for whether a payment counts toward the saldo. Every
+// module must use this so there is only one version of the financial reality.
+function pagoLiquidado(pago) {
+  return pago?.estado === 'aceptado' && _tieneRecibo(pago);
+}
+
 function _sumRecibosAceptados(cuotaPagoRows) {
-  return (cuotaPagoRows || []).reduce((sum, cp) => {
-    if (cp.pago?.estado === 'aceptado' && _tieneRecibo(cp.pago)) {
-      return sum + Number(cp.valor_aplicado || 0);
-    }
-    return sum;
-  }, 0);
+  return (cuotaPagoRows || []).reduce((sum, cp) =>
+    pagoLiquidado(cp.pago) ? sum + Number(cp.valor_aplicado || 0) : sum, 0);
 }
 
 // RN-10: the single saldo formula for the whole system.
@@ -198,6 +200,7 @@ async function getEstadoFactura(id_factura) {
 module.exports = {
   MORA_DIAS,
   clasificarMora,
+  pagoLiquidado,
   getSaldoCuota,
   getResumenCuota,
   getEstadoCuota,

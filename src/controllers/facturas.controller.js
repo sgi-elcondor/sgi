@@ -56,6 +56,48 @@ async function _facturaActivaDe(id_cuota, id_fraccion) {
   return match?.factura || null;
 }
 
+// §4.3/RN-03: when a cuota is restructured (subdivided or un-subdivided), the active
+// facturas of the opposite scope must not coexist. Annuls the 'emitida' ones (audited).
+// Returns { blocked: true } without changes if any matched factura is 'parcialmente_pagada'
+// (has receipts) — those cannot be annulled for operational reasons.
+// scope: 'cuota' → cuota-level facturas (id_fraccion null); 'fracciones' → fracción-level.
+async function anularFacturasActivas(id_cuota, { scope, motivo, usuario }) {
+  const { data } = await supabase.schema(SCHEMA)
+    .from("cuota_factura")
+    .select("id_fraccion, factura:id_factura(id_factura, estado)")
+    .eq("id_cuota", id_cuota);
+
+  const matched = (data || []).filter(cf => {
+    if (!ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado)) return false;
+    if (scope === "cuota")      return cf.id_fraccion === null;
+    if (scope === "fracciones") return cf.id_fraccion !== null;
+    return true; // 'all'
+  });
+
+  if (matched.some(cf => cf.factura.estado === "parcialmente_pagada")) {
+    return { blocked: true, annulled: [] };
+  }
+
+  const annulled = [];
+  for (const cf of matched) {
+    await supabase.schema(SCHEMA).from("factura")
+      .update({ estado: "anulada" }).eq("id_factura", cf.factura.id_factura);
+    await supabase.schema(SCHEMA).from("auditoria").insert([{
+      tabla_afectada: "factura",
+      id_registro:    cf.factura.id_factura,
+      campo:          "anulacion",
+      valor_anterior: cf.factura.estado,
+      valor_nuevo:    "anulada",
+      usuario_db:     usuario,
+      fecha_cambio:   new Date().toISOString(),
+      motivo,
+    }]);
+    annulled.push(cf.factura.id_factura);
+  }
+  return { blocked: false, annulled };
+}
+exports.anularFacturasActivas = anularFacturasActivas;
+
 // Emits the single active factura for a cuota/fracción, or reuses the existing one
 // (RN-03). valor defaults to the current saldo; an explicit valorAcordado (<= saldo)
 // supports a partial-payment agreement (Modalidad A, 8.1). Only the aux reaches this.
@@ -105,7 +147,7 @@ exports.getAll = async (req, res) => {
         id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
-          cuota_pago(valor_aplicado, pago:id_pago(estado)),
+          cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
           cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
             id_venta,
@@ -129,9 +171,7 @@ exports.getAll = async (req, res) => {
     const comp  = cuota?.venta?.venta_comprador?.[0]?.usuario;
 
     // RN-10: remaining saldo to settle this factura (cuota- or fracción-level).
-    const totalAceptado = (cuota?.cuota_pago || [])
-      .filter(cp => cp.pago?.estado === "aceptado")
-      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const totalAceptado = saldos._sumRecibosAceptados(cuota?.cuota_pago);
     let saldoBase = Math.max(0, Number(cuota?.valor_cuota ?? f.valor_facturado) - totalAceptado);
     if (link?.id_fraccion) {
       let remaining = totalAceptado;
@@ -182,7 +222,6 @@ exports.getCuotasSinFactura = async (req, res) => {
         venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
     `)
-    .lte("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
     .order("fecha_vencimiento");
 
@@ -212,7 +251,8 @@ exports.getCuotasSinFactura = async (req, res) => {
     const facturasExistentes = c.cuota_factura  || [];
 
     if (fracciones.length === 0) {
-      // RN-10: only offer a cuota with no active factura AND a real pending saldo.
+      // RN-10: only offer a due cuota (parent date reached) with no active factura AND saldo.
+      if (c.fecha_vencimiento > hoy) continue;
       const tieneActiva = facturasExistentes.some(cf => cf.id_fraccion === null && ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
       const saldo = Math.max(0, Number(c.valor_cuota) - totalRecibos);
       if (!tieneActiva && saldo > 0) {
@@ -225,17 +265,22 @@ exports.getCuotasSinFactura = async (req, res) => {
           .map(cf => cf.id_fraccion)
           .filter(Boolean)
       );
-      // Offer only fracciones that are neither already billed nor already covered by receipts.
+      // §3.3: offer each fracción by its OWN due date (fecha_propuesta), not the parent's,
+      // and only those neither already billed nor already covered by receipts.
       for (const fc of saldos._coberturaFracciones(fracciones, totalRecibos)) {
         if (fraccionesFacturadas.has(fc.id_fraccion)) continue;
         if (fc.saldo_pendiente <= 0) continue;
+        const fFecha = fc.fecha_propuesta || c.fecha_vencimiento;
+        if (fFecha > hoy) continue;
+        const diasFrac = Math.floor((Date.now() - new Date(fFecha).getTime()) / 86_400_000);
         result.push({
           ...base,
           id_fraccion:       fc.id_fraccion,
           numero_fraccion:   fc.numero_fraccion,
           total_fracciones:  fracciones.length,
           valor_cuota:       fc.saldo_pendiente,
-          fecha_vencimiento: fc.fecha_propuesta || c.fecha_vencimiento,
+          fecha_vencimiento: fFecha,
+          estado:            saldos.clasificarMora(diasFrac),
           tiene_fracciones:  true,
         });
       }
@@ -257,17 +302,17 @@ exports.generarPendientes = async (req, res) => {
   const { data: cuotas, error: ec } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
-      id_cuota, id_venta, numero_cuota, valor_cuota,
-      cuota_fraccion(id_fraccion, numero_fraccion),
+      id_cuota, id_venta, numero_cuota, valor_cuota, fecha_vencimiento,
+      cuota_fraccion(id_fraccion, numero_fraccion, fecha_propuesta),
       cuota_factura(id_fraccion, factura:id_factura(estado)),
       venta(id_venta, estado)
     `)
-    .lte("fecha_vencimiento", limiteStr)
     .neq("estado", "pagada");
   if (ec) return res.status(500).json({ error: ec.message });
 
-  // Bill each cuota (or each of its fracciones) that has no ACTIVE factura. An anulada
-  // factura does not count, so a previously-rejected cuota gets billed again.
+  // Bill each cuota (or each of its fracciones) due within the window and without an ACTIVE
+  // factura. §3.3: each fracción is evaluated by its OWN fecha_propuesta, not the parent's.
+  // An anulada factura does not count, so a previously-rejected item gets billed again.
   let generadas = 0;
   for (const c of (cuotas || [])) {
     if (!ESTADOS_FACTURABLES.includes(c.venta?.estado)) continue;
@@ -282,10 +327,12 @@ exports.generarPendientes = async (req, res) => {
       );
       for (const f of fracciones) {
         if (facturadas.has(f.id_fraccion)) continue;
+        if ((f.fecha_propuesta || c.fecha_vencimiento) > limiteStr) continue;
         const { factura, reused } = await _emitirFactura(c.id_cuota, f.id_fraccion);
         if (factura && !reused) generadas++;
       }
     } else {
+      if (c.fecha_vencimiento > limiteStr) continue;
       const tieneActiva = (c.cuota_factura || [])
         .some(cf => ESTADOS_FACTURA_ACTIVA.includes(cf.factura?.estado));
       if (tieneActiva) continue;
@@ -331,7 +378,7 @@ exports.getMisFacturas = async (req, res) => {
       id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, id_venta,
       cuota_factura(id_fraccion, factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
-      cuota_pago(valor_aplicado, pago:id_pago(estado)),
+      cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
       venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
     `)
     .in("id_venta", ventaIds)
@@ -350,9 +397,7 @@ exports.getMisFacturas = async (req, res) => {
     if (!facturasEmitidas.length) continue;
 
     const lote = c.venta?.lote;
-    const totalAceptado = (c.cuota_pago || [])
-      .filter(cp => cp.pago?.estado === "aceptado")
-      .reduce((s, cp) => s + Number(cp.valor_aplicado), 0);
+    const totalAceptado = saldos._sumRecibosAceptados(c.cuota_pago);
 
     // Per-fracción remaining saldo (greedy) and the set already covered.
     const saldoPorFraccion  = {};

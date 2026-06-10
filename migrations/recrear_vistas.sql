@@ -14,16 +14,26 @@ SELECT
     WHERE estado = 'activa'
   ) AS ventas_activas,
   (
-    SELECT COALESCE(SUM(valor_pago), 0)
-    FROM condor.pago
-    WHERE estado = 'aceptado'
-      AND DATE_TRUNC('month', fecha_pago::date) = DATE_TRUNC('month', CURRENT_DATE)
+    -- RN-10/RN-19: only receipt-backed accepted payments are realized income.
+    SELECT COALESCE(SUM(p.valor_pago), 0)
+    FROM condor.pago p
+    WHERE p.estado = 'aceptado'
+      AND DATE_TRUNC('month', p.fecha_pago::date) = DATE_TRUNC('month', CURRENT_DATE)
+      AND EXISTS (SELECT 1 FROM condor.recibo_pago rp WHERE rp.id_pago = p.id_pago)
   ) AS recaudo_mes,
   (
+    -- RN-16: overdue cuota = past due AND not fully covered by receipts (derived, not stored estado).
     SELECT COUNT(*)::INTEGER
-    FROM condor.cuota
-    WHERE estado NOT IN ('pagada')
-      AND fecha_vencimiento < CURRENT_DATE
+    FROM condor.cuota c
+    WHERE c.fecha_vencimiento < CURRENT_DATE
+      AND c.valor_cuota > COALESCE((
+        SELECT SUM(cp.valor_aplicado)
+        FROM condor.cuota_pago cp
+        JOIN condor.pago p ON p.id_pago = cp.id_pago
+        WHERE cp.id_cuota = c.id_cuota
+          AND p.estado = 'aceptado'
+          AND EXISTS (SELECT 1 FROM condor.recibo_pago rp WHERE rp.id_pago = p.id_pago)
+      ), 0)
   ) AS cuotas_vencidas,
   (
     SELECT COUNT(*)::INTEGER
@@ -51,11 +61,20 @@ SELECT
     ORDER BY vc.porcentaje DESC NULLS LAST
     LIMIT 1
   ) AS comprador,
+  -- RN-10: saldo = total cuota value minus receipt-backed accepted payments (single source).
   COALESCE((
     SELECT SUM(c.valor_cuota)
     FROM condor.cuota c
     WHERE c.id_venta = v.id_venta
-      AND c.estado NOT IN ('pagada')
+  ), 0)
+  - COALESCE((
+    SELECT SUM(cp.valor_aplicado)
+    FROM condor.cuota_pago cp
+    JOIN condor.cuota c2 ON c2.id_cuota = cp.id_cuota
+    JOIN condor.pago p   ON p.id_pago  = cp.id_pago
+    WHERE c2.id_venta = v.id_venta
+      AND p.estado = 'aceptado'
+      AND EXISTS (SELECT 1 FROM condor.recibo_pago rp WHERE rp.id_pago = p.id_pago)
   ), 0) AS saldo_pendiente
 FROM condor.venta v
 JOIN condor.lote l        ON l.id_lote     = v.id_lote
@@ -89,11 +108,20 @@ SELECT
       AND c.estado         NOT IN ('pagada')
       AND c.fecha_vencimiento < CURRENT_DATE
   ) AS dias_mora,
+  -- RN-10: saldo = total cuota value minus receipt-backed accepted payments (single source).
   COALESCE((
     SELECT SUM(c.valor_cuota)
     FROM condor.cuota c
     WHERE c.id_venta = v.id_venta
-      AND c.estado   NOT IN ('pagada')
+  ), 0)
+  - COALESCE((
+    SELECT SUM(cp.valor_aplicado)
+    FROM condor.cuota_pago cp
+    JOIN condor.cuota c2 ON c2.id_cuota = cp.id_cuota
+    JOIN condor.pago p   ON p.id_pago  = cp.id_pago
+    WHERE c2.id_venta = v.id_venta
+      AND p.estado = 'aceptado'
+      AND EXISTS (SELECT 1 FROM condor.recibo_pago rp WHERE rp.id_pago = p.id_pago)
   ), 0) AS saldo
 FROM condor.venta v
 JOIN condor.lote l        ON l.id_lote     = v.id_lote
