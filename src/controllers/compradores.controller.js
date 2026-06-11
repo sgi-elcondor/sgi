@@ -13,7 +13,7 @@ exports.getAll = async (req, res) => {
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("usuarios")
-    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, rango_pago, fecha_creacion")
+    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, fecha_creacion")
     .eq("id_rol", id_rol)
     .order("nombres");
 
@@ -24,7 +24,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("usuarios")
-    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, rango_pago, fecha_creacion")
+    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, fecha_creacion")
     .eq("id_usuario", req.params.id)
     .single();
   if (error) return res.status(404).json({ error: error.message });
@@ -47,7 +47,7 @@ exports.searchUser = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado, rango_pago } = req.body;
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
 
   if (!mail) return res.status(400).json({ error: "El correo electrónico es obligatorio." });
 
@@ -76,7 +76,6 @@ exports.create = async (req, res) => {
       nombres,
       apellidos,
       telefono:       telefono       || null,
-      rango_pago:     rango_pago     || null,
       activo:         estado !== "inactivo",
     }])
     .select()
@@ -95,7 +94,7 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado, rango_pago } = req.body;
+  const { tipo_persona, tipo_documento, documento, nombres, apellidos, telefono, mail, estado } = req.body;
 
   if (documento !== undefined) {
     const { data: existentes } = await supabase.schema(SCHEMA)
@@ -113,7 +112,6 @@ exports.update = async (req, res) => {
   if (telefono        !== undefined) updates.telefono        = telefono || null;
   if (mail            !== undefined) updates.email           = mail;
   if (estado          !== undefined) updates.activo          = estado !== "inactivo";
-  if (rango_pago      !== undefined) updates.rango_pago      = rango_pago || null;
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("usuarios").update(updates).eq("id_usuario", req.params.id).select().single();

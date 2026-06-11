@@ -2,7 +2,6 @@
 
 const DOC_LABEL     = { cc: "C.C.", ce: "C.E.", ppt: "PPT", pasaporte: "Pasaporte" };
 const PERSONA_LABEL = { natural: "Natural", juridica: "Jurídica" };
-const RANGO_LABEL   = { primera_quincena: "Q1 · 1–15", segunda_quincena: "Q2 · 16–30", otro: "Otro" };
 
 let _mailTimer           = null;
 let _selectedUserId      = null;
@@ -14,12 +13,6 @@ function norm(s) {
 
 function escAttr(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function rangoBadge(rango) {
-  if (!rango) return `<span class="chip-neutral" style="font-size:.7rem;padding:.15rem .5rem">—</span>`;
-  const color = rango === "primera_quincena" ? "var(--info)" : rango === "segunda_quincena" ? "var(--accent)" : "var(--text-muted)";
-  return `<span style="font-size:.7rem;font-weight:600;padding:.15rem .55rem;border-radius:99px;background:${color}1a;color:${color};border:1px solid ${color}33">${RANGO_LABEL[rango] || rango}</span>`;
 }
 
 function accessBadge(c) {
@@ -42,7 +35,7 @@ window.compradoresView = async function () {
   });
   if (!data) return;
 
-  const colCount = canEdit ? 7 : 6;
+  const colCount = canEdit ? 6 : 5;
 
   const nuevoBtn = canCreate
     ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()">
@@ -82,7 +75,6 @@ window.compradoresView = async function () {
         </td>
         <td><span class="chip-neutral">${PERSONA_LABEL[c.tipo_persona] || c.tipo_persona || "—"}</span></td>
         <td>${c.telefono || "—"}</td>
-        <td>${rangoBadge(c.rango_pago)}</td>
         <td>${UI.badge(c.estado)}</td>
         ${accionesCell}
       </tr>`;
@@ -116,12 +108,6 @@ window.compradoresView = async function () {
           <option value="ppt">PPT</option>
           <option value="pasaporte">Pasaporte</option>
         </select>
-        <select id="cf-rango" class="select-sm" style="flex:1;min-width:10rem">
-          <option value="">Todas las quincenas</option>
-          <option value="primera_quincena">Q1 · 1–15</option>
-          <option value="segunda_quincena">Q2 · 16–30</option>
-          <option value="otro">Otro</option>
-        </select>
         <select id="cf-estado" class="select-sm" style="flex:1;min-width:9rem">
           <option value="">Todos los estados</option>
           ${optsEstado}
@@ -135,7 +121,6 @@ window.compradoresView = async function () {
             <th>Documento</th>
             <th>Tipo</th>
             <th>Teléfono</th>
-            <th>Quincena</th>
             <th>Estado</th>
             ${canEdit ? "<th>Acciones</th>" : ""}
           </tr>
@@ -151,13 +136,11 @@ window.compradoresView = async function () {
     const q       = norm(document.getElementById("cf-buscar").value);
     const persona = document.getElementById("cf-persona").value;
     const tipodoc = document.getElementById("cf-tipodoc").value;
-    const rango   = document.getElementById("cf-rango").value;
     const estado  = document.getElementById("cf-estado").value;
 
     const visibles = data.filter(c => {
       if (persona && c.tipo_persona   !== persona) return false;
       if (tipodoc && c.tipo_documento !== tipodoc) return false;
-      if (rango   && c.rango_pago     !== rango)   return false;
       if (estado  && c.estado         !== estado)  return false;
       if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.email}`).includes(q)) return false;
       return true;
@@ -174,7 +157,7 @@ window.compradoresView = async function () {
     count.textContent = `${visibles.length} ${visibles.length === 1 ? "registro" : "registros"}`;
   }
 
-  ["cf-persona", "cf-tipodoc", "cf-rango", "cf-estado"].forEach(id =>
+  ["cf-persona", "cf-tipodoc", "cf-estado"].forEach(id =>
     document.getElementById(id).addEventListener("change", aplicarFiltros));
   document.getElementById("cf-buscar").addEventListener("input", aplicarFiltros);
 
@@ -274,15 +257,6 @@ window.compradorForm = function (comprador) {
           <div class="form-group">
             <label>Teléfono</label>
             <input id="f_tel" placeholder="Número de teléfono" value="${escAttr(c.telefono)}" />
-          </div>
-          <div class="form-group">
-            <label>Quincena de pago</label>
-            <select id="f_rango">
-              ${opt("", c.rango_pago, "Sin asignar")}
-              ${opt("primera_quincena", c.rango_pago, "Primera quincena (1–15)")}
-              ${opt("segunda_quincena", c.rango_pago, "Segunda quincena (16–30)")}
-              ${opt("otro", c.rango_pago, "Otro")}
-            </select>
           </div>
           ${mailField}
         </div>
@@ -389,7 +363,6 @@ window.guardarComprador = async function (id) {
     apellidos:  document.getElementById("f_ape").value.trim(),
     telefono:   document.getElementById("f_tel").value.trim(),
     mail,
-    rango_pago: document.getElementById("f_rango").value || null,
   };
 
   try {

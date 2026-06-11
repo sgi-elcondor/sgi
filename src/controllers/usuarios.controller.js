@@ -7,7 +7,7 @@ async function listarUsuarios(req, res) {
     .from('usuarios')
     .select(`
       id_usuario, firebase_uid, email, activo, fecha_creacion, photo_url,
-      nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, rango_pago,
+      nombres, apellidos, documento, tipo_persona, tipo_documento, telefono,
       roles:id_rol ( id_rol, nombre )
     `)
     .order('fecha_creacion', { ascending: false });
@@ -28,7 +28,7 @@ async function listarRoles(req, res) {
 }
 
 async function crearUsuario(req, res) {
-  const { email, id_rol, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, rango_pago } = req.body;
+  const { email, id_rol, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono } = req.body;
 
   if (!email || !id_rol) {
     return res.status(400).json({ error: 'email e id_rol son obligatorios' });
@@ -71,7 +71,6 @@ async function crearUsuario(req, res) {
         tipo_persona:   tipo_persona   || 'natural',
         tipo_documento: tipo_documento || null,
         telefono:       telefono       || null,
-        rango_pago:     rango_pago     || null,
       }])
       .select()
       .single();
@@ -85,7 +84,7 @@ async function crearUsuario(req, res) {
 
 async function actualizarUsuario(req, res) {
   const { id } = req.params;
-  const { id_rol, activo, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, rango_pago } = req.body;
+  const { id_rol, activo, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono } = req.body;
 
   const updates = {};
   if (id_rol         !== undefined) updates.id_rol         = id_rol;
@@ -96,7 +95,6 @@ async function actualizarUsuario(req, res) {
   if (tipo_persona   !== undefined) updates.tipo_persona   = tipo_persona;
   if (tipo_documento !== undefined) updates.tipo_documento = tipo_documento;
   if (telefono       !== undefined) updates.telefono       = telefono || null;
-  if (rango_pago     !== undefined) updates.rango_pago     = rango_pago || null;
 
   try {
     const { data, error } = await supabase

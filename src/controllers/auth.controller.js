@@ -33,7 +33,7 @@ async function miPerfil(req, res) {
   }
 
   const { data: uData } = await supabase.schema(SCHEMA).from('usuarios')
-    .select('photo_url, nombres, apellidos, telefono, documento, tipo_documento, tipo_persona, rango_pago')
+    .select('photo_url, nombres, apellidos, telefono, documento, tipo_documento, tipo_persona')
     .eq('id_usuario', id_usuario)
     .single();
 
@@ -50,7 +50,6 @@ async function miPerfil(req, res) {
     documento:      uData?.documento      ?? null,
     tipo_documento: uData?.tipo_documento ?? null,
     tipo_persona:   uData?.tipo_persona   ?? null,
-    rango_pago:     uData?.rango_pago     ?? null,
   });
 }
 
