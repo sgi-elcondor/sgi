@@ -926,6 +926,11 @@ return {
           dias_restantes:    dias,
           tiene_factura:     (c.cuota_factura || []).some(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado)),
           id_factura:        (c.cuota_factura || []).find(cf => ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado))?.factura?.id_factura ?? null,
+          // Existence flags so "Mis cuotas" can show the Factura/Pago/Recibo buttons enabled or
+          // opaque per cuota. tiene_factura_doc includes the paid factura (not only the active one).
+          tiene_factura_doc: (c.cuota_factura || []).some(cf => ["emitida", "parcialmente_pagada", "pagada"].includes(cf.factura?.estado)),
+          tiene_pago:        (c.cuota_pago || []).length > 0 || (v.pago || []).some(p => p.id_cuota_propuesta === c.id_cuota),
+          tiene_recibo:      (c.cuota_pago || []).some(cp => (cp.pago?.recibo_pago || []).length > 0),
           tiene_fracciones:   fracciones.length > 0,
           fraccion_actual:    fraccionPendiente?.numero_fraccion ?? null,
           total_fracciones:   fracciones.length || null,
@@ -933,7 +938,7 @@ return {
           total_pagado_cuota: fracciones.length > 0 ? pagadoAceptado : null,
           fracciones_pagadas: fracciones
             .filter(f => fraccionesCompletadas.has(f.id_fraccion))
-            .map(f => ({ numero_fraccion: f.numero_fraccion, valor_fraccion: Number(f.valor_fraccion), fecha_propuesta: f.fecha_propuesta || null })),
+            .map(f => ({ id_fraccion: f.id_fraccion, numero_fraccion: f.numero_fraccion, valor_fraccion: Number(f.valor_fraccion), fecha_propuesta: f.fecha_propuesta || null })),
         };
       }),
     };

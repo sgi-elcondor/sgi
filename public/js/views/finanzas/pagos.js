@@ -215,6 +215,7 @@
     <td style="max-width:120px;font-size:.82rem">${p.referencia || "—"}</td>
     <td>${p.estado ? UI.badge(p.estado) : "—"}</td>
     <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">${p.numero_recibo || "—"}</td>
+    <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="verPagoDetalle(${p.id_pago})">Ver</button></td>
   </tr>`;
 }
 
@@ -241,7 +242,7 @@
           <table>
             <thead><tr>
               <th>N° Pago</th><th>Fecha</th><th style="text-align:right">Valor</th><th>Método</th>
-              <th>Factura</th><th>Cuota</th><th>Referencia</th><th>Estado</th><th>Recibo</th>
+              <th>Factura</th><th>Cuota</th><th>Referencia</th><th>Estado</th><th>Recibo</th><th></th>
             </tr></thead>
             <tbody>${grupo.pagos.map(filaPago).join("")}</tbody>
           </table>
@@ -254,6 +255,108 @@
 
   window._volverPagosView = function() {
     loadPagosView();
+  };
+
+  // ── Payment detail (Task 14) ────────────────────────────────────────────────────
+  // Shows the baucher photo, the payment data and lets the aux open the linked factura and
+  // recibo PDFs, reusing the existing builders (verFacturaPDF / verReciboPDF). RN-02: the
+  // recibo only exists once the pago is accepted.
+  window.verPagoDetalle = async function(idPago, opts = {}) {
+    UI.openModal("Detalle del pago", UI.loader());
+
+    // RN-19: the comprador opens their own pago via the mis-pagos endpoint; the aux via /pagos.
+    const endpoint = opts.mine ? `/pagos/mis-pagos/${idPago}` : `/pagos/${idPago}`;
+    let p;
+    try { p = await API.get(endpoint); }
+    catch (e) {
+      const eb = document.getElementById("modalBody");
+      if (eb) eb.innerHTML = `<p style="color:var(--danger);padding:1rem">${e.message}</p>`;
+      return;
+    }
+
+    window._pagoDetalleActual = p;
+    if (p.factura) { window._facturasMap = window._facturasMap || {}; window._facturasMap[p.factura.id_factura] = p.factura; }
+    if (p.recibo)  { window._recibosMap  = window._recibosMap  || {}; window._recibosMap[p.recibo.id_recibo]   = p.recibo; }
+
+    const metodoLabel = {
+      transferencia: "Transferencia / electrónico",
+      efectivo:      "Efectivo",
+      cheque:        "Cheque",
+      permuta:       "Permuta",
+    }[p.metodo_pago] || (p.metodo_pago || "—");
+
+    const baucher = p.url_baucher;
+    const esPdf   = baucher && /\.pdf($|\?)/i.test(baucher);
+    const baucherHTML = baucher
+      ? (esPdf
+          ? `<a href="${baucher}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Abrir comprobante (PDF)</a>`
+          : `<a href="${baucher}" target="_blank" rel="noopener" title="Abrir en tamaño completo" style="display:block">
+               <img src="${baucher}" alt="Comprobante de pago" style="max-width:100%;max-height:340px;border:1px solid var(--border);border-radius:8px;object-fit:contain;background:var(--surface-2,#f0f4f8)">
+             </a>`)
+      : `<div style="padding:1rem;border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:.85rem;text-align:center">Sin comprobante adjunto</div>`;
+
+    const row = (label, value) => `
+      <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:.86rem">
+        <span style="color:var(--text-muted)">${label}</span>
+        <span style="font-weight:600;text-align:right">${value}</span>
+      </div>`;
+
+    const facturaBtn = p.factura
+      ? `<button class="btn btn-ghost btn-sm" onclick="_verFacturaDesdePago()">Ver factura (PDF)</button>`
+      : `<span style="font-size:.8rem;color:var(--text-muted)">Sin factura vinculada</span>`;
+    const reciboBtn = p.recibo
+      ? `<button class="btn btn-ghost btn-sm" onclick="_verReciboDesdePago()">Ver recibo (PDF)</button>`
+      : `<span style="font-size:.8rem;color:var(--text-muted)">${p.estado === "aceptado" ? "Recibo no disponible" : "El recibo se genera al aceptar el pago"}</span>`;
+
+    const body = document.getElementById("modalBody");
+    if (!body) return;
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <strong style="font-family:monospace">${p.numero_pago || `#${p.id_pago}`}</strong>
+        ${p.estado ? UI.badge(p.estado) : ""}
+        <span style="color:var(--text-muted);font-size:.84rem">Venta #${p.id_venta ?? "—"}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+        <div>
+          <div style="font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:700;margin-bottom:8px">Comprobante (baucher)</div>
+          ${baucherHTML}
+        </div>
+        <div>
+          ${row("Fecha del pago", UI.date(p.fecha_pago))}
+          ${row("Valor", UI.fmt(p.valor_pago))}
+          ${row("Método", metodoLabel)}
+          ${p.numero_cuenta_origen ? row("Cuenta / Cel. origen", p.numero_cuenta_origen) : ""}
+          ${row("Referencia", p.referencia || "—")}
+          ${row("Cuota", p.numero_cuota != null ? `#${p.numero_cuota}` : "—")}
+          ${row("Factura", fmtFactNum(p.factura?.numero_factura))}
+          ${row("Recibo", p.recibo?.numero_recibo || "—")}
+          ${row("Comprador", p.comprador || "—")}
+          ${row("Proyecto / Lote", `${p.proyecto || "—"} · ${p.codigo_lote || "—"}`)}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+        ${facturaBtn}
+        ${reciboBtn}
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="UI.closeModal()">Cerrar</button>
+      </div>`;
+  };
+
+  window._verFacturaDesdePago = function() {
+    const p = window._pagoDetalleActual;
+    if (!p?.factura) return UI.toast("Sin factura vinculada", "error");
+    window._facturasMap = window._facturasMap || {};
+    window._facturasMap[p.factura.id_factura] = p.factura;
+    if (typeof window.verFacturaPDF === "function") window.verFacturaPDF(p.factura.id_factura);
+    else UI.toast("No se pudo abrir la factura", "error");
+  };
+
+  window._verReciboDesdePago = function() {
+    const p = window._pagoDetalleActual;
+    if (!p?.recibo) return UI.toast("Sin recibo vinculado", "error");
+    window._recibosMap = window._recibosMap || {};
+    window._recibosMap[p.recibo.id_recibo] = p.recibo;
+    if (typeof window.verReciboPDF === "function") window.verReciboPDF(p.recibo.id_recibo);
+    else UI.toast("No se pudo abrir el recibo", "error");
   };
 
   // ── Payment form ──────────────────────────────────────────────────────────────

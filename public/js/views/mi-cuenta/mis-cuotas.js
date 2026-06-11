@@ -13,6 +13,50 @@
     return new Date(d + "T12:00:00").toLocaleDateString("es-CO");
   }
 
+  // Consistent Factura / Pago / Recibo buttons per cuota card. A document that does not exist
+  // is shown opaque and disabled. Opening reuses the shared viewers (verFacturaPDF /
+  // verReciboPDF / verPagoDetalle) via the ownership-checked mis-cuotas documentos endpoint.
+  function docBtns(idCuota, idFraccion, flags) {
+    const f = idFraccion != null ? idFraccion : "null";
+    const one = (tipo, label, on) =>
+      `<button class="btn btn-ghost btn-sm" ${on ? `onclick="_verDocCuota('${tipo}',${idCuota},${f})"` : "disabled"} style="padding:2px 9px;font-size:.72rem${on ? "" : ";opacity:.4;cursor:not-allowed"}">${label}</button>`;
+    return `<div class="cuota-doc-btns" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;justify-content:flex-end">
+      ${one("factura", "Factura", !!flags.factura)}
+      ${one("pago", "Pago", !!flags.pago)}
+      ${one("recibo", "Recibo", !!flags.recibo)}
+    </div>`;
+  }
+
+  window._verDocCuota = async function (tipo, idCuota, idFraccion) {
+    const key = `${idCuota}:${idFraccion ?? ""}`;
+    window._cuotaDocsCache = window._cuotaDocsCache || {};
+    let docs = window._cuotaDocsCache[key];
+    if (!docs) {
+      try {
+        const qs = idFraccion != null ? `?fraccion=${idFraccion}` : "";
+        docs = await API.get(`/cuotas/mis-cuotas/${idCuota}/documentos${qs}`);
+        window._cuotaDocsCache[key] = docs;
+      } catch (e) {
+        window.SGIUI?.toast(e.message || "No se pudieron cargar los documentos", "error");
+        return;
+      }
+    }
+    if (tipo === "factura") {
+      if (!docs.factura) return window.SGIUI?.toast("Esta cuota no tiene factura.", "info");
+      window._facturasMap = window._facturasMap || {};
+      window._facturasMap[docs.factura.id_factura] = docs.factura;
+      if (typeof window.verFacturaPDF === "function") window.verFacturaPDF(docs.factura.id_factura);
+    } else if (tipo === "recibo") {
+      if (!docs.recibo) return window.SGIUI?.toast("Esta cuota no tiene recibo.", "info");
+      window._recibosMap = window._recibosMap || {};
+      window._recibosMap[docs.recibo.id_recibo] = docs.recibo;
+      if (typeof window.verReciboPDF === "function") window.verReciboPDF(docs.recibo.id_recibo);
+    } else if (tipo === "pago") {
+      if (!docs.pago?.id_pago) return window.SGIUI?.toast("Esta cuota no tiene pago.", "info");
+      if (typeof window.verPagoDetalle === "function") window.verPagoDetalle(docs.pago.id_pago, { mine: true });
+    }
+  };
+
   // Point 13: comprador downloads a PDF of the payment plan from "Mis Cuotas".
   function _planCuotasPDF(venta) {
     const jsPDFCtor = window.jspdf?.jsPDF;
@@ -351,6 +395,7 @@
   window.compradorCuotasView = async function (container) {
     const vc = container || document.getElementById("viewContainer");
     vc.innerHTML = UI.loader();
+    window._cuotaDocsCache = {};
 
     let ventas;
     try { ventas = await API.get("/ventas/mis-ventas"); }
@@ -426,6 +471,7 @@
               </div>
               <div class="cuota-card-right">
                 <span class="badge badge-success">Pagada</span>
+                ${docBtns(c.id_cuota, fp.id_fraccion, { factura: true, pago: true, recibo: true })}
               </div>
             </div>`)
           : [];
@@ -460,6 +506,7 @@
                     : '<span class="badge badge-success">Pagada</span>')
                 : UI.badge(c.estado)}
               ${actionBtn}
+              ${docBtns(c.id_cuota, null, { factura: c.tiene_factura_doc, pago: c.tiene_pago, recibo: c.tiene_recibo })}
             </div>
           </div>`;
 

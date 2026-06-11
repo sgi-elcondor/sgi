@@ -183,6 +183,123 @@ exports.getAll = async (req, res) => {
   }));
 };
 
+// Task 14: full detail of a single pago — the baucher, the pago data, and the linked factura
+// and recibo shaped so the existing PDF builders (verFacturaPDF / verReciboPDF) can render
+// them. RN-02: the recibo only exists once the pago was accepted, so it is null for a payment
+// still under review. RN-19: the comprador sees exactly the same detail for their own pago.
+const PAGO_DETALLE_SELECT = `
+  id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
+  estado, url_baucher, numero_cuenta_origen, tipo_pago, id_venta, id_cuota_propuesta, id_usuario,
+  venta:id_venta(
+    id_venta,
+    lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
+    venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
+  ),
+  cuota_pago(
+    valor_aplicado,
+    cuota:id_cuota(
+      id_cuota, numero_cuota, fecha_vencimiento,
+      cuota_factura(factura:id_factura(id_factura, numero_factura, estado, fecha_emision, valor_facturado, observaciones))
+    )
+  ),
+  recibo_pago(recibo:id_recibo(id_recibo, numero_recibo, fecha_emision, emitido_por, observaciones))
+`;
+
+function _shapePagoDetalle(p) {
+  const venta       = p.venta;
+  const lote        = venta?.lote;
+  const comp        = venta?.venta_comprador?.[0]?.usuario;
+  const cuota       = p.cuota_pago?.[0]?.cuota;
+  const proyecto    = lote?.proyecto?.nombre ?? "—";
+  const codigo_lote = lote?.codigo_lote      ?? "—";
+  const comprador   = comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—";
+  const documento   = comp?.documento ?? null;
+  const id_venta    = venta?.id_venta ?? p.id_venta ?? null;
+
+  // The factura this pago relates to: prefer the cuota's active/paid factura, skip anuladas.
+  const facturas   = (cuota?.cuota_factura || []).map(cf => cf.factura).filter(Boolean);
+  const facturaRaw = facturas.find(f => ["pagada", "parcialmente_pagada"].includes(f.estado))
+    || facturas.find(f => f.estado === "emitida")
+    || facturas.find(f => f.estado !== "anulada")
+    || facturas[0]
+    || null;
+
+  const factura = facturaRaw ? {
+    id_factura:        facturaRaw.id_factura,
+    numero_factura:    facturaRaw.numero_factura,
+    estado:            facturaRaw.estado,
+    fecha_emision:     facturaRaw.fecha_emision,
+    valor_facturado:   facturaRaw.valor_facturado,
+    observaciones:     facturaRaw.observaciones,
+    id_venta,
+    comprador, proyecto, codigo_lote,
+    numero_cuota:      cuota?.numero_cuota ?? null,
+    fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
+  } : null;
+
+  const reciboRaw = p.recibo_pago?.[0]?.recibo || null;
+  const recibo = reciboRaw ? {
+    id_recibo:      reciboRaw.id_recibo,
+    numero_recibo:  reciboRaw.numero_recibo,
+    fecha_emision:  reciboRaw.fecha_emision ?? p.fecha_pago?.split("T")[0] ?? null,
+    emitido_por:    reciboRaw.emitido_por ?? "Sistema SGI",
+    observaciones:  reciboRaw.observaciones ?? null,
+    valor_pago:     p.valor_pago,
+    metodo_pago:    p.metodo_pago,
+    referencia:     p.referencia,
+    fecha_pago:     p.fecha_pago,
+    id_venta,
+    comprador, documento, proyecto, codigo_lote,
+    numero_cuota:   cuota?.numero_cuota         ?? null,
+    numero_factura: facturaRaw?.numero_factura  ?? null,
+  } : null;
+
+  return {
+    id_pago:              p.id_pago,
+    numero_pago:          p.numero_pago,
+    fecha_pago:           p.fecha_pago,
+    valor_pago:           p.valor_pago,
+    metodo_pago:          p.metodo_pago,
+    referencia:           p.referencia,
+    estado:               p.estado,
+    tipo_pago:            p.tipo_pago,
+    url_baucher:          p.url_baucher,
+    numero_cuenta_origen: p.numero_cuenta_origen,
+    id_venta,
+    numero_cuota:         cuota?.numero_cuota ?? null,
+    comprador, documento, proyecto, codigo_lote,
+    factura,
+    recibo,
+  };
+}
+
+exports.getById = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de pago inválido" });
+
+  const { data: p, error } = await supabase.schema(SCHEMA)
+    .from("pago").select(PAGO_DETALLE_SELECT).eq("id_pago", id).single();
+  if (error || !p) return res.status(404).json({ error: "Pago no encontrado" });
+
+  res.json(_shapePagoDetalle(p));
+};
+
+// RN-19: the comprador sees the same payment detail as the aux, restricted to their own pago.
+exports.getMisPagoById = async (req, res) => {
+  const id_usuario = req.usuario.id_usuario;
+  if (!id_usuario) return res.status(400).json({ error: "Sin usuario vinculado" });
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de pago inválido" });
+
+  const { data: p, error } = await supabase.schema(SCHEMA)
+    .from("pago").select(PAGO_DETALLE_SELECT).eq("id_pago", id).single();
+  if (error || !p) return res.status(404).json({ error: "Pago no encontrado" });
+  if (p.id_usuario !== id_usuario) return res.status(403).json({ error: "No tienes acceso a este pago" });
+
+  res.json(_shapePagoDetalle(p));
+};
+
 exports.create = async (req, res) => {
   const { fecha_pago, metodo_pago, referencia, cuotas, url_baucher, numero_cuenta_origen } = req.body;
 

@@ -338,8 +338,8 @@ window.verVenta = async function(id) {
                   type="button"
                   class="btn btn-ghost btn-sm"
                   style="font-size:.72rem;padding:2px 8px;text-transform:none;font-weight:700;letter-spacing:0"
-                  onclick="_editarFinanciero(${v.id_venta},${vt},${ci})">
-                  Editar valores
+                  onclick="_editarPlanCuotas(${v.id_venta})">
+                  Editar venta
                 </button>` : ""}
             </div>
             <div id="sgi_vf_body" class="venta-detail-section-body">
@@ -495,13 +495,73 @@ window.verVenta = async function(id) {
 };
 
 // Point 6: delete a clean venta, or fall back to cancel when it has receipts.
-window._eliminarVenta = function(id) {
-  UI.openModal("Eliminar venta", `
+// Pre-checks the venta's pagos/facturas/recibos: if any accepted payment or receipt exists
+// (RN-05, immutable receipts), deletion is blocked and the blocking documents are shown so
+// the aux understands why, offering "Cancelar venta" instead.
+window._eliminarVenta = async function(id) {
+  UI.openModal("Eliminar venta", UI.loader());
+
+  let pagos = [], facturas = [], recibos = [];
+  try {
+    [pagos, facturas, recibos] = await Promise.all([
+      API.get("/pagos").catch(() => []),
+      API.get("/facturas").catch(() => []),
+      API.get("/recibos").catch(() => []),
+    ]);
+  } catch (_) {}
+  pagos    = (pagos    || []).filter(p => p.id_venta === id);
+  facturas = (facturas || []).filter(f => f.id_venta === id);
+  recibos  = (recibos  || []).filter(r => r.id_venta === id);
+
+  const bloqueada = recibos.length > 0 || pagos.some(p => p.estado === "aceptado");
+  const body = document.getElementById("modalBody");
+  if (!body) return;
+
+  if (bloqueada) {
+    const pill = (txt, extra = "") =>
+      `<div style="font-size:.82rem;padding:5px 9px;background:var(--surface-2,#f0f4f8);border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:8px">${txt}${extra}</div>`;
+    const docSection = (titulo, items) => items.length ? `
+      <div>
+        <div style="font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:700;margin-bottom:5px">${titulo} (${items.length})</div>
+        <div style="display:flex;flex-direction:column;gap:4px;max-height:8rem;overflow-y:auto">${items.join("")}</div>
+      </div>` : "";
+
+    const pagosHTML = pagos.map(p =>
+      pill(`<span style="font-family:monospace">${p.numero_pago || "#" + p.id_pago}</span> · ${UI.fmt(p.valor_pago)}`, UI.badge(p.estado))
+    );
+    const facturasHTML = facturas.map(f =>
+      pill(`<span style="font-family:monospace">${f.numero_factura ?? "—"}</span>`, UI.badge(f.estado))
+    );
+    const recibosHTML = recibos.map(r =>
+      pill(`<span style="font-family:monospace">${r.numero_recibo}</span> · ${UI.fmt(r.valor_pago)}`)
+    );
+
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.86rem;line-height:1.5">
+          La venta #${id} <b>no se puede eliminar</b>: ya tiene documentos contables (pagos aceptados o recibos) que son inmutables (RN-05). Puedes <b>cancelar</b> la venta — se conserva todo y queda en auditoría.
+        </div>
+        ${docSection("Pagos", pagosHTML)}
+        ${docSection("Facturas", facturasHTML)}
+        ${docSection("Recibos", recibosHTML)}
+        <div class="form-actions">
+          <button class="btn btn-ghost" onclick="UI.closeModal()">Cerrar</button>
+          <button class="btn btn-primary" id="del-venta-cancelar">Cancelar venta</button>
+        </div>
+      </div>`;
+    document.getElementById("del-venta-cancelar")?.addEventListener("click", () => _cancelarVenta(id));
+    return;
+  }
+
+  const facturasInfo = facturas.length
+    ? `<div style="font-size:.82rem;color:var(--text-muted)">Se eliminarán también ${facturas.length} factura(s) sin cobro y el plan de cuotas.</div>`
+    : "";
+  body.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px">
       <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.86rem;line-height:1.5">
-        Esto <b>elimina</b> la venta #${id} y su plan de cuotas. Solo es posible si la venta
-        <b>no tiene pagos aceptados ni recibos</b>. La acción queda en auditoría.
+        Esto <b>elimina</b> la venta #${id} y su plan de cuotas. La venta no tiene pagos aceptados ni recibos. La acción queda en auditoría.
       </div>
+      ${facturasInfo}
       <div class="form-group">
         <label>Motivo (opcional)</label>
         <input id="del-venta-motivo" type="text" placeholder="Ej: venta duplicada / registrada por error" />
@@ -510,7 +570,7 @@ window._eliminarVenta = function(id) {
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
         <button class="btn btn-danger" id="del-venta-confirm">Eliminar venta</button>
       </div>
-    </div>`);
+    </div>`;
   document.getElementById("del-venta-confirm")?.addEventListener("click", async () => {
     const motivo = document.getElementById("del-venta-motivo")?.value.trim() || undefined;
     const btn = document.getElementById("del-venta-confirm");
@@ -560,54 +620,232 @@ window._cancelarVenta = function(id) {
   });
 };
 
-window._editarFinanciero = function(id, vtActual, ciActual) {
-  const body = document.getElementById("sgi_vf_body");
-  if (!body) return;
-  body.innerHTML = `
-    <div class="form-grid" style="gap:10px">
+// ── Editor de venta (valor total + cuota inicial + plan de cuotas) ───────────
+// Cambiar el valor total o la cuota inicial obliga a recuadrar el plan: valores y cuotas se
+// guardan de forma atómica vía PUT /cuotas/venta/:id/plan, que valida dos cuadres (Σ iniciales ==
+// cuota inicial; Σ regulares == valor total − inicial − permutas), exige motivo auditado (RN-20)
+// y respeta las cuotas pagadas / con factura activa / subdivididas (RN-03/RN-04/§3.3).
+function _planTargetTipo(tipo) {
+  const { vt, ci, permutas } = window._planCtx || {};
+  return tipo === "inicial"
+    ? Number(ci || 0)
+    : Math.max(0, Number(vt || 0) - Number(ci || 0) - Number(permutas || 0));
+}
+function _planSumTipo(tipo) {
+  return (window._planRows || []).reduce((s, r) => r.tipo === tipo ? s + (Number(r.valor) || 0) : s, 0);
+}
+function _planCountTipo(tipo) {
+  return (window._planRows || []).filter(r => r.tipo === tipo).length;
+}
+function _planBalancedTipo(tipo) {
+  return Math.abs(_planTargetTipo(tipo) - _planSumTipo(tipo)) <= Math.max(1, _planCountTipo(tipo) || 1);
+}
+function _planBalanced() {
+  return _planBalancedTipo("inicial") && _planBalancedTipo("regular");
+}
+function _planSummaryTipoHTML(tipo) {
+  const target = _planTargetTipo(tipo);
+  const sum    = _planSumTipo(tipo);
+  const diff   = target - sum;
+  const ok     = _planBalancedTipo(tipo);
+  const color  = ok ? "var(--success,#22c55e)" : "var(--danger,#ef4444)";
+  const ref    = tipo === "inicial" ? "cuota inicial" : "valor financiado";
+  const msg    = ok ? "✓ cuadra" : diff > 0 ? `faltan ${UI.fmt(diff)}` : `sobran ${UI.fmt(-diff)}`;
+  return `Σ <b>${UI.fmt(sum)}</b> / <b>${UI.fmt(target)}</b> (${ref}) — <span style="color:${color};font-weight:600">${msg}</span>`;
+}
+function _planRowHTML(r, i) {
+  const fechaCell = r.pagada
+    ? `<td style="padding:.35rem">${r.fecha ? UI.date(r.fecha) : "—"}</td>`
+    : `<td style="padding:.35rem"><input type="date" class="pl-fecha" data-idx="${i}" value="${r.fecha || ""}" style="width:148px"></td>`;
+  const valorCell = r.valorLocked
+    ? `<td style="padding:.35rem;text-align:right;font-weight:600">${UI.fmt(r.valor)}</td>`
+    : `<td style="padding:.35rem"><input type="text" inputmode="numeric" class="pl-valor" data-idx="${i}" value="${MoneyInput.format(r.valor)}" style="width:130px;text-align:right"></td>`;
+  const quitar = r.deletable
+    ? `<button class="btn btn-ghost btn-sm" title="Quitar cuota" style="padding:0 7px;color:var(--danger)" onclick="_planRemoveRow(${i})">✕</button>`
+    : "";
+  return `<tr${r.pagada ? ' style="opacity:.55"' : ""}>
+    <td style="padding:.35rem;text-align:center;white-space:nowrap">${r.nueva ? '<span style="color:var(--text-muted)">nueva</span>' : r.numero}</td>
+    ${fechaCell}
+    ${valorCell}
+    <td style="padding:.35rem;text-align:center;font-size:.72rem;color:var(--text-muted)">${r.hint || "—"}</td>
+    <td style="padding:.35rem;text-align:center;width:30px">${quitar}</td>
+  </tr>`;
+}
+function _planSectionBodyHTML(tipo) {
+  const items = (window._planRows || []).map((r, i) => ({ r, i })).filter(x => x.r.tipo === tipo);
+  if (!items.length) return `<tr><td colspan="5" style="padding:.5rem;text-align:center;color:var(--text-muted);font-size:.8rem">Sin cuotas ${tipo === "inicial" ? "iniciales" : "regulares"}</td></tr>`;
+  return items.map(({ r, i }) => _planRowHTML(r, i)).join("");
+}
+function _planSectionHTML(tipo) {
+  const titulo = tipo === "inicial" ? "Cuotas de cuota inicial" : "Cuotas regulares";
+  return `
+    <div style="margin-top:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <strong style="font-size:.78rem">${titulo}</strong>
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="_planAddRow('${tipo}')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar</button>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:.5rem;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <tbody id="pl-rows-${tipo}">${_planSectionBodyHTML(tipo)}</tbody>
+        </table>
+      </div>
+      <div id="pl-sum-${tipo}" style="font-size:.78rem;margin-top:4px">${_planSummaryTipoHTML(tipo)}</div>
+    </div>`;
+}
+function _planRefresh() {
+  ["inicial", "regular"].forEach(tipo => {
+    const el = document.getElementById(`pl-sum-${tipo}`);
+    if (el) el.innerHTML = _planSummaryTipoHTML(tipo);
+  });
+  const motivo = (document.getElementById("pl-motivo")?.value || "").trim();
+  const mc = document.getElementById("pl-motivo-counter");
+  if (mc) {
+    mc.textContent = `${motivo.length} / 20 caracteres mínimo`;
+    mc.style.color = motivo.length >= 20 ? "var(--success,#22c55e)" : "var(--text-muted)";
+  }
+  const btn = document.getElementById("pl-guardar");
+  if (btn) btn.disabled = !_planBalanced() || motivo.length < 20;
+}
+function _planBindRowInputs() {
+  document.querySelectorAll(".pl-valor").forEach(inp => {
+    const i = Number(inp.dataset.idx);
+    MoneyInput.init(inp, {
+      dependsOn: () => Number(window._planCtx?.vt || 0),
+      onChange: () => { window._planRows[i].valor = MoneyInput.parse(inp.value); _planRefresh(); },
+    });
+  });
+  document.querySelectorAll(".pl-fecha").forEach(inp => {
+    const i = Number(inp.dataset.idx);
+    inp.addEventListener("input", () => { window._planRows[i].fecha = inp.value; });
+  });
+}
+function _planRerenderSections() {
+  ["inicial", "regular"].forEach(tipo => {
+    const tb = document.getElementById(`pl-rows-${tipo}`);
+    if (tb) tb.innerHTML = _planSectionBodyHTML(tipo);
+  });
+  _planBindRowInputs();
+  _planRefresh();
+}
+window._planAddRow = function(tipo) {
+  (window._planRows = window._planRows || []).push({
+    id_cuota: null, numero: null, tipo: tipo === "inicial" ? "inicial" : "regular",
+    pagada: false, valorLocked: false, deletable: true, hint: "", valor: 0, fecha: "", nueva: true,
+  });
+  _planRerenderSections();
+};
+window._planRemoveRow = function(i) {
+  if (!window._planRows) return;
+  window._planRows.splice(i, 1);
+  _planRerenderSections();
+};
+function _renderPlanEditor() {
+  const { idVenta, vt, ci, permutas } = window._planCtx;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="margin-bottom:.6rem;padding:.5rem .8rem;background:var(--surface-2,#f0f4f8);border-radius:.5rem;font-size:.82rem;line-height:1.5">
+      Cambiar el valor total o la cuota inicial obliga a recuadrar el plan. La Σ de las cuotas
+      iniciales debe igualar la <b>cuota inicial</b>, y la de las regulares el <b>valor financiado</b>
+      (valor total − cuota inicial − permutas). No podrás guardar hasta que ambas cuadren.
+    </div>
+    <div class="form-grid" style="gap:10px;margin-bottom:.25rem">
       <div class="form-group">
         <label style="font-size:.8rem">Valor total *</label>
-        <input id="ef_vt" type="text" inputmode="numeric" value="${_fmtMiles(vtActual)}"
-               style="padding:5px 8px"/>
+        <input id="pl-vt" type="text" inputmode="numeric" value="${MoneyInput.format(vt)}" style="padding:5px 8px">
       </div>
       <div class="form-group">
         <label style="font-size:.8rem">Cuota inicial</label>
-        <input id="ef_ci" type="text" inputmode="numeric" value="${_fmtMiles(ciActual)}"
-               style="padding:5px 8px"/>
+        <input id="pl-ci" type="text" inputmode="numeric" value="${MoneyInput.format(ci)}" style="padding:5px 8px">
       </div>
-      <div class="form-group" style="grid-column:1/-1">
-        <label style="font-size:.8rem">Motivo del cambio *
-          <span style="color:var(--text-muted);font-weight:400">(se registra en auditoría)</span>
-        </label>
-        <textarea id="ef_obs" rows="2" style="font-size:.85rem"
-                  placeholder="Ej: corrección de precio por addendum al contrato"></textarea>
-      </div>
+      ${permutas > 0 ? `<div class="form-group">
+        <label style="font-size:.8rem">Permutas</label>
+        <input type="text" value="${MoneyInput.format(permutas)}" disabled style="padding:5px 8px;opacity:.7">
+      </div>` : ""}
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn btn-primary btn-sm" onclick="_guardarFinanciero(${id})">Guardar</button>
-      <button class="btn btn-ghost btn-sm"   onclick="verVenta(${id})">Cancelar</button>
+    <div style="max-height:40vh;overflow-y:auto">
+      ${_planSectionHTML("inicial")}
+      ${_planSectionHTML("regular")}
+    </div>
+    <div class="form-group" style="margin-top:.6rem">
+      <label style="font-weight:600;font-size:.82rem">Motivo del cambio *</label>
+      <textarea id="pl-motivo" rows="2" placeholder="Describe por qué se ajusta la venta (mín. 20 caracteres)" style="resize:vertical"></textarea>
+      <small id="pl-motivo-counter" style="color:var(--text-muted);font-size:.78rem">0 / 20 caracteres mínimo</small>
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.4rem;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="verVenta(${idVenta})">Cancelar</button>
+      <button class="btn btn-primary" id="pl-guardar" disabled onclick="_guardarPlanCuotas()">Guardar venta</button>
     </div>`;
-
-  const efVt = document.getElementById("ef_vt");
-  const efCi = document.getElementById("ef_ci");
-  if (efVt) MoneyInput.init(efVt);
-  if (efCi) MoneyInput.init(efCi, {
-    dependsOn: () => MoneyInput.parse(document.getElementById("ef_vt")?.value || "0"),
+  const vtInp = document.getElementById("pl-vt");
+  const ciInp = document.getElementById("pl-ci");
+  if (vtInp) MoneyInput.init(vtInp, { onChange: () => { window._planCtx.vt = MoneyInput.parse(vtInp.value); _planRefresh(); } });
+  if (ciInp) MoneyInput.init(ciInp, { dependsOn: () => Number(window._planCtx?.vt || 0), onChange: () => { window._planCtx.ci = MoneyInput.parse(ciInp.value); _planRefresh(); } });
+  _planBindRowInputs();
+  document.getElementById("pl-motivo")?.addEventListener("input", _planRefresh);
+  _planRefresh();
+}
+window._editarPlanCuotas = async function(idVenta) {
+  UI.openModal(`Editar venta · #${idVenta}`, UI.loader());
+  let v;
+  try { v = await API.get(`/ventas/${idVenta}`); }
+  catch (e) {
+    const body = document.getElementById("modalBody");
+    if (body) body.innerHTML = `<p style="color:var(--danger);padding:1rem">${e.message}</p>`;
+    return;
+  }
+  const cuotas = (v.cuota || []).slice().sort((a, b) => a.numero_cuota - b.numero_cuota);
+  window._planRows = cuotas.map(c => {
+    const pagada      = c.pagada === true || c.estado === "pagada";
+    const valorLocked = pagada || c.tiene_fracciones === true || c.factura_activa === true;
+    const deletable   = !pagada && c.tiene_fracciones !== true && c.factura_activa !== true && Number(c.valor_pagado || 0) === 0;
+    const hint        = pagada               ? "Pagada"
+                      : c.tiene_fracciones    ? "Subdividida"
+                      : c.factura_activa      ? "Con factura activa"
+                      : Number(c.valor_pagado || 0) > 0 ? `mín ${UI.fmt(c.valor_pagado)}` : "";
+    return {
+      id_cuota: c.id_cuota, numero: c.numero_cuota, tipo: c.tipo === "inicial" ? "inicial" : "regular",
+      pagada, valorLocked, deletable, hint,
+      valor: Number(c.valor_cuota), fecha: c.fecha_vencimiento, nueva: false,
+    };
   });
+  window._planCtx = {
+    idVenta,
+    vt: Number(v.valor_total || 0),
+    ci: Number(v.cuota_inicial || 0),
+    permutas: Number(v.total_permutas || 0),
+  };
+  _renderPlanEditor();
 };
+window._guardarPlanCuotas = async function() {
+  const rows = window._planRows || [];
+  const ctx  = window._planCtx || {};
+  const motivo = (document.getElementById("pl-motivo")?.value || "").trim();
+  if (!rows.length) return UI.toast("Debe haber al menos una cuota", "error");
+  for (const r of rows) {
+    if (!(Number(r.valor) > 0)) return UI.toast("Todas las cuotas deben tener un valor mayor a 0", "error");
+    if (!r.fecha)               return UI.toast("Todas las cuotas deben tener fecha de vencimiento", "error");
+  }
+  if (!(Number(ctx.vt) > 0))            return UI.toast("El valor total debe ser mayor a 0", "error");
+  if (Number(ctx.ci) > Number(ctx.vt)) return UI.toast("La cuota inicial no puede superar el valor total", "error");
+  if (!_planBalanced())                return UI.toast("El plan no cuadra (revisa iniciales y regulares)", "error");
+  if (motivo.length < 20)              return UI.toast("El motivo es obligatorio (mín. 20 caracteres)", "error");
 
-window._guardarFinanciero = async function(id) {
-  const vt  = _parseMiles(document.getElementById("ef_vt")?.value  || "0");
-  const ci  = _parseMiles(document.getElementById("ef_ci")?.value  || "0");
-  const obs = (document.getElementById("ef_obs")?.value || "").trim();
-  if (!vt || vt <= 0) return UI.toast("El valor total debe ser mayor a cero", "error");
-  if (ci > vt)        return UI.toast("La cuota inicial no puede superar el valor total", "error");
-  if (!obs)           return UI.toast("El motivo del cambio es requerido para la auditoría", "error");
+  const cuotas = rows.map(r => {
+    const o = { valor_cuota: Number(r.valor), fecha_vencimiento: r.fecha, tipo: r.tipo };
+    if (r.id_cuota != null) o.id_cuota = r.id_cuota;
+    return o;
+  });
+
+  const btn = document.getElementById("pl-guardar");
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
   try {
-    await API.patch(`/ventas/${id}/financiero`, { valor_total: vt, cuota_inicial: ci, observaciones: obs });
-    UI.toast("Valores actualizados", "ok");
-    verVenta(id);
-  } catch(e) { UI.toast(e.message, "error"); }
+    await API.put(`/cuotas/venta/${ctx.idVenta}/plan`, {
+      valor_total: Number(ctx.vt), cuota_inicial: Number(ctx.ci), cuotas, motivo,
+    });
+    UI.toast("Venta actualizada", "ok");
+    verVenta(ctx.idVenta);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "Guardar venta"; }
+    UI.toast(e.message || "No se pudo actualizar la venta", "error");
+  }
 };
 
 function _fmtMiles(val) { return MoneyInput.format(val); }

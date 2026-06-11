@@ -81,7 +81,10 @@
           <div class="recibo-list-right">
             <div class="recibo-list-fecha">${fmtDateShort(r.fecha_emision)}</div>
             <div class="recibo-list-valor">${fmt(r.valor_pago)}</div>
-            <button class="btn btn-ghost btn-sm" onclick="verReciboPDF(${r.id_recibo})">${window.SGIUI?.icon("file-text") ?? ""} Ver recibo</button>
+            <div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end">
+              ${r.id_pago ? `<button class="btn btn-ghost btn-sm" onclick="verPagoDetalle(${r.id_pago}, { mine: true })">${window.SGIUI?.icon("eye") ?? ""} Ver detalle</button>` : ""}
+              <button class="btn btn-ghost btn-sm" onclick="verReciboPDF(${r.id_recibo})">${window.SGIUI?.icon("file-text") ?? ""} Ver recibo</button>
+            </div>
           </div>
         </div>`;
     }
@@ -98,6 +101,7 @@
             <div class="pago-card-right">
               <div class="pago-card-valor">${fmt(p.valor_pago)}</div>
               ${UI.badge(p.estado)}
+              ${p.id_pago ? `<button class="btn btn-ghost btn-sm" style="margin-top:.35rem" onclick="verPagoDetalle(${p.id_pago}, { mine: true })">Ver detalle</button>` : ""}
             </div>
           </div>
         </div>`;
