@@ -92,14 +92,16 @@ window.cuotasView = async function() {
         </label>
       </div>
 
-      <table>
-        <thead><tr>
-          <th>Proyecto</th><th>Lote</th><th>Comprador</th><th>Nro.</th>
-          <th>Vencimiento</th><th>Días</th><th>Valor</th><th>Pendiente</th>
-          <th>Estado</th>${thAcciones}
-        </tr></thead>
-        <tbody id="cuotas-tbody">${data.map(filaVista).join("")}</tbody>
-      </table>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Proyecto</th><th>Lote</th><th>Comprador</th><th>Nro.</th>
+            <th>Vencimiento</th><th>Días</th><th>Valor</th><th>Pendiente</th>
+            <th>Estado</th>${thAcciones}
+          </tr></thead>
+          <tbody id="cuotas-tbody">${data.map(filaVista).join("")}</tbody>
+        </table>
+      </div>
       <p id="cuotas-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px">
         No hay cuotas que coincidan con los filtros.
       </p>
