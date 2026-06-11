@@ -110,6 +110,7 @@
     ...lote,
     id: lote.id_lote ?? lote.id,
     id_lote: lote.id_lote ?? lote.id,
+    id_venta: lote.id_venta ?? null,
     codigo,
     codigo_lote: codigo,
     proyectoId,
@@ -261,13 +262,9 @@
             <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
             <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
             <td>
-              <button
-                class="btn btn-sm btn-ghost"
-                disabled
-                title="El estado del lote no se modifica manualmente"
-              >
-                Solo lectura
-              </button>
+              ${lote.id_venta
+                ? `<button class="btn btn-sm btn-ghost" onclick="verVenta(${lote.id_venta})" title="Ver la venta de este lote">Ver venta</button>`
+                : `<button class="btn btn-sm btn-ghost" disabled title="El estado del lote no se modifica manualmente">Solo lectura</button>`}
             </td>
           </tr>
         `

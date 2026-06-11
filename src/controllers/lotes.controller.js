@@ -5,7 +5,18 @@ exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("lote")
     .select("*, proyecto(nombre)").order("codigo_lote");
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  // Attach the active (non-cancelled) venta id so the lotes view can link a sold lot to its sale.
+  // Queried separately (like getDisponibles) to avoid the unreliable reverse embed.
+  const { data: ventas } = await supabase.schema(SCHEMA)
+    .from("venta").select("id_venta, id_lote, estado");
+  const ventaPorLote = {};
+  for (const v of (ventas || [])) {
+    if (v.estado === "cancelada") continue;
+    if (ventaPorLote[v.id_lote] == null) ventaPorLote[v.id_lote] = v.id_venta;
+  }
+
+  res.json((data || []).map(l => ({ ...l, id_venta: ventaPorLote[l.id_lote] ?? null })));
 };
 
 exports.getDisponibles = async (req, res) => {
