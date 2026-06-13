@@ -112,9 +112,10 @@ function _buildFacturaHTML(f) {
     : "";
 
   const estadoMap = {
-    emitida: { label: "Emitida", badge: "info" },
-    pagada:  { label: "Pagada",  badge: "success" },
-    anulada: { label: "Anulada", badge: "danger" },
+    emitida:             { label: "Emitida",              badge: "info" },
+    pagada:              { label: "Pagada",               badge: "success", stamp: { label: "Pagada",  variant: "success" } },
+    parcialmente_pagada: { label: "Parcialmente pagada",  badge: "warning" },
+    anulada:             { label: "Anulada",              badge: "danger",  stamp: { label: "Anulada", variant: "danger" } },
   };
   const estado = estadoMap[f.estado] || { label: (f.estado || "—"), badge: "muted" };
 
@@ -151,6 +152,7 @@ function _buildFacturaHTML(f) {
       totalLabel: "Valor a pagar",
       totalValue: valorTxt,
       totalWords: valorWords,
+      stamp:      estado.stamp || null,
       qrUrl,
       qrCaption: "<strong>¿Dudas con tu factura?</strong><br>Escanea el código QR para escribirnos por WhatsApp.",
     });

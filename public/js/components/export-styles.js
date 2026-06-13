@@ -191,6 +191,59 @@
       return base;
     },
 
+    // Footer (totals) row styling for autoTable `foot`.
+    footStyles() {
+      const P = PDF_PALETTE;
+      return {
+        fillColor: P.soft,
+        textColor: P.dark,
+        fontStyle: "bold",
+        fontSize: 8.5,
+        lineColor: P.border,
+        lineWidth: 0.1,
+      };
+    },
+
+    // autoTable hooks that render a colored status pill in one column.
+    // variantOf(rawText) → "success" | "info" | "muted" | "warning" | "danger".
+    statusColumn(columnIndex, variantOf) {
+      const PILL = {
+        success: { fill: [220, 252, 231], text: [21, 128, 61] },
+        info:    { fill: [255, 233, 222], text: [197, 60, 0] },
+        muted:   { fill: [241, 245, 249], text: [100, 116, 139] },
+        warning: { fill: [254, 243, 199], text: [180, 83, 9] },
+        danger:  { fill: [254, 226, 226], text: [185, 28, 28] },
+      };
+      return {
+        didParseCell(data) {
+          if (data.section === "body" && data.column.index === columnIndex) {
+            data.cell.text = [""]; // drawn manually in didDrawCell
+          }
+        },
+        didDrawCell(data) {
+          if (data.section !== "body" || data.column.index !== columnIndex) return;
+          const raw = data.cell.raw;
+          if (raw == null || raw === "" || raw === "—") return;
+          const label = String(raw);
+          const col   = PILL[variantOf(label)] || PILL.muted;
+          const doc   = data.doc;
+          const { x, y, width, height } = data.cell;
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7.2);
+          const pillH = 4.6;
+          const pillW = Math.min(width - 2, doc.getTextWidth(label) + 5);
+          const px = x + (width - pillW) / 2;
+          const py = y + (height - pillH) / 2;
+
+          doc.setFillColor(...col.fill);
+          doc.roundedRect(px, py, pillW, pillH, pillH / 2, pillH / 2, "F");
+          doc.setTextColor(...col.text);
+          doc.text(label, x + width / 2, py + pillH / 2, { align: "center", baseline: "middle" });
+        },
+      };
+    },
+
     // Two-column label/value table for detail sections.
     detailTable(doc, y, rows, opts = {}) {
       const P = PDF_PALETTE;
@@ -618,6 +671,7 @@
       totalLabel  = "Total",
       totalValue  = "",
       totalWords  = "",
+      stamp       = null,
       qrUrl       = "",
       qrCaption   = "",
     } = o;
@@ -639,6 +693,15 @@
           </div>
         </div>`;
       }).join("");
+
+    const STAMP_COLORS = {
+      danger:  "#dc2626",
+      success: "#15803d",
+      muted:   "#94a3b8",
+      info:    "#c53c00",
+    };
+    const stampHTML = stamp && stamp.label ? `
+      <div class="cmp-stamp" style="--stamp:${STAMP_COLORS[stamp.variant] || STAMP_COLORS.muted}">${stamp.label}</div>` : "";
 
     const traceHTML = (trace && trace.length) ? `
       <div class="cmp-trace">
@@ -683,11 +746,19 @@
       color:var(--text);padding:40px 16px 28px;-webkit-font-smoothing:antialiased;
     }
     .card{
+      position:relative;overflow:hidden;
       max-width:460px;margin:0 auto;background:var(--surface);
       border-radius:20px;box-shadow:0 1px 2px rgba(15,23,42,.04),0 14px 40px rgba(15,23,42,.10);
       padding:36px 30px 28px;
     }
-    .cmp-logo{display:flex;justify-content:center;margin-bottom:24px}
+    .cmp-stamp{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%) rotate(-15deg);
+      padding:5px 22px;border:3px solid var(--stamp);border-radius:8px;
+      color:var(--stamp);font-size:26px;font-weight:800;letter-spacing:.12em;
+      text-transform:uppercase;opacity:.22;pointer-events:none;z-index:3;white-space:nowrap;
+    }
+    .cmp-logo{position:relative;display:flex;justify-content:center;align-items:center;margin-bottom:24px}
     .cmp-logo img{width:160px;max-width:62%;height:auto}
     .cmp-badge{
       background:var(--ink);color:#fff;text-align:center;
@@ -792,10 +863,9 @@
       .cmp-extra{margin-top:12px}
       .cmp-footer{margin-top:14px;padding-top:10px}
 
-      .cmp-total,.cmp-trace,.cmp-qr,.cmp-extra,.cmp-field,.cmp-trace-row,.cmp-mini tr{
+      .cmp-total,.cmp-trace,.cmp-qr,.cmp-extra,.cmp-field,.cmp-trace-row,.cmp-mini tr,.cmp-tail{
         break-inside:avoid;page-break-inside:avoid;
       }
-      .cmp-trace,.cmp-qr{page-break-before:auto}
       .cmp-trace-head{break-after:avoid;page-break-after:avoid}
       .print-foot{
         display:block;position:fixed;left:0;right:0;bottom:4mm;
@@ -806,7 +876,7 @@
 </head>
 <body>
   <div class="card">
-    ${logo ? `<div class="cmp-logo"><img src="${logo}" alt="El Cóndor"></div>` : ""}
+    ${logo ? `<div class="cmp-logo">${stampHTML}<img src="${logo}" alt="El Cóndor"></div>` : stampHTML}
     <div class="cmp-badge">${badge}</div>
     <div class="cmp-fields">${fieldsHTML}</div>
     ${extraHTML || ""}
@@ -816,12 +886,14 @@
       ${totalWords ? `<div class="cmp-total-words">${totalWords}</div>` : ""}
     </div>
     ${afterTotalHTML || ""}
-    ${traceHTML}
-    ${qrUrl ? `
-      <div class="cmp-qr">
-        <div class="cmp-qr-box">${/^\s*<svg/.test(qrUrl) ? qrUrl : `<img src="${qrUrl}" alt="QR" loading="lazy">`}</div>
-        <div class="cmp-qr-cap">${qrCaption || ""}</div>
-      </div>` : ""}
+    <div class="cmp-tail">
+      ${traceHTML}
+      ${qrUrl ? `
+        <div class="cmp-qr">
+          <div class="cmp-qr-box">${/^\s*<svg/.test(qrUrl) ? qrUrl : `<img src="${qrUrl}" alt="QR" loading="lazy">`}</div>
+          <div class="cmp-qr-cap">${qrCaption || ""}</div>
+        </div>` : ""}
+    </div>
     <div class="cmp-footer">
       <span class="brand">El Cóndor S.A.S. · Inversiones &amp; Construcciones</span>
       <span>${new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</span>
@@ -849,12 +921,12 @@
         var original = dlBtn.textContent;
         dlBtn.textContent = "Generando…";
         window.html2pdf().set({
-          margin:       [8, 6, 12, 6],
+          margin:       [8, 6, 14, 6],
           filename:     FILE,
           image:        { type: "jpeg", quality: 0.98 },
           html2canvas:  { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false },
           jsPDF:        { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak:    { mode: ["css", "legacy"] }
+          pagebreak:    { mode: ["css", "legacy"], avoid: [".cmp-tail", ".cmp-total", ".cmp-trace", ".cmp-qr", ".cmp-extra", ".cmp-field"] }
         }).from(card).save().then(function(){
           dlBtn.disabled = false; dlBtn.textContent = original;
         }).catch(function(){
