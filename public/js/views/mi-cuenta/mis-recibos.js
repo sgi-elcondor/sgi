@@ -101,7 +101,10 @@
             <div class="pago-card-right">
               <div class="pago-card-valor">${fmt(p.valor_pago)}</div>
               ${UI.badge(p.estado)}
-              ${p.id_pago ? `<button class="btn btn-ghost btn-sm" style="margin-top:.35rem" onclick="verPagoDetalle(${p.id_pago}, { mine: true })">Ver detalle</button>` : ""}
+              ${p.id_pago ? `<div style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end;margin-top:.35rem">
+                <button class="btn btn-ghost btn-sm" onclick="verPagoDetalle(${p.id_pago}, { mine: true })">Ver detalle</button>
+                <button class="btn btn-ghost btn-sm" onclick="verPagoPDF(${p.id_pago}, { mine: true })">${window.SGIUI?.icon("file-text") ?? ""} Ver pago</button>
+              </div>` : ""}
             </div>
           </div>
         </div>`;

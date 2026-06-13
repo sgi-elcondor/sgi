@@ -42,7 +42,7 @@
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...P.muted);
-      doc.text("Sistema de Gestión Inmobiliaria", this.M_LEFT, 17);
+      doc.text("Inversiones & Construcciones · NIT 901.708.415-1", this.M_LEFT, 17);
       doc.text(`Generado · ${new Date().toLocaleString("es-CO")}`, W - this.M_RIGHT, 12, { align: "right" });
 
       doc.setDrawColor(...P.border);
@@ -298,7 +298,7 @@
       const half = Math.max(1, Math.floor(mergeCols / 2));
       ws.mergeCells(2, 1, 2, half);
       const c2a = ws.getCell(2, 1);
-      c2a.value = "Sistema de Gestión Inmobiliaria";
+      c2a.value = "Inversiones & Construcciones · NIT 901.708.415-1";
       c2a.font  = { name: "Calibri", size: 10, color: { argb: C.muted } };
       c2a.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
 
@@ -535,42 +535,73 @@
     return dt.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
-  // Builds a crisp vector (SVG) QR generated locally, with the Cóndor logo in the
-  // center. High error correction (H) keeps it scannable despite the logo overlay.
-  // Returns inline <svg> markup so the embedded logo renders reliably. Falls back to
-  // an <img> pointing to the online service if the local library is unavailable.
+  // Preload the brand logo image so it can be drawn synchronously onto the QR canvas.
+  let _logoImg = null;
+  function _preloadLogo() {
+    try {
+      const src = window.SGIBrand && window.SGIBrand.logoWatermark;
+      if (src && !_logoImg) {
+        const img = new Image();
+        img.onload = () => { _logoImg = img; };
+        img.src = src;
+      }
+    } catch (_) {}
+  }
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _preloadLogo);
+    else _preloadLogo();
+  }
+
+  function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  // Generates a QR locally as a PNG data URI, with the Cóndor logo in the center
+  // (when the logo image is already loaded). High error correction (H) keeps it
+  // scannable. PNG raster renders reliably on screen, print and rasterized download
+  // (html2pdf). Falls back to the online service if the library is unavailable.
   function qrDataUri(text) {
     try {
-      if (typeof qrcode === "function") {
+      if (typeof qrcode === "function" && typeof document !== "undefined") {
         const qr = qrcode(0, "H");
         qr.addData(String(text));
         qr.make();
 
         const count  = qr.getModuleCount();
         const margin = 4;
-        const dim    = count + margin * 2;
+        const scale  = 10;
+        const dim    = (count + margin * 2) * scale;
 
-        let path = "";
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = dim;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, dim, dim);
+        ctx.fillStyle = "#0f172a";
         for (let r = 0; r < count; r++) {
           for (let c = 0; c < count; c++) {
-            if (qr.isDark(r, c)) path += `M${c + margin} ${r + margin}h1v1h-1z`;
+            if (qr.isDark(r, c)) ctx.fillRect((c + margin) * scale, (r + margin) * scale, scale, scale);
           }
         }
 
-        const logo    = (window.SGIBrand && window.SGIBrand.logoWatermark) || "";
-        const logoDim = Math.round(count * 0.24);
-        const logoPos = (dim - logoDim) / 2;
-        const pad     = 0.7;
+        if (_logoImg && _logoImg.complete && _logoImg.naturalWidth) {
+          const lDim  = Math.round(count * 0.22) * scale;
+          const lPos  = (dim - lDim) / 2;
+          const padPx = scale * 0.9;
+          ctx.fillStyle = "#ffffff";
+          _roundRect(ctx, lPos - padPx, lPos - padPx, lDim + padPx * 2, lDim + padPx * 2, scale * 1.2);
+          ctx.fill();
+          ctx.drawImage(_logoImg, lPos, lPos, lDim, lDim);
+        }
 
-        const logoLayer = logo ? `
-          <rect x="${logoPos - pad}" y="${logoPos - pad}" width="${logoDim + pad * 2}" height="${logoDim + pad * 2}" rx="1.4" fill="#ffffff"/>
-          <image href="${logo}" xlink:href="${logo}" x="${logoPos}" y="${logoPos}" width="${logoDim}" height="${logoDim}" preserveAspectRatio="xMidYMid meet"/>` : "";
-
-        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${dim} ${dim}" shape-rendering="crispEdges" role="img" aria-label="Código QR">
-          <rect width="${dim}" height="${dim}" fill="#ffffff"/>
-          <path d="${path}" fill="#0f172a"/>
-          ${logoLayer}
-        </svg>`;
+        return canvas.toDataURL("image/png");
       }
     } catch (_) {}
     return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(text)}`;
@@ -628,6 +659,8 @@
         </div>
       </div>` : "";
 
+    const fileName = (docTitle.split("—")[0].trim() || "Comprobante").replace(/[^\wáéíóúñ.\-\s]/gi, "").replace(/\s+/g, "_");
+
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -636,6 +669,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.3/dist/html2pdf.bundle.min.js"></script>
   <style>
     :root{
       --accent:#ff4e00;--accent-dark:#c53c00;--accent-soft:#ffe9de;
@@ -736,15 +770,37 @@
     .btn-c{background:#fff;color:var(--soft);border:1px solid var(--line)}
     .btn-c:hover{background:var(--line-soft);color:var(--text)}
 
+    .print-foot{display:none}
     @media print{
       html,body{background:#fff}
       body{padding:0}
-      .card{box-shadow:none;border-radius:0;max-width:none;padding:16px 22px}
+      @page{margin:7mm 0 11mm}
+      .card{box-shadow:none;border-radius:0;max-width:none;padding:0 20px}
       .actions{display:none}
+
+      /* Compact spacing so a standard comprobante fits on a single page */
+      .cmp-logo{margin-bottom:12px}
+      .cmp-logo img{width:128px}
+      .cmp-badge{margin-bottom:4px;padding:8px 16px}
+      .cmp-fields{padding:4px 4px 0}
+      .cmp-field{padding:8px 0}
+      .cmp-total{margin-top:14px;padding:12px 20px}
+      .cmp-total-value{font-size:22px}
+      .cmp-trace{margin-top:12px;padding:12px 14px}
+      .cmp-trace-row{padding:5px 8px 5px 22px}
+      .cmp-qr{margin-top:12px;padding-top:12px}
+      .cmp-extra{margin-top:12px}
+      .cmp-footer{margin-top:14px;padding-top:10px}
+
       .cmp-total,.cmp-trace,.cmp-qr,.cmp-extra,.cmp-field,.cmp-trace-row,.cmp-mini tr{
         break-inside:avoid;page-break-inside:avoid;
       }
+      .cmp-trace,.cmp-qr{page-break-before:auto}
       .cmp-trace-head{break-after:avoid;page-break-after:avoid}
+      .print-foot{
+        display:block;position:fixed;left:0;right:0;bottom:4mm;
+        text-align:center;font-size:8px;color:#94a3b8;letter-spacing:.02em;
+      }
     }
   </style>
 </head>
@@ -772,10 +828,42 @@
     </div>
   </div>
 
+  <div class="print-foot">El Cóndor S.A.S. · Inversiones &amp; Construcciones · NIT 901.708.415-1</div>
+
   <div class="actions">
-    <button class="btn btn-p" onclick="window.print()">Imprimir o Descargar PDF</button>
+    <button class="btn btn-p" id="cmpDownload">Descargar PDF</button>
+    <button class="btn btn-c" id="cmpPrint">Imprimir</button>
     <button class="btn btn-c" onclick="window.close()">Cerrar</button>
   </div>
+
+  <script>
+    (function(){
+      var FILE = ${JSON.stringify(fileName)} + ".pdf";
+      var printBtn = document.getElementById("cmpPrint");
+      var dlBtn    = document.getElementById("cmpDownload");
+      if (printBtn) printBtn.addEventListener("click", function(){ window.print(); });
+      if (dlBtn) dlBtn.addEventListener("click", function(){
+        var card = document.querySelector(".card");
+        if (!window.html2pdf || !card) { window.print(); return; }
+        dlBtn.disabled = true;
+        var original = dlBtn.textContent;
+        dlBtn.textContent = "Generando…";
+        window.html2pdf().set({
+          margin:       [8, 6, 12, 6],
+          filename:     FILE,
+          image:        { type: "jpeg", quality: 0.98 },
+          html2canvas:  { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false },
+          jsPDF:        { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak:    { mode: ["css", "legacy"] }
+        }).from(card).save().then(function(){
+          dlBtn.disabled = false; dlBtn.textContent = original;
+        }).catch(function(){
+          dlBtn.disabled = false; dlBtn.textContent = original;
+          window.print();
+        });
+      });
+    })();
+  </script>
 </body>
 </html>`;
   }

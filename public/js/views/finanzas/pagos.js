@@ -416,14 +416,30 @@
     });
   }
 
-  window._verPagoDesdePago = function() {
-    const p = window._pagoDetalleActual;
+  function _openPagoPDF(p) {
     if (!p) return UI.toast("Sin datos del pago", "error");
     if (!(window.SGIExport && window.SGIExport.comprobanteHTML)) return UI.toast("No se pudo generar el comprobante", "error");
     const win = window.open("", "_blank", "width=780,height=720,scrollbars=yes");
     if (!win) return UI.toast("El navegador bloqueó la ventana emergente. Permita ventanas emergentes para este sitio.", "error");
     win.document.write(_buildPagoHTML(p));
     win.document.close();
+  }
+
+  window._verPagoDesdePago = function() {
+    _openPagoPDF(window._pagoDetalleActual);
+  };
+
+  // Direct PDF access from a list (e.g. the comprador's "Mis Pagos"), without
+  // opening the detail modal first. Reuses the same detail endpoint to guarantee
+  // the full document chain is available. RN-19: comprador uses { mine: true }.
+  window.verPagoPDF = async function(idPago, opts = {}) {
+    const cached = window._pagoDetalleActual;
+    if (cached && cached.id_pago === idPago) return _openPagoPDF(cached);
+    const endpoint = opts.mine ? `/pagos/mis-pagos/${idPago}` : `/pagos/${idPago}`;
+    let p;
+    try { p = await API.get(endpoint); }
+    catch (e) { return UI.toast(e.message || "No se pudo cargar el pago", "error"); }
+    _openPagoPDF(p);
   };
 
   // ── Payment form ──────────────────────────────────────────────────────────────
