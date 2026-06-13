@@ -535,15 +535,42 @@
     return dt.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
-  // Generates a QR as a local data URI (offline). Falls back to the online
-  // service only if the local library is unavailable.
+  // Builds a crisp vector (SVG) QR generated locally, with the Cóndor logo in the
+  // center. High error correction (H) keeps it scannable despite the logo overlay.
+  // Returns inline <svg> markup so the embedded logo renders reliably. Falls back to
+  // an <img> pointing to the online service if the local library is unavailable.
   function qrDataUri(text) {
     try {
       if (typeof qrcode === "function") {
-        const qr = qrcode(0, "M");
+        const qr = qrcode(0, "H");
         qr.addData(String(text));
         qr.make();
-        return qr.createDataURL(5, 12);
+
+        const count  = qr.getModuleCount();
+        const margin = 4;
+        const dim    = count + margin * 2;
+
+        let path = "";
+        for (let r = 0; r < count; r++) {
+          for (let c = 0; c < count; c++) {
+            if (qr.isDark(r, c)) path += `M${c + margin} ${r + margin}h1v1h-1z`;
+          }
+        }
+
+        const logo    = (window.SGIBrand && window.SGIBrand.logoWatermark) || "";
+        const logoDim = Math.round(count * 0.24);
+        const logoPos = (dim - logoDim) / 2;
+        const pad     = 0.7;
+
+        const logoLayer = logo ? `
+          <rect x="${logoPos - pad}" y="${logoPos - pad}" width="${logoDim + pad * 2}" height="${logoDim + pad * 2}" rx="1.4" fill="#ffffff"/>
+          <image href="${logo}" xlink:href="${logo}" x="${logoPos}" y="${logoPos}" width="${logoDim}" height="${logoDim}" preserveAspectRatio="xMidYMid meet"/>` : "";
+
+        return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${dim} ${dim}" shape-rendering="crispEdges" role="img" aria-label="Código QR">
+          <rect width="${dim}" height="${dim}" fill="#ffffff"/>
+          <path d="${path}" fill="#0f172a"/>
+          ${logoLayer}
+        </svg>`;
       }
     } catch (_) {}
     return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(text)}`;
@@ -683,8 +710,8 @@
     .cmp-total-words{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);margin-top:8px;line-height:1.5}
 
     .cmp-qr{display:flex;align-items:center;gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
-    .cmp-qr-box{width:74px;height:74px;padding:4px;border:1px solid var(--line);border-radius:10px;flex-shrink:0}
-    .cmp-qr-box img{width:100%;height:100%;display:block}
+    .cmp-qr-box{width:82px;height:82px;padding:4px;border:1px solid var(--line);border-radius:10px;flex-shrink:0}
+    .cmp-qr-box img,.cmp-qr-box svg{width:100%;height:100%;display:block}
     .cmp-qr-cap{font-size:11px;color:var(--soft);line-height:1.55}
     .cmp-qr-cap strong{color:var(--text);font-weight:600}
 
@@ -736,7 +763,7 @@
     ${traceHTML}
     ${qrUrl ? `
       <div class="cmp-qr">
-        <div class="cmp-qr-box"><img src="${qrUrl}" alt="QR" loading="lazy"></div>
+        <div class="cmp-qr-box">${/^\s*<svg/.test(qrUrl) ? qrUrl : `<img src="${qrUrl}" alt="QR" loading="lazy">`}</div>
         <div class="cmp-qr-cap">${qrCaption || ""}</div>
       </div>` : ""}
     <div class="cmp-footer">
