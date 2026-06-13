@@ -418,16 +418,19 @@ function _buildReciboComisionHTML(d) {
     ? Math.round((totalPagado / d.valor_comision) * 100)
     : 0;
 
+  const fmtD = (window.SGIExport && window.SGIExport.fmtDate) ? window.SGIExport.fmtDate : (x => x || "");
+  const fechaPago = fmtD(d.fecha_pago);
+
   const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
-  const waMsg    = `Hola, quiero obtener mas informacion acerca de la comision ${d.numero_recibo || ""} por un valor ${fmt(valor)} en la fecha ${d.fecha_emision || ""} a nombre de ${d.comisionista || ""}.`.trim();
+  const waMsg    = `Hola, quiero obtener mas informacion acerca de la comision ${d.numero_recibo || ""} por un valor ${fmt(valor)} en la fecha ${fechaPago} a nombre de ${d.comisionista || ""}.`.trim();
   const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
-  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
+  const qrUrl    = (window.SGIExport && window.SGIExport.qrDataUri) ? window.SGIExport.qrDataUri(waUrl) : `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
 
   const rowsMicros = (d.micropagos || []).map(m => {
     const isCurrent = m.id_pago_comision === d.currentPago?.id_pago_comision;
     return `
       <tr class="${isCurrent ? "cur" : ""}">
-        <td>${m.fecha || "—"}</td>
+        <td>${fmtD(m.fecha)}</td>
         <td>${m.nota || "—"}</td>
         <td class="r">${fmt(m.valor)}</td>
       </tr>`;
@@ -462,7 +465,7 @@ function _buildReciboComisionHTML(d) {
         { icon: "pin",      label: "Proyecto",      value: d.proyecto },
         { icon: "map",      label: "Lote",          value: d.lote },
         { icon: "user",     label: "Comprador",     value: d.comprador },
-        { icon: "calendar", label: "Fecha de pago", value: d.fecha_pago },
+        { icon: "calendar", label: "Fecha de pago", value: fechaPago },
         { icon: "note",     label: "Nota",          value: d.nota },
         { icon: "hash",     label: "N° de micropago", value: d.numero_pago },
       ],

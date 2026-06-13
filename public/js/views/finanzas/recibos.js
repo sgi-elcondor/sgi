@@ -32,23 +32,26 @@ function _buildReciboHTML(r) {
     ? window.SGIExport.numToWordsES(valor)
     : "";
 
+  const fmtD = (window.SGIExport && window.SGIExport.fmtDate) ? window.SGIExport.fmtDate : (x => x || "");
+  const fechaPago = fmtD(r.fecha_pago || r.fecha_emision);
+
   const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
-  const waMsg    = `Hola, quiero obtener mas informacion acerca del recibo: ${r.numero_recibo || ""} por un valor de: ${valorTxt} realizado en la fecha: ${r.fecha_emision || ""} a nombre de: ${r.comprador || ""}.`.trim();
+  const waMsg    = `Hola, quiero obtener mas informacion acerca del recibo: ${r.numero_recibo || ""} por un valor de: ${valorTxt} realizado en la fecha: ${fechaPago} a nombre de: ${r.comprador || ""}.`.trim();
   const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
-  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
+  const qrUrl    = window.SGIExport.qrDataUri(waUrl);
 
   if (window.SGIExport && window.SGIExport.comprobanteHTML) {
     return window.SGIExport.comprobanteHTML({
       docTitle: `Recibo ${r.numero_recibo || ""} — El Cóndor S.A.S.`,
       badge:    "Comprobante de Pago",
       fields: [
-        { icon: "check",    label: "Estado de la transacción", value: "Pagado" },
+        { icon: "check",    label: "Estado de la transacción", value: "Pagado", badge: "success" },
         { icon: "receipt",  label: "N° de recibo",             value: r.numero_recibo },
         { icon: "user",     label: "Cliente",                  value: r.comprador },
         { icon: "hash",     label: "Documento",                value: r.documento },
         { icon: "briefcase",label: "N° de venta",              value: r.id_venta != null ? `#${r.id_venta}` : "" },
         { icon: "pin",      label: "Proyecto / Lote",          value: [r.proyecto, r.codigo_lote].filter(x => x && x !== "—").join(" · ") },
-        { icon: "calendar", label: "Fecha de pago",            value: r.fecha_pago || r.fecha_emision },
+        { icon: "calendar", label: "Fecha de pago",            value: fechaPago },
         { icon: "card",     label: "Medio de pago",            value: r.metodo_pago ? metodoLabel : "" },
         { icon: "tag",      label: "Referencia",               value: r.referencia },
       ],

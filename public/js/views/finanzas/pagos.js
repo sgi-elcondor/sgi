@@ -368,11 +368,11 @@
       permuta:       "Permuta",
     }[p.metodo_pago] || (p.metodo_pago || "—");
 
-    const estadoLabel = {
-      aceptado:            "Aceptado",
-      pendiente_revision:  "En revisión",
-      rechazado:           "Rechazado",
-    }[p.estado] || (p.estado || "—");
+    const estadoInfo = {
+      aceptado:            { label: "Aceptado",    badge: "success" },
+      pendiente_revision:  { label: "En revisión", badge: "warning" },
+      rechazado:           { label: "Rechazado",   badge: "danger" },
+    }[p.estado] || { label: (p.estado || "—"), badge: "muted" };
 
     const valor      = Number(p.valor_pago || 0);
     const valorTxt   = "$ " + valor.toLocaleString("es-CO", { minimumFractionDigits: 0 });
@@ -380,21 +380,24 @@
       ? window.SGIExport.numToWordsES(valor)
       : "";
 
+    const fmtD = (window.SGIExport && window.SGIExport.fmtDate) ? window.SGIExport.fmtDate : (x => x || "");
+    const fechaPago = fmtD(p.fecha_pago);
+
     const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
-    const waMsg    = `Hola, quiero obtener mas informacion acerca del pago: ${p.numero_pago || ""} por un valor de: ${valorTxt} realizado en la fecha: ${p.fecha_pago ? UI.date(p.fecha_pago) : ""} a nombre de: ${p.comprador || ""}.`.trim();
+    const waMsg    = `Hola, quiero obtener mas informacion acerca del pago: ${p.numero_pago || ""} por un valor de: ${valorTxt} realizado en la fecha: ${fechaPago} a nombre de: ${p.comprador || ""}.`.trim();
     const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
-    const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
+    const qrUrl    = window.SGIExport.qrDataUri(waUrl);
 
     return window.SGIExport.comprobanteHTML({
       docTitle: `Pago ${p.numero_pago || ""} — El Cóndor S.A.S.`,
       badge:    "Registro de Pago",
       fields: [
-        { icon: "check",    label: "Estado del pago",     value: estadoLabel },
+        { icon: "check",    label: "Estado del pago",     value: estadoInfo.label, badge: estadoInfo.badge },
         { icon: "hash",     label: "N° de pago",          value: p.numero_pago },
         { icon: "user",     label: "Comprador",           value: p.comprador },
         { icon: "briefcase",label: "N° de venta",         value: p.id_venta != null ? `#${p.id_venta}` : "" },
         { icon: "pin",      label: "Proyecto / Lote",     value: [p.proyecto, p.codigo_lote].filter(x => x && x !== "—").join(" · ") },
-        { icon: "calendar", label: "Fecha del pago",      value: p.fecha_pago ? UI.date(p.fecha_pago) : "" },
+        { icon: "calendar", label: "Fecha del pago",      value: fechaPago },
         { icon: "card",     label: "Método",              value: p.metodo_pago ? metodoLabel : "" },
         { icon: "coins",    label: "Cuenta / Cel. origen",value: p.numero_cuenta_origen },
         { icon: "tag",      label: "Referencia",          value: p.referencia },

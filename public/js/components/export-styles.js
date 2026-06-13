@@ -524,6 +524,31 @@
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${RECEIPT_ICONS[name] || RECEIPT_ICONS.tag}</svg>`;
   }
 
+  // Colombian date formatting (dd/mm/yyyy). Handles date-only strings safely
+  // (adds midday to avoid timezone day-shifts).
+  function fmtDate(d) {
+    if (!d) return "";
+    const s  = String(d);
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s;
+    const dt = new Date(iso);
+    if (isNaN(dt)) return s;
+    return dt.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  // Generates a QR as a local data URI (offline). Falls back to the online
+  // service only if the local library is unavailable.
+  function qrDataUri(text) {
+    try {
+      if (typeof qrcode === "function") {
+        const qr = qrcode(0, "M");
+        qr.addData(String(text));
+        qr.make();
+        return qr.createDataURL(5, 12);
+      }
+    } catch (_) {}
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(text)}`;
+  }
+
   function comprobanteHTML(o) {
     const {
       docTitle    = "Comprobante — El Cóndor S.A.S.",
@@ -543,14 +568,19 @@
 
     const fieldsHTML = fields
       .filter(f => f && f.value != null && f.value !== "" && f.value !== "—")
-      .map(f => `
+      .map(f => {
+        const valueHTML = f.badge
+          ? `<span class="cmp-pill cmp-pill-${f.badge}">${f.value}</span>`
+          : f.value;
+        return `
         <div class="cmp-field">
           <span class="cmp-field-icon">${icon(f.icon)}</span>
           <div class="cmp-field-body">
             <div class="cmp-field-label">${f.label}</div>
-            <div class="cmp-field-value">${f.value}</div>
+            <div class="cmp-field-value">${valueHTML}</div>
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
 
     const traceHTML = (trace && trace.length) ? `
       <div class="cmp-trace">
@@ -665,6 +695,13 @@
     }
     .cmp-footer .brand{color:var(--soft);font-weight:600}
 
+    .cmp-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.02em}
+    .cmp-pill-success{background:#dcfce7;color:#15803d}
+    .cmp-pill-warning{background:#fef3c7;color:#b45309}
+    .cmp-pill-danger{background:#fee2e2;color:#b91c1c}
+    .cmp-pill-info{background:var(--accent-soft);color:var(--accent-dark)}
+    .cmp-pill-muted{background:var(--line-soft);color:var(--soft)}
+
     .actions{display:flex;justify-content:center;gap:10px;margin-top:22px}
     .btn{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:11px 22px;font-size:13.5px;font-weight:600;transition:transform .12s,box-shadow .12s,background .15s}
     .btn-p{background:var(--accent);color:#fff;box-shadow:0 1px 0 rgba(197,60,0,.3),0 6px 14px rgba(197,60,0,.18)}
@@ -677,6 +714,10 @@
       body{padding:0}
       .card{box-shadow:none;border-radius:0;max-width:none;padding:16px 22px}
       .actions{display:none}
+      .cmp-total,.cmp-trace,.cmp-qr,.cmp-extra,.cmp-field,.cmp-trace-row,.cmp-mini tr{
+        break-inside:avoid;page-break-inside:avoid;
+      }
+      .cmp-trace-head{break-after:avoid;page-break-after:avoid}
     }
   </style>
 </head>
@@ -712,5 +753,5 @@
 </html>`;
   }
 
-  window.SGIExport = { pdf: PDF, xlsx: XLSX, numToWordsES, CONTACT, comprobanteHTML };
+  window.SGIExport = { pdf: PDF, xlsx: XLSX, numToWordsES, CONTACT, comprobanteHTML, fmtDate, qrDataUri };
 })();

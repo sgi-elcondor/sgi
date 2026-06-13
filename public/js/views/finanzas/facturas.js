@@ -112,29 +112,32 @@ function _buildFacturaHTML(f) {
     : "";
 
   const estadoMap = {
-    emitida: { label: "Emitida", color: "var(--accent-dark)" },
-    pagada:  { label: "Pagada",  color: "#15803d" },
-    anulada: { label: "Anulada", color: "#b91c1c" },
+    emitida: { label: "Emitida", badge: "info" },
+    pagada:  { label: "Pagada",  badge: "success" },
+    anulada: { label: "Anulada", badge: "danger" },
   };
-  const estado = estadoMap[f.estado] || { label: (f.estado || "—"), color: "var(--text)" };
+  const estado = estadoMap[f.estado] || { label: (f.estado || "—"), badge: "muted" };
+
+  const fmtD = (window.SGIExport && window.SGIExport.fmtDate) ? window.SGIExport.fmtDate : (x => x || "");
+  const fechaEmision = fmtD(f.fecha_emision);
 
   const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
-  const waMsg    = `Hola, quiero obtener mas informacion acerca de la factura: ${numDisplay} por un valor de: ${valorTxt} emitida en la fecha: ${f.fecha_emision || ""} a nombre de: ${f.comprador || ""}.`.trim();
+  const waMsg    = `Hola, quiero obtener mas informacion acerca de la factura: ${numDisplay} por un valor de: ${valorTxt} emitida en la fecha: ${fechaEmision} a nombre de: ${f.comprador || ""}.`.trim();
   const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
-  const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
+  const qrUrl    = window.SGIExport.qrDataUri(waUrl);
 
   if (window.SGIExport && window.SGIExport.comprobanteHTML) {
     return window.SGIExport.comprobanteHTML({
       docTitle: `Factura ${numDisplay} — El Cóndor S.A.S.`,
       badge:    "Factura de Venta",
       fields: [
-        { icon: "check",    label: "Estado de la factura", value: estado.label },
+        { icon: "check",    label: "Estado de la factura", value: estado.label, badge: estado.badge },
         { icon: "receipt",  label: "N° de factura",        value: numDisplay },
         { icon: "user",     label: "Cliente",              value: f.comprador },
         { icon: "briefcase",label: "N° de venta",          value: f.id_venta != null ? `#${f.id_venta}` : "" },
         { icon: "pin",      label: "Proyecto / Lote",      value: [f.proyecto, f.codigo_lote].filter(x => x && x !== "—").join(" · ") },
-        { icon: "calendar", label: "Fecha de emisión",     value: f.fecha_emision },
-        { icon: "clock",    label: "Fecha de vencimiento", value: f.fecha_vencimiento },
+        { icon: "calendar", label: "Fecha de emisión",     value: fechaEmision },
+        { icon: "clock",    label: "Fecha de vencimiento", value: fmtD(f.fecha_vencimiento) },
       ],
       trace: [
         { label: "Cuota",   value: f.numero_cuota != null ? `#${f.numero_cuota}` : "" },
