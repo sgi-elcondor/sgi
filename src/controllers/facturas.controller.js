@@ -147,7 +147,7 @@ exports.getAll = async (req, res) => {
         id_fraccion,
         cuota:id_cuota(
           id_cuota, numero_cuota, fecha_vencimiento, valor_cuota, estado,
-          cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
+          cuota_pago(valor_aplicado, pago:id_pago(estado, numero_pago, recibo_pago(recibo:id_recibo(numero_recibo)))),
           cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
             id_venta,
@@ -184,6 +184,13 @@ exports.getAll = async (req, res) => {
     }
     const valorAPagar = Math.min(Number(f.valor_facturado), saldoBase);
 
+    // Document chain traceability: number of the accepted pago and its recibo, if any.
+    const pagoAceptado = (cuota?.cuota_pago || [])
+      .map(cp => cp.pago)
+      .find(pg => pg?.estado === "aceptado");
+    const numeroPago   = pagoAceptado?.numero_pago ?? null;
+    const numeroRecibo = pagoAceptado?.recibo_pago?.[0]?.recibo?.numero_recibo ?? null;
+
     return {
       id_factura:        f.id_factura,
       numero_factura:    f.numero_factura,
@@ -196,6 +203,8 @@ exports.getAll = async (req, res) => {
       id_venta:          cuota?.venta?.id_venta    ?? null,
       id_cuota:          cuota?.id_cuota           ?? null,
       numero_cuota:      cuota?.numero_cuota        ?? null,
+      numero_pago:       numeroPago,
+      numero_recibo:     numeroRecibo,
       fecha_vencimiento: cuota?.fecha_vencimiento   ?? null,
       proyecto:          lote?.proyecto?.nombre     ?? "—",
       codigo_lote:       lote?.codigo_lote          ?? "—",

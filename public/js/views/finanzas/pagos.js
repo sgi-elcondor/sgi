@@ -336,6 +336,7 @@
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
         ${facturaBtn}
+        <button class="btn btn-ghost btn-sm" onclick="_verPagoDesdePago()">Ver pago (PDF)</button>
         ${reciboBtn}
         <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="UI.closeModal()">Cerrar</button>
       </div>`;
@@ -357,6 +358,69 @@
     window._recibosMap[p.recibo.id_recibo] = p.recibo;
     if (typeof window.verReciboPDF === "function") window.verReciboPDF(p.recibo.id_recibo);
     else UI.toast("No se pudo abrir el recibo", "error");
+  };
+
+  function _buildPagoHTML(p) {
+    const metodoLabel = {
+      transferencia: "Transferencia / electrónico",
+      efectivo:      "Efectivo",
+      cheque:        "Cheque",
+      permuta:       "Permuta",
+    }[p.metodo_pago] || (p.metodo_pago || "—");
+
+    const estadoLabel = {
+      aceptado:            "Aceptado",
+      pendiente_revision:  "En revisión",
+      rechazado:           "Rechazado",
+    }[p.estado] || (p.estado || "—");
+
+    const valor      = Number(p.valor_pago || 0);
+    const valorTxt   = "$ " + valor.toLocaleString("es-CO", { minimumFractionDigits: 0 });
+    const valorWords = (window.SGIExport && window.SGIExport.numToWordsES)
+      ? window.SGIExport.numToWordsES(valor)
+      : "";
+
+    const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
+    const waMsg    = `Hola, quiero obtener mas informacion acerca del pago: ${p.numero_pago || ""} por un valor de: ${valorTxt} realizado en la fecha: ${p.fecha_pago ? UI.date(p.fecha_pago) : ""} a nombre de: ${p.comprador || ""}.`.trim();
+    const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
+    const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(waUrl)}`;
+
+    return window.SGIExport.comprobanteHTML({
+      docTitle: `Pago ${p.numero_pago || ""} — El Cóndor S.A.S.`,
+      badge:    "Registro de Pago",
+      fields: [
+        { icon: "check",    label: "Estado del pago",     value: estadoLabel },
+        { icon: "hash",     label: "N° de pago",          value: p.numero_pago },
+        { icon: "user",     label: "Comprador",           value: p.comprador },
+        { icon: "briefcase",label: "N° de venta",         value: p.id_venta != null ? `#${p.id_venta}` : "" },
+        { icon: "pin",      label: "Proyecto / Lote",     value: [p.proyecto, p.codigo_lote].filter(x => x && x !== "—").join(" · ") },
+        { icon: "calendar", label: "Fecha del pago",      value: p.fecha_pago ? UI.date(p.fecha_pago) : "" },
+        { icon: "card",     label: "Método",              value: p.metodo_pago ? metodoLabel : "" },
+        { icon: "coins",    label: "Cuenta / Cel. origen",value: p.numero_cuenta_origen },
+        { icon: "tag",      label: "Referencia",          value: p.referencia },
+      ],
+      trace: [
+        { label: "Cuota",   value: p.numero_cuota != null ? `#${p.numero_cuota}` : "" },
+        { label: "Factura", value: p.factura?.numero_factura ? fmtFactNum(p.factura.numero_factura) : "" },
+        { label: "Pago",    value: p.numero_pago || "", current: true },
+        { label: "Recibo",  value: p.recibo?.numero_recibo || "" },
+      ],
+      totalLabel: "Valor del pago",
+      totalValue: valorTxt,
+      totalWords: valorWords,
+      qrUrl,
+      qrCaption: "<strong>¿Dudas con este pago?</strong><br>Escanea el código QR para escribirnos por WhatsApp.",
+    });
+  }
+
+  window._verPagoDesdePago = function() {
+    const p = window._pagoDetalleActual;
+    if (!p) return UI.toast("Sin datos del pago", "error");
+    if (!(window.SGIExport && window.SGIExport.comprobanteHTML)) return UI.toast("No se pudo generar el comprobante", "error");
+    const win = window.open("", "_blank", "width=780,height=720,scrollbars=yes");
+    if (!win) return UI.toast("El navegador bloqueó la ventana emergente. Permita ventanas emergentes para este sitio.", "error");
+    win.document.write(_buildPagoHTML(p));
+    win.document.close();
   };
 
   // ── Payment form ──────────────────────────────────────────────────────────────

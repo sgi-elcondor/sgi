@@ -426,308 +426,55 @@ function _buildReciboComisionHTML(d) {
   const rowsMicros = (d.micropagos || []).map(m => {
     const isCurrent = m.id_pago_comision === d.currentPago?.id_pago_comision;
     return `
-      <tr class="${isCurrent ? "is-current" : ""}">
+      <tr class="${isCurrent ? "cur" : ""}">
         <td>${m.fecha || "—"}</td>
         <td>${m.nota || "—"}</td>
-        <td class="amt">${fmt(m.valor)}</td>
+        <td class="r">${fmt(m.valor)}</td>
       </tr>`;
   }).join("");
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Recibo Comisión ${d.numero_recibo || "—"} — El Cóndor S.A.S.</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --accent:        #ff4e00;
-      --accent-dark:   #c53c00;
-      --accent-soft:   #ffe9de;
-      --accent-line:   #ffcbb3;
-      --text:          #0f172a;
-      --text-soft:     #475569;
-      --muted:         #94a3b8;
-      --line:          #e2e8f0;
-      --line-soft:     #f1f5f9;
-      --bg:            #f1f4f8;
-      --surface:       #ffffff;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:var(--bg)}
-    body{
-      font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
-      color:var(--text);padding:48px 16px 32px;
-      -webkit-font-smoothing:antialiased;
-    }
-    .page{
-      max-width:780px;margin:0 auto;background:var(--surface);
-      border-radius:16px;
-      box-shadow:0 1px 2px rgba(15,23,42,.04),0 12px 36px rgba(15,23,42,.08);
-      overflow:hidden;position:relative;
-    }
-    .page-inner{padding:48px 56px;position:relative;z-index:1}
-
-    /* ── Watermark ──────────────────────────────────────────────────────── */
-    .watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0}
-    .watermark span{
-      font-family:'DM Serif Display',Georgia,serif;
-      font-size:148px;color:var(--accent);opacity:.045;
-      transform:rotate(-22deg);white-space:nowrap;letter-spacing:-.02em;
-    }
-
-    /* ── Header ─────────────────────────────────────────────────────────── */
-    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:24px;border-bottom:1px solid var(--line)}
-    .co{display:flex;flex-direction:column;gap:6px}
-    .co-name{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.01em}
-    .co-sub{font-size:11.5px;color:var(--muted);line-height:1.6}
-    .rec{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-    .rec-title{
-      font-family:'DM Serif Display','Playfair Display',Georgia,serif;
-      font-size:34px;font-weight:400;color:var(--text);line-height:1;
-    }
-    .rec-sub{font-size:10.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:600}
-
-    /* ── Hero amount ───────────────────────────────────────────────────── */
-    .hero{text-align:center;padding:42px 0 32px}
-    .hero-label{font-size:10px;text-transform:uppercase;letter-spacing:.24em;color:var(--muted);font-weight:700;margin-bottom:14px}
-    .hero-amount{
-      font-family:'DM Serif Display',Georgia,serif;
-      font-size:64px;font-weight:400;color:var(--accent-dark);
-      letter-spacing:-.025em;line-height:1;font-variant-numeric:tabular-nums;
-    }
-    .hero-words{
-      margin:18px auto 0;max-width:540px;
-      font-size:11px;text-transform:uppercase;letter-spacing:.18em;
-      color:var(--text-soft);font-weight:600;line-height:1.55;
-    }
-    .hero-meta{
-      margin-top:24px;font-size:12px;color:var(--text-soft);
-      display:flex;align-items:center;justify-content:center;gap:14px;
-    }
-    .hero-meta .dot{width:3px;height:3px;background:var(--muted);border-radius:50%}
-    .hero-meta strong{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
-
-    /* ── Two-column body ───────────────────────────────────────────────── */
-    .body-grid{
-      display:grid;grid-template-columns:1fr 1fr;gap:48px;
-      padding-top:28px;border-top:1px solid var(--line);
-    }
-    .col-block + .col-block{margin-top:26px}
-    .sec-title{
-      font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
-      color:var(--muted);margin-bottom:12px;
-    }
-    .row{
-      display:flex;justify-content:space-between;gap:12px;
-      padding:7px 0;font-size:13px;border-top:1px dashed var(--line-soft);
-    }
-    .col-block .row:first-of-type{border-top:0}
-    .lbl{color:var(--text-soft)}
-    .val{font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
-    .val.done{color:var(--muted);font-weight:500}
-    .val.warn{color:var(--accent-dark)}
-
-    /* ── Estado / Progress ─────────────────────────────────────────────── */
-    .estado{
-      margin-top:28px;padding:22px 24px;border-radius:12px;
-      background:var(--line-soft);
-    }
-    .estado-grid{
-      display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:18px;
-    }
-    .est-item{display:flex;flex-direction:column;gap:4px}
-    .est-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);font-weight:700}
-    .est-val{font-size:16px;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
-    .est-val.warn{color:var(--accent-dark)}
-    .est-val.done{color:var(--muted);font-weight:600}
-    .progress-meta{
-      display:flex;justify-content:space-between;font-size:11px;
-      color:var(--text-soft);margin-bottom:6px;font-weight:500;letter-spacing:.02em;
-    }
-    .progress-meta strong{color:var(--accent-dark);font-weight:700}
-    .progress-bar{background:#fff;border-radius:999px;height:8px;overflow:hidden;border:1px solid var(--line)}
-    .progress-fill{
-      background:linear-gradient(90deg,var(--accent) 0%,var(--accent-dark) 100%);
-      height:100%;border-radius:999px;
-    }
-
-    /* ── Micropagos table ──────────────────────────────────────────────── */
-    .micros-wrap{margin-top:26px}
-    .micros{width:100%;border-collapse:collapse;margin-top:6px}
-    .micros th{
-      font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-      color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);
-    }
-    .micros th.amt,.micros td.amt{text-align:right}
-    .micros td{padding:9px 12px;font-size:12.5px;color:var(--text-soft);border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
-    .micros td.amt{font-weight:600;color:var(--text)}
-    .micros tr.is-current td{background:var(--accent-soft);color:var(--accent-dark);font-weight:600}
-    .micros tr.is-current td.amt{color:var(--accent-dark)}
-
-    /* ── Signatures ────────────────────────────────────────────────────── */
-    .signatures{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:52px}
-    .sig{text-align:center}
-    .sig-line{border-bottom:1px solid var(--text-soft);margin:32px 16px 10px}
-    .sig-role{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:var(--muted);font-weight:700;margin-bottom:4px}
-    .sig-name{font-size:13px;color:var(--text);font-weight:600}
-    .sig-extra{font-size:11px;color:var(--text-soft);margin-top:2px}
-
-    /* ── Footer with QR ────────────────────────────────────────────────── */
-    .foot{
-      display:grid;grid-template-columns:auto 1fr;gap:20px;
-      margin-top:36px;padding-top:18px;border-top:1px solid var(--line);
-      align-items:center;
-    }
-    .qr-box{
-      width:84px;height:84px;padding:5px;background:#fff;
-      border:1px solid var(--line);border-radius:8px;flex-shrink:0;
-    }
-    .qr-box img{width:100%;height:100%;display:block}
-    .foot-text{font-size:10.5px;color:var(--muted);line-height:1.7}
-    .foot-text strong{color:var(--text-soft);font-weight:600}
-    .foot-text .url{
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      color:var(--accent-dark);font-size:10px;
-    }
-
-    /* ── Actions ────────────────────────────────────────────────────────── */
-    .actions{display:flex;justify-content:center;gap:10px;margin-top:24px}
-    .btn{
-      font-family:inherit;cursor:pointer;border:none;border-radius:8px;
-      padding:11px 22px;font-size:13.5px;font-weight:600;letter-spacing:.01em;
-      transition:transform .12s ease,box-shadow .12s ease,background .15s;
-    }
-    .btn-p{background:var(--accent);color:#fff;box-shadow:0 1px 0 rgba(197,60,0,.3),0 6px 14px rgba(197,60,0,.18)}
-    .btn-p:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 2px 0 rgba(197,60,0,.3),0 10px 20px rgba(197,60,0,.22)}
-    .btn-c{background:#fff;color:var(--text-soft);border:1px solid var(--line)}
-    .btn-c:hover{background:var(--line-soft);color:var(--text)}
-
-    @media print{
-      html,body{background:#fff}
-      body{padding:0}
-      .page{box-shadow:none;border-radius:0;max-width:none}
-      .page-inner{padding:24px 28px}
-      .actions{display:none}
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="watermark"><span>El Cóndor</span></div>
-    <div class="page-inner">
-
-      <div class="top">
-        <div class="co">
-          <div class="co-name">El Cóndor S.A.S.</div>
-          <div class="co-sub">Inversiones &amp; Construcciones &middot; NIT 901.708.415-1</div>
-        </div>
-        <div class="rec">
-          <div class="rec-title">Recibo</div>
-          <div class="rec-sub">Pago de Comisión</div>
-        </div>
+  if (window.SGIExport && window.SGIExport.comprobanteHTML) {
+    const afterTotalHTML = `
+      <div class="cmp-extra">
+        <div class="cmp-extra-title">Estado de la comisión</div>
+        <div class="cmp-stat-row"><span>Valor total de la comisión</span><strong>${fmt(d.valor_comision)}</strong></div>
+        <div class="cmp-stat-row"><span>Pagado en micropagos</span><strong>${fmt(totalPagado)}</strong></div>
+        <div class="cmp-stat-row"><span>Saldo pendiente</span><strong>${fmt(pendiente)}</strong></div>
+        <div class="cmp-stat-row"><span>Progreso del pago</span><strong>${porcentaje}%</strong></div>
+        <div class="cmp-prog"><div class="cmp-prog-fill" style="width:${Math.min(100, porcentaje)}%"></div></div>
       </div>
-
-      <div class="hero">
-        <div class="hero-label">Valor pagado en este recibo</div>
-        <div class="hero-amount">${valorTxt}</div>
-        ${valorWords ? `<div class="hero-words">${valorWords}</div>` : ""}
-        <div class="hero-meta">
-          <span>N° <strong>${d.numero_recibo || "—"}</strong></span>
-          <span class="dot"></span>
-          <span>Emisión <strong>${d.fecha_emision}</strong></span>
-        </div>
-      </div>
-
-      <div class="body-grid">
-        <div>
-          <div class="col-block">
-            <div class="sec-title">Comisionista</div>
-            <div class="row"><span class="lbl">Nombre</span><span class="val">${d.comisionista}</span></div>
-          </div>
-          <div class="col-block">
-            <div class="sec-title">Detalle del micropago</div>
-            <div class="row"><span class="lbl">Fecha de pago</span><span class="val">${d.fecha_pago || "—"}</span></div>
-            ${d.nota        ? `<div class="row"><span class="lbl">Nota</span><span class="val">${d.nota}</span></div>` : ""}
-            ${d.numero_pago ? `<div class="row"><span class="lbl">N° Micropago</span><span class="val">${d.numero_pago}</span></div>` : ""}
-          </div>
-        </div>
-        <div>
-          <div class="col-block">
-            <div class="sec-title">Venta relacionada</div>
-            <div class="row"><span class="lbl">N° Venta</span><span class="val">#${d.id_venta}</span></div>
-            <div class="row"><span class="lbl">Proyecto</span><span class="val">${d.proyecto}</span></div>
-            <div class="row"><span class="lbl">Lote</span><span class="val">${d.lote}</span></div>
-            <div class="row"><span class="lbl">Comprador</span><span class="val">${d.comprador}</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="estado">
-        <div class="estado-grid">
-          <div class="est-item">
-            <div class="est-lbl">Valor de la comisión</div>
-            <div class="est-val">${fmt(d.valor_comision)}</div>
-          </div>
-          <div class="est-item">
-            <div class="est-lbl">Pagado en micropagos</div>
-            <div class="est-val">${fmt(totalPagado)}</div>
-          </div>
-          <div class="est-item">
-            <div class="est-lbl">Saldo pendiente</div>
-            <div class="est-val ${pendiente > 0 ? "warn" : "done"}">${fmt(pendiente)}</div>
-          </div>
-        </div>
-        <div class="progress-meta"><span>Progreso del pago</span><strong>${porcentaje}%</strong></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, porcentaje)}%"></div></div>
-      </div>
-
       ${rowsMicros ? `
-      <div class="micros-wrap">
-        <div class="sec-title">Historial de micropagos</div>
-        <table class="micros">
-          <thead><tr><th>Fecha</th><th>Nota</th><th class="amt">Valor</th></tr></thead>
+      <div class="cmp-extra">
+        <div class="cmp-extra-title">Historial de micropagos</div>
+        <table class="cmp-mini">
+          <thead><tr><th>Fecha</th><th>Nota</th><th class="r">Valor</th></tr></thead>
           <tbody>${rowsMicros}</tbody>
         </table>
-      </div>` : ""}
+      </div>` : ""}`;
 
-      <div class="signatures">
-        <div class="sig">
-          <div class="sig-line"></div>
-          <div class="sig-role">Recibió</div>
-          <div class="sig-name">${d.comisionista}</div>
-          <div class="sig-extra">Comisionista</div>
-        </div>
-        <div class="sig">
-          <div class="sig-line"></div>
-          <div class="sig-role">Emitió</div>
-          <div class="sig-name">SGI El Cóndor</div>
-          <div class="sig-extra">El Cóndor S.A.S.</div>
-        </div>
-      </div>
+    return window.SGIExport.comprobanteHTML({
+      docTitle: `Recibo Comisión ${d.numero_recibo || ""} — El Cóndor S.A.S.`,
+      badge:    "Pago de Comisión",
+      fields: [
+        { icon: "receipt",  label: "N° de recibo",  value: d.numero_recibo },
+        { icon: "user",     label: "Comisionista",  value: d.comisionista },
+        { icon: "briefcase",label: "N° de venta",   value: d.id_venta != null ? `#${d.id_venta}` : "" },
+        { icon: "pin",      label: "Proyecto",      value: d.proyecto },
+        { icon: "map",      label: "Lote",          value: d.lote },
+        { icon: "user",     label: "Comprador",     value: d.comprador },
+        { icon: "calendar", label: "Fecha de pago", value: d.fecha_pago },
+        { icon: "note",     label: "Nota",          value: d.nota },
+        { icon: "hash",     label: "N° de micropago", value: d.numero_pago },
+      ],
+      totalLabel: "Valor pagado en este recibo",
+      totalValue: valorTxt,
+      totalWords: valorWords,
+      afterTotalHTML,
+      qrUrl,
+      qrCaption: "<strong>¿Dudas con este pago?</strong><br>Escanea el código QR para escribirnos por WhatsApp.",
+    });
+  }
 
-      <div class="foot">
-        <div class="qr-box">
-          <img src="${qrUrl}" alt="Código de verificación" loading="lazy">
-        </div>
-        <div class="foot-text">
-          <strong>Documento generado por SGI El Cóndor</strong> &middot; ${new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}<br>
-          Válido como comprobante de pago parcial de comisión.<br>
-          Escanee el código QR para escribirnos por WhatsApp por si tienes dudas con tu recibo.
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="actions">
-    <button class="btn btn-p" onclick="window.print()">Imprimir o Descargar PDF</button>
-    <button class="btn btn-c" onclick="window.close()">Cerrar</button>
-  </div>
-</body>
-</html>`;
 }
 
 // ─── New comisionista form ────────────────────────────────────────────────────
