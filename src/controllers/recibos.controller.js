@@ -9,7 +9,7 @@ exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, id_venta,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, id_venta,
       recibo_pago(
         recibo:id_recibo(id_recibo, numero_recibo, fecha_emision, emitido_por, observaciones)
       ),
@@ -48,6 +48,7 @@ exports.getAll = async (req, res) => {
         emitido_por:    recibo.emitido_por ?? "Sistema SGI",
         observaciones:  recibo.observaciones ?? null,
         id_pago:        p.id_pago,
+        numero_pago:    p.numero_pago ?? null,
         fecha_pago:     p.fecha_pago,
         valor_pago:     p.valor_pago,
         metodo_pago:    p.metodo_pago,
@@ -103,7 +104,7 @@ exports.getMisRecibos = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("pago")
     .select(`
-      id_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, id_venta,
+      id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia, estado, id_venta,
       recibo_pago(
         recibo:id_recibo(id_recibo, numero_recibo, fecha_emision, emitido_por, observaciones)
       ),
@@ -142,6 +143,7 @@ exports.getMisRecibos = async (req, res) => {
         emitido_por:    recibo?.emitido_por    ?? "Sistema SGI",
         observaciones:  recibo?.observaciones  ?? null,
         id_pago:        p.id_pago,
+        numero_pago:    p.numero_pago ?? null,
         fecha_pago:     p.fecha_pago,
         valor_pago:     p.valor_pago,
         metodo_pago:    p.metodo_pago,

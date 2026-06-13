@@ -42,7 +42,7 @@
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...P.muted);
-      doc.text("Sistema de Gestión Inmobiliaria", this.M_LEFT, 17);
+      doc.text("Inversiones & Construcciones · NIT 901.708.415-1", this.M_LEFT, 17);
       doc.text(`Generado · ${new Date().toLocaleString("es-CO")}`, W - this.M_RIGHT, 12, { align: "right" });
 
       doc.setDrawColor(...P.border);
@@ -191,6 +191,59 @@
       return base;
     },
 
+    // Footer (totals) row styling for autoTable `foot`.
+    footStyles() {
+      const P = PDF_PALETTE;
+      return {
+        fillColor: P.soft,
+        textColor: P.dark,
+        fontStyle: "bold",
+        fontSize: 8.5,
+        lineColor: P.border,
+        lineWidth: 0.1,
+      };
+    },
+
+    // autoTable hooks that render a colored status pill in one column.
+    // variantOf(rawText) → "success" | "info" | "muted" | "warning" | "danger".
+    statusColumn(columnIndex, variantOf) {
+      const PILL = {
+        success: { fill: [220, 252, 231], text: [21, 128, 61] },
+        info:    { fill: [255, 233, 222], text: [197, 60, 0] },
+        muted:   { fill: [241, 245, 249], text: [100, 116, 139] },
+        warning: { fill: [254, 243, 199], text: [180, 83, 9] },
+        danger:  { fill: [254, 226, 226], text: [185, 28, 28] },
+      };
+      return {
+        didParseCell(data) {
+          if (data.section === "body" && data.column.index === columnIndex) {
+            data.cell.text = [""]; // drawn manually in didDrawCell
+          }
+        },
+        didDrawCell(data) {
+          if (data.section !== "body" || data.column.index !== columnIndex) return;
+          const raw = data.cell.raw;
+          if (raw == null || raw === "" || raw === "—") return;
+          const label = String(raw);
+          const col   = PILL[variantOf(label)] || PILL.muted;
+          const doc   = data.doc;
+          const { x, y, width, height } = data.cell;
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7.2);
+          const pillH = 4.6;
+          const pillW = Math.min(width - 2, doc.getTextWidth(label) + 5);
+          const px = x + (width - pillW) / 2;
+          const py = y + (height - pillH) / 2;
+
+          doc.setFillColor(...col.fill);
+          doc.roundedRect(px, py, pillW, pillH, pillH / 2, pillH / 2, "F");
+          doc.setTextColor(...col.text);
+          doc.text(label, x + width / 2, py + pillH / 2, { align: "center", baseline: "middle" });
+        },
+      };
+    },
+
     // Two-column label/value table for detail sections.
     detailTable(doc, y, rows, opts = {}) {
       const P = PDF_PALETTE;
@@ -298,7 +351,7 @@
       const half = Math.max(1, Math.floor(mergeCols / 2));
       ws.mergeCells(2, 1, 2, half);
       const c2a = ws.getCell(2, 1);
-      c2a.value = "Sistema de Gestión Inmobiliaria";
+      c2a.value = "Inversiones & Construcciones · NIT 901.708.415-1";
       c2a.font  = { name: "Calibri", size: 10, color: { argb: C.muted } };
       c2a.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
 
@@ -499,5 +552,393 @@
     whatsapp: "573218905216",
   };
 
-  window.SGIExport = { pdf: PDF, xlsx: XLSX, numToWordsES, CONTACT };
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Comprobante builder — single-column "receipt" layout (Bancolombia-style)
+  // shared by facturas, recibos and recibos de comisión.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const RECEIPT_ICONS = {
+    check:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    receipt:  '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+    user:     '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    pin:      '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    map:      '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>',
+    briefcase:'<rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    hash:     '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>',
+    file:     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+    calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    clock:    '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    card:     '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>',
+    tag:      '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+    coins:    '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    note:     '<path d="M3 3h18v14a2 2 0 0 1-2 2H8l-5 3z"/>',
+  };
+
+  function icon(name) {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${RECEIPT_ICONS[name] || RECEIPT_ICONS.tag}</svg>`;
+  }
+
+  // Colombian date formatting (dd/mm/yyyy). Handles date-only strings safely
+  // (adds midday to avoid timezone day-shifts).
+  function fmtDate(d) {
+    if (!d) return "";
+    const s  = String(d);
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s;
+    const dt = new Date(iso);
+    if (isNaN(dt)) return s;
+    return dt.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  // Preload the brand logo image so it can be drawn synchronously onto the QR canvas.
+  let _logoImg = null;
+  function _preloadLogo() {
+    try {
+      const src = window.SGIBrand && window.SGIBrand.logoWatermark;
+      if (src && !_logoImg) {
+        const img = new Image();
+        img.onload = () => { _logoImg = img; };
+        img.src = src;
+      }
+    } catch (_) {}
+  }
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _preloadLogo);
+    else _preloadLogo();
+  }
+
+  function _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  // Generates a QR locally as a PNG data URI, with the Cóndor logo in the center
+  // (when the logo image is already loaded). High error correction (H) keeps it
+  // scannable. PNG raster renders reliably on screen, print and rasterized download
+  // (html2pdf). Falls back to the online service if the library is unavailable.
+  function qrDataUri(text) {
+    try {
+      if (typeof qrcode === "function" && typeof document !== "undefined") {
+        const qr = qrcode(0, "H");
+        qr.addData(String(text));
+        qr.make();
+
+        const count  = qr.getModuleCount();
+        const margin = 4;
+        const scale  = 10;
+        const dim    = (count + margin * 2) * scale;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = dim;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, dim, dim);
+        ctx.fillStyle = "#0f172a";
+        for (let r = 0; r < count; r++) {
+          for (let c = 0; c < count; c++) {
+            if (qr.isDark(r, c)) ctx.fillRect((c + margin) * scale, (r + margin) * scale, scale, scale);
+          }
+        }
+
+        if (_logoImg && _logoImg.complete && _logoImg.naturalWidth) {
+          const lDim  = Math.round(count * 0.22) * scale;
+          const lPos  = (dim - lDim) / 2;
+          const padPx = scale * 0.9;
+          ctx.fillStyle = "#ffffff";
+          _roundRect(ctx, lPos - padPx, lPos - padPx, lDim + padPx * 2, lDim + padPx * 2, scale * 1.2);
+          ctx.fill();
+          ctx.drawImage(_logoImg, lPos, lPos, lDim, lDim);
+        }
+
+        return canvas.toDataURL("image/png");
+      }
+    } catch (_) {}
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=4&data=${encodeURIComponent(text)}`;
+  }
+
+  function comprobanteHTML(o) {
+    const {
+      docTitle    = "Comprobante — El Cóndor S.A.S.",
+      badge       = "Comprobante",
+      fields      = [],
+      extraHTML   = "",
+      afterTotalHTML = "",
+      trace       = [],
+      totalLabel  = "Total",
+      totalValue  = "",
+      totalWords  = "",
+      stamp       = null,
+      qrUrl       = "",
+      qrCaption   = "",
+    } = o;
+
+    const logo = (window.SGIBrand && window.SGIBrand.logoWatermark) || "";
+
+    const fieldsHTML = fields
+      .filter(f => f && f.value != null && f.value !== "" && f.value !== "—")
+      .map(f => {
+        const valueHTML = f.badge
+          ? `<span class="cmp-pill cmp-pill-${f.badge}">${f.value}</span>`
+          : f.value;
+        return `
+        <div class="cmp-field">
+          <span class="cmp-field-icon">${icon(f.icon)}</span>
+          <div class="cmp-field-body">
+            <div class="cmp-field-label">${f.label}</div>
+            <div class="cmp-field-value">${valueHTML}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+    const STAMP_COLORS = {
+      danger:  "#dc2626",
+      success: "#15803d",
+      muted:   "#94a3b8",
+      info:    "#c53c00",
+    };
+    const stampHTML = stamp && stamp.label ? `
+      <div class="cmp-stamp" style="--stamp:${STAMP_COLORS[stamp.variant] || STAMP_COLORS.muted}">${stamp.label}</div>` : "";
+
+    const traceHTML = (trace && trace.length) ? `
+      <div class="cmp-trace">
+        <div class="cmp-trace-head">
+          <span class="cmp-trace-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+          <div>
+            <div class="cmp-trace-title">Trazabilidad documental</div>
+            <div class="cmp-trace-sub">Cadena Cuota → Factura → Pago → Recibo</div>
+          </div>
+        </div>
+        <div class="cmp-trace-list">
+          ${trace.map((t, i) => `
+            <div class="cmp-trace-row${i === trace.length - 1 ? " last" : ""}${t.current ? " is-current" : ""}">
+              <span class="cmp-trace-node${t.current ? " current" : ""}"></span>
+              <span class="cmp-trace-label">${t.label}</span>
+              <span class="cmp-trace-value${t.value ? "" : " pending"}">${t.value || "Pendiente"}</span>
+            </div>`).join("")}
+        </div>
+      </div>` : "";
+
+    const fileName = (docTitle.split("—")[0].trim() || "Comprobante").replace(/[^\wáéíóúñ.\-\s]/gi, "").replace(/\s+/g, "_");
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>${docTitle}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.3/dist/html2pdf.bundle.min.js"></script>
+  <style>
+    :root{
+      --accent:#ff4e00;--accent-dark:#c53c00;--accent-soft:#ffe9de;
+      --ink:#0f172a;--text:#1e293b;--muted:#94a3b8;--soft:#64748b;
+      --line:#e8edf3;--line-soft:#f1f5f9;--bg:#eef2f7;--surface:#ffffff;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:var(--bg)}
+    body{
+      font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+      color:var(--text);padding:40px 16px 28px;-webkit-font-smoothing:antialiased;
+    }
+    .card{
+      position:relative;overflow:hidden;
+      max-width:460px;margin:0 auto;background:var(--surface);
+      border-radius:20px;box-shadow:0 1px 2px rgba(15,23,42,.04),0 14px 40px rgba(15,23,42,.10);
+      padding:36px 30px 28px;
+    }
+    .cmp-stamp{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%) rotate(-15deg);
+      padding:5px 22px;border:3px solid var(--stamp);border-radius:8px;
+      color:var(--stamp);font-size:26px;font-weight:800;letter-spacing:.12em;
+      text-transform:uppercase;opacity:.22;pointer-events:none;z-index:3;white-space:nowrap;
+    }
+    .cmp-logo{position:relative;display:flex;justify-content:center;align-items:center;margin-bottom:24px}
+    .cmp-logo img{width:160px;max-width:62%;height:auto}
+    .cmp-badge{
+      background:var(--ink);color:#fff;text-align:center;
+      font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+      padding:11px 16px;border-radius:10px;margin-bottom:8px;
+    }
+    .cmp-fields{padding:8px 4px 0}
+    .cmp-field{display:flex;align-items:flex-start;gap:14px;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+    .cmp-field:last-child{border-bottom:0}
+    .cmp-field-icon{flex-shrink:0;width:22px;height:22px;color:var(--soft);margin-top:1px}
+    .cmp-field-icon svg{width:100%;height:100%}
+    .cmp-field-body{min-width:0;flex:1}
+    .cmp-field-label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.01em}
+    .cmp-field-value{font-size:14px;color:var(--ink);font-weight:600;margin-top:2px;word-break:break-word}
+
+    .cmp-extra{margin-top:18px}
+    .cmp-extra-title{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 4px 10px}
+    .cmp-stat-row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 4px;color:var(--soft)}
+    .cmp-stat-row strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+    .cmp-prog{height:7px;background:var(--line-soft);border-radius:99px;overflow:hidden;margin:8px 4px 2px;border:1px solid var(--line)}
+    .cmp-prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-dark));border-radius:99px}
+    .cmp-mini{width:100%;border-collapse:collapse;margin-top:8px}
+    .cmp-mini th{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+    .cmp-mini td{font-size:11.5px;color:var(--soft);padding:7px 6px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+    .cmp-mini td.r,.cmp-mini th.r{text-align:right}
+    .cmp-mini tr.cur td{background:var(--accent-soft);color:var(--accent-dark);font-weight:600}
+
+    .cmp-trace{margin-top:20px;padding:18px;background:var(--line-soft);border-radius:12px;border:1px solid var(--line)}
+    .cmp-trace-head{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+    .cmp-trace-ico{flex-shrink:0;width:30px;height:30px;border-radius:8px;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+    .cmp-trace-ico svg{width:16px;height:16px}
+    .cmp-trace-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+    .cmp-trace-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+    .cmp-trace-list{padding-left:2px}
+    .cmp-trace-row{position:relative;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 22px;border-radius:8px}
+    .cmp-trace-row::before{content:"";position:absolute;left:6px;top:0;bottom:0;width:2px;background:var(--line)}
+    .cmp-trace-row:first-child::before{top:50%}
+    .cmp-trace-row.last::before{bottom:50%}
+    .cmp-trace-node{position:absolute;left:1px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:2px solid var(--muted);z-index:1}
+    .cmp-trace-node.current{border-color:var(--accent);background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+    .cmp-trace-label{font-size:12.5px;color:var(--soft);flex:1}
+    .cmp-trace-value{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600;color:var(--ink)}
+    .cmp-trace-value.pending{font-family:inherit;font-weight:500;color:var(--muted);font-style:italic}
+    .cmp-trace-row.is-current{background:var(--surface)}
+    .cmp-trace-row.is-current .cmp-trace-label{color:var(--ink);font-weight:600}
+    .cmp-trace-row.is-current .cmp-trace-value{color:var(--accent-dark)}
+
+    .cmp-total{
+      margin-top:22px;background:var(--accent-soft);border-radius:12px;
+      padding:16px 20px;text-align:center;
+    }
+    .cmp-total-label{font-size:12px;font-weight:700;color:var(--accent-dark);letter-spacing:.02em}
+    .cmp-total-value{font-size:26px;font-weight:800;color:var(--accent-dark);margin-top:4px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+    .cmp-total-words{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);margin-top:8px;line-height:1.5}
+
+    .cmp-qr{display:flex;align-items:center;gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+    .cmp-qr-box{width:82px;height:82px;padding:4px;border:1px solid var(--line);border-radius:10px;flex-shrink:0}
+    .cmp-qr-box img,.cmp-qr-box svg{width:100%;height:100%;display:block}
+    .cmp-qr-cap{font-size:11px;color:var(--soft);line-height:1.55}
+    .cmp-qr-cap strong{color:var(--text);font-weight:600}
+
+    .cmp-footer{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      margin-top:22px;padding-top:16px;border-top:1px solid var(--line);
+      font-size:10px;color:var(--muted);line-height:1.5;
+    }
+    .cmp-footer .brand{color:var(--soft);font-weight:600}
+
+    .cmp-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.02em}
+    .cmp-pill-success{background:#dcfce7;color:#15803d}
+    .cmp-pill-warning{background:#fef3c7;color:#b45309}
+    .cmp-pill-danger{background:#fee2e2;color:#b91c1c}
+    .cmp-pill-info{background:var(--accent-soft);color:var(--accent-dark)}
+    .cmp-pill-muted{background:var(--line-soft);color:var(--soft)}
+
+    .actions{display:flex;justify-content:center;gap:10px;margin-top:22px}
+    .btn{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:11px 22px;font-size:13.5px;font-weight:600;transition:transform .12s,box-shadow .12s,background .15s}
+    .btn-p{background:var(--accent);color:#fff;box-shadow:0 1px 0 rgba(197,60,0,.3),0 6px 14px rgba(197,60,0,.18)}
+    .btn-p:hover{background:var(--accent-dark);transform:translateY(-1px)}
+    .btn-c{background:#fff;color:var(--soft);border:1px solid var(--line)}
+    .btn-c:hover{background:var(--line-soft);color:var(--text)}
+
+    .print-foot{display:none}
+    @media print{
+      html,body{background:#fff}
+      body{padding:0}
+      @page{margin:7mm 0 11mm}
+      .card{box-shadow:none;border-radius:0;max-width:none;padding:0 20px}
+      .actions{display:none}
+
+      /* Compact spacing so a standard comprobante fits on a single page */
+      .cmp-logo{margin-bottom:12px}
+      .cmp-logo img{width:128px}
+      .cmp-badge{margin-bottom:4px;padding:8px 16px}
+      .cmp-fields{padding:4px 4px 0}
+      .cmp-field{padding:8px 0}
+      .cmp-total{margin-top:14px;padding:12px 20px}
+      .cmp-total-value{font-size:22px}
+      .cmp-trace{margin-top:12px;padding:12px 14px}
+      .cmp-trace-row{padding:5px 8px 5px 22px}
+      .cmp-qr{margin-top:12px;padding-top:12px}
+      .cmp-extra{margin-top:12px}
+      .cmp-footer{margin-top:14px;padding-top:10px}
+
+      .cmp-total,.cmp-trace,.cmp-qr,.cmp-extra,.cmp-field,.cmp-trace-row,.cmp-mini tr,.cmp-tail{
+        break-inside:avoid;page-break-inside:avoid;
+      }
+      .cmp-trace-head{break-after:avoid;page-break-after:avoid}
+      .print-foot{
+        display:block;position:fixed;left:0;right:0;bottom:4mm;
+        text-align:center;font-size:8px;color:#94a3b8;letter-spacing:.02em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    ${logo ? `<div class="cmp-logo">${stampHTML}<img src="${logo}" alt="El Cóndor"></div>` : stampHTML}
+    <div class="cmp-badge">${badge}</div>
+    <div class="cmp-fields">${fieldsHTML}</div>
+    ${extraHTML || ""}
+    <div class="cmp-total">
+      <div class="cmp-total-label">${totalLabel}</div>
+      <div class="cmp-total-value">${totalValue}</div>
+      ${totalWords ? `<div class="cmp-total-words">${totalWords}</div>` : ""}
+    </div>
+    ${afterTotalHTML || ""}
+    <div class="cmp-tail">
+      ${traceHTML}
+      ${qrUrl ? `
+        <div class="cmp-qr">
+          <div class="cmp-qr-box">${/^\s*<svg/.test(qrUrl) ? qrUrl : `<img src="${qrUrl}" alt="QR" loading="lazy">`}</div>
+          <div class="cmp-qr-cap">${qrCaption || ""}</div>
+        </div>` : ""}
+    </div>
+    <div class="cmp-footer">
+      <span class="brand">El Cóndor S.A.S. · Inversiones &amp; Construcciones</span>
+      <span>${new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</span>
+    </div>
+  </div>
+
+  <div class="print-foot">El Cóndor S.A.S. · Inversiones &amp; Construcciones · NIT 901.708.415-1</div>
+
+  <div class="actions">
+    <button class="btn btn-p" id="cmpDownload">Descargar PDF</button>
+    <button class="btn btn-c" id="cmpPrint">Imprimir</button>
+    <button class="btn btn-c" onclick="window.close()">Cerrar</button>
+  </div>
+
+  <script>
+    (function(){
+      var FILE = ${JSON.stringify(fileName)} + ".pdf";
+      var printBtn = document.getElementById("cmpPrint");
+      var dlBtn    = document.getElementById("cmpDownload");
+      if (printBtn) printBtn.addEventListener("click", function(){ window.print(); });
+      if (dlBtn) dlBtn.addEventListener("click", function(){
+        var card = document.querySelector(".card");
+        if (!window.html2pdf || !card) { window.print(); return; }
+        dlBtn.disabled = true;
+        var original = dlBtn.textContent;
+        dlBtn.textContent = "Generando…";
+        window.html2pdf().set({
+          margin:       [8, 6, 14, 6],
+          filename:     FILE,
+          image:        { type: "jpeg", quality: 0.98 },
+          html2canvas:  { scale: 3, useCORS: true, backgroundColor: "#ffffff", logging: false },
+          jsPDF:        { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak:    { mode: ["css", "legacy"], avoid: [".cmp-tail", ".cmp-total", ".cmp-trace", ".cmp-qr", ".cmp-extra", ".cmp-field"] }
+        }).from(card).save().then(function(){
+          dlBtn.disabled = false; dlBtn.textContent = original;
+        }).catch(function(){
+          dlBtn.disabled = false; dlBtn.textContent = original;
+          window.print();
+        });
+      });
+    })();
+  </script>
+</body>
+</html>`;
+  }
+
+  window.SGIExport = { pdf: PDF, xlsx: XLSX, numToWordsES, CONTACT, comprobanteHTML, fmtDate, qrDataUri };
 })();

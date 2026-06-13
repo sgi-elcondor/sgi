@@ -603,7 +603,7 @@
     await SX.download(wb, `lotes_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
-  function exportLotesPDF(filteredLotes) {
+  function exportLotesPDF(filteredLotes, ctx = {}) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const SX  = window.SGIExport.pdf;
@@ -614,13 +614,26 @@
     const ocupacionPct   = filteredLotes.length
       ? Math.round((totalVend + totalEntregado) / filteredLotes.length * 100)
       : 0;
+    const areaTotal      = filteredLotes.reduce((s, l) => s + Number(l.area || 0), 0);
+    const valorTotal     = filteredLotes.reduce((s, l) => s + Number(l.precio || 0), 0);
+
+    // Active filters → human-readable description for the report subtitle.
+    const st        = ctx.state || {};
+    const proyNombre = st.proyecto
+      ? (ctx.proyectos || []).find(p => String(p.id) === String(st.proyecto))?.nombre || st.proyecto
+      : null;
+    const filtros = [
+      proyNombre   ? `Proyecto: ${proyNombre}` : null,
+      st.estado    ? `Estado: ${st.estado}`    : null,
+      st.search    ? `Búsqueda: "${st.search}"` : null,
+    ].filter(Boolean);
+    const subtitle = filtros.length
+      ? `Filtros aplicados — ${filtros.join("  ·  ")}`
+      : "Reporte del inventario completo (sin filtros aplicados).";
 
     let y = SX.brand(doc);
 
-    y = SX.title(doc, y + 2, {
-      title:    "Inventario de Lotes",
-      subtitle: "Reporte del estado del inventario aplicando los filtros activos al momento de exportar.",
-    });
+    y = SX.title(doc, y + 2, { title: "Inventario de Lotes", subtitle });
 
     y = SX.kpiCards(doc, y + 2, [
       { label: "Total lotes", value: String(filteredLotes.length), desc: "En la vista exportada" },
@@ -645,7 +658,16 @@
         l.estado        || "—",
         l.fechaCreacion ? new Date(l.fechaCreacion).toLocaleDateString("es-CO") : "—",
       ]),
+      foot: [[
+        `Total · ${filteredLotes.length} lote${filteredLotes.length === 1 ? "" : "s"}`,
+        "", "", "",
+        `${areaTotal.toLocaleString("es-CO")} m²`,
+        sgiLoteFormatCurrency(valorTotal),
+        "", "",
+      ]],
+      showFoot: "lastPage",
       ...SX.tableTheme(),
+      footStyles: SX.footStyles(),
       columnStyles: {
         0: { cellWidth: 50 },
         1: { cellWidth: 30, halign: "center" },
@@ -656,6 +678,10 @@
         6: { cellWidth: 28, halign: "center" },
         7: { cellWidth: 30, halign: "center" },
       },
+      ...SX.statusColumn(6, e => {
+        const n = sgiNormalizeText(e);
+        return n === "disponible" ? "success" : n === "vendido" ? "info" : n === "entregado" ? "muted" : "warning";
+      }),
     });
 
     SX.footer(doc);
@@ -855,7 +881,7 @@
             await exportLotesExcel(sgiLoteApplyFilters(_allLotes, state), proyectos);
           });
           document.getElementById("btnLotesExportPDF")?.addEventListener("click", () => {
-            exportLotesPDF(sgiLoteApplyFilters(_allLotes, state));
+            exportLotesPDF(sgiLoteApplyFilters(_allLotes, state), { state, proyectos });
           });
         }
 

@@ -103,94 +103,61 @@ function _fmtCOP(n) {
 }
 
 function _buildFacturaHTML(f) {
-  const colorMap = { emitida: ["#1e40af","#dbeafe"], pagada: ["#166534","#dcfce7"], anulada: ["#991b1b","#fee2e2"] };
-  const [txtColor, bgColor] = colorMap[f.estado] || ["#555","#f3f4f6"];
   const numDisplay = _fmtNumFactura(f.numero_factura);
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Factura ${numDisplay} — El Cóndor S.A.S.</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;padding:32px 16px;color:#111}
-    .page{max-width:680px;margin:0 auto;background:#fff;border-radius:8px;box-shadow:0 2px 16px rgba(0,0,0,.13);padding:44px 52px}
-    .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #ff6a00;padding-bottom:20px;margin-bottom:28px}
-    .co-name{font-size:22px;font-weight:700;color:#ff6a00;margin-bottom:4px}
-    .co-sub{font-size:12px;color:#888;line-height:1.6}
-    .inv-head{text-align:right}
-    .inv-title{font-size:30px;font-weight:800;color:#ff6a00;letter-spacing:.02em}
-    .inv-num{font-size:15px;font-weight:700;margin-top:4px}
-    .inv-date{font-size:12px;color:#888;margin-top:2px}
-    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-top:8px}
-    .section{margin-bottom:22px}
-    .sec-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa;border-bottom:1px solid #eee;padding-bottom:5px;margin-bottom:10px}
-    .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
-    .lbl{color:#777}
-    .val{font-weight:600;text-align:right}
-    .total-box{background:#fff8f3;border:2px solid #ff6a00;border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:20px}
-    .total-lbl{font-size:13px;color:#777}
-    .total-amt{font-size:26px;font-weight:800;color:#ff6a00}
-    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;line-height:1.7}
-    .actions{text-align:center;margin-top:28px}
-    .btn-p{background:#ff6a00;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px}
-    .btn-c{background:#efefef;color:#333;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer}
-    @media print{body{background:#fff;padding:0}.page{box-shadow:none;border-radius:0;padding:20px 28px}.actions{display:none}}
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="top">
-      <div>
-        <div class="co-name">El C&oacute;ndor S.A.S.</div>
-        <div class="co-sub">Inversiones &amp; Construcciones<br>NIT: 901.708.415-1</div>
-      </div>
-      <div class="inv-head">
-        <div class="inv-title">FACTURA</div>
-        <div class="inv-num">N&deg; ${numDisplay}</div>
-        <div class="inv-date">Emisi&oacute;n: ${f.fecha_emision || "—"}</div>
-        <div><span class="badge" style="background:${bgColor};color:${txtColor}">${(f.estado||"").toUpperCase()}</span></div>
-      </div>
-    </div>
+  const valor      = Number(f.valor_facturado || 0);
+  const valorTxt   = _fmtCOP(valor);
+  const valorWords = (window.SGIExport && window.SGIExport.numToWordsES)
+    ? window.SGIExport.numToWordsES(valor)
+    : "";
 
-    <div class="section">
-      <div class="sec-title">Facturado a</div>
-      <div class="row"><span class="lbl">Cliente</span><span class="val">${f.comprador || "—"}</span></div>
-    </div>
+  const estadoMap = {
+    emitida:             { label: "Emitida",              badge: "info" },
+    pagada:              { label: "Pagada",               badge: "success", stamp: { label: "Pagada",  variant: "success" } },
+    parcialmente_pagada: { label: "Parcialmente pagada",  badge: "warning" },
+    anulada:             { label: "Anulada",              badge: "danger",  stamp: { label: "Anulada", variant: "danger" } },
+  };
+  const estado = estadoMap[f.estado] || { label: (f.estado || "—"), badge: "muted" };
 
-    <div class="section">
-      <div class="sec-title">Detalle del cobro</div>
-      ${f.id_venta != null ? `<div class="row"><span class="lbl">N&deg; Venta</span><span class="val">#${f.id_venta}</span></div>` : ""}
-      <div class="row"><span class="lbl">Proyecto</span><span class="val">${f.proyecto || "—"}</span></div>
-      <div class="row"><span class="lbl">Lote</span><span class="val">${f.codigo_lote || "—"}</span></div>
-      <div class="row"><span class="lbl">Cuota N&deg;</span><span class="val">${f.numero_cuota != null ? f.numero_cuota : "—"}</span></div>
-      ${f.fecha_vencimiento ? `<div class="row"><span class="lbl">Fecha vencimiento</span><span class="val">${f.fecha_vencimiento}</span></div>` : ""}
-    </div>
+  const fmtD = (window.SGIExport && window.SGIExport.fmtDate) ? window.SGIExport.fmtDate : (x => x || "");
+  const fechaEmision = fmtD(f.fecha_emision);
 
-    ${f.observaciones ? `<div class="section">
-      <div class="sec-title">Observaciones</div>
-      <p style="font-size:13px;color:#666;line-height:1.6">${f.observaciones}</p>
-    </div>` : ""}
+  const waNumber = (window.SGIExport && window.SGIExport.CONTACT && window.SGIExport.CONTACT.whatsapp) || "573001234567";
+  const waMsg    = `Hola, quiero obtener mas informacion acerca de la factura: ${numDisplay} por un valor de: ${valorTxt} emitida en la fecha: ${fechaEmision} a nombre de: ${f.comprador || ""}.`.trim();
+  const waUrl    = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
+  const qrUrl    = window.SGIExport.qrDataUri(waUrl);
 
-    <div class="total-box">
-      <span class="total-lbl">Valor a pagar</span>
-      <span class="total-amt">${_fmtCOP(f.valor_facturado)}</span>
-    </div>
+  if (window.SGIExport && window.SGIExport.comprobanteHTML) {
+    return window.SGIExport.comprobanteHTML({
+      docTitle: `Factura ${numDisplay} — El Cóndor S.A.S.`,
+      badge:    "Factura de Venta",
+      fields: [
+        { icon: "check",    label: "Estado de la factura", value: estado.label, badge: estado.badge },
+        { icon: "receipt",  label: "N° de factura",        value: numDisplay },
+        { icon: "user",     label: "Cliente",              value: f.comprador },
+        { icon: "briefcase",label: "N° de venta",          value: f.id_venta != null ? `#${f.id_venta}` : "" },
+        { icon: "pin",      label: "Proyecto / Lote",      value: [f.proyecto, f.codigo_lote].filter(x => x && x !== "—").join(" · ") },
+        { icon: "calendar", label: "Fecha de emisión",     value: fechaEmision },
+        { icon: "clock",    label: "Fecha de vencimiento", value: fmtD(f.fecha_vencimiento) },
+      ],
+      trace: [
+        { label: "Cuota",   value: f.numero_cuota != null ? `#${f.numero_cuota}` : "" },
+        { label: "Factura", value: numDisplay, current: true },
+        { label: "Pago",    value: f.numero_pago || "" },
+        { label: "Recibo",  value: f.numero_recibo || "" },
+      ],
+      extraHTML: f.observaciones
+        ? `<div class="cmp-extra"><div class="cmp-extra-title">Observaciones</div><div class="cmp-stat-row" style="display:block;color:var(--soft);line-height:1.6">${f.observaciones}</div></div>`
+        : "",
+      totalLabel: "Valor a pagar",
+      totalValue: valorTxt,
+      totalWords: valorWords,
+      stamp:      estado.stamp || null,
+      qrUrl,
+      qrCaption: "<strong>¿Dudas con tu factura?</strong><br>Escanea el código QR para escribirnos por WhatsApp.",
+    });
+  }
 
-    <div class="footer">
-      Documento generado por SGI El C&oacute;ndor &bull;
-      ${new Date().toLocaleDateString("es-CO", { year:"numeric", month:"long", day:"numeric" })}<br>
-      Este documento representa la causaci&oacute;n del ingreso correspondiente a la cuota indicada.
-    </div>
-  </div>
-
-  <div class="actions">
-    <button class="btn-p" onclick="window.print()">Imprimir / Descargar PDF</button>
-    <button class="btn-c" onclick="window.close()">Cerrar</button>
-  </div>
-</body>
-</html>`;
 }
 
 window.verFacturaPDF = function(id) {

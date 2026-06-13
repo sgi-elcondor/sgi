@@ -229,6 +229,9 @@
     if (projectLotes.length > 0) {
       y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Inventario de Lotes" });
 
+      const areaTotal  = projectLotes.reduce((s, l) => s + Number(l.area_m2 || 0), 0);
+      const valorTotal = projectLotes.reduce((s, l) => s + Number(l.precio_base || 0), 0);
+
       doc.autoTable({
         startY: y,
         head: [["Código", "Manzana", "N° Lote", "Área (m²)", "Precio Base", "Estado"]],
@@ -240,7 +243,16 @@
           l.precio_base   != null ? `$${fmt(l.precio_base)}` : "—",
           l.estado        || "—",
         ]),
+        foot: [[
+          `Total · ${projectLotes.length} lote${projectLotes.length === 1 ? "" : "s"}`,
+          "", "",
+          `${areaTotal.toLocaleString("es-CO")} m²`,
+          `$${fmt(valorTotal)}`,
+          "",
+        ]],
+        showFoot: "lastPage",
         ...SX.tableTheme(),
+        footStyles: SX.footStyles(),
         columnStyles: {
           0: { cellWidth: 24 },
           1: { halign: "center", cellWidth: 20 },
@@ -249,6 +261,10 @@
           4: { halign: "right",  cellWidth: 46 },
           5: { halign: "center", cellWidth: 22 },
         },
+        ...SX.statusColumn(5, e => {
+          const n = String(e || "").toLowerCase();
+          return n === "disponible" ? "success" : n === "vendido" ? "info" : n === "entregado" ? "muted" : "warning";
+        }),
       });
     }
 
@@ -466,7 +482,13 @@
         r.vendidos,
         `${pct(r.vendidos, r.totalLotes)}%`,
       ]),
+      foot: [[
+        "", `Total · ${rows.length} proyecto${rows.length === 1 ? "" : "s"}`, "", "",
+        totalLotes, totalDisp, totalVend, `${pct(totalVend, totalLotes)}%`,
+      ]],
+      showFoot: "lastPage",
       ...SX.tableTheme(),
+      footStyles: SX.footStyles(),
       columnStyles: {
         0: { halign: "center", cellWidth: 12 },
         1: { cellWidth: 50 },
