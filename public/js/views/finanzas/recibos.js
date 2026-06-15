@@ -137,24 +137,34 @@ window.recibosView = async function() {
       <button class="btn btn-primary" id="btn-generar-recibos-empty">Generar recibos de pagos aceptados</button>
     </div>` : "";
 
+  const valorRecibido = data.reduce((s, r) => s + Number(r.valor_pago || 0), 0);
+
   vc.innerHTML = `
+    ${window.SGIUI.statCards([
+      { label: "Recibos",          value: data.length,            sub: "Total emitidos" },
+      { label: "Valor recibido",   value: window.SGIUI.fmtCompactMoney(valorRecibido), title: UI.fmt(valorRecibido), sub: "Ingresos con recibo" },
+      { label: "Ventas con recibo", value: grupos.length,         sub: "Clientes con pagos" },
+    ])}
     <div class="table-wrap">
       <div class="table-header">
-        <h3>Recibos de Caja</h3>
+        <div class="table-header-titles">
+          <h3>Recibos de Caja</h3>
+          <span class="count-chip" id="rv-count">${grupos.length} venta${grupos.length === 1 ? "" : "s"}</span>
+        </div>
         <button class="btn btn-ghost btn-sm" id="btn-generar-recibos">Generar recibos pendientes</button>
       </div>
 
       ${grupos.length ? `
-      <div class="table-filters">
-        <select id="rv-proyecto" class="select-sm" style="flex:1;min-width:160px;">
-          <option value="">Todos los proyectos</option>
-          ${optsProyecto}
-        </select>
-        <input id="rv-comprador" type="text" placeholder="Buscar comprador, lote, proyecto..."
-          style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
-      </div>
+      ${window.SGIUI.filterBar({
+        fields: [
+          { type: "select", id: "rv-proyecto", label: "Proyecto",
+            options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
+          { type: "search", id: "rv-comprador", label: "Buscar", placeholder: "Comprador, lote, proyecto o N° de recibo…", grow: true },
+        ],
+        actions: `<button class="btn btn-ghost btn-sm" id="rv-limpiar">Limpiar</button>`,
+      })}
 
-      <div style="overflow-x:auto">
+      <div class="sticky-table-scroll">
         <table>
           <thead><tr>
             <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
@@ -198,15 +208,22 @@ window.recibosView = async function() {
     const fBuscar   = document.getElementById("rv-comprador").value;
     const visibles  = grupos.filter(g => {
       if (fProyecto && g.proyecto !== fProyecto) return false;
-      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
+      const nums = g.recibos.map(r => r.numero_recibo || "").join(" ");
+      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto, nums)) return false;
       return true;
     });
     tbody.innerHTML = visibles.map(filaVenta).join("");
     document.getElementById("recibos-grupos-empty").style.display = visibles.length ? "none" : "block";
+    const cnt = document.getElementById("rv-count");
+    if (cnt) cnt.textContent = `${visibles.length} venta${visibles.length === 1 ? "" : "s"}`;
   }
 
   document.getElementById("rv-proyecto").addEventListener("change", aplicarFiltros);
   document.getElementById("rv-comprador").addEventListener("input", aplicarFiltros);
+  document.getElementById("rv-limpiar").addEventListener("click", () => {
+    ["rv-proyecto", "rv-comprador"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    aplicarFiltros();
+  });
 
   tbody.addEventListener("click", e => {
     const btn = e.target.closest(".btn-ver-recibos");

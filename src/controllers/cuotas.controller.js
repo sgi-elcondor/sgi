@@ -56,6 +56,25 @@ exports.getMisDocumentos = async (req, res) => {
     || facturas.find(f => f.estado === "emitida")
     || facturas.find(f => f.estado !== "anulada")
     || null;
+
+  // Pago: an accepted one first (it has a recibo), otherwise the latest pending/rejected one.
+  const pagosAceptados = (c.cuota_pago || []).map(cp => cp.pago).filter(p => p && p.estado === "aceptado");
+  const { data: otrosPagos } = await supabase.schema(SCHEMA).from("pago")
+    .select("id_pago, numero_pago, estado, fecha_pago")
+    .eq("id_cuota_propuesta", idCuota)
+    .eq("id_usuario", id_usuario)
+    .neq("estado", "aceptado")
+    .order("fecha_pago", { ascending: false });
+  const pagoSel = pagosAceptados[0] || (otrosPagos && otrosPagos[0]) || null;
+
+  // Recibo: from an accepted pago of the cuota.
+  const pagoConRecibo = pagosAceptados.find(p => p.recibo_pago?.[0]?.recibo) || null;
+  const reciboRaw     = pagoConRecibo?.recibo_pago?.[0]?.recibo || null;
+
+  // Shared document-chain numbers so the factura, pago and recibo PDFs render the same trace.
+  const numeroPagoChain   = pagoSel?.numero_pago ?? null;
+  const numeroReciboChain = reciboRaw?.numero_recibo ?? null;
+
   const factura = facturaRaw ? {
     id_factura:        facturaRaw.id_factura,
     numero_factura:    facturaRaw.numero_factura,
@@ -67,22 +86,12 @@ exports.getMisDocumentos = async (req, res) => {
     comprador, proyecto, codigo_lote,
     numero_cuota:      c.numero_cuota,
     fecha_vencimiento: c.fecha_vencimiento,
+    numero_pago:       numeroPagoChain,
+    numero_recibo:     numeroReciboChain,
   } : null;
 
-  // Pago: an accepted one first (it has a recibo), otherwise the latest pending/rejected one.
-  const pagosAceptados = (c.cuota_pago || []).map(cp => cp.pago).filter(p => p && p.estado === "aceptado");
-  const { data: otrosPagos } = await supabase.schema(SCHEMA).from("pago")
-    .select("id_pago, estado, fecha_pago")
-    .eq("id_cuota_propuesta", idCuota)
-    .eq("id_usuario", id_usuario)
-    .neq("estado", "aceptado")
-    .order("fecha_pago", { ascending: false });
-  const pagoSel = pagosAceptados[0] || (otrosPagos && otrosPagos[0]) || null;
-  const pago = pagoSel ? { id_pago: pagoSel.id_pago, estado: pagoSel.estado } : null;
+  const pago = pagoSel ? { id_pago: pagoSel.id_pago, numero_pago: pagoSel.numero_pago ?? null, estado: pagoSel.estado } : null;
 
-  // Recibo: from an accepted pago of the cuota.
-  const pagoConRecibo = pagosAceptados.find(p => p.recibo_pago?.[0]?.recibo) || null;
-  const reciboRaw     = pagoConRecibo?.recibo_pago?.[0]?.recibo || null;
   const recibo = reciboRaw ? {
     id_recibo:      reciboRaw.id_recibo,
     numero_recibo:  reciboRaw.numero_recibo,
@@ -97,6 +106,7 @@ exports.getMisDocumentos = async (req, res) => {
     comprador, documento, proyecto, codigo_lote,
     numero_cuota:   c.numero_cuota,
     numero_factura: facturaRaw?.numero_factura ?? null,
+    numero_pago:    pagoConRecibo?.numero_pago ?? null,
   } : null;
 
   res.json({ factura, recibo, pago });
@@ -330,7 +340,7 @@ exports.setPlan = async (req, res) => {
   }
 
   const { data: venta, error: vErr } = await supabase.schema(SCHEMA)
-    .from('venta').select('valor_total, cuota_inicial, total_permutas').eq('id_venta', idVenta).single();
+    .from('venta').select('id_lote, valor_total, cuota_inicial, total_permutas, lote:id_lote(precio_base)').eq('id_venta', idVenta).single();
   if (vErr || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
   // The editor updates the venta's valor_total / cuota_inicial atomically with the plan; the new
@@ -449,6 +459,15 @@ exports.setPlan = async (req, res) => {
   if (Object.keys(ventaUpdates).length) {
     const { error: vUpdErr } = await supabase.schema(SCHEMA).from('venta').update(ventaUpdates).eq('id_venta', idVenta);
     if (vUpdErr) return res.status(400).json({ error: vUpdErr.message });
+  }
+
+  // Keep the lote's base price in sync with the sale value so the lotes and proyectos views match.
+  if (ventaUpdates.valor_total !== undefined && venta.id_lote) {
+    const prevPrecio = venta.lote?.precio_base;
+    const { error: loteErr } = await supabase.schema(SCHEMA)
+      .from('lote').update({ precio_base: newVt }).eq('id_lote', venta.id_lote);
+    if (loteErr) return res.status(400).json({ error: loteErr.message });
+    audit.push({ tabla_afectada: 'lote', id_registro: venta.id_lote, campo: 'precio_base', valor_anterior: prevPrecio != null ? String(prevPrecio) : null, valor_nuevo: String(newVt), usuario_db: req.usuario.email, fecha_cambio: now, motivo: String(motivo).trim() });
   }
 
   // 1) Deletes (clean cuotas only).

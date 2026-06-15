@@ -97,6 +97,7 @@
       ...lote,
       id:           lote.id_lote ?? lote.id,
       id_lote:      lote.id_lote ?? lote.id,
+      id_venta:     lote.id_venta ?? null,
       codigo,
       codigo_lote:  codigo,
       manzana:      lote.manzana      || "—",
@@ -178,7 +179,7 @@
 
   function sgiLoteBuildRows(lotes) {
     if (!lotes.length) {
-      return `<tr><td colspan="8" class="empty-row">No hay lotes que coincidan con los filtros actuales.</td></tr>`;
+      return `<tr><td colspan="9" class="empty-row">No hay lotes que coincidan con los filtros actuales.</td></tr>`;
     }
     return lotes.map(lote => `
       <tr>
@@ -190,6 +191,9 @@
         <td>${sgiLoteFormatCurrency(lote.precio)}</td>
         <td>${sgiLoteGetStatusBadge(lote.estado)}</td>
         <td>${sgiLoteFormatDate(lote.fechaCreacion)}</td>
+        <td style="white-space:nowrap;text-align:center">${lote.id_venta
+          ? `<button class="btn btn-sm btn-ghost" onclick="verVenta(${lote.id_venta})" title="Ver la venta de este lote">Ver venta</button>`
+          : `<span style="color:var(--text-muted);font-size:.8rem">—</span>`}</td>
       </tr>`
     ).join("");
   }
@@ -446,6 +450,7 @@
         const cls    = active ? `sortable sort-${sortState.sortDir}` : "sortable";
         return `<th class="${cls}" data-col="${c.key}">${c.label} <span class="sort-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M423.5-574 289.29-439.79Q272-422.5 248.5-421.75t-41.48-16.75q-17.52-17.5-16.77-41t18.07-40.81L439.41-751.1q7.91-7.9 18.97-13.15 11.06-5.25 21.78-5.25 10.71 0 21.78 5.25Q513-759 520.5-751.5l232 232q19 19 19 40.75t-18.52 39.25Q735-422 712.08-422q-22.91 0-40.08-17.5L536.5-574v349.52q0 22.79-16.79 39.64Q502.92-168 480.21-168t-39.71-16.84q-17-16.85-17-39.64V-574Z"/></svg></span></th>`;
       }).join("")}
+      <th>Acción</th>
     </tr></thead>`;
 
     const sorted = sgiLoteSortByCol(filteredLotes, sortState.sortCol, sortState.sortDir);
@@ -752,7 +757,7 @@
       if (!el) return;
       el.innerHTML = filteredLotes.length
         ? `<div class="table-header"><h3>Listado de lotes</h3></div>
-           <table id="lotes-table">${buildLotesTableHTML(filteredLotes, state)}</table>`
+           <div class="sticky-table-scroll"><table id="lotes-table">${buildLotesTableHTML(filteredLotes, state)}</table></div>`
         : `<div class="table-header"><h3>Listado de lotes</h3></div>
            <div class="empty-state">
              <div class="empty-state-title">No hay resultados</div>
@@ -825,33 +830,16 @@
 
             <section class="table-wrap lotes-filter-section">
               <div class="table-header"><h3>Filtros y búsqueda</h3></div>
-              <div class="filter-bar">
-                <div class="form-group filter-field">
-                  <label for="filtroProyecto">Proyecto</label>
-                  <select id="filtroProyecto">
-                    <option value="">Todos</option>
-                    ${proyectos.map(p => `
-                      <option value="${p.id}" ${String(state.proyecto) === String(p.id) ? "selected" : ""}>
-                        ${p.nombre}
-                      </option>`).join("")}
-                  </select>
-                </div>
-                <div class="form-group filter-field">
-                  <label for="filtroEstado">Estado</label>
-                  <select id="filtroEstado">
-                    <option value="">Todos</option>
-                    <option value="disponible" ${state.estado === "disponible" ? "selected" : ""}>Disponible</option>
-                    <option value="vendido"    ${state.estado === "vendido"    ? "selected" : ""}>Vendido</option>
-                    <option value="entregado"  ${state.estado === "entregado"  ? "selected" : ""}>Entregado</option>
-                  </select>
-                </div>
-                <div class="form-group filter-field">
-                  <label for="buscarLote">Buscar</label>
-                  <input id="buscarLote" type="text"
-                    placeholder="Buscar por código, manzana, lote o proyecto"
-                    value="${state.search}" />
-                </div>
-              </div>
+              ${window.SGIUI.filterBar({ fields: [
+                { type: "select", id: "filtroProyecto", label: "Proyecto", value: state.proyecto,
+                  options: [{ value: "", label: "Todos" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))] },
+                { type: "select", id: "filtroEstado", label: "Estado", value: state.estado, options: [
+                  { value: "", label: "Todos" }, { value: "disponible", label: "Disponible" },
+                  { value: "vendido", label: "Vendido" }, { value: "entregado", label: "Entregado" },
+                ] },
+                { type: "search", id: "buscarLote", label: "Buscar", value: state.search,
+                  placeholder: "Buscar por código, manzana, lote o proyecto", grow: true },
+              ] })}
             </section>
 
             <section class="table-wrap" id="lotes-table-section"></section>

@@ -12,7 +12,7 @@ exports.getAll = async (req, res) => {
 
   let q = supabase.schema(SCHEMA).from("venta")
     .select(`*, lote(codigo_lote, manzana, numero_lote, proyecto(nombre)),
-      venta_comprador(porcentaje, usuario:id_usuario(nombres, apellidos, documento)),
+      venta_comprador(porcentaje, usuario:id_usuario(id_usuario, nombres, apellidos, documento)),
       venta_comisionista(valor_comision, usuario:id_usuario(nombres, apellidos))`)
     .order("fecha_venta", { ascending: false });
 
@@ -424,7 +424,7 @@ exports.updateFinanciero = async (req, res) => {
   const { data: actual, error: eRead } = await supabase
     .schema(SCHEMA)
     .from("venta")
-    .select("valor_total, cuota_inicial, observaciones")
+    .select("id_lote, valor_total, cuota_inicial, observaciones, lote:id_lote(precio_base)")
     .eq("id_venta", id)
     .single();
 
@@ -502,6 +502,28 @@ exports.updateFinanciero = async (req, res) => {
     .single();
 
   if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+  // Keep the lote's base price in sync with the sale value so the lotes and proyectos views match.
+  if (updates.valor_total !== undefined && actual.id_lote) {
+    const prevPrecio = actual.lote?.precio_base;
+    const { error: eLote } = await supabase
+      .schema(SCHEMA)
+      .from("lote")
+      .update({ precio_base: vtFinal })
+      .eq("id_lote", actual.id_lote);
+
+    if (eLote) return res.status(400).json({ error: eLote.message });
+
+    await supabase.schema(SCHEMA).from("auditoria").insert([{
+      tabla_afectada: "lote",
+      id_registro:    actual.id_lote,
+      campo:          "precio_base",
+      valor_anterior: prevPrecio != null ? String(prevPrecio) : null,
+      valor_nuevo:    String(vtFinal),
+      usuario_db:     req.usuario?.email || "sistema",
+      motivo:         observaciones || null,
+    }]);
+  }
 
   res.json(data);
 };

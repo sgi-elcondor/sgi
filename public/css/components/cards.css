@@ -12,6 +12,7 @@
 }
 
 .stat-card {
+  min-width: 0;
   padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: 1rem;
@@ -39,11 +40,32 @@
 
 .stat-value {
   color: var(--text);
-  font: 1.75rem var(--font-serif);
+  font: clamp(1.25rem, 1rem + 1vw, 1.625rem)/1.15 var(--font-serif);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-sub {
   margin-top: 0.375rem;
   color: var(--text-muted);
   font-size: 0.8125rem;
+}
+
+/* Tone accents for summary cards (SGIUI.statCards). */
+.stat-card--danger {
+  border-color: rgba(var(--danger-rgb), 0.35);
+}
+.stat-card--danger .stat-value {
+  color: var(--danger);
+}
+.stat-card--warning {
+  border-color: rgba(var(--warning-rgb), 0.4);
+}
+.stat-card--warning .stat-value {
+  color: var(--warning);
+}
+.stat-card--success .stat-value {
+  color: var(--success);
 }

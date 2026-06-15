@@ -15,6 +15,21 @@ window.ventasView = async function() {
 
   const ESTADOS_JURIDICO = ["pre_mora", "en_mora"];
 
+  function _renderVentasSummary(rows) {
+    const el = document.getElementById("fv-summary");
+    if (!el) return;
+    const total   = rows.length;
+    const activas = rows.filter(v => v.estado === "activa").length;
+    const enMora  = rows.filter(v => v.estado === "pre_mora" || v.estado === "en_mora").length;
+    const valor   = rows.reduce((s, v) => s + Number(v.valor_total || 0), 0);
+    el.innerHTML = window.SGIUI.statCards([
+      { label: "Ventas",     value: total,           sub: "Resultado actual" },
+      { label: "Activas",    value: activas,         sub: "Al día" },
+      { label: "En mora",    value: enMora,          sub: "Pre-mora + mora", tone: enMora ? "danger" : "" },
+      { label: "Valor total", value: window.SGIUI.fmtCompactMoney(valor), title: UI.fmt(valor), sub: "Suma del resultado" },
+    ]);
+  }
+
   // Build query from filter state
   async function _cargarVentas() {
     const estado  = document.getElementById("fv_estado")?.value  || "";
@@ -41,6 +56,8 @@ window.ventasView = async function() {
     if (isJuridico) {
       rows = rows.filter(v => ESTADOS_JURIDICO.includes(v.estado));
     }
+
+    _renderVentasSummary(rows);
 
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--text-muted)">Sin resultados</td></tr>`;
@@ -76,6 +93,7 @@ window.ventasView = async function() {
     : ["activa","pre_mora","en_mora","cancelada","liquidada","pendiente_autorizacion"];
 
   vc.innerHTML = `
+    <div id="fv-summary"></div>
     <div class="table-wrap">
       <div class="table-header">
         <h3>Ventas${isJuridico ? " en mora" : ""}</h3>
@@ -87,29 +105,17 @@ window.ventasView = async function() {
       ${modoSolicitud ? `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
         Puedes crear solicitudes de venta. Quedan en estado <b>pendiente de autorización</b> hasta que sean aprobadas.
       </p>` : ""}
-      <div class="table-filters">
-        <div class="form-group" style="margin:0;flex:1;min-width:130px">
-          <label style="font-size:.78rem;margin-bottom:2px">Proyecto</label>
-          <input id="fv_proyecto" type="text" placeholder="Filtrar por proyecto…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
-        </div>
-        <div class="form-group" style="margin:0;flex:1;min-width:150px">
-          <label style="font-size:.78rem;margin-bottom:2px">Cliente (cédula o nombre)</label>
-          <input id="fv_cliente" type="text" placeholder="Buscar cliente, lote…" oninput="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
-        </div>
-        <div class="form-group" style="margin:0;min-width:160px">
-          <label style="font-size:.78rem;margin-bottom:2px">Estado</label>
-          <select id="fv_estado" onchange="_cargarVentasFiltro()" class="select-sm" style="width:auto;">
-            <option value="">Todos los estados</option>
-            ${ESTADOS.map(e => `<option value="${e}">${e.replace(/_/g," ")}</option>`).join("")}
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:140px">
-          <label style="font-size:.78rem;margin-bottom:2px">Mes</label>
-          <input id="fv_mes" type="month" onchange="_cargarVentasFiltro()" style="padding:5px 8px;font-size:.83rem"/>
-        </div>
-        <button class="btn btn-ghost btn-sm" style="align-self:flex-end;padding:5px 12px" onclick="_limpiarFiltrosVentas()">Limpiar</button>
-      </div>
-      <div style="overflow-x:auto">
+      ${window.SGIUI.filterBar({
+        fields: [
+          { type: "search", id: "fv_proyecto", label: "Proyecto", placeholder: "Filtrar por proyecto…", oninput: "_cargarVentasFiltro()" },
+          { type: "search", id: "fv_cliente", label: "Cliente (cédula o nombre)", placeholder: "Buscar cliente, lote…", oninput: "_cargarVentasFiltro()", grow: true },
+          { type: "select", id: "fv_estado", label: "Estado", onchange: "_cargarVentasFiltro()",
+            options: [{ value: "", label: "Todos los estados" }, ...ESTADOS.map(e => ({ value: e, label: e.replace(/_/g, " ") }))] },
+          { type: "month", id: "fv_mes", label: "Mes", onchange: "_cargarVentasFiltro()" },
+        ],
+        actions: `<button class="btn btn-ghost btn-sm" onclick="_limpiarFiltrosVentas()">Limpiar</button>`,
+      })}
+      <div class="sticky-table-scroll">
         <table>
           <thead><tr>
             <th>#</th><th>Proyecto</th><th>Lote</th><th>Comprador(es)</th>

@@ -134,21 +134,40 @@
       </tr>`;
     }
 
+    const aceptados  = data.filter(p => p.estado === "aceptado");
+    const enRevision = data.filter(p => p.estado === "pendiente_revision").length;
+    const valorAcept = aceptados.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+
     vc.innerHTML = `
+      ${window.SGIUI.statCards([
+        { label: "Pagos",          value: data.length,        sub: "Total registrados" },
+        { label: "Aceptados",      value: aceptados.length,   sub: "Validados" },
+        { label: "En revisión",    value: enRevision,         sub: "Pendientes de validar", tone: enRevision ? "warning" : "" },
+        { label: "Valor aceptado", value: window.SGIUI.fmtCompactMoney(valorAcept), title: UI.fmt(valorAcept), sub: "Ingresos confirmados" },
+      ])}
       <div class="table-wrap">
         <div class="table-header">
-          <h3>Pagos por Venta</h3>
+          <div class="table-header-titles">
+            <h3>Pagos por Venta</h3>
+            <span class="count-chip" id="pv-count">${grupos.length} venta${grupos.length === 1 ? "" : "s"}</span>
+          </div>
           ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
         </div>
-        <div class="table-filters">
-          <select id="pv-proyecto" class="select-sm" style="flex:1;min-width:160px;">
-            <option value="">Todos los proyectos</option>
-            ${optsProyecto}
-          </select>
-          <input id="pv-comprador" type="text" placeholder="Buscar comprador, lote, proyecto..."
-            style="flex:2;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:.83rem">
-        </div>
-        <div style="overflow-x:auto">
+        ${window.SGIUI.filterBar({
+          fields: [
+            { type: "select", id: "pv-proyecto", label: "Proyecto",
+              options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
+            { type: "select", id: "pv-estado", label: "Estado del pago", options: [
+              { value: "", label: "Todos" },
+              { value: "aceptado", label: "Aceptado" },
+              { value: "pendiente_revision", label: "En revisión" },
+              { value: "rechazado", label: "Rechazado" },
+            ] },
+            { type: "search", id: "pv-comprador", label: "Buscar", placeholder: "Comprador, lote, proyecto o N° de pago…", grow: true },
+          ],
+          actions: `<button class="btn btn-ghost btn-sm" id="pv-limpiar">Limpiar</button>`,
+        })}
+        <div class="sticky-table-scroll">
           <table>
             <thead><tr>
               <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
@@ -167,18 +186,28 @@
 
     function aplicarFiltros() {
       const fProyecto = document.getElementById("pv-proyecto").value;
+      const fEstado   = document.getElementById("pv-estado").value;
       const fBuscar   = document.getElementById("pv-comprador").value;
       const visibles  = grupos.filter(g => {
         if (fProyecto && g.proyecto !== fProyecto) return false;
-        if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
+        if (fEstado && !g.pagos.some(p => p.estado === fEstado)) return false;
+        const nums = g.pagos.map(p => p.numero_pago || "").join(" ");
+        if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto, nums)) return false;
         return true;
       });
       tbody.innerHTML = visibles.map(filaVenta).join("");
       document.getElementById("pagos-grupos-empty").style.display = visibles.length ? "none" : "block";
+      const cnt = document.getElementById("pv-count");
+      if (cnt) cnt.textContent = `${visibles.length} venta${visibles.length === 1 ? "" : "s"}`;
     }
 
     document.getElementById("pv-proyecto").addEventListener("change", aplicarFiltros);
+    document.getElementById("pv-estado").addEventListener("change", aplicarFiltros);
     document.getElementById("pv-comprador").addEventListener("input", aplicarFiltros);
+    document.getElementById("pv-limpiar").addEventListener("click", () => {
+      ["pv-proyecto", "pv-estado", "pv-comprador"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+      aplicarFiltros();
+    });
 
     tbody.addEventListener("click", e => {
       const btn = e.target.closest(".btn-ver-pagos");
@@ -238,7 +267,7 @@
           <span><span style="color:var(--text-muted)">Lote:</span> <strong>${grupo.codigo_lote}</strong></span>
           <span><span style="color:var(--text-muted)">Total pagado:</span> <strong>${UI.fmt(totalPagado)}</strong></span>
         </div>
-        <div style="overflow-x:auto">
+        <div class="sticky-table-scroll">
           <table>
             <thead><tr>
               <th>N° Pago</th><th>Fecha</th><th style="text-align:right">Valor</th><th>Método</th>

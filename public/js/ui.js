@@ -227,13 +227,63 @@ window.UI = UI;
     }
   }
 
+  // Compact currency for summary cards so large amounts never overflow: shows millones
+  // ("$1.209 M") above a million, full value below. Pair with `title` for the exact figure.
+  function fmtCompactMoney(n) {
+    const v   = Number(n) || 0;
+    const abs = Math.abs(v);
+    if (abs >= 1e6) {
+      const dec = abs >= 1e8 ? 0 : 1;
+      return `$${(v / 1e6).toLocaleString("es-CO", { maximumFractionDigits: dec })} M`;
+    }
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v);
+  }
+
+  // Shared summary cards. cards: [{ label, value, sub?, tone?, title? }].
+  function statCards(cards = []) {
+    const esc = s => String(s ?? "").replace(/"/g, "&quot;");
+    return `<section class="stats-grid">${cards.map(c => `
+      <article class="stat-card${c.tone ? ` stat-card--${c.tone}` : ""}">
+        <div class="stat-label">${c.label}</div>
+        <div class="stat-value"${c.title ? ` title="${esc(c.title)}"` : ""}>${c.value}</div>
+        ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ""}
+      </article>`).join("")}</section>`;
+  }
+
+  // Unified search/filter bar. Each view keeps its own ids + handler strings so existing
+  // wiring keeps working; this only standardizes markup and styling.
+  // fields: [{ type:"search"|"text"|"select"|"month"|"date", id, label?, placeholder?,
+  //            value?, options?:[{value,label}], oninput?, onchange?, grow? }]
+  function filterBar({ fields = [], actions = "", id = "" } = {}) {
+    const esc = v => String(v ?? "").replace(/"/g, "&quot;");
+    const searchIco = `<svg class="sgi-filter-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+    const fieldHTML = fields.map(f => {
+      const grow  = f.grow ? " sgi-filter-field--grow" : "";
+      const label = f.label ? `<label for="${f.id}">${f.label}</label>` : "";
+      if (f.type === "select") {
+        const opts = (f.options || []).map(o =>
+          `<option value="${esc(o.value)}"${String(o.value) === String(f.value ?? "") ? " selected" : ""}>${o.label}</option>`
+        ).join("");
+        return `<div class="sgi-filter-field${grow}">${label}<div class="sgi-filter-control sgi-filter-control--select"><select id="${f.id}"${f.onchange ? ` onchange="${f.onchange}"` : ""}>${opts}</select></div></div>`;
+      }
+      const isSearch  = f.type === "search";
+      const inputType = isSearch ? "text" : (f.type || "text");
+      const handler   = f.oninput ? ` oninput="${f.oninput}"` : (f.onchange ? ` onchange="${f.onchange}"` : "");
+      return `<div class="sgi-filter-field${grow}">${label}<div class="sgi-filter-control${isSearch ? " sgi-filter-control--search" : ""}">${isSearch ? searchIco : ""}<input id="${f.id}" type="${inputType}" placeholder="${esc(f.placeholder)}" value="${esc(f.value)}"${handler}></div></div>`;
+    }).join("");
+    return `<div class="sgi-filter-bar"${id ? ` id="${id}"` : ""}>${fieldHTML}${actions ? `<div class="sgi-filter-actions">${actions}</div>` : ""}</div>`;
+  }
+
   window.SGIUI = {
     icon,
     pageHeader,
     sectionHeader,
     emptyState,
     toast,
-    hydrate
+    hydrate,
+    statCards,
+    filterBar,
+    fmtCompactMoney
   };
 })();
 

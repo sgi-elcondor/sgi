@@ -66,7 +66,16 @@ window.cuotasView = async function() {
   const optsEstado   = estados.map(s => `<option value="${s}">${s}</option>`).join("");
 
   const thAcciones = mostrarAcciones ? "<th>Acciones</th>" : "";
+  const cuotasVencidas  = data.filter(c => Number(c.dias_atraso) > 0).length;
+  const cuotasHoy       = data.filter(c => Number(c.dias_atraso) === 0).length;
+  const cuotasPorCobrar = data.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
   vc.innerHTML = `
+    ${window.SGIUI.statCards([
+      { label: "Cuotas",     value: data.length,             sub: "Pendientes" },
+      { label: "Vencidas",   value: cuotasVencidas,          sub: "En atraso", tone: cuotasVencidas ? "danger" : "" },
+      { label: "Vencen hoy", value: cuotasHoy,               sub: "Atención",  tone: cuotasHoy ? "warning" : "" },
+      { label: "Por cobrar", value: window.SGIUI.fmtCompactMoney(cuotasPorCobrar), title: UI.fmt(cuotasPorCobrar), sub: "Saldo pendiente" },
+    ])}
     <div class="table-wrap">
       <div class="table-header">
         <div class="table-header-titles">
@@ -75,24 +84,21 @@ window.cuotasView = async function() {
         </div>
       </div>
 
-      <div class="table-filters">
-        <select id="f-proyecto" class="select-sm" style="flex:1;min-width:9.5rem">
-          <option value="">Todos los proyectos</option>
-          ${optsProyecto}
-        </select>
-        <input id="f-buscar" type="text" class="filter-input" placeholder="Buscar comprador, documento, lote..."
-          style="flex:3;min-width:14rem">
-        <select id="f-estado" class="select-sm" style="flex:1;min-width:8.75rem">
-          <option value="">Todos los estados</option>
-          ${optsEstado}
-        </select>
-        <label style="display:flex;align-items:center;gap:.375rem;font-size:.85rem;white-space:nowrap;cursor:pointer;user-select:none">
-          <input type="checkbox" id="f-subdivididas" style="width:1rem;height:1rem;cursor:pointer">
-          Solo subdivididas
+      ${window.SGIUI.filterBar({
+        fields: [
+          { type: "select", id: "f-proyecto", label: "Proyecto",
+            options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
+          { type: "search", id: "f-buscar", label: "Buscar", placeholder: "Buscar comprador, documento, lote…", grow: true },
+          { type: "select", id: "f-estado", label: "Estado",
+            options: [{ value: "", label: "Todos los estados" }, ...estados.map(s => ({ value: s, label: s }))] },
+        ],
+        actions: `<label style="display:flex;align-items:center;gap:.375rem;font-size:.85rem;white-space:nowrap;cursor:pointer;user-select:none;padding-bottom:.4rem">
+          <input type="checkbox" id="f-subdivididas" style="width:1rem;height:1rem;cursor:pointer"> Solo subdivididas
         </label>
-      </div>
+        <button class="btn btn-ghost btn-sm" id="cuotas-limpiar">Limpiar</button>`,
+      })}
 
-      <div style="overflow-x:auto">
+      <div class="sticky-table-scroll">
         <table>
           <thead><tr>
             <th>Proyecto</th><th>Lote</th><th>Comprador</th><th>Nro.</th>
@@ -134,6 +140,12 @@ window.cuotasView = async function() {
   );
   document.getElementById("f-buscar").addEventListener("input", aplicarFiltros);
   document.getElementById("f-subdivididas").addEventListener("change", aplicarFiltros);
+  document.getElementById("cuotas-limpiar").addEventListener("click", () => {
+    ["f-proyecto", "f-buscar", "f-estado"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    const sub = document.getElementById("f-subdivididas");
+    if (sub) sub.checked = false;
+    aplicarFiltros();
+  });
 
   tbody.addEventListener("click", async e => {
     const btn = e.target.closest("button");

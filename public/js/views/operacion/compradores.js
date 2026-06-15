@@ -35,7 +35,7 @@ window.compradoresView = async function () {
   });
   if (!data) return;
 
-  const colCount = canEdit ? 6 : 5;
+  const colCount = canEdit ? 7 : 6;
 
   const nuevoBtn = canCreate
     ? `<button class="btn btn-primary btn-sm" onclick="compradorForm()">
@@ -56,7 +56,7 @@ window.compradoresView = async function () {
       ? `<td><button class="btn btn-ghost btn-sm btn-comprador-editar" data-id="${c.id_usuario}">Editar</button></td>`
       : "";
     return `
-      <tr>
+      <tr class="comprador-row" data-id="${c.id_usuario}" style="cursor:pointer" title="Ver lotes de este comprador">
         <td>
           <div class="comprador-cell">
             ${avatar}
@@ -64,7 +64,6 @@ window.compradoresView = async function () {
               <span class="comprador-cell-name">${nombre || "—"}</span>
               <span class="comprador-cell-mail">${c.email || "Sin correo"}</span>
             </div>
-            ${accessBadge(c)}
           </div>
         </td>
         <td>
@@ -75,15 +74,22 @@ window.compradoresView = async function () {
         </td>
         <td><span class="chip-neutral">${PERSONA_LABEL[c.tipo_persona] || c.tipo_persona || "—"}</span></td>
         <td>${c.telefono || "—"}</td>
-        <td>${UI.badge(c.estado)}</td>
+        <td>${accessBadge(c)}</td>
+        <td>${UI.badge(c.activo ? "activo" : "inactivo")}</td>
         ${accionesCell}
       </tr>`;
   }
 
-  const estados    = [...new Set(data.map(c => c.estado).filter(Boolean))].sort();
-  const optsEstado = estados.map(s => `<option value="${s}">${s}</option>`).join("");
+  const conAcceso = data.filter(c => c.has_access).length;
+  const inactivos = data.filter(c => !c.activo).length;
 
   vc.innerHTML = `
+    ${window.SGIUI.statCards([
+      { label: "Compradores", value: data.length,             sub: "Total registrados" },
+      { label: "Con acceso",  value: conAcceso,               sub: "Cuenta activa en la plataforma" },
+      { label: "Sin cuenta",  value: data.length - conAcceso, sub: "Aún sin acceso" },
+      { label: "Inactivos",   value: inactivos,               sub: "Deshabilitados", tone: inactivos ? "danger" : "" },
+    ])}
     <div class="table-wrap">
       <div class="table-header">
         <div class="table-header-titles">
@@ -93,26 +99,28 @@ window.compradoresView = async function () {
         ${nuevoBtn}
       </div>
 
-      <div class="table-filters">
-        <input id="cf-buscar" type="text" class="filter-input"
-          placeholder="Buscar por nombre, documento o correo..." style="flex:2;min-width:15rem">
-        <select id="cf-persona" class="select-sm" style="flex:1;min-width:9rem">
-          <option value="">Todos los tipos</option>
-          <option value="natural">Natural</option>
-          <option value="juridica">Jurídica</option>
-        </select>
-        <select id="cf-tipodoc" class="select-sm" style="flex:1;min-width:9rem">
-          <option value="">Todo documento</option>
-          <option value="cc">Cédula de ciudadanía</option>
-          <option value="ce">Cédula de extranjería</option>
-          <option value="ppt">PPT</option>
-          <option value="pasaporte">Pasaporte</option>
-        </select>
-        <select id="cf-estado" class="select-sm" style="flex:1;min-width:9rem">
-          <option value="">Todos los estados</option>
-          ${optsEstado}
-        </select>
-      </div>
+      <p style="margin:.15rem 0 .85rem;font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.4rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        Haz clic en un comprador para ver sus lotes y ventas asociados.
+      </p>
+
+      ${window.SGIUI.filterBar({ fields: [
+        { type: "search", id: "cf-buscar", placeholder: "Buscar por nombre, documento o correo…", grow: true },
+        { type: "select", id: "cf-persona", label: "Tipo de persona", options: [
+          { value: "", label: "Todos los tipos" }, { value: "natural", label: "Natural" }, { value: "juridica", label: "Jurídica" },
+        ] },
+        { type: "select", id: "cf-tipodoc", label: "Documento", options: [
+          { value: "", label: "Todo documento" }, { value: "cc", label: "Cédula de ciudadanía" },
+          { value: "ce", label: "Cédula de extranjería" }, { value: "ppt", label: "PPT" }, { value: "pasaporte", label: "Pasaporte" },
+        ] },
+        { type: "select", id: "cf-estado", label: "Estado", options: [
+          { value: "", label: "Todos los estados" }, { value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" },
+        ] },
+      ] })}
 
       <table>
         <thead>
@@ -121,6 +129,7 @@ window.compradoresView = async function () {
             <th>Documento</th>
             <th>Tipo</th>
             <th>Teléfono</th>
+            <th>Acceso</th>
             <th>Estado</th>
             ${canEdit ? "<th>Acciones</th>" : ""}
           </tr>
@@ -141,7 +150,7 @@ window.compradoresView = async function () {
     const visibles = data.filter(c => {
       if (persona && c.tipo_persona   !== persona) return false;
       if (tipodoc && c.tipo_documento !== tipodoc) return false;
-      if (estado  && c.estado         !== estado)  return false;
+      if (estado  && (c.activo ? "activo" : "inactivo") !== estado) return false;
       if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.email}`).includes(q)) return false;
       return true;
     });
@@ -161,16 +170,83 @@ window.compradoresView = async function () {
     document.getElementById(id).addEventListener("change", aplicarFiltros));
   document.getElementById("cf-buscar").addEventListener("input", aplicarFiltros);
 
-  if (canEdit) {
-    tbody.addEventListener("click", e => {
-      const btn = e.target.closest(".btn-comprador-editar");
-      if (!btn) return;
-      const c = data.find(x => String(x.id_usuario) === btn.dataset.id);
+  tbody.addEventListener("click", e => {
+    const editBtn = e.target.closest(".btn-comprador-editar");
+    if (editBtn) {
+      const c = data.find(x => String(x.id_usuario) === editBtn.dataset.id);
       if (c) compradorForm(c);
-    });
-  }
+      return;
+    }
+    const row = e.target.closest(".comprador-row");
+    if (!row) return;
+    const c = data.find(x => String(x.id_usuario) === row.dataset.id);
+    if (c) verLotesComprador(c);
+  });
 
   aplicarFiltros();
+};
+
+window.verLotesComprador = async function (c) {
+  const vc = document.getElementById("viewContainer");
+  if (!vc) return;
+
+  const nombre = `${c.nombres || ""} ${c.apellidos || ""}`.trim() || c.email || "Comprador";
+  vc.innerHTML = UI.loader();
+
+  let ventas;
+  try {
+    ventas = await API.get("/ventas");
+  } catch (e) {
+    vc.innerHTML = `
+      <div class="table-wrap" style="padding:1.5rem">
+        <button class="btn btn-ghost btn-sm" onclick="compradoresView()">&larr; Volver a compradores</button>
+        <p style="color:var(--danger);margin-top:1rem">${e.message}</p>
+      </div>`;
+    return;
+  }
+
+  const suyas = (ventas || []).filter(v =>
+    (v.venta_comprador || []).some(x => Number(x.usuario?.id_usuario) === Number(c.id_usuario))
+  );
+
+  const filas = suyas.length
+    ? suyas.map(v => {
+        const lote = v.lote
+          ? `${v.lote.codigo_lote} M${v.lote.manzana}-${v.lote.numero_lote}`
+          : "—";
+        return `
+          <tr>
+            <td>${v.id_venta}</td>
+            <td>${v.lote?.proyecto?.nombre || "—"}</td>
+            <td><strong>${lote}</strong></td>
+            <td>${UI.fmt(v.valor_total)}</td>
+            <td>${UI.badge(v.estado)}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="verVenta(${v.id_venta})">Ver venta</button></td>
+          </tr>`;
+      }).join("")
+    : `<tr><td colspan="6" class="empty-row">Este comprador no tiene lotes asociados.</td></tr>`;
+
+  vc.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-header-titles">
+          <button class="btn btn-ghost btn-sm" onclick="compradoresView()" style="margin-bottom:.5rem;align-self:flex-start">&larr; Volver a compradores</button>
+          <h3>Lotes de ${nombre}</h3>
+          <span class="count-chip">${suyas.length} ${suyas.length === 1 ? "lote" : "lotes"}</span>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Proyecto</th><th>Lote</th>
+              <th>Valor</th><th>Estado</th><th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>`;
 };
 
 window.compradorForm = function (comprador) {

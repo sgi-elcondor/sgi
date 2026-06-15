@@ -224,6 +224,8 @@ function _shapePagoDetalle(p) {
     || facturas[0]
     || null;
 
+  const reciboRaw = p.recibo_pago?.[0]?.recibo || null;
+
   const factura = facturaRaw ? {
     id_factura:        facturaRaw.id_factura,
     numero_factura:    facturaRaw.numero_factura,
@@ -235,9 +237,10 @@ function _shapePagoDetalle(p) {
     comprador, proyecto, codigo_lote,
     numero_cuota:      cuota?.numero_cuota ?? null,
     fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
+    // Full document chain so the factura PDF shows the same trace as the recibo/pago.
+    numero_pago:       p.numero_pago ?? null,
+    numero_recibo:     reciboRaw?.numero_recibo ?? null,
   } : null;
-
-  const reciboRaw = p.recibo_pago?.[0]?.recibo || null;
   const recibo = reciboRaw ? {
     id_recibo:      reciboRaw.id_recibo,
     numero_recibo:  reciboRaw.numero_recibo,
@@ -252,6 +255,7 @@ function _shapePagoDetalle(p) {
     comprador, documento, proyecto, codigo_lote,
     numero_cuota:   cuota?.numero_cuota         ?? null,
     numero_factura: facturaRaw?.numero_factura  ?? null,
+    numero_pago:    p.numero_pago               ?? null,
   } : null;
 
   return {
