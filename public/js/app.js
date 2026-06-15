@@ -1,4 +1,4 @@
-import { esperarAuthListo } from "./auth.js";
+import { esperarAuthListo, logout } from "./auth.js";
 
 const VIEWS = {
   dashboard:           { fn: "dashboardView",        title: "Panel de control" },  
@@ -247,12 +247,44 @@ async function iniciarApp() {
     console.error("Error loading profile:", err.message);
     const fbUser = window._firebaseAuth?.currentUser;
     if (!fbUser) { localStorage.removeItem("fb_token"); redirigirConDelay("/login"); return; }
+
+    if (/inactiv/i.test(err.message || "")) { mostrarCuentaInactiva(); return; }
+
     const vc = document.getElementById("viewContainer");
     if (vc) vc.innerHTML =
       '<section class="table-wrap" style="padding:24px"><div class="table-header"><h3>Error al cargar el perfil</h3></div>' +
       '<div style="padding:20px;color:var(--danger)">' + err.message +
       '<br><br><button class="btn btn-primary" onclick="location.reload()">Reintentar</button></div></section>';
   }
+}
+
+function mostrarCuentaInactiva() {
+  const o = document.createElement("div");
+  o.style.cssText =
+    "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
+    "padding:1.5rem;background:var(--bg-primary,var(--bg,#0e0e10))";
+  o.innerHTML =
+    '<div style="max-width:26rem;width:100%;text-align:center;background:var(--surface,var(--bg-secondary));' +
+      'border:1px solid var(--border,var(--border-color));border-radius:1rem;padding:2.5rem 2rem;' +
+      'box-shadow:0 0.625rem 2.5rem rgba(0,0,0,.25)">' +
+      '<div style="width:3.5rem;height:3.5rem;margin:0 auto 1.25rem;border-radius:50%;display:flex;' +
+        'align-items:center;justify-content:center;background:rgba(var(--danger-rgb,220,38,38),.12);color:var(--danger,#dc2626)">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" ' +
+          'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>' +
+      '</div>' +
+      '<h1 style="margin:0 0 .5rem;font-size:1.35rem;color:var(--text,var(--text-primary))">Cuenta inactiva</h1>' +
+      '<p style="margin:0 0 1.5rem;color:var(--text-muted);font-size:.9rem;line-height:1.55">' +
+        'Tu cuenta fue deshabilitada y no tiene acceso a la plataforma. ' +
+        'Si crees que es un error, comunícate con el administrador.</p>' +
+      '<button class="btn btn-primary" id="inactive-logout" style="width:100%">Volver al inicio de sesión</button>' +
+    '</div>';
+  document.body.appendChild(o);
+  document.getElementById("inactive-logout").addEventListener("click", async function() {
+    try { await logout(); } catch (_) {}
+    localStorage.removeItem("fb_token");
+    window.location.href = "/login";
+  });
 }
 
 iniciarApp();

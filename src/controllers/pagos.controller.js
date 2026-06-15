@@ -5,6 +5,7 @@ const recibos               = require("../services/recibos.service");
 const { verificarComision } = require("../services/comisiones.service");
 const { actualizarMora }    = require("../services/mora.service");
 const saldos                = require("../services/saldos.service");
+const usuariosSvc           = require("../services/usuarios.service");
 
 const ESTADOS_FACTURA_ACTIVA = ["emitida", "parcialmente_pagada"];
 
@@ -332,6 +333,14 @@ exports.create = async (req, res) => {
     return res.status(400).json({ error: "El valor del pago supera el saldo pendiente de la factura" });
 
   const id_venta = cuotaInfo?.id_venta ?? null;
+
+  // A payment cannot be registered for a venta whose comprador is inactive.
+  if (id_venta) {
+    const inact = await usuariosSvc.inactivosDeVenta(id_venta);
+    if (inact.length)
+      return res.status(409).json({ error: `No se puede registrar el pago: el comprador ${usuariosSvc.nombresInactivos(inact)} está inactivo.` });
+  }
+
   let id_usuario_comprador = null;
   if (id_venta) {
     const { data: vc } = await supabase.schema(SCHEMA)
@@ -436,6 +445,11 @@ exports.createCompradorPago = async (req, res) => {
       .single();
     if (!vc) return res.status(403).json({ error: "No tienes acceso a esta venta" });
   }
+
+  // Block payments tied to a venta with an inactive comprador.
+  const inactivos = await usuariosSvc.inactivosDeCuota(id_cuota_propuesta);
+  if (inactivos.length)
+    return res.status(409).json({ error: `No se puede registrar el pago: el comprador ${usuariosSvc.nombresInactivos(inactivos)} está inactivo.` });
 
   if (id_cuota_propuesta) {
     const { data: cuotaData } = await supabase.schema(SCHEMA)
@@ -634,6 +648,15 @@ exports.acceptBatch = async (req, res) => {
 
     if (eLeer || !pagoActual) {
       results.push({ id_pago, ok: false, error: 'Pago no encontrado' });
+      continue;
+    }
+
+    // RN-02: accepting a payment emits a recibo. Don't accept one whose comprador is inactive.
+    const inactivos = pagoActual.id_venta
+      ? await usuariosSvc.inactivosDeVenta(pagoActual.id_venta)
+      : [];
+    if (inactivos.length) {
+      results.push({ id_pago, ok: false, error: `Comprador inactivo (${usuariosSvc.nombresInactivos(inactivos)}); no se puede aceptar el pago.` });
       continue;
     }
 

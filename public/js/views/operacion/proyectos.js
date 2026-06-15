@@ -3,6 +3,7 @@
 
   const sortState = { col: null, dir: "asc" };
   let cachedLotes = [];
+  let _container  = null;
 
   const TABLE_COLS = [
     { key: "id",          label: "ID"          },
@@ -96,6 +97,8 @@
     const bodyEl  = document.getElementById("modalBody");
     if (!overlay || !titleEl || !bodyEl) return;
 
+    const canEdit = AppState.can("proyectos", "actualizar");
+
     const disponibles  = projectLotes.filter(l => (l.estado || "").toLowerCase() === "disponible").length;
     const vendidos     = projectLotes.filter(l => (l.estado || "").toLowerCase() === "vendido").length;
     const entregados   = projectLotes.filter(l => (l.estado || "").toLowerCase() === "entregado").length;
@@ -170,10 +173,11 @@
       ) +
       `<div class="form-actions" style="margin-top:0.5rem">
         <button class="btn btn-ghost" onclick="UI.closeModal()">Cerrar</button>
-        ${canExport ? `<button class="btn btn-primary" id="btnExportProjectPDF">
+        ${canExport ? `<button class="btn btn-ghost" id="btnExportProjectPDF">
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Exportar PDF
         </button>` : ""}
+        ${canEdit ? `<button class="btn btn-primary" id="btnEditProject">Editar proyecto</button>` : ""}
        </div>` +
       `</div>`;
 
@@ -184,6 +188,10 @@
       document.getElementById("btnExportProjectPDF")?.addEventListener("click", () => {
         exportProjectPDF(row, projectLotes);
       });
+    }
+
+    if (canEdit) {
+      document.getElementById("btnEditProject")?.addEventListener("click", () => openProyectoForm(row));
     }
   }
 
@@ -505,7 +513,83 @@
     doc.save(`reporte_proyectos_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
+  function openProyectoForm(proyecto) {
+    const overlay = document.getElementById("modalOverlay");
+    const titleEl = document.getElementById("modalTitle");
+    const bodyEl  = document.getElementById("modalBody");
+    if (!overlay || !titleEl || !bodyEl) return;
+
+    const isEdit = !!(proyecto && (proyecto.id ?? proyecto.id_proyecto));
+    const id     = isEdit ? (proyecto.id ?? proyecto.id_proyecto) : null;
+    const esc    = (v) => String(v == null ? "" : v).replace(/"/g, "&quot;");
+
+    titleEl.textContent = isEdit ? "Editar proyecto" : "Nuevo proyecto";
+    bodyEl.innerHTML =
+      '<div class="form-grid">' +
+      '<div class="form-group" style="grid-column:1/-1"><label>Nombre del proyecto *</label>' +
+      '<input type="text" id="np-nombre" placeholder="Ej: Urbanizacion El Condor Fase 1" value="' + esc(proyecto?.nombre) + '" /></div>' +
+      '<div class="form-group"><label>Sigla</label>' +
+      '<input type="text" id="np-sigla" maxlength="3" placeholder="Ej: EC1" style="text-transform:uppercase" value="' + esc(proyecto?.sigla) + '" /></div>' +
+      '<div class="form-group"><label>Ubicacion</label>' +
+      '<input type="text" id="np-ubicacion" placeholder="Ej: Calle 10 # 5-23, Municipio" value="' + esc(proyecto?.ubicacion) + '" /></div>' +
+      '<div class="form-group" style="grid-column:1/-1"><label>Descripcion</label>' +
+      '<textarea id="np-desc" rows="3" placeholder="Descripcion opcional del proyecto">' + esc(proyecto?.descripcion) + '</textarea></div>' +
+      '</div>' +
+      (isEdit ? '<div class="form-note">Si cambias la sigla, se actualizara el prefijo del codigo de todos los lotes de este proyecto y se reflejara en sus ventas.</div>' : '') +
+      '<div id="np-error" class="form-error" style="display:none;margin-top:8px"></div>' +
+      '<div class="form-actions">' +
+      '<button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>' +
+      '<button class="btn btn-primary" id="np-submit">' + (isEdit ? "Guardar cambios" : "Guardar") + '</button>' +
+      "</div>";
+    overlay.classList.add("open");
+    window.SGIUI?.hydrate();
+
+    document.getElementById("np-sigla")?.addEventListener("input", function() {
+      this.value = this.value.toUpperCase();
+    });
+
+    document.getElementById("np-submit")?.addEventListener("click", async () => {
+      const nombre    = document.getElementById("np-nombre").value.trim();
+      const sigla     = document.getElementById("np-sigla").value.trim().toUpperCase();
+      const ubicacion = document.getElementById("np-ubicacion").value.trim();
+      const desc      = document.getElementById("np-desc").value.trim();
+      const errEl     = document.getElementById("np-error");
+      const btn       = document.getElementById("np-submit");
+      if (!nombre) { errEl.textContent = "El nombre es obligatorio."; errEl.style.display = "block"; return; }
+      if (sigla && sigla.length > 3) { errEl.textContent = "La sigla debe tener maximo 3 caracteres."; errEl.style.display = "block"; return; }
+      errEl.style.display = "none";
+      btn.disabled = true; btn.textContent = "Guardando...";
+      try {
+        if (isEdit) {
+          await API.put("/proyectos/" + id, {
+            nombre,
+            sigla:       sigla || null,
+            ubicacion:   ubicacion || null,
+            descripcion: desc || null,
+          });
+          UI.closeModal();
+          window.SGIUI?.toast("Proyecto actualizado correctamente.", "success", "Exito");
+        } else {
+          await API.post("/proyectos", {
+            nombre,
+            sigla:       sigla     || undefined,
+            ubicacion:   ubicacion || undefined,
+            descripcion: desc      || undefined,
+          });
+          UI.closeModal();
+          window.SGIUI?.toast("Proyecto creado correctamente.", "success", "Exito");
+        }
+        render(_container);
+      } catch (err) {
+        errEl.textContent = err.message || "Error al guardar el proyecto.";
+        errEl.style.display = "block";
+        btn.disabled = false; btn.textContent = isEdit ? "Guardar cambios" : "Guardar";
+      }
+    });
+  }
+
   async function render(container) {
+    _container = container;
     const canCreate = AppState.can("proyectos", "crear");
     const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
 
@@ -585,64 +669,7 @@
       }
 
       if (canCreate) {
-        document.getElementById("btnNuevoProyecto")?.addEventListener("click", () => {
-          const overlay = document.getElementById("modalOverlay");
-          const titleEl = document.getElementById("modalTitle");
-          const bodyEl  = document.getElementById("modalBody");
-          if (!overlay || !titleEl || !bodyEl) return;
-
-          titleEl.textContent = "Nuevo proyecto";
-          bodyEl.innerHTML =
-            '<div class="form-grid">' +
-            '<div class="form-group" style="grid-column:1/-1"><label>Nombre del proyecto *</label>' +
-            '<input type="text" id="np-nombre" placeholder="Ej: Urbanizacion El Condor Fase 1" /></div>' +
-            '<div class="form-group"><label>Sigla</label>' +
-            '<input type="text" id="np-sigla" maxlength="3" placeholder="Ej: EC1" style="text-transform:uppercase" /></div>' +
-            '<div class="form-group"><label>Ubicacion</label>' +
-            '<input type="text" id="np-ubicacion" placeholder="Ej: Calle 10 # 5-23, Municipio" /></div>' +
-            '<div class="form-group" style="grid-column:1/-1"><label>Descripcion</label>' +
-            '<textarea id="np-desc" rows="3" placeholder="Descripcion opcional del proyecto"></textarea></div>' +
-            '</div>' +
-            '<div id="np-error" class="form-error" style="display:none;margin-top:8px"></div>' +
-            '<div class="form-actions">' +
-            '<button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>' +
-            '<button class="btn btn-primary" id="np-submit">Guardar</button>' +
-            "</div>";
-          overlay.classList.add("open");
-          window.SGIUI?.hydrate();
-
-          document.getElementById("np-sigla")?.addEventListener("input", function() {
-            this.value = this.value.toUpperCase();
-          });
-
-          document.getElementById("np-submit")?.addEventListener("click", async () => {
-            const nombre    = document.getElementById("np-nombre").value.trim();
-            const sigla     = document.getElementById("np-sigla").value.trim().toUpperCase();
-            const ubicacion = document.getElementById("np-ubicacion").value.trim();
-            const desc      = document.getElementById("np-desc").value.trim();
-            const errEl     = document.getElementById("np-error");
-            const btn       = document.getElementById("np-submit");
-            if (!nombre) { errEl.textContent = "El nombre es obligatorio."; errEl.style.display = "block"; return; }
-            if (sigla && sigla.length > 3) { errEl.textContent = "La sigla debe tener maximo 3 caracteres."; errEl.style.display = "block"; return; }
-            errEl.style.display = "none";
-            btn.disabled = true; btn.textContent = "Guardando...";
-            try {
-              await API.post("/proyectos", {
-                nombre,
-                sigla:       sigla     || undefined,
-                ubicacion:   ubicacion || undefined,
-                descripcion: desc      || undefined,
-              });
-              UI.closeModal();
-              window.SGIUI?.toast("Proyecto creado correctamente.", "success", "Exito");
-              render(container);
-            } catch (err) {
-              errEl.textContent = err.message || "Error al crear el proyecto.";
-              errEl.style.display = "block";
-              btn.disabled = false; btn.textContent = "Guardar";
-            }
-          });
-        });
+        document.getElementById("btnNuevoProyecto")?.addEventListener("click", () => openProyectoForm(null));
       }
 
     } catch (error) {

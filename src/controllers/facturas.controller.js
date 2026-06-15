@@ -1,6 +1,7 @@
-const supabase = require("../config/supabase");
-const saldos   = require("../services/saldos.service");
-const SCHEMA   = "condor";
+const supabase    = require("../config/supabase");
+const saldos      = require("../services/saldos.service");
+const usuariosSvc = require("../services/usuarios.service");
+const SCHEMA      = "condor";
 
 const ESTADOS_FACTURA_ACTIVA = ["emitida", "parcialmente_pagada"];
 
@@ -103,6 +104,11 @@ exports.anularFacturasActivas = anularFacturasActivas;
 // supports a partial-payment agreement (Modalidad A, 8.1). Only the aux reaches this.
 async function _emitirFactura(id_cuota, id_fraccion = null, opts = {}) {
   const { valorAcordado = null, observaciones = null, fecha_emision = null } = opts;
+
+  // RN-06: no factura is emitted for a cuota whose comprador is inactive.
+  const inactivos = await usuariosSvc.inactivosDeCuota(id_cuota);
+  if (inactivos.length)
+    return { error: `No se puede emitir la factura: el comprador ${usuariosSvc.nombresInactivos(inactivos)} está inactivo.` };
 
   const existing = await _facturaActivaDe(id_cuota, id_fraccion);
   if (existing) return { factura: existing, reused: true };
