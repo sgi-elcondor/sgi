@@ -788,7 +788,7 @@ function _renderPlanEditor() {
   document.getElementById("pl-motivo")?.addEventListener("input", _planRefresh);
   _planRefresh();
 }
-window._editarPlanCuotas = async function(idVenta) {
+window._editarPlanCuotas = async function(idVenta, seedVt) {
   UI.openModal(`Editar venta · #${idVenta}`, UI.loader());
   let v;
   try { v = await API.get(`/ventas/${idVenta}`); }
@@ -818,6 +818,9 @@ window._editarPlanCuotas = async function(idVenta) {
     ci: Number(v.cuota_inicial || 0),
     permutas: Number(v.total_permutas || 0),
   };
+  // When opened to apply a new lote value, seed the "Valor total" so the plan starts
+  // descuadrado and the aux is forced to rebalance the cuotas before saving (RN-17/§8.4).
+  if (seedVt != null && Number(seedVt) > 0) window._planCtx.vt = Number(seedVt);
   _renderPlanEditor();
 };
 window._guardarPlanCuotas = async function() {

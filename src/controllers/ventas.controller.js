@@ -1,8 +1,9 @@
-const supabase  = require("../config/supabase");
-const cuotasSvc = require("../services/cuotas.service");
-const auditoria = require("../services/auditoria.service");
-const saldos    = require("../services/saldos.service");
-const SCHEMA    = "condor";
+const supabase    = require("../config/supabase");
+const cuotasSvc   = require("../services/cuotas.service");
+const auditoria   = require("../services/auditoria.service");
+const saldos      = require("../services/saldos.service");
+const usuariosSvc = require("../services/usuarios.service");
+const SCHEMA      = "condor";
 
 exports.getAll = async (req, res) => {
   const { estado, mes, proyecto, cliente } = req.query;
@@ -273,6 +274,16 @@ async function crearVenta(req, res, estadoFijo) {
     return res.status(422).json({ error: errValidacion });
   }
 
+  // An inactive comprador cannot be associated with a new venta.
+  const compradoresInactivos = await usuariosSvc.inactivosPorIds(
+    (compradores || []).map(c => c.id_usuario)
+  );
+  if (compradoresInactivos.length) {
+    return res.status(409).json({
+      error: `No se puede crear la venta: el comprador ${usuariosSvc.nombresInactivos(compradoresInactivos)} está inactivo. Reactívalo antes de asociarlo.`,
+    });
+  }
+
   // Verifica que el lote no tenga una venta activa o pendiente
   const { data: ventaExistente, error: eVentaExistente } = await supabase
     .schema(SCHEMA)
@@ -540,7 +551,7 @@ exports.remove = async (req, res) => {
   if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de venta inválido" });
 
   const { data: venta, error: eRead } = await supabase.schema(SCHEMA)
-    .from("venta").select("id_venta").eq("id_venta", id).single();
+    .from("venta").select("id_venta, id_lote").eq("id_venta", id).single();
   if (eRead || !venta) return res.status(404).json({ error: "Venta no encontrada" });
 
   // RN-05: block deletion when there is realized income (accepted payments / receipts).
@@ -570,6 +581,12 @@ exports.remove = async (req, res) => {
 
   const { error: eDel } = await supabase.schema(SCHEMA).from("venta").delete().eq("id_venta", id);
   if (eDel) return res.status(400).json({ error: eDel.message });
+
+  // Free the lote so it doesn't linger as 'vendido' without a venta (§13: no orphan states).
+  if (venta.id_lote) {
+    await supabase.schema(SCHEMA).from("lote")
+      .update({ estado: "disponible" }).eq("id_lote", venta.id_lote);
+  }
 
   await supabase.schema(SCHEMA).from("auditoria").insert([{
     tabla_afectada: "venta",

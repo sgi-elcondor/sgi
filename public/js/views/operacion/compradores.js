@@ -291,6 +291,19 @@ window.compradorForm = function (comprador) {
          <div id="f_mail_preview" style="display:none;margin-top:.375rem;"></div>
        </div>`;
 
+  const estadoField = isEdit
+    ? `<div class="form-group">
+         <label>Estado de la cuenta</label>
+         <select id="f_estado">
+           <option value="activo"   ${c.activo === false ? "" : "selected"}>Activo</option>
+           <option value="inactivo" ${c.activo === false ? "selected" : ""}>Inactivo</option>
+         </select>
+         <div class="form-note" style="margin-top:.25rem;color:var(--text-muted)">
+           Un comprador inactivo no podrá ingresar a la plataforma.
+         </div>
+       </div>`
+    : "";
+
   UI.openModal(isEdit ? "Editar Comprador" : "Nuevo Comprador", `
     <div class="modal-form">
       <div class="form-section">
@@ -334,6 +347,7 @@ window.compradorForm = function (comprador) {
             <label>Teléfono</label>
             <input id="f_tel" placeholder="Número de teléfono" value="${escAttr(c.telefono)}" />
           </div>
+          ${estadoField}
           ${mailField}
         </div>
       </div>
@@ -431,6 +445,8 @@ window.guardarComprador = async function (id) {
   if (!id && _selectedUserBlocked)
     return UI.toast("Ese usuario ya tiene un comprador vinculado. Usa un correo diferente.", "error");
 
+  const estadoEl = document.getElementById("f_estado");
+
   const body = {
     tipo_persona:   document.getElementById("f_tipo").value,
     tipo_documento: document.getElementById("f_tipodoc").value,
@@ -440,6 +456,8 @@ window.guardarComprador = async function (id) {
     telefono:   document.getElementById("f_tel").value.trim(),
     mail,
   };
+
+  if (estadoEl) body.estado = estadoEl.value;
 
   try {
     if (id) {

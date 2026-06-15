@@ -1,5 +1,14 @@
-const supabase = require("../config/supabase");
-const SCHEMA   = "condor";
+const supabase  = require("../config/supabase");
+const auditoria = require("../services/auditoria.service");
+const SCHEMA    = "condor";
+
+// §13: states are derived, never orphaned. A lote flagged 'vendido'/'entregado' but without an
+// active venta (e.g. its sale was deleted) is effectively available, so we don't show it as sold.
+function estadoMostrado(lote, idVenta) {
+  const est = String(lote.estado || "").toLowerCase();
+  if (!idVenta && (est === "vendido" || est === "entregado")) return "disponible";
+  return lote.estado;
+}
 
 exports.getAll = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("lote")
@@ -16,7 +25,10 @@ exports.getAll = async (req, res) => {
     if (ventaPorLote[v.id_lote] == null) ventaPorLote[v.id_lote] = v.id_venta;
   }
 
-  res.json((data || []).map(l => ({ ...l, id_venta: ventaPorLote[l.id_lote] ?? null })));
+  res.json((data || []).map(l => {
+    const id_venta = ventaPorLote[l.id_lote] ?? null;
+    return { ...l, id_venta, estado: estadoMostrado(l, id_venta) };
+  }));
 };
 
 exports.getDisponibles = async (req, res) => {
@@ -58,7 +70,15 @@ exports.getDisponibles = async (req, res) => {
 exports.getById = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from("lote").select("*, proyecto(nombre)").eq("id_lote", req.params.id).single();
   if (error) return res.status(404).json({ error: error.message });
-  res.json(data);
+
+  // Attach the active venta (if any) so the edit modal knows whether the price must be changed
+  // through the cuotas plan editor, and derive the displayed estado consistently with getAll.
+  const { data: venta } = await supabase.schema(SCHEMA)
+    .from("venta").select("id_venta").eq("id_lote", data.id_lote).neq("estado", "cancelada")
+    .order("id_venta", { ascending: false }).limit(1).maybeSingle();
+  const id_venta = venta?.id_venta ?? null;
+
+  res.json({ ...data, id_venta, estado: estadoMostrado(data, id_venta) });
 };
 
 exports.create = async (req, res) => {
@@ -69,9 +89,62 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const campos = (({ codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones }) =>
-    ({ codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones }))(req.body);
-  const { data, error } = await supabase.schema(SCHEMA).from("lote").update(campos).eq("id_lote", req.params.id).select().single();
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de lote inválido" });
+
+  const { data: actual, error: eRead } = await supabase.schema(SCHEMA)
+    .from("lote").select("precio_base").eq("id_lote", id).single();
+  if (eRead || !actual) return res.status(404).json({ error: "Lote no encontrado" });
+
+  const ALLOWED = ["id_proyecto", "codigo_lote", "area_m2", "precio_base", "descripcion", "manzana", "numero_lote", "dimensiones"];
+  const campos = {};
+  for (const k of ALLOWED) if (req.body[k] !== undefined) campos[k] = req.body[k];
+
+  if (campos.id_proyecto !== undefined &&
+      (isNaN(Number(campos.id_proyecto)) || Number(campos.id_proyecto) <= 0)) {
+    return res.status(422).json({ error: "Debe seleccionar un proyecto válido" });
+  }
+
+  if (campos.precio_base !== undefined &&
+      (isNaN(Number(campos.precio_base)) || Number(campos.precio_base) <= 0)) {
+    return res.status(422).json({ error: "El precio debe ser mayor a cero" });
+  }
+
+  const nuevoPrecio  = campos.precio_base !== undefined ? Number(campos.precio_base) : null;
+  const precioCambio = nuevoPrecio !== null && nuevoPrecio !== Number(actual.precio_base);
+
+  // RN-17/§8.4: a sold lote's value can't change in isolation — it would leave the cuotas plan
+  // descuadrado. The change must go through the venta's balanced plan editor (which also syncs
+  // precio_base back to the lote). Reject here so the price can never desync the plan.
+  if (precioCambio) {
+    const { data: venta } = await supabase.schema(SCHEMA)
+      .from("venta").select("id_venta")
+      .eq("id_lote", id).neq("estado", "cancelada")
+      .order("id_venta", { ascending: false }).limit(1).maybeSingle();
+    if (venta) {
+      return res.status(409).json({
+        error: "Este lote está vendido. Cambia su valor desde el plan de cuotas de la venta para mantener el cuadre exacto del plan.",
+        requiere_plan: true,
+        id_venta: venta.id_venta,
+      });
+    }
+  }
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("lote").update(campos).eq("id_lote", id).select().single();
   if (error) return res.status(400).json({ error: error.message });
+
+  if (precioCambio) {
+    await auditoria.log({
+      tabla:    "lote",
+      id,
+      campo:    "precio_base",
+      anterior: actual.precio_base,
+      nuevo:    nuevoPrecio,
+      usuario:  req.usuario?.email || "sistema",
+      motivo:   "edicion_lote",
+    });
+  }
+
   res.json(data);
 };
