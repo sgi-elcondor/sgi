@@ -126,3 +126,18 @@
 .table-wrap .btn {
   white-space: nowrap;
 }
+
+/* Bounded, internally-scrolling table container with a sticky header. Keeps the
+   horizontal scrollbar and the column headers reachable on long lists without
+   having to scroll the whole page up and down. */
+.sticky-table-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 17rem);
+}
+
+.sticky-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+}

@@ -42,7 +42,7 @@ window.paymentValidationView = async function() {
   }
   vc.innerHTML = `
     <div class="pv-page">
-      <div class="table-wrap" style="margin-bottom:0;border-radius:16px 16px 0 0">
+      <div class="table-wrap pv-sticky-bar" style="margin-bottom:0;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:5">
         <div class="table-header">
           <div>
             <h3>Validacion de Pagos</h3>
@@ -58,8 +58,21 @@ window.paymentValidationView = async function() {
             <button class="btn btn-primary" onclick="pvAcceptSelected()">Aceptar seleccionados</button>
           </div>` : ""}
         </div>
+        ${window.SGIUI.filterBar({ fields: [
+          { type: "search", id: "pv-buscar", placeholder: "Buscar por comprador, lote o ID de pago…", oninput: "_pvApplyFilter()", grow: true },
+          { type: "select", id: "pv-conf", label: "Confianza", value: "", onchange: "_pvApplyFilter()", options: [
+            { value: "",       label: "Todas" },
+            { value: "alta",   label: "Alta (≥ 80)" },
+            { value: "media",  label: "Media (50–79)" },
+            { value: "baja",   label: "Baja (< 50)" },
+            { value: "manual", label: "Revisión manual" },
+          ] },
+        ] })}
       </div>
       <div class="pv-cards" id="pv-cards-container">${matches.map((m, i) => _pvCard(m, i)).join('')}</div>
+      <div id="pv-no-results" style="display:none;padding:2rem;text-align:center;color:var(--text-muted)">
+        No hay coincidencias que coincidan con el filtro.
+      </div>
       ${canWrite ? `
       <div class="pv-footer">
         <button class="btn btn-primary btn-lg" onclick="pvAcceptSelected()">Aceptar pagos seleccionados</button>
@@ -107,7 +120,9 @@ function _pvCard(m, i) {
     </div>`;
 
   return `
-    <div class="pv-card" id="pv-card-${i}">
+    <div class="pv-card" id="pv-card-${i}"
+      data-score="${score}" data-manual="${manual ? 1 : 0}"
+      data-search="${`${compradorNombre || ''} ${loteInfo || ''} ${pago.id_pago}`.toLowerCase().replace(/"/g, '&quot;')}">
       <div class="pv-card-header">
         ${_pvScoreBadge(score, manual)}
         <div class="pv-indicators">
@@ -167,14 +182,42 @@ window._pvUpdateCount = function() {
   }
 };
 
+// Client-side filter for high-volume validation: narrow by text and confidence level.
+window._pvApplyFilter = function() {
+  const q    = (document.getElementById('pv-buscar')?.value || '').toLowerCase().trim();
+  const conf = document.getElementById('pv-conf')?.value || '';
+  let shown  = 0;
+  document.querySelectorAll('.pv-card').forEach(card => {
+    const score  = Number(card.dataset.score || 0);
+    const manual = card.dataset.manual === '1';
+    let okConf = true;
+    if      (conf === 'alta')   okConf = !manual && score >= 80;
+    else if (conf === 'media')  okConf = !manual && score >= 50 && score < 80;
+    else if (conf === 'baja')   okConf = !manual && score < 50;
+    else if (conf === 'manual') okConf = manual;
+    const okText  = !q || (card.dataset.search || '').includes(q);
+    const visible = okConf && okText;
+    card.style.display = visible ? '' : 'none';
+    if (visible) shown++;
+  });
+  const empty = document.getElementById('pv-no-results');
+  if (empty) empty.style.display = shown ? 'none' : 'block';
+};
+
 // Quick selection for high-volume validation (point 9).
+function _pvCardVisible(chk) {
+  const card = chk.closest('.pv-card');
+  return !card || card.style.display !== 'none';
+}
 window.pvSelectAll = function(flag) {
-  document.querySelectorAll('.pv-accept-chk').forEach(chk => { chk.checked = flag; });
+  document.querySelectorAll('.pv-accept-chk').forEach(chk => {
+    if (_pvCardVisible(chk)) chk.checked = flag;
+  });
   _pvUpdateCount();
 };
 window.pvSelectHigh = function() {
   document.querySelectorAll('.pv-accept-chk').forEach(chk => {
-    chk.checked = Number(chk.dataset.score || 0) >= 80;
+    if (_pvCardVisible(chk)) chk.checked = Number(chk.dataset.score || 0) >= 80;
   });
   _pvUpdateCount();
 };

@@ -323,12 +323,22 @@ window.facturasView = async function() {
       </div>`
     : "";
 
+  const emitidas  = data.filter(f => f.estado === "emitida").length;
+  const parciales = data.filter(f => f.estado === "parcialmente_pagada").length;
+  const porCobrar = data.filter(f => f.estado !== "anulada").reduce((s, f) => s + Number(f.valor_a_pagar || 0), 0);
+
   vc.innerHTML = `
+    ${window.SGIUI.statCards([
+      { label: "Facturas",         value: data.length,       sub: "Activas" },
+      { label: "Emitidas",         value: emitidas,          sub: "Pendientes de pago" },
+      { label: "Parcial. pagadas", value: parciales,         sub: "Con abonos" },
+      { label: "Por cobrar",       value: window.SGIUI.fmtCompactMoney(porCobrar), title: UI.fmt(porCobrar), sub: "Saldo facturado" },
+    ])}
     <div class="table-wrap">
       <div class="table-header">
         <div class="table-header-titles">
           <h3>Facturas por Venta</h3>
-          <span class="count-chip">${data.length} factura${data.length === 1 ? "" : "s"}</span>
+          <span class="count-chip" id="ff-count">${grupos.length} venta${grupos.length === 1 ? "" : "s"}</span>
         </div>
         ${puedeEscribir ? `<button class="btn btn-primary btn-sm" onclick="facturaForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
@@ -336,16 +346,23 @@ window.facturasView = async function() {
       ${solicitudesHtml}
       ${bannerHtml}
 
-      <div class="table-filters">
-        <select id="ff-proyecto" class="select-sm" style="flex:1;min-width:160px;">
-          <option value="">Todos los proyectos</option>
-          ${optsProyecto}
-        </select>
-        <input id="ff-comprador" type="text" class="filter-input" placeholder="Buscar comprador, lote, proyecto..."
-          style="flex:2;min-width:13rem">
-      </div>
+      ${window.SGIUI.filterBar({
+        fields: [
+          { type: "select", id: "ff-proyecto", label: "Proyecto", onchange: "window._ffFiltrar()",
+            options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
+          { type: "select", id: "ff-estado", label: "Estado", onchange: "window._ffFiltrar()", options: [
+            { value: "", label: "Todos los estados" },
+            { value: "emitida", label: "Emitida" },
+            { value: "parcialmente_pagada", label: "Parcial. pagada" },
+            { value: "pagada", label: "Pagada" },
+            { value: "anulada", label: "Anulada" },
+          ] },
+          { type: "search", id: "ff-comprador", label: "Buscar", placeholder: "Comprador, lote, proyecto o N° de factura…", grow: true, oninput: "window._ffFiltrar()" },
+        ],
+        actions: `<button class="btn btn-ghost btn-sm" onclick="window._ffLimpiar()">Limpiar</button>`,
+      })}
 
-      <div style="overflow-x:auto">
+      <div class="sticky-table-scroll">
         <table>
           <thead><tr>
             <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
@@ -362,20 +379,30 @@ window.facturasView = async function() {
 
   const tbody = document.getElementById("facturas-grupos-tbody");
 
-  function aplicarFiltros() {
-    const fProyecto  = document.getElementById("ff-proyecto").value;
-    const fBuscar    = document.getElementById("ff-comprador").value;
-    const visibles   = grupos.filter(g => {
+  window._ffFiltrar = function() {
+    const fProyecto = document.getElementById("ff-proyecto")?.value || "";
+    const fEstado   = document.getElementById("ff-estado")?.value || "";
+    const fBuscar   = document.getElementById("ff-comprador")?.value || "";
+    const visibles  = grupos.filter(g => {
       if (fProyecto && g.proyecto !== fProyecto) return false;
-      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto)) return false;
+      if (fEstado && !g.facturas.some(f => f.estado === fEstado)) return false;
+      const nums = g.facturas.map(f => f.numero_factura || "").join(" ");
+      if (!SGISearch.matches(fBuscar, g.comprador, g.codigo_lote, g.proyecto, nums)) return false;
       return true;
     });
     tbody.innerHTML = visibles.map(filaVenta).join("");
-    document.getElementById("facturas-grupos-empty").style.display = visibles.length ? "none" : "block";
-  }
-
-  document.getElementById("ff-proyecto").addEventListener("change", aplicarFiltros);
-  document.getElementById("ff-comprador").addEventListener("input", aplicarFiltros);
+    const empty = document.getElementById("facturas-grupos-empty");
+    if (empty) empty.style.display = visibles.length ? "none" : "block";
+    const cnt = document.getElementById("ff-count");
+    if (cnt) cnt.textContent = `${visibles.length} venta${visibles.length === 1 ? "" : "s"}`;
+  };
+  window._ffLimpiar = function() {
+    ["ff-proyecto", "ff-estado", "ff-comprador"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    window._ffFiltrar();
+  };
 
   tbody.addEventListener("click", e => {
     const btn = e.target.closest(".btn-ver-facturas");
