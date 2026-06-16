@@ -55,7 +55,7 @@ function _cuotasAgrupadasHTML(cuotas, filtro) {
            style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
         <span>
           <span id="gc-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-          Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
+          Venta ${SGIUI.ventaCode(g)} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
         </span>
         <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
           ${count} ítem${count !== 1 ? "s" : ""}
@@ -135,7 +135,7 @@ function _buildFacturaHTML(f) {
         { icon: "check",    label: "Estado de la factura", value: estado.label, badge: estado.badge },
         { icon: "receipt",  label: "N° de factura",        value: numDisplay },
         { icon: "user",     label: "Cliente",              value: f.comprador },
-        { icon: "briefcase",label: "N° de venta",          value: f.id_venta != null ? `#${f.id_venta}` : "" },
+        { icon: "briefcase",label: "N° de venta",          value: f.id_venta != null ? SGIUI.ventaCode(f) : "" },
         { icon: "pin",      label: "Proyecto / Lote",      value: [f.proyecto, f.codigo_lote].filter(x => x && x !== "—").join(" · ") },
         { icon: "calendar", label: "Fecha de emisión",     value: fechaEmision },
         { icon: "clock",    label: "Fecha de vencimiento", value: fmtD(f.fecha_vencimiento) },
@@ -195,11 +195,12 @@ window.facturasView = async function() {
     const key = f.id_venta ?? "none";
     if (!ventasMap.has(key)) {
       ventasMap.set(key, {
-        id_venta:    f.id_venta,
-        comprador:   f.comprador,
-        proyecto:    f.proyecto,
-        codigo_lote: f.codigo_lote,
-        facturas:    [],
+        id_venta:     f.id_venta,
+        codigo_venta: f.codigo_venta,
+        comprador:    f.comprador,
+        proyecto:     f.proyecto,
+        codigo_lote:  f.codigo_lote,
+        facturas:     [],
       });
     }
     ventasMap.get(key).facturas.push(f);
@@ -221,7 +222,7 @@ window.facturasView = async function() {
       anuladas ? `<span class="badge badge-danger">${anuladas} anulada${anuladas>1?"s":""}</span>` : "",
     ].filter(Boolean).join(" ");
     return `<tr data-grupo-key="${g.id_venta ?? "none"}" style="cursor:pointer">
-      <td>${g.id_venta ? `<strong>#${g.id_venta}</strong>` : "—"}</td>
+      <td>${g.id_venta ? `<strong>${SGIUI.ventaCode(g)}</strong>` : "—"}</td>
       <td>${g.comprador}</td>
       <td>${g.proyecto !== "—" ? `${g.proyecto} · <strong>${g.codigo_lote}</strong>` : "—"}</td>
       <td style="text-align:center"><strong>${g.facturas.length}</strong></td>
@@ -365,7 +366,7 @@ window.facturasView = async function() {
       <div class="sticky-table-scroll">
         <table>
           <thead><tr>
-            <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
+            <th>Venta</th><th>Comprador</th><th>Proyecto / Lote</th>
             <th style="text-align:center">Facturas</th><th>Estados</th>
             <th style="text-align:right">Total facturado</th><th></th>
           </tr></thead>
@@ -437,21 +438,13 @@ window.facturasView = async function() {
     });
   }
 
+  window._facturasSinFactura = sinFactura;
+
   const banner = document.getElementById("sin-factura-banner");
   if (banner) {
     banner.addEventListener("click", async e => {
       if (e.target.closest(".btn-generar-todas")) {
-        if (!confirm(`¿Generar factura para las ${sinFactura.length} cuotas vencidas?`)) return;
-        const btn = e.target.closest(".btn-generar-todas");
-        btn.disabled = true; btn.textContent = "Generando...";
-        try {
-          const r = await API.post("/facturas/generar-pendientes", {});
-          UI.toast(`${r.generadas} factura${r.generadas!==1?"s":""} generada${r.generadas!==1?"s":""}`, "ok");
-          facturasView();
-        } catch(err) {
-          UI.toast(err.message, "error");
-          btn.disabled = false; btn.textContent = "Generar todas";
-        }
+        abrirPreviewGenerar(window._facturasSinFactura || []);
         return;
       }
       const btn = e.target.closest(".btn-generar-factura");
@@ -461,6 +454,138 @@ window.facturasView = async function() {
       facturaForm(JSON.parse(decodeURIComponent(row.dataset.cuota)));
     });
   }
+};
+
+// ── Generación automática con revisión previa (Tarea 6) ──────────────────────
+// §4.3 (regla absoluta): "El valor de la factura debe ser EXACTAMENTE el saldo pendiente
+// de la cuota/fracción en el momento de emisión". Por eso el valor NO es editable aquí:
+// cambiarlo descuadraría el plan (Σcuotas = valor financiado). El aux puede revisar y
+// editar la FECHA DE EMISIÓN y las OBSERVACIONES; si el monto no es correcto, debe ajustar
+// el PLAN DE CUOTAS (editor con cuadre), no la factura. El número de factura lo asigna el
+// sistema al emitir. La emisión usa POST /facturas, que factura el saldo exacto (RN-03/RN-10).
+window.abrirPreviewGenerar = function(items) {
+  if (!items || !items.length) {
+    UI.toast("No hay cuotas vencidas sin factura.", "error");
+    return;
+  }
+
+  const rows = items.map((c, i) => ({
+    idx:         i,
+    id_cuota:    c.id_cuota,
+    id_fraccion: c.id_fraccion || null,
+    comprador:   c.comprador,
+    proyecto:    c.proyecto,
+    codigo_lote: c.codigo_lote,
+    codigo_venta: c.codigo_venta || null,
+    id_venta:    c.id_venta,
+    numero_cuota: c.numero_cuota,
+    numero_fraccion: c.numero_fraccion || null,
+    total_fracciones: c.total_fracciones || null,
+    fecha_vencimiento: c.fecha_vencimiento,
+    saldo:       Number(c.valor_cuota) || 0,   // saldo pendiente de la cuota/fracción (§4.3)
+    fecha:       new Date().toISOString().split("T")[0],
+    obs:         "",
+  }));
+
+  const filaHTML = (r) => {
+    const cuotaLabel = r.id_fraccion
+      ? `#${r.numero_cuota} · Frac ${r.numero_fraccion}/${r.total_fracciones}`
+      : `#${r.numero_cuota}`;
+    return `<tr data-idx="${r.idx}">
+      <td style="font-size:.82rem">${r.comprador}<br><span style="color:var(--text-muted);font-size:.76rem">Venta ${SGIUI.ventaCode(r)} · ${r.proyecto} · ${r.codigo_lote}</span></td>
+      <td style="text-align:center;white-space:nowrap">${cuotaLabel}</td>
+      <td style="white-space:nowrap;color:var(--text-muted);font-size:.8rem">${UI.date(r.fecha_vencimiento)}</td>
+      <td style="text-align:center;color:var(--text-muted);font-size:.78rem;font-style:italic">Automático</td>
+      <td><input type="date" class="gp-fecha" data-idx="${r.idx}" value="${r.fecha}" style="width:9.25rem"></td>
+      <td style="text-align:right;white-space:nowrap"><strong>${UI.fmt(r.saldo)}</strong><br>
+        <button type="button" class="btn btn-ghost btn-sm gp-plan" data-idx="${r.idx}" style="font-size:.72rem;padding:.1rem .4rem;color:var(--text-muted)" title="Para cambiar el monto, ajusta el plan de cuotas (debe cuadrar)">Ajustar plan</button></td>
+      <td><input type="text" class="gp-obs" data-idx="${r.idx}" placeholder="Opcional" value="" style="min-width:9rem"></td>
+    </tr>`;
+  };
+
+  UI.openModal(`Generar facturas — revisar antes de emitir`, `
+    <div style="margin-bottom:.75rem;padding:.625rem .875rem;background:var(--surface-2,#f0f4f8);border-radius:.5rem;font-size:.84rem;line-height:1.6">
+      Vas a emitir <b>${rows.length} factura${rows.length !== 1 ? "s" : ""}</b>. Puedes editar la <b>fecha de emisión</b>
+      y las <b>observaciones</b>. El <b>valor es el saldo exacto</b> de la cuota (regla §4.3) y no se edita aquí:
+      si el monto no es correcto, usa <b>Ajustar plan</b> para reajustar el plan de cuotas (debe cuadrar con el valor financiado).
+      El <b>número de factura</b> lo asigna el sistema al emitir.
+    </div>
+    <div style="max-height:50vh;overflow:auto;border:1px solid var(--border);border-radius:.5rem">
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <thead>
+          <tr style="font-size:.72rem;color:var(--text-muted);position:sticky;top:0;background:var(--surface)">
+            <th style="padding:.5rem;text-align:left">Comprador / Venta</th>
+            <th style="padding:.5rem;text-align:center">Cuota</th>
+            <th style="padding:.5rem;text-align:left">Vence</th>
+            <th style="padding:.5rem;text-align:center">N° factura</th>
+            <th style="padding:.5rem;text-align:left">Fecha emisión</th>
+            <th style="padding:.5rem;text-align:right">Valor (saldo)</th>
+            <th style="padding:.5rem;text-align:left">Observaciones</th>
+          </tr>
+        </thead>
+        <tbody id="gp-rows">${rows.map(filaHTML).join("")}</tbody>
+      </table>
+    </div>
+    <div id="gp-msg" style="font-size:.8rem;color:var(--text-muted);margin:.6rem 0"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="gp-emitir">Emitir ${rows.length} factura${rows.length !== 1 ? "s" : ""}</button>
+    </div>`);
+
+  document.querySelectorAll("#gp-rows .gp-fecha").forEach(inp => {
+    const i = Number(inp.dataset.idx);
+    inp.addEventListener("input", () => { rows[i].fecha = inp.value; });
+  });
+  document.querySelectorAll("#gp-rows .gp-obs").forEach(inp => {
+    const i = Number(inp.dataset.idx);
+    inp.addEventListener("input", () => { rows[i].obs = inp.value; });
+  });
+
+  // "Ajustar plan": changing the amount means changing the cuota, which must keep
+  // Σcuotas = valor financiado. Send the aux to the balanced plan editor of that venta.
+  document.querySelectorAll("#gp-rows .gp-plan").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const r = rows[Number(btn.dataset.idx)];
+      if (!r?.id_venta) return UI.toast("No se pudo identificar la venta.", "error");
+      if (typeof window._editarPlanCuotas !== "function") {
+        return UI.toast("Abre la venta en el módulo Ventas para ajustar su plan de cuotas.", "error");
+      }
+      UI.closeModal();
+      window._editarPlanCuotas(r.id_venta, null, { returnTo: "facturas" });
+    });
+  });
+
+  document.getElementById("gp-emitir")?.addEventListener("click", async () => {
+    for (const r of rows) {
+      if (!r.fecha) return UI.toast(`Falta la fecha de emisión en la cuota #${r.numero_cuota}`, "error");
+    }
+
+    const btn = document.getElementById("gp-emitir");
+    btn.disabled = true;
+    const msg = document.getElementById("gp-msg");
+
+    // §4.3: do NOT send valor_facturado — the backend bills the exact pending saldo.
+    let ok = 0, fail = 0;
+    for (const r of rows) {
+      btn.textContent = `Emitiendo ${ok + fail + 1}/${rows.length}...`;
+      try {
+        await API.post("/facturas", {
+          id_cuota:      r.id_cuota,
+          id_fraccion:   r.id_fraccion,
+          fecha_emision: r.fecha,
+          observaciones: r.obs?.trim() || null,
+        });
+        ok++;
+      } catch (e) {
+        fail++;
+        if (msg) msg.innerHTML = `<span style="color:var(--danger)">Cuota #${r.numero_cuota}: ${e.message}</span>`;
+      }
+    }
+
+    UI.closeModal();
+    UI.toast(`${ok} factura${ok !== 1 ? "s" : ""} emitida${ok !== 1 ? "s" : ""}${fail ? ` · ${fail} con error` : ""}`, fail ? "error" : "ok");
+    facturasView();
+  });
 };
 
 // ── Vista detalle: facturas de una venta ─────────────────────────────────────
@@ -496,7 +621,7 @@ window.facturasDeVentaView = function(grupo) {
       <div class="table-header">
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn btn-ghost btn-sm" onclick="facturasView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
-          <h3>Facturas &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
+          <h3>Facturas &mdash; Venta ${grupo.id_venta ? SGIUI.ventaCode(grupo) : "sin venta"}</h3>
         </div>
         ${esAuxiliar ? `<button class="btn btn-primary btn-sm" onclick="facturaForm(null,${grupo.id_venta})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Factura</button>` : ""}
       </div>
@@ -584,8 +709,11 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
   } catch(e) {}
   window._facturaCuotas = cuotas;
 
+  const ctxCode = idVentaCtx
+    ? (cuotas.find(c => c.id_venta === idVentaCtx)?.codigo_venta || `#${idVentaCtx}`)
+    : "";
   const ctxLabel = idVentaCtx
-    ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta #${idVentaCtx}</span>`
+    ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta ${ctxCode}</span>`
     : "";
 
   const cuotaSection = cuotaPresel
@@ -606,6 +734,7 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
          </div>
          <input type="hidden" id="f_id_cuota" value="${cuotaPresel.id_cuota}">
          <input type="hidden" id="f_id_fraccion" value="${cuotaPresel.id_fraccion || ''}">
+         <input type="hidden" id="f_id_venta" value="${cuotaPresel.id_venta || ''}">
        </div>`
     : `<div class="form-group" style="grid-column:1/-1">
          <label>Cuota *${ctxLabel}</label>
@@ -613,6 +742,7 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
                 oninput="_filtrarCuotasFactura()" autocomplete="off" style="margin-bottom:6px">
          <input type="hidden" id="f_id_cuota">
          <input type="hidden" id="f_id_fraccion">
+         <input type="hidden" id="f_id_venta" value="${idVentaCtx || ''}">
          <div id="f_cuota_lista"
               style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 12px">
            ${_cuotasAgrupadasHTML(cuotas, "")}
@@ -623,7 +753,14 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
     <div class="form-grid">
       ${cuotaSection}
       <div class="form-group"><label>Fecha de Emisión *</label><input id="f_fe" type="date" value="${hoy}"/></div>
-      <div class="form-group"><label>Valor *</label><input id="f_vf" type="text" inputmode="numeric" value="${cuotaPresel ? _fmtMiles(cuotaPresel.valor_cuota) : ""}"/></div>
+      <div class="form-group">
+        <label>Valor (saldo de la cuota)</label>
+        <input id="f_vf" type="text" readonly value="${cuotaPresel ? _fmtMiles(cuotaPresel.valor_cuota) : ""}" style="background:var(--surface-2,#f0f4f8);cursor:not-allowed">
+        <small style="display:block;color:var(--text-muted);font-size:.76rem;margin-top:.25rem">
+          Es el saldo pendiente y no se edita (regla §4.3). Para cambiar el monto,
+          <button type="button" id="f_ajustar_plan" class="btn btn-ghost btn-sm" style="padding:0 .4rem;font-size:.76rem">ajusta el plan de cuotas</button>.
+        </small>
+      </div>
       <div class="form-group" style="grid-column:1/-1"><label>Observaciones</label><textarea id="f_obs" rows="2"></textarea></div>
     </div>
     <div class="form-actions">
@@ -638,29 +775,58 @@ window.facturaForm = async function(cuotaPresel = null, idVentaCtx = null, resum
         if (e.target.type !== "radio") return;
         document.getElementById("f_id_cuota").value      = e.target.value;
         document.getElementById("f_id_fraccion").value   = e.target.dataset.fraccion || "";
+        document.getElementById("f_id_venta").value      = e.target.dataset.idVenta || "";
         document.getElementById("f_vf").value            = _fmtMiles(e.target.dataset.valor);
       });
     }
   }
 
-  const vf = document.getElementById("f_vf");
-  if (vf) MoneyInput.init(vf);
+  // §4.3: the factura value cannot be edited; changing the amount means reajustar the cuota
+  // plan (Σcuotas = valor financiado). Route the aux to the balanced plan editor.
+  document.getElementById("f_ajustar_plan")?.addEventListener("click", () => {
+    const idVenta = Number(document.getElementById("f_id_venta")?.value || 0);
+    if (!idVenta) return UI.toast("Selecciona primero una cuota para identificar su venta.", "error");
+    if (typeof window._editarPlanCuotas !== "function") {
+      return UI.toast("Abre la venta en el módulo Ventas para ajustar su plan de cuotas.", "error");
+    }
+    UI.closeModal();
+    window._editarPlanCuotas(idVenta, null, { returnTo: "facturas" });
+  });
+};
+
+// Reopen the generation preview for a venta after its plan was reajusted: the cuotas whose
+// value changed had their factura auto-annulled, so they reappear here (with the new value
+// and date) ready to be re-emitted/approved. §4.3.
+window.regenerarFacturasVenta = async function(idVenta) {
+  let sin = [];
+  try { sin = await API.get("/facturas/cuotas-sin-factura"); } catch (_) {}
+  const items = (sin || []).filter(c => c.id_venta === idVenta);
+  // Ensure the underlying view is Facturas (this may be invoked from the Cuotas reajuste).
+  if (typeof window.navigate === "function" && window.location.hash !== "#facturas") {
+    navigate("facturas");
+  } else if (typeof window.facturasView === "function") {
+    facturasView();
+  }
+  if (!items.length) {
+    UI.toast("Tras el reajuste no hay cuotas vencidas pendientes de factura para esta venta.", "info");
+    return;
+  }
+  setTimeout(() => window.abrirPreviewGenerar(items), 120);
 };
 
 window.guardarFactura = async function() {
   const id_cuota_str    = document.getElementById("f_id_cuota")?.value;
   const id_fraccion_str = document.getElementById("f_id_fraccion")?.value;
   const fecha_emision   = document.getElementById("f_fe").value;
-  const valor_facturado = Number((document.getElementById("f_vf").value || "").replace(/\./g, ""));
   const observaciones   = document.getElementById("f_obs").value;
 
-  if (!id_cuota_str)                            return UI.toast("Seleccione una cuota", "error");
-  if (!fecha_emision)                           return UI.toast("Ingrese la fecha de emisión", "error");
-  if (!valor_facturado || valor_facturado <= 0) return UI.toast("El valor debe ser mayor a 0", "error");
+  if (!id_cuota_str)  return UI.toast("Seleccione una cuota", "error");
+  if (!fecha_emision) return UI.toast("Ingrese la fecha de emisión", "error");
 
+  // §4.3: do NOT send valor_facturado — the backend bills the exact pending saldo of the
+  // cuota/fracción. Changing the amount must go through the balanced plan editor.
   const body = {
     fecha_emision,
-    valor_facturado,
     observaciones,
     id_cuota:    +id_cuota_str,
     id_fraccion: id_fraccion_str ? +id_fraccion_str : null,

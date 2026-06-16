@@ -156,7 +156,7 @@ exports.getAll = async (req, res) => {
           cuota_pago(valor_aplicado, pago:id_pago(estado, numero_pago, recibo_pago(recibo:id_recibo(numero_recibo)))),
           cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
           venta(
-            id_venta,
+            id_venta, codigo_venta,
             lote(codigo_lote, proyecto(nombre)),
             venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
@@ -207,6 +207,7 @@ exports.getAll = async (req, res) => {
       observaciones:     f.observaciones,
       id_fraccion:       link?.id_fraccion         ?? null,
       id_venta:          cuota?.venta?.id_venta    ?? null,
+      codigo_venta:      cuota?.venta?.codigo_venta ?? null,
       id_cuota:          cuota?.id_cuota           ?? null,
       numero_cuota:      cuota?.numero_cuota        ?? null,
       numero_pago:       numeroPago,
@@ -231,7 +232,7 @@ exports.getCuotasSinFactura = async (req, res) => {
       cuota_factura(id_cuota, id_fraccion, factura:id_factura(estado)),
       cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
       venta(
-        id_venta,
+        id_venta, codigo_venta,
         estado,
         lote(codigo_lote, proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos))
@@ -252,6 +253,7 @@ exports.getCuotasSinFactura = async (req, res) => {
     const base = {
       id_cuota:          c.id_cuota,
       id_venta:          c.venta?.id_venta ?? null,
+      codigo_venta:      c.venta?.codigo_venta ?? null,
       estado_venta:      c.venta?.estado   ?? null,
       numero_cuota:      c.numero_cuota,
       fecha_vencimiento: c.fecha_vencimiento,
@@ -394,7 +396,7 @@ exports.getMisFacturas = async (req, res) => {
       cuota_factura(id_fraccion, factura:id_factura(id_factura, numero_factura, valor_facturado, estado, fecha_emision)),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion),
       cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
-      venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
+      venta:id_venta(codigo_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
     `)
     .in("id_venta", ventaIds)
     .neq("estado", "pagada");
@@ -451,6 +453,7 @@ exports.getMisFacturas = async (req, res) => {
         numero_cuota:      c.numero_cuota,
         fecha_vencimiento: c.fecha_vencimiento,
         id_venta:          c.id_venta,
+        codigo_venta:      c.venta?.codigo_venta  ?? null,
         proyecto:          lote?.proyecto?.nombre ?? "—",
         codigo_lote:       lote?.codigo_lote      ?? "—",
       });
@@ -524,7 +527,7 @@ exports.getSolicitudes = async (req, res) => {
       usuario:id_usuario(nombres, apellidos, documento),
       cuota:id_cuota(
         numero_cuota, fecha_vencimiento, valor_cuota, estado,
-        venta:id_venta(id_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
+        venta:id_venta(id_venta, codigo_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)))
       )
     `)
     .eq("estado", "pendiente")
@@ -539,6 +542,7 @@ exports.getSolicitudes = async (req, res) => {
       id_solicitud:      s.id_solicitud,
       id_cuota:          s.id_cuota,
       id_venta:          cuota?.venta?.id_venta ?? null,
+      codigo_venta:      cuota?.venta?.codigo_venta ?? null,
       numero_cuota:      cuota?.numero_cuota ?? null,
       fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
       valor_cuota:       cuota?.valor_cuota ?? null,

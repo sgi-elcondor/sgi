@@ -147,7 +147,7 @@ function _renderComisionCard(vc) {
         style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:1rem 1.125rem;gap:1rem;flex-wrap:wrap;user-select:none">
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            Venta #${v.id_venta} &middot; ${UI.date(v.fecha_venta)}
+            Venta ${SGIUI.ventaCode(v)} &middot; ${UI.date(v.fecha_venta)}
           </div>
           <div style="color:var(--text-muted);font-size:.78rem;margin-top:.15rem">
             ${proyecto} &middot; ${lote} &middot; ${compradores}
@@ -404,6 +404,7 @@ function _abrirReciboMicropago({ result, vc }) {
     nota:           result.nota,
     comisionista:   nombre,
     id_venta:       v.id_venta,
+    codigo_venta:   v.codigo_venta,
     proyecto,
     lote,
     comprador,
@@ -472,7 +473,7 @@ function _buildReciboComisionHTML(d) {
       fields: [
         { icon: "receipt",  label: "N° de recibo",  value: d.numero_recibo },
         { icon: "user",     label: "Comisionista",  value: d.comisionista },
-        { icon: "briefcase",label: "N° de venta",   value: d.id_venta != null ? `#${d.id_venta}` : "" },
+        { icon: "briefcase",label: "N° de venta",   value: d.id_venta != null ? SGIUI.ventaCode(d) : "" },
         { icon: "pin",      label: "Proyecto",      value: d.proyecto },
         { icon: "map",      label: "Lote",          value: d.lote },
         { icon: "user",     label: "Comprador",     value: d.comprador },

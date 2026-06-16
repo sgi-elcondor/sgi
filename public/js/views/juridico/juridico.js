@@ -55,7 +55,7 @@ window.juridicoView = async function () {
     body.innerHTML = `
       <table id="jur_cartera_table">
         <thead><tr>
-          <th>#</th>
+          <th>Venta</th>
           <th>Proyecto / Lote</th>
           <th>Comprador</th>
           <th>Estado</th>
@@ -71,7 +71,7 @@ window.juridicoView = async function () {
               : `<button class="btn btn-ghost btn-sm" disabled title="Sin id_venta en la respuesta">Sin ID</button>`;
             return `
               <tr>
-                <td>${id ?? "—"}</td>
+                <td>${id != null ? `<strong>${SGIUI.ventaCode(v)}</strong>` : "—"}</td>
                 <td style="font-size:.82rem">${v.proyecto ?? v.nombre_proyecto ?? "—"} / ${v.codigo_lote ?? v.lote ?? "—"}</td>
                 <td style="font-size:.82rem">${v.comprador ?? v.cliente ?? v.nombres ?? "—"}</td>
                 <td>${estadoBadge(v.estado ?? v.estado_venta)}</td>
@@ -126,7 +126,7 @@ window.juridicoView = async function () {
       return;
     }
 
-    titleEl.innerHTML = `Venta #${venta.id_venta} &mdash; ${UI.badge(venta.estado)}`;
+    titleEl.innerHTML = `Venta ${SGIUI.ventaCode(venta)} &mdash; ${UI.badge(venta.estado)}`;
 
     const compradoresHtml = (() => {
       const comps = venta.venta_comprador || [];
@@ -308,7 +308,7 @@ window.juridicoView = async function () {
         ["Proyecto",      proyecto],
         ["Codigo lote",   codigoLote],
         ["Manzana / Lote", `${lote.manzana ?? "—"} / ${lote.numero_lote ?? "—"}`],
-        ["Venta #",        String(venta.id_venta)],
+        ["Venta",          SGIUI.ventaCode(venta)],
         ["Fecha de venta", UI.date(venta.fecha_venta)],
         ["Valor total",    UI.fmt(venta.valor_total)],
       ],

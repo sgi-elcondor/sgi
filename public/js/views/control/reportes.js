@@ -621,7 +621,7 @@ function _renderComisionesRows(rows) {
           <span id="rep_chev_${vid}" style="display:inline-block;transition:transform .2s ease;font-size:.75rem">&#9660;</span>
         </td>
         <td>${comisionista}</td>
-        <td>#${r.venta?.id_venta || vid}</td>
+        <td>${r.venta?.codigo_venta || `#${r.venta?.id_venta || vid}`}</td>
         <td style="white-space:nowrap">${lote}</td>
         <td>${proyecto}</td>
         <td style="text-align:right;font-weight:600">${UI.fmt(r.valor_comision)}</td>

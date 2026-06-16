@@ -118,7 +118,7 @@ exports.getComisionesGerencia = async (req, res) => {
       id_venta, valor_comision, pagada, fecha_ganada, fecha_pagado, estado,
       usuario:id_usuario(nombres, apellidos),
       venta:id_venta(
-        id_venta, fecha_venta, valor_total, total_permutas,
+        id_venta, codigo_venta, fecha_venta, valor_total, total_permutas,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos))
       )
