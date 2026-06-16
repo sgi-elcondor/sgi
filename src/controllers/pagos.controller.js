@@ -141,6 +141,7 @@ exports.getAll = async (req, res) => {
       id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
       estado, url_baucher, numero_cuenta_origen, tipo_pago, id_venta,
       venta:id_venta(
+        codigo_venta,
         lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos))
       ),
@@ -174,6 +175,7 @@ exports.getAll = async (req, res) => {
       numero_cuenta_origen: p.numero_cuenta_origen,
       tipo_pago:            p.tipo_pago,
       id_venta:             p.id_venta,
+      codigo_venta:         p.venta?.codigo_venta ?? null,
       comprador:            comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—",
       proyecto:             lote?.proyecto?.nombre ?? "—",
       codigo_lote:          lote?.codigo_lote      ?? "—",
@@ -192,7 +194,7 @@ const PAGO_DETALLE_SELECT = `
   id_pago, numero_pago, fecha_pago, valor_pago, metodo_pago, referencia,
   estado, url_baucher, numero_cuenta_origen, tipo_pago, id_venta, id_cuota_propuesta, id_usuario,
   venta:id_venta(
-    id_venta,
+    id_venta, codigo_venta,
     lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
     venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
   ),
@@ -216,6 +218,7 @@ function _shapePagoDetalle(p) {
   const comprador   = comp ? `${comp.nombres} ${comp.apellidos || ""}`.trim() : "—";
   const documento   = comp?.documento ?? null;
   const id_venta    = venta?.id_venta ?? p.id_venta ?? null;
+  const codigo_venta = venta?.codigo_venta ?? null;
 
   // The factura this pago relates to: prefer the cuota's active/paid factura, skip anuladas.
   const facturas   = (cuota?.cuota_factura || []).map(cf => cf.factura).filter(Boolean);
@@ -234,7 +237,7 @@ function _shapePagoDetalle(p) {
     fecha_emision:     facturaRaw.fecha_emision,
     valor_facturado:   facturaRaw.valor_facturado,
     observaciones:     facturaRaw.observaciones,
-    id_venta,
+    id_venta, codigo_venta,
     comprador, proyecto, codigo_lote,
     numero_cuota:      cuota?.numero_cuota ?? null,
     fecha_vencimiento: cuota?.fecha_vencimiento ?? null,
@@ -252,7 +255,7 @@ function _shapePagoDetalle(p) {
     metodo_pago:    p.metodo_pago,
     referencia:     p.referencia,
     fecha_pago:     p.fecha_pago,
-    id_venta,
+    id_venta, codigo_venta,
     comprador, documento, proyecto, codigo_lote,
     numero_cuota:   cuota?.numero_cuota         ?? null,
     numero_factura: facturaRaw?.numero_factura  ?? null,
@@ -270,7 +273,7 @@ function _shapePagoDetalle(p) {
     tipo_pago:            p.tipo_pago,
     url_baucher:          p.url_baucher,
     numero_cuenta_origen: p.numero_cuenta_origen,
-    id_venta,
+    id_venta, codigo_venta,
     numero_cuota:         cuota?.numero_cuota ?? null,
     comprador, documento, proyecto, codigo_lote,
     factura,
@@ -512,7 +515,7 @@ exports.getContrast = async (req, res) => {
   // cross-match; efectivo/cheque/permuta always go to manual review.
   const { data: payments, error: ep } = await supabase.schema(SCHEMA)
     .from('pago')
-    .select('*, usuario:id_usuario(nombres, apellidos), venta:id_venta(lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre))), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
+    .select('*, usuario:id_usuario(nombres, apellidos), venta:id_venta(codigo_venta, lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre))), cuota_pago(id_cuota, valor_aplicado, cuota:id_cuota(numero_cuota))')
     .eq('estado', 'pendiente_revision');
 
   if (ep) return res.status(500).json({ error: ep.message });

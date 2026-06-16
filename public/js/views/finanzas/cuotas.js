@@ -1,25 +1,16 @@
 (function () {
 
-window.cuotasView = async function() {
-  const vc = document.getElementById("viewContainer");
-  vc.innerHTML = UI.loader();
+  // ── Module state (shared between the master "Cuotas por Venta" list and the
+  //    per-venta detail view, mirroring the pagos.js pattern) ────────────────────
+  let _cuotas    = [];   // all pending cuotas (flat)
+  let _cuotasMap = {};    // by id_cuota
+  let _grupos    = [];    // grouped by venta
+  let _activeGroupKey = null; // key of the venta shown in detail, or null on master
+  let esAuxiliar = false;
+  let canPagar   = false;
+  let mostrarAcciones = false;
 
-  const data = await API.get("/cuotas/pendientes").catch(e => {
-    vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
-    return null;
-  });
-  if (!data) return;
-
-  const esAuxiliar      = AppState.can('cuotas', 'editar_valores');
-  const canPagar        = AppState.can('pagos', 'crear');
-  const mostrarAcciones = esAuxiliar || canPagar;
-
-  const cuotasMap = {};
-  data.forEach(c => { cuotasMap[c.id_cuota] = c; });
-
-  function norm(s) {
-    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  }
+  function groupKey(c) { return String(c.id_venta ?? c.codigo_venta ?? "none"); }
 
   function diasCell(dias) {
     if (dias > 0)   return `<span class="badge badge-danger">${dias} días atraso</span>`;
@@ -27,7 +18,7 @@ window.cuotasView = async function() {
     return `<span class="badge badge-success">En ${Math.abs(dias)} días</span>`;
   }
 
-  function filaVista(c) {
+  function accionesCuota(c) {
     const acciones = [];
     if (esAuxiliar && c.estado !== "pagada") {
       acciones.push(`<button class="btn btn-ghost btn-sm btn-cuota-editar" data-id="${c.id_cuota}">Editar</button>`);
@@ -35,19 +26,21 @@ window.cuotasView = async function() {
     }
     if (canPagar)
       acciones.push(`<button class="btn btn-primary btn-sm btn-cuota-pagar" data-id="${c.id_cuota}">Pagar</button>`);
-    const accionesCell = mostrarAcciones
-      ? `<td style="white-space:nowrap">${acciones.join(" ")}</td>`
-      : "";
+    return acciones.join(" ");
+  }
+
+  // Detail row: a single cuota of the opened venta (proyecto/lote/comprador live in the header).
+  function filaCuota(c) {
     const fracBadge = c.tiene_fracciones
       ? `<button class="badge badge-info btn-cuota-ver-fracciones" data-id="${c.id_cuota}"
            style="margin-left:.375rem;font-size:.7rem;cursor:pointer;border:none;padding:.2rem .45rem">
            Subdividida ↗
          </button>`
       : "";
+    const accionesCell = mostrarAcciones
+      ? `<td style="white-space:nowrap">${accionesCuota(c)}</td>`
+      : "";
     return `<tr data-id="${c.id_cuota}">
-      <td>${c.proyecto}</td>
-      <td>${c.codigo_lote}</td>
-      <td>${c.comprador}</td>
       <td>${c.numero_cuota}${fracBadge}</td>
       <td>${UI.date(c.fecha_vencimiento)}</td>
       <td>${diasCell(c.dias_atraso)}</td>
@@ -58,126 +51,224 @@ window.cuotasView = async function() {
     </tr>`;
   }
 
-  // Unique options for the filter selects
-  const proyectos = [...new Set(data.map(c => c.proyecto))].sort();
-  const estados   = [...new Set(data.map(c => c.estado))].sort();
+  // ── Master list: cuotas grouped by venta ──────────────────────────────────────
 
-  const optsProyecto = proyectos.map(p => `<option value="${p}">${p}</option>`).join("");
-  const optsEstado   = estados.map(s => `<option value="${s}">${s}</option>`).join("");
+  window.cuotasView = async function() {
+    const vc = document.getElementById("viewContainer");
+    vc.innerHTML = UI.loader();
 
-  const thAcciones = mostrarAcciones ? "<th>Acciones</th>" : "";
-  const cuotasVencidas  = data.filter(c => Number(c.dias_atraso) > 0).length;
-  const cuotasHoy       = data.filter(c => Number(c.dias_atraso) === 0).length;
-  const cuotasPorCobrar = data.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
-  vc.innerHTML = `
-    ${window.SGIUI.statCards([
-      { label: "Cuotas",     value: data.length,             sub: "Pendientes" },
-      { label: "Vencidas",   value: cuotasVencidas,          sub: "En atraso", tone: cuotasVencidas ? "danger" : "" },
-      { label: "Vencen hoy", value: cuotasHoy,               sub: "Atención",  tone: cuotasHoy ? "warning" : "" },
-      { label: "Por cobrar", value: window.SGIUI.fmtCompactMoney(cuotasPorCobrar), title: UI.fmt(cuotasPorCobrar), sub: "Saldo pendiente" },
-    ])}
-    <div class="table-wrap">
-      <div class="table-header">
-        <div class="table-header-titles">
-          <h3>Cuotas Pendientes</h3>
-          <span class="count-chip" id="cuotas-count">${data.length} ${data.length === 1 ? "cuota" : "cuotas"}</span>
+    const data = await API.get("/cuotas/pendientes").catch(e => {
+      vc.innerHTML = `<p style="color:var(--danger)">${e.message}</p>`;
+      return null;
+    });
+    if (!data) return;
+
+    _activeGroupKey = null;
+    esAuxiliar      = AppState.can('cuotas', 'editar_valores');
+    canPagar        = AppState.can('pagos', 'crear');
+    mostrarAcciones = esAuxiliar || canPagar;
+
+    _cuotas    = data;
+    _cuotasMap = {};
+    data.forEach(c => { _cuotasMap[c.id_cuota] = c; });
+
+    const ventasMap = new Map();
+    data.forEach(c => {
+      const k = groupKey(c);
+      if (!ventasMap.has(k)) {
+        ventasMap.set(k, {
+          id_venta:     c.id_venta,
+          codigo_venta: c.codigo_venta,
+          comprador:    c.comprador,
+          documento:    c.documento,
+          proyecto:     c.proyecto,
+          codigo_lote:  c.codigo_lote,
+          cuotas:       [],
+        });
+      }
+      ventasMap.get(k).cuotas.push(c);
+    });
+    _grupos = [...ventasMap.values()].sort((a, b) => (b.id_venta || 0) - (a.id_venta || 0));
+
+    const proyectos = [...new Set(data.map(c => c.proyecto))].filter(p => p && p !== "—").sort();
+    const estados   = [...new Set(data.map(c => c.estado))].sort();
+
+    const cuotasVencidas  = data.filter(c => Number(c.dias_atraso) > 0).length;
+    const cuotasHoy       = data.filter(c => Number(c.dias_atraso) === 0).length;
+    const cuotasPorCobrar = data.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
+
+    vc.innerHTML = `
+      ${window.SGIUI.statCards([
+        { label: "Cuotas",     value: data.length,             sub: "Pendientes" },
+        { label: "Vencidas",   value: cuotasVencidas,          sub: "En atraso", tone: cuotasVencidas ? "danger" : "" },
+        { label: "Vencen hoy", value: cuotasHoy,               sub: "Atención",  tone: cuotasHoy ? "warning" : "" },
+        { label: "Por cobrar", value: window.SGIUI.fmtCompactMoney(cuotasPorCobrar), title: UI.fmt(cuotasPorCobrar), sub: "Saldo pendiente" },
+      ])}
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-header-titles">
+            <h3>Cuotas por Venta</h3>
+            <span class="count-chip" id="cuotas-count">${_grupos.length} venta${_grupos.length === 1 ? "" : "s"}</span>
+          </div>
         </div>
-      </div>
 
-      ${window.SGIUI.filterBar({
-        fields: [
-          { type: "select", id: "f-proyecto", label: "Proyecto",
-            options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
-          { type: "search", id: "f-buscar", label: "Buscar", placeholder: "Buscar comprador, documento, lote…", grow: true },
-          { type: "select", id: "f-estado", label: "Estado",
-            options: [{ value: "", label: "Todos los estados" }, ...estados.map(s => ({ value: s, label: s }))] },
-        ],
-        actions: `<label style="display:flex;align-items:center;gap:.375rem;font-size:.85rem;white-space:nowrap;cursor:pointer;user-select:none;padding-bottom:.4rem">
-          <input type="checkbox" id="f-subdivididas" style="width:1rem;height:1rem;cursor:pointer"> Solo subdivididas
-        </label>
-        <button class="btn btn-ghost btn-sm" id="cuotas-limpiar">Limpiar</button>`,
-      })}
+        ${window.SGIUI.filterBar({
+          fields: [
+            { type: "select", id: "f-proyecto", label: "Proyecto",
+              options: [{ value: "", label: "Todos los proyectos" }, ...proyectos.map(p => ({ value: p, label: p }))] },
+            { type: "search", id: "f-buscar", label: "Buscar", placeholder: "Comprador, documento, lote o código de venta…", grow: true },
+            { type: "select", id: "f-estado", label: "Estado",
+              options: [{ value: "", label: "Todos los estados" }, ...estados.map(s => ({ value: s, label: s }))] },
+          ],
+          actions: `<label style="display:flex;align-items:center;gap:.375rem;font-size:.85rem;white-space:nowrap;cursor:pointer;user-select:none;padding-bottom:.4rem">
+            <input type="checkbox" id="f-subdivididas" style="width:1rem;height:1rem;cursor:pointer"> Solo subdivididas
+          </label>
+          <button class="btn btn-ghost btn-sm" id="cuotas-limpiar">Limpiar</button>`,
+        })}
 
-      <div class="sticky-table-scroll">
-        <table>
-          <thead><tr>
-            <th>Proyecto</th><th>Lote</th><th>Comprador</th><th>Nro.</th>
-            <th>Vencimiento</th><th>Días</th><th>Valor</th><th>Pendiente</th>
-            <th>Estado</th>${thAcciones}
-          </tr></thead>
-          <tbody id="cuotas-tbody">${data.map(filaVista).join("")}</tbody>
-        </table>
-      </div>
-      <p id="cuotas-empty" style="display:none;text-align:center;color:var(--text-muted);padding:24px">
-        No hay cuotas que coincidan con los filtros.
-      </p>
-    </div>`;
+        <div class="sticky-table-scroll">
+          <table>
+            <thead><tr>
+              <th>Venta</th><th>Comprador</th><th>Proyecto / Lote</th>
+              <th style="text-align:center">Cuotas</th>
+              <th style="text-align:right">Pendiente</th>
+              <th>Estado</th><th></th>
+            </tr></thead>
+            <tbody id="cuotas-grupos-tbody">${_grupos.map(filaVenta).join("")}</tbody>
+          </table>
+          <p id="cuotas-grupos-empty" style="display:none;text-align:center;color:var(--text-muted);padding:1.5rem">
+            No hay ventas con cuotas pendientes que coincidan con los filtros.
+          </p>
+        </div>
+      </div>`;
 
-  const tbody     = document.getElementById("cuotas-tbody");
-  const countChip = document.getElementById("cuotas-count");
+    const tbody = document.getElementById("cuotas-grupos-tbody");
 
-  function aplicarFiltros() {
-    const fProyecto     = document.getElementById("f-proyecto").value;
-    const fBuscar       = document.getElementById("f-buscar").value;
-    const fEstado       = document.getElementById("f-estado").value;
-    const fSubdivididas = document.getElementById("f-subdivididas").checked;
+    function aplicarFiltros() {
+      const fProyecto     = document.getElementById("f-proyecto").value;
+      const fBuscar       = document.getElementById("f-buscar").value;
+      const fEstado       = document.getElementById("f-estado").value;
+      const fSubdivididas = document.getElementById("f-subdivididas").checked;
 
-    const visibles = data.filter(c => {
-      if (fProyecto     && c.proyecto !== fProyecto)                                  return false;
-      if (!SGISearch.matches(fBuscar, c.comprador, c.documento, c.codigo_lote, c.proyecto)) return false;
-      if (fEstado       && c.estado   !== fEstado)                                    return false;
-      if (fSubdivididas && !c.tiene_fracciones)                                       return false;
-      return true;
+      const visibles = _grupos.filter(g => {
+        if (fProyecto && g.proyecto !== fProyecto) return false;
+        if (!SGISearch.matches(fBuscar, g.comprador, g.documento, g.codigo_lote, g.proyecto, SGIUI.ventaCode(g))) return false;
+        if (fEstado && !g.cuotas.some(c => c.estado === fEstado)) return false;
+        if (fSubdivididas && !g.cuotas.some(c => c.tiene_fracciones)) return false;
+        return true;
+      });
+
+      tbody.innerHTML = visibles.map(filaVenta).join("");
+      document.getElementById("cuotas-grupos-empty").style.display = visibles.length ? "none" : "block";
+      const cnt = document.getElementById("cuotas-count");
+      if (cnt) cnt.textContent = `${visibles.length} venta${visibles.length === 1 ? "" : "s"}`;
+    }
+
+    ["f-proyecto", "f-estado"].forEach(id =>
+      document.getElementById(id).addEventListener("change", aplicarFiltros)
+    );
+    document.getElementById("f-buscar").addEventListener("input", aplicarFiltros);
+    document.getElementById("f-subdivididas").addEventListener("change", aplicarFiltros);
+    document.getElementById("cuotas-limpiar").addEventListener("click", () => {
+      ["f-proyecto", "f-buscar", "f-estado"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+      const sub = document.getElementById("f-subdivididas");
+      if (sub) sub.checked = false;
+      aplicarFiltros();
     });
 
-    tbody.innerHTML = visibles.map(filaVista).join("");
-    document.getElementById("cuotas-empty").style.display = visibles.length ? "none" : "block";
-    countChip.textContent = `${visibles.length} ${visibles.length === 1 ? "cuota" : "cuotas"}`;
+    tbody.addEventListener("click", e => {
+      const btn = e.target.closest(".btn-ver-cuotas");
+      if (!btn) return;
+      const row = btn.closest("tr[data-grupo-key]");
+      if (!row) return;
+      const g = _grupos.find(x => groupKey({ id_venta: x.id_venta, codigo_venta: x.codigo_venta }) === row.dataset.grupoKey);
+      if (g) window.cuotasDeVentaView(g);
+    });
+  };
+
+  function filaVenta(g) {
+    const pendiente = g.cuotas.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
+    const vencidas  = g.cuotas.filter(c => Number(c.dias_atraso) > 0).length;
+    const estadoCell = vencidas
+      ? `<span class="badge badge-danger">${vencidas} vencida${vencidas > 1 ? "s" : ""}</span>`
+      : `<span class="badge badge-success">Al día</span>`;
+    return `<tr data-grupo-key="${groupKey({ id_venta: g.id_venta, codigo_venta: g.codigo_venta })}" style="cursor:pointer">
+      <td><strong>${SGIUI.ventaCode(g)}</strong></td>
+      <td>${g.comprador}</td>
+      <td>${g.proyecto !== "—" ? `${g.proyecto} · <strong>${g.codigo_lote}</strong>` : "—"}</td>
+      <td style="text-align:center"><strong>${g.cuotas.length}</strong></td>
+      <td style="text-align:right">${UI.fmt(pendiente)}</td>
+      <td>${estadoCell}</td>
+      <td><button class="btn btn-ghost btn-sm btn-ver-cuotas">Ver <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button></td>
+    </tr>`;
   }
 
-  ["f-proyecto", "f-estado"].forEach(id =>
-    document.getElementById(id).addEventListener("change", aplicarFiltros)
-  );
-  document.getElementById("f-buscar").addEventListener("input", aplicarFiltros);
-  document.getElementById("f-subdivididas").addEventListener("change", aplicarFiltros);
-  document.getElementById("cuotas-limpiar").addEventListener("click", () => {
-    ["f-proyecto", "f-buscar", "f-estado"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
-    const sub = document.getElementById("f-subdivididas");
-    if (sub) sub.checked = false;
-    aplicarFiltros();
-  });
+  // ── Detail view: every pending cuota of one venta ─────────────────────────────
 
-  tbody.addEventListener("click", async e => {
-    const btn = e.target.closest("button");
-    if (!btn) return;
+  window.cuotasDeVentaView = function(grupo) {
+    _activeGroupKey = groupKey({ id_venta: grupo.id_venta, codigo_venta: grupo.codigo_venta });
+    const vc = document.getElementById("viewContainer");
 
-    const id = btn.dataset.id;
+    const thAcciones = mostrarAcciones ? "<th>Acciones</th>" : "";
+    const pendiente  = grupo.cuotas.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
 
-    // ── Ver fracciones ──
-    if (btn.classList.contains("btn-cuota-ver-fracciones")) {
-      verFracciones(cuotasMap[id]);
-      return;
+    vc.innerHTML = `
+      <div class="table-wrap">
+        <div class="table-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="cuotasView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
+            <h3>Cuotas &mdash; Venta ${SGIUI.ventaCode(grupo)}</h3>
+          </div>
+        </div>
+        <div style="background:var(--surface-2,#f0f4f8);border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:.88rem;display:flex;gap:24px;flex-wrap:wrap">
+          <span><span style="color:var(--text-muted)">Cliente:</span> <strong>${grupo.comprador}</strong></span>
+          <span><span style="color:var(--text-muted)">Proyecto:</span> <strong>${grupo.proyecto}</strong></span>
+          <span><span style="color:var(--text-muted)">Lote:</span> <strong>${grupo.codigo_lote}</strong></span>
+          <span><span style="color:var(--text-muted)">Saldo pendiente:</span> <strong>${UI.fmt(pendiente)}</strong></span>
+        </div>
+        <div class="sticky-table-scroll">
+          <table>
+            <thead><tr>
+              <th>Nro.</th><th>Vencimiento</th><th>Días</th>
+              <th>Valor</th><th>Pendiente</th><th>Estado</th>${thAcciones}
+            </tr></thead>
+            <tbody id="cuotas-detalle-tbody">${grupo.cuotas.map(filaCuota).join("")}</tbody>
+          </table>
+          ${!grupo.cuotas.length
+            ? `<p style="text-align:center;color:var(--text-muted);padding:1.5rem">Sin cuotas pendientes para esta venta</p>`
+            : ""}
+        </div>
+      </div>`;
+
+    wireCuotaActions(document.getElementById("cuotas-detalle-tbody"));
+  };
+
+  // Re-render whichever view is active after a mutation (subdivision, etc.).
+  function refreshActive() {
+    if (_activeGroupKey) {
+      const g = _grupos.find(x => groupKey({ id_venta: x.id_venta, codigo_venta: x.codigo_venta }) === _activeGroupKey);
+      if (g) return window.cuotasDeVentaView(g);
     }
+    window.cuotasView();
+  }
 
-    // ── Pagar ──
-    if (btn.classList.contains("btn-cuota-pagar")) {
-      const c = cuotasMap[id];
-      if (c) window.pagoForm(c.id_venta, c);
-      return;
-    }
+  function wireCuotaActions(tbody) {
+    if (!tbody) return;
+    tbody.addEventListener("click", async e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const id = btn.dataset.id;
 
-    // ── Editar (reajuste de plan con cuadre) ──
-    if (btn.classList.contains("btn-cuota-editar")) {
-      abrirModalReajustePlan(cuotasMap[id]);
-      return;
-    }
-
-    // ── Subdividir ──
-    if (btn.classList.contains("btn-cuota-fraccionar")) {
-      abrirModalFracciones(cuotasMap[id]);
-      return;
-    }
-  });
+      if (btn.classList.contains("btn-cuota-ver-fracciones")) { verFracciones(_cuotasMap[id]); return; }
+      if (btn.classList.contains("btn-cuota-pagar")) {
+        const c = _cuotasMap[id];
+        if (c) window.pagoForm(c.id_venta, c);
+        return;
+      }
+      if (btn.classList.contains("btn-cuota-editar"))     { abrirModalReajustePlan(_cuotasMap[id]); return; }
+      if (btn.classList.contains("btn-cuota-fraccionar")) { abrirModalFracciones(_cuotasMap[id]); return; }
+    });
+  }
 
   // ── Ver fracciones (read-only) ────────────────────────────────────────────────
 
@@ -235,13 +326,12 @@ window.cuotasView = async function() {
   }
 
   // ── Reajuste de plan con cuadre manual (A/RN-17) ──────────────────────────────
-  // Editar valores no cambia la deuda total: Σcuotas debe seguir = valor financiado.
 
   async function abrirModalReajustePlan(cuotaCtx) {
     const idVenta = cuotaCtx?.id_venta;
     if (!idVenta) return window.SGIUI?.toast("No se pudo identificar la venta.", "error", "Error");
 
-    UI.openModal(`Reajustar plan — Venta #${idVenta}`, UI.loader());
+    UI.openModal(`Reajustar plan — Venta ${SGIUI.ventaCode(cuotaCtx)}`, UI.loader());
 
     let venta;
     try { venta = await API.get(`/ventas/${idVenta}`); }
@@ -256,11 +346,16 @@ window.cuotasView = async function() {
 
     const rows = cuotasV.map(c => {
       const pagada      = c.pagada === true || c.estado === "pagada";
-      const valorLocked = pagada || c.tiene_fracciones === true || c.factura_activa === true;
+      const conPagos    = c.factura_con_pagos === true || Number(c.valor_pagado || 0) > 0;
+      // An 'emitida' factura without receipts does NOT lock: on a value change it is
+      // auto-annulled (§4.3) and the cuota is re-billed for approval.
+      const valorLocked = pagada || c.tiene_fracciones === true || conPagos;
+      const regenera    = !valorLocked && c.factura_activa === true;
       const hint        = pagada               ? "Pagada"
                         : c.tiene_fracciones    ? "Subdividida"
-                        : c.factura_activa      ? "Con factura activa"
-                        : Number(c.valor_pagado || 0) > 0 ? `mín ${UI.fmt(c.valor_pagado)}` : "";
+                        : conPagos              ? "Con pagos aplicados"
+                        : regenera              ? "Factura se regenerará"
+                        : "";
       return {
         id_cuota:   c.id_cuota,
         numero:     c.numero_cuota,
@@ -376,10 +471,18 @@ window.cuotasView = async function() {
       const btn = document.getElementById("rp-guardar");
       btn.disabled = true; btn.textContent = "Guardando...";
       try {
-        await API.patch(`/cuotas/venta/${idVenta}/valores`, { cambios, motivo });
+        const r = await API.patch(`/cuotas/venta/${idVenta}/valores`, { cambios, motivo });
         UI.closeModal();
-        window.SGIUI?.toast("Plan de cuotas reajustado.", "success", "Listo");
-        window.cuotasView();
+        // §4.3: if a value change auto-annulled facturas, reopen the generation preview with
+        // the new values/dates so the aux re-emits (approves) them.
+        const n = Number(r?.facturas_anuladas || 0);
+        if (n > 0 && typeof window.regenerarFacturasVenta === "function") {
+          window.SGIUI?.toast(`Plan reajustado · ${n} factura${n !== 1 ? "s" : ""} anulada${n !== 1 ? "s" : ""} para regenerar.`, "success", "Listo");
+          window.regenerarFacturasVenta(idVenta);
+        } else {
+          window.SGIUI?.toast("Plan de cuotas reajustado.", "success", "Listo");
+          window.cuotasView();
+        }
       } catch (e) {
         btn.disabled = false; btn.textContent = "Guardar reajuste";
         window.SGIUI?.toast(e.message || "Error al guardar.", "error", "Error");
@@ -535,10 +638,9 @@ window.cuotasView = async function() {
       try {
         await API.delete(`/cuotas/${idCuota}/fracciones`);
         UI.closeModal();
-        cuotasMap[idCuota].tiene_fracciones = false;
-        const fila = tbody.querySelector(`tr[data-id="${idCuota}"]`);
-        if (fila) fila.outerHTML = filaVista(cuotasMap[idCuota]);
+        if (_cuotasMap[idCuota]) _cuotasMap[idCuota].tiene_fracciones = false;
         window.SGIUI?.toast("Subdivisiones eliminadas.", "success", "Listo");
+        refreshActive();
       } catch (e) {
         window.SGIUI?.toast(e.message || "Error al eliminar.", "error", "Error");
       }
@@ -556,16 +658,14 @@ window.cuotasView = async function() {
           })),
         });
         UI.closeModal();
-        cuotasMap[idCuota].tiene_fracciones = true;
-        const fila = tbody.querySelector(`tr[data-id="${idCuota}"]`);
-        if (fila) fila.outerHTML = filaVista(cuotasMap[idCuota]);
+        if (_cuotasMap[idCuota]) _cuotasMap[idCuota].tiene_fracciones = true;
         window.SGIUI?.toast("Subdivisión guardada correctamente.", "success", "Listo");
+        refreshActive();
       } catch (e) {
         if (btn) { btn.disabled = false; btn.textContent = "Guardar subdivisión"; }
         window.SGIUI?.toast(e.message || "Error al guardar.", "error", "Error");
       }
     };
   }
-};
 
 })();

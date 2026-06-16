@@ -26,6 +26,36 @@ async function nextPago() {
   };
 }
 
+// Builds the descriptive, stored venta code: #NNN-SIGLA-LOTE (e.g. #014-EC1-A22).
+// seq is a global, continuous sequence; sigla is the project's; lote is the codigo_lote
+// stripped of its sigla prefix and separators. The code is immutable once stored.
+function formatCodigoVenta(seq, sigla, codigoLote) {
+  const siglaTk = (String(sigla || "").trim().toUpperCase()) || "GEN";
+  let lote = String(codigoLote || "").trim();
+  if (siglaTk !== "GEN" && lote) {
+    const escaped = siglaTk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    lote = lote.replace(new RegExp(`^${escaped}[-_\\s]?`, "i"), "");
+  }
+  const loteTk = lote.replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "SN";
+  return `#${String(seq).padStart(3, "0")}-${siglaTk}-${loteTk}`;
+}
+
+// Global, continuous venta sequence (does not reset per period). Uses a constant period
+// sentinel so next_consecutivo_condor keeps a single ever-increasing counter for 'VEN'.
+async function nextVenta() {
+  const { data, error } = await supabase.rpc("next_consecutivo_condor", {
+    p_prefijo: "VEN",
+    p_periodo: "000000",
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function generarCodigoVenta({ sigla, codigo_lote }) {
+  const seq = await nextVenta();
+  return formatCodigoVenta(seq, sigla, codigo_lote);
+}
+
 async function nextMicropago() {
   const p = periodo();
   const [{ data: mcomN, error: e1 }, { data: rcN, error: e2 }] = await Promise.all([
@@ -40,4 +70,4 @@ async function nextMicropago() {
   };
 }
 
-module.exports = { next, nextPago, nextMicropago };
+module.exports = { next, nextPago, nextMicropago, nextVenta, formatCodigoVenta, generarCodigoVenta };

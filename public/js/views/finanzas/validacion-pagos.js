@@ -101,6 +101,7 @@ function _pvCard(m, i) {
   const loteInfo = pago.venta?.lote
     ? `${pago.venta.lote.proyecto?.nombre || ''} · ${pago.venta.lote.codigo_lote || ''}`
     : null;
+  const ventaCod = pago.venta ? SGIUI.ventaCode(pago.venta) : null;
 
   const txSide = manual ? `
     <div class="pv-side pv-side-transaction" style="justify-content:center;align-items:center;display:flex;flex-direction:column;gap:12px;opacity:.7">
@@ -122,7 +123,7 @@ function _pvCard(m, i) {
   return `
     <div class="pv-card" id="pv-card-${i}"
       data-score="${score}" data-manual="${manual ? 1 : 0}"
-      data-search="${`${compradorNombre || ''} ${loteInfo || ''} ${pago.id_pago}`.toLowerCase().replace(/"/g, '&quot;')}">
+      data-search="${`${compradorNombre || ''} ${ventaCod || ''} ${loteInfo || ''} ${pago.id_pago}`.toLowerCase().replace(/"/g, '&quot;')}">
       <div class="pv-card-header">
         ${_pvScoreBadge(score, manual)}
         <div class="pv-indicators">
@@ -152,6 +153,7 @@ function _pvCard(m, i) {
         <div class="pv-side pv-side-payment">
           <div class="pv-side-title">Pago del comprador</div>
           ${compradorNombre ? `<div class="pv-field"><span class="pv-label">Comprador</span><span class="pv-value">${compradorNombre}</span></div>` : ''}
+          ${ventaCod ? `<div class="pv-field"><span class="pv-label">Venta</span><span class="pv-value">${ventaCod}</span></div>` : ''}
           <div class="pv-field"><span class="pv-label">ID pago</span><span class="pv-value">#${pago.id_pago}</span></div>
           <div class="pv-field"><span class="pv-label">Fecha reporte</span><span class="pv-value">${_pvDate(pago.fecha_pago)}</span></div>
           <div class="pv-field ${amount_match ? 'pv-highlight-ok' : ''}"><span class="pv-label">Valor</span><span class="pv-value pv-money">${_pvFmt(pago.valor_pago)}</span></div>

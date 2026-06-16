@@ -274,6 +274,17 @@ window.UI = UI;
     return `<div class="sgi-filter-bar"${id ? ` id="${id}"` : ""}>${fieldHTML}${actions ? `<div class="sgi-filter-actions">${actions}</div>` : ""}</div>`;
   }
 
+  // Descriptive venta identifier shown across every view/role. Uses the stored
+  // codigo_venta (#NNN-SIGLA-LOTE) and falls back to #id_venta while the code is not
+  // yet backfilled or available, so no view breaks.
+  function ventaCode(v) {
+    if (!v) return "—";
+    const code = typeof v === "object" ? (v.codigo_venta || null) : null;
+    if (code) return code;
+    const id = typeof v === "object" ? (v.id_venta ?? null) : v;
+    return id != null ? `#${id}` : "—";
+  }
+
   window.SGIUI = {
     icon,
     pageHeader,
@@ -283,7 +294,8 @@ window.UI = UI;
     hydrate,
     statCards,
     filterBar,
-    fmtCompactMoney
+    fmtCompactMoney,
+    ventaCode
   };
 })();
 

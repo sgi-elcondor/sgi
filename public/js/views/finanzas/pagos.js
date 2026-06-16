@@ -34,7 +34,7 @@
     const gs = new Map();
     visibles.forEach(f => {
       const k = f.id_venta ?? "none";
-      if (!gs.has(k)) gs.set(k, { id_venta: f.id_venta, comprador: f.comprador, proyecto: f.proyecto, codigo_lote: f.codigo_lote, facturas: [] });
+      if (!gs.has(k)) gs.set(k, { id_venta: f.id_venta, codigo_venta: f.codigo_venta, comprador: f.comprador, proyecto: f.proyecto, codigo_lote: f.codigo_lote, facturas: [] });
       gs.get(k).facturas.push(f);
     });
 
@@ -47,7 +47,7 @@
              style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:.79rem;font-weight:700;background:var(--surface-2,#f0f4f8);color:var(--text-muted);cursor:pointer;user-select:none">
           <span>
             <span id="pfg-arrow-${key}" style="display:inline-flex;align-items:center;width:12px;margin-right:4px"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
-            Venta #${g.id_venta ?? "—"} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
+            Venta ${SGIUI.ventaCode(g)} &mdash; <span style="font-weight:500">${g.comprador}</span> &bull; ${g.proyecto} &bull; ${g.codigo_lote}
           </span>
           <span style="font-size:.75rem;font-weight:600;background:var(--border);padding:1px 7px;border-radius:10px;color:var(--text-muted)">
             ${count} factura${count !== 1 ? "s" : ""}
@@ -111,7 +111,7 @@
     data.forEach(p => {
       const key = p.id_venta ?? "none";
       if (!ventasMap.has(key)) {
-        ventasMap.set(key, { id_venta: p.id_venta, comprador: p.comprador, proyecto: p.proyecto, codigo_lote: p.codigo_lote, pagos: [] });
+        ventasMap.set(key, { id_venta: p.id_venta, codigo_venta: p.codigo_venta, comprador: p.comprador, proyecto: p.proyecto, codigo_lote: p.codigo_lote, pagos: [] });
       }
       ventasMap.get(key).pagos.push(p);
     });
@@ -125,7 +125,7 @@
     function filaVenta(g) {
       const total = g.pagos.filter(p => p.estado === 'aceptado' && p.numero_recibo).reduce((s, p) => s + Number(p.valor_pago || 0), 0);
       return `<tr data-grupo-key="${g.id_venta ?? "none"}" style="cursor:pointer">
-        <td>${g.id_venta ? `<strong>#${g.id_venta}</strong>` : "—"}</td>
+        <td>${g.id_venta ? `<strong>${SGIUI.ventaCode(g)}</strong>` : "—"}</td>
         <td>${g.comprador}</td>
         <td>${g.proyecto !== "—" ? `${g.proyecto} · <strong>${g.codigo_lote}</strong>` : "—"}</td>
         <td style="text-align:center"><strong>${g.pagos.length}</strong></td>
@@ -170,7 +170,7 @@
         <div class="sticky-table-scroll">
           <table>
             <thead><tr>
-              <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
+              <th>Venta</th><th>Comprador</th><th>Proyecto / Lote</th>
               <th style="text-align:center">Pagos</th>
               <th style="text-align:right">Total pagado</th><th></th>
             </tr></thead>
@@ -257,7 +257,7 @@
         <div class="table-header">
           <div style="display:flex;align-items:center;gap:10px">
             <button class="btn btn-ghost btn-sm" onclick="_volverPagosView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
-            <h3>Pagos &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
+            <h3>Pagos &mdash; Venta ${grupo.id_venta ? SGIUI.ventaCode(grupo) : "sin venta"}</h3>
           </div>
           ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm(${grupo.id_venta ?? "null"})"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
         </div>
@@ -343,7 +343,7 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
         <strong style="font-family:monospace">${p.numero_pago || `#${p.id_pago}`}</strong>
         ${p.estado ? UI.badge(p.estado) : ""}
-        <span style="color:var(--text-muted);font-size:.84rem">Venta #${p.id_venta ?? "—"}</span>
+        <span style="color:var(--text-muted);font-size:.84rem">Venta ${SGIUI.ventaCode(p)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
         <div>
@@ -424,7 +424,7 @@
         { icon: "check",    label: "Estado del pago",     value: estadoInfo.label, badge: estadoInfo.badge },
         { icon: "hash",     label: "N° de pago",          value: p.numero_pago },
         { icon: "user",     label: "Comprador",           value: p.comprador },
-        { icon: "briefcase",label: "N° de venta",         value: p.id_venta != null ? `#${p.id_venta}` : "" },
+        { icon: "briefcase",label: "N° de venta",         value: p.id_venta != null ? SGIUI.ventaCode(p) : "" },
         { icon: "pin",      label: "Proyecto / Lote",     value: [p.proyecto, p.codigo_lote].filter(x => x && x !== "—").join(" · ") },
         { icon: "calendar", label: "Fecha del pago",      value: fechaPago },
         { icon: "card",     label: "Método",              value: p.metodo_pago ? metodoLabel : "" },
@@ -594,8 +594,11 @@
       try { fracciones = await API.get(`/cuotas/${cuotaCtx.id_cuota}/fracciones`); } catch (_) {}
     }
 
+    const ctxCode = idVentaCtx
+      ? (facturas.find(f => f.id_venta === idVentaCtx)?.codigo_venta || `#${idVentaCtx}`)
+      : "";
     const ctxLabel = idVentaCtx && !cuotaCtx
-      ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta #${idVentaCtx}</span>`
+      ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.79rem">— Venta ${ctxCode}</span>`
       : "";
 
     const facturaSelectorHTML = cuotaFactura

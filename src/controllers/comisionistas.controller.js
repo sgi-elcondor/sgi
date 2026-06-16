@@ -74,7 +74,7 @@ exports.getComisionesDetail = async (req, res) => {
     .select(`
       id_venta, id_usuario, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
       venta:id_venta(
-        id_venta, valor_total, total_permutas, fecha_venta, estado,
+        id_venta, codigo_venta, valor_total, total_permutas, fecha_venta, estado,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
       )
@@ -136,6 +136,7 @@ exports.getComisionesDetail = async (req, res) => {
 
     return {
       id_venta:           vc.id_venta,
+      codigo_venta:       venta?.codigo_venta || null,
       valor_comision:     vc.valor_comision,
       estado_comision:    vc.estado,
       fecha_ganada:       vc.fecha_ganada,
@@ -149,6 +150,7 @@ exports.getComisionesDetail = async (req, res) => {
         : 0,
       venta: {
         id_venta:    venta?.id_venta,
+        codigo_venta: venta?.codigo_venta || null,
         valor_total: venta?.valor_total,
         fecha_venta: venta?.fecha_venta,
         estado:      venta?.estado,
