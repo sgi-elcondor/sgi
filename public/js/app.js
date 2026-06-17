@@ -249,6 +249,7 @@ async function iniciarApp() {
     if (!fbUser) { localStorage.removeItem("fb_token"); redirigirConDelay("/login"); return; }
 
     if (/inactiv/i.test(err.message || "")) { mostrarCuentaInactiva(); return; }
+    if (err.code === "CUENTA_NO_VINCULADA") { mostrarVincularCuenta(); return; }
 
     const vc = document.getElementById("viewContainer");
     if (vc) vc.innerHTML =
@@ -281,6 +282,59 @@ function mostrarCuentaInactiva() {
     '</div>';
   document.body.appendChild(o);
   document.getElementById("inactive-logout").addEventListener("click", async function() {
+    try { await logout(); } catch (_) {}
+    localStorage.removeItem("fb_token");
+    window.location.href = "/login";
+  });
+}
+
+// Shown when the login is valid but no account is linked yet (CUENTA_NO_VINCULADA). The person
+// claims their pre-registered account by documento (hybrid link); on success the app reloads.
+function mostrarVincularCuenta() {
+  const o = document.createElement("div");
+  o.style.cssText =
+    "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
+    "padding:1.5rem;background:var(--bg-primary,var(--bg,#0e0e10))";
+  o.innerHTML =
+    '<div style="max-width:26rem;width:100%;text-align:center;background:var(--surface,var(--bg-secondary));' +
+      'border:1px solid var(--border,var(--border-color));border-radius:1rem;padding:2.5rem 2rem;' +
+      'box-shadow:0 0.625rem 2.5rem rgba(0,0,0,.25)">' +
+      '<h1 style="margin:0 0 .5rem;font-size:1.35rem;color:var(--text,var(--text-primary))">Vincula tu cuenta</h1>' +
+      '<p style="margin:0 0 1.5rem;color:var(--text-muted);font-size:.9rem;line-height:1.55">' +
+        'Tu acceso aún no está vinculado a una compra. Ingresa tu documento de identidad para vincularlo. ' +
+        'Si no tienes una compra registrada, comunícate con la oficina.</p>' +
+      '<div style="display:flex;gap:.5rem;margin-bottom:.75rem">' +
+        '<select id="vc-tipo" class="form-control" style="flex:0 0 7.5rem">' +
+          '<option value="cc">C.C.</option><option value="ce">C.E.</option>' +
+          '<option value="ppt">PPT</option><option value="pasaporte">Pasaporte</option>' +
+        '</select>' +
+        '<input id="vc-doc" class="form-control" style="flex:1" placeholder="Número de documento" inputmode="numeric" autocomplete="off">' +
+      '</div>' +
+      '<p id="vc-error" style="display:none;margin:0 0 .75rem;color:var(--danger,#dc2626);font-size:.82rem"></p>' +
+      '<button class="btn btn-primary" id="vc-submit" style="width:100%;margin-bottom:.5rem">Vincular cuenta</button>' +
+      '<button class="btn btn-ghost btn-sm" id="vc-logout" style="width:100%">Cerrar sesión</button>' +
+    '</div>';
+  document.body.appendChild(o);
+
+  const errEl = document.getElementById("vc-error");
+  const btn   = document.getElementById("vc-submit");
+  const showErr = (m) => { errEl.textContent = m; errEl.style.display = "block"; };
+
+  btn.addEventListener("click", async function() {
+    const documento      = document.getElementById("vc-doc").value.trim();
+    const tipo_documento = document.getElementById("vc-tipo").value;
+    if (!documento) return showErr("Ingresa tu número de documento.");
+    errEl.style.display = "none";
+    btn.disabled = true; btn.textContent = "Vinculando...";
+    try {
+      await API.post("/auth/vincular", { documento, tipo_documento });
+      window.location.reload();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Vincular cuenta";
+      showErr(e.message || "No se pudo vincular la cuenta.");
+    }
+  });
+  document.getElementById("vc-logout").addEventListener("click", async function() {
     try { await logout(); } catch (_) {}
     localStorage.removeItem("fb_token");
     window.location.href = "/login";

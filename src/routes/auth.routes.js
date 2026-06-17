@@ -1,10 +1,11 @@
 ﻿const express  = require('express');
 const router   = express.Router();
-const { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset } = require('../controllers/auth.controller');
-const { verificarToken }   = require('../middlewares/auth.middleware');
+const { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta } = require('../controllers/auth.controller');
+const { verificarToken, verificarTokenFirebase } = require('../middlewares/auth.middleware');
 const { verificarPermiso } = require('../middlewares/permisos.middleware');
 
 router.post('/reset-password-email', enviarEmailReset);
+router.post('/vincular',         verificarTokenFirebase, vincularCuenta);
 
 router.get('/perfil',            verificarToken, miPerfil);
 router.put('/perfil',            verificarToken, actualizarMiPerfil);

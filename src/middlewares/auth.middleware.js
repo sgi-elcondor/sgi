@@ -37,34 +37,14 @@ async function verificarToken(req, res, next) {
       }
     }
 
+    // Identity is never auto-created: a fresh login with no matching usuarios row (by uid or
+    // email) is NOT granted a role. The only ways in are an email match above, or claiming a
+    // pre-registered account by documento via POST /api/v1/auth/vincular.
     if (!usuario) {
-      const { data: rolDefault, error: rolError } = await supabase
-        .schema('condor')
-        .from('roles')
-        .select('id_rol')
-        .eq('nombre', 'comprador')
-        .single();
-
-      if (rolError || !rolDefault) {
-        return res.status(403).json({ error: 'No se pudo asignar rol por defecto' });
-      }
-
-      const { data: nuevo, error: errInsert } = await supabase
-        .schema('condor')
-        .from('usuarios')
-        .insert([{
-          firebase_uid: decoded.uid,
-          email:        decoded.email,
-          id_rol:       rolDefault.id_rol,
-        }])
-        .select('id_usuario, email, activo, id_rol')
-        .single();
-
-      if (errInsert || !nuevo) {
-        return res.status(500).json({ error: 'Error al registrar usuario: ' + errInsert?.message });
-      }
-
-      usuario = nuevo;
+      return res.status(403).json({
+        error: 'Tu cuenta aún no está vinculada. Vincúlala con tu documento o contacta la oficina.',
+        code:  'CUENTA_NO_VINCULADA',
+      });
     }
 
     if (!usuario.activo) {
@@ -113,4 +93,20 @@ async function verificarToken(req, res, next) {
   }
 }
 
-module.exports = { verificarToken };
+// Lightweight verifier for routes reachable BEFORE an account is linked (e.g. claiming by
+// documento): validates the Firebase token only and never requires a usuarios row.
+async function verificarTokenFirebase(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token no proporcionado' });
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
+    req.firebaseUser = { uid: decoded.uid, email: decoded.email };
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token invalido o expirado' });
+  }
+}
+
+module.exports = { verificarToken, verificarTokenFirebase };

@@ -86,6 +86,66 @@ async function completarPerfil(req, res) {
   return res.json({ ok: true });
 }
 
+// Hybrid identity link: an authenticated person whose login email does NOT match the email the
+// team pre-registered claims their account by documento. The match is by the legally-unique
+// (tipo_documento, documento), so the email used to sign in is irrelevant. The claim is an
+// atomic guarded UPDATE (firebase_uid IS NULL) so it can only ever succeed once.
+async function vincularCuenta(req, res) {
+  const { uid, email } = req.firebaseUser || {};
+  if (!uid) return res.status(401).json({ error: 'No autenticado' });
+
+  const { documento, tipo_documento } = req.body;
+  if (!documento) return res.status(400).json({ error: 'El documento es obligatorio' });
+
+  // Already linked to this login? Idempotent success.
+  const { data: yaLink } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('id_usuario').eq('firebase_uid', uid).maybeSingle();
+  if (yaLink) return res.json({ ok: true, already: true });
+
+  let q = supabase.schema(SCHEMA).from('usuarios')
+    .select('id_usuario, firebase_uid, activo').eq('documento', documento);
+  if (tipo_documento) q = q.eq('tipo_documento', tipo_documento);
+  const { data: matches } = await q;
+  const row = (matches || [])[0];
+
+  if (!row)              return res.status(404).json({ error: 'No encontramos ninguna cuenta con ese documento. Contacta la oficina.', code: 'DOC_NO_ENCONTRADO' });
+  if (row.firebase_uid)  return res.status(409).json({ error: 'Esa cuenta ya fue vinculada a otro acceso. Contacta la oficina.', code: 'DOC_YA_VINCULADO' });
+  if (!row.activo)       return res.status(403).json({ error: 'La cuenta está inactiva. Contacta la oficina.' });
+
+  // Per decision: adopt the login email — but only if no other row already uses it, to respect
+  // the email uniqueness invariant; otherwise keep the registered email and link the uid only.
+  let emailTaken = null;
+  if (email) {
+    const { data } = await supabase.schema(SCHEMA).from('usuarios')
+      .select('id_usuario').ilike('email', email).neq('id_usuario', row.id_usuario).maybeSingle();
+    emailTaken = data;
+  }
+  const payload = (email && !emailTaken) ? { firebase_uid: uid, email } : { firebase_uid: uid };
+
+  const { data: updated, error } = await supabase.schema(SCHEMA).from('usuarios')
+    .update(payload)
+    .eq('id_usuario', row.id_usuario)
+    .is('firebase_uid', null)
+    .select('id_usuario')
+    .single();
+  if (error || !updated) {
+    return res.status(409).json({ error: 'No se pudo vincular (intento simultáneo). Reintenta.', code: 'CLAIM_RACE' });
+  }
+
+  await supabase.schema(SCHEMA).from('auditoria').insert([{
+    tabla_afectada: 'usuarios',
+    id_registro:    row.id_usuario,
+    campo:          'firebase_uid',
+    valor_anterior: null,
+    valor_nuevo:    uid,
+    usuario_db:     email || uid,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         'vinculacion_cuenta_por_documento',
+  }]);
+
+  return res.json({ ok: true });
+}
+
 async function actualizarMiPerfil(req, res) {
   const { id_usuario } = req.usuario;
   const { nombres, apellidos, telefono, photo_url } = req.body;
@@ -138,4 +198,4 @@ async function enviarEmailReset(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset };
+module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta };
