@@ -132,7 +132,7 @@ const { data, error } = await supabase.schema(SCHEMA).from("cuota")
 };
 
 exports.updateValores = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
   }
 
@@ -214,7 +214,7 @@ exports.updateValores = async (req, res) => {
 // venta's cuotas must stay equal to the financed value (valor_total − permutas). The aux
 // sends a balanced batch of changes; if it does not balance, the whole change is rejected.
 exports.rebalanceValores = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
   }
 
@@ -720,7 +720,7 @@ exports.getFracciones = async (req, res) => {
 };
 
 exports.setFracciones = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Only auxiliar_contable can manage cuota fractions' });
   }
 
@@ -803,7 +803,7 @@ exports.setFracciones = async (req, res) => {
 };
 
 exports.deleteFracciones = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Only auxiliar_contable can delete cuota fractions' });
   }
 
