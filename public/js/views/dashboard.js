@@ -210,7 +210,7 @@
 
     const buildTable = rows => `
       <article class="panel-card" style="padding:0;overflow:hidden">
-        <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <table class="stackable" style="width:100%;border-collapse:collapse;font-size:.875rem">
           <thead>
             <tr style="background:var(--surface-2,var(--bg-alt));text-align:left">
               ${TH("#")}${TH("Venta")}${TH("Comprador")}${TH("Lote")}${TH("Valor")}${TH("Vencimiento")}${TH("Días")}
