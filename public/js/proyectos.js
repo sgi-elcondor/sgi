@@ -1,5 +1,5 @@
-// Public landing (/proyectos). No authentication: talks only to /api/v1/public/* (no token).
-// Includes a theme (light/dark) and language (es/en) toggle, synced into the embedded login iframe.
+// Public landing (root). No authentication: talks only to /api/v1/public/* (no token).
+// Theme (light/dark) + language (es/en) toggles, synced into the embedded login iframe.
 (function () {
   "use strict";
 
@@ -43,10 +43,6 @@
     },
   };
 
-  const ICON = {
-    moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
-    sun:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>`,
-  };
   const FLAG = {
     es: `<svg class="pv-flag" viewBox="0 0 6 4" preserveAspectRatio="none"><rect width="6" height="4" fill="#AA151B"/><rect y="1" width="6" height="2" fill="#F1BF00"/></svg>`,
     en: `<svg class="pv-flag" viewBox="0 0 60 30" preserveAspectRatio="none"><rect width="60" height="30" fill="#012169"/><path d="M0,0 60,30 M60,0 0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 60,30 M60,0 0,30" stroke="#C8102E" stroke-width="4"/><path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6"/></svg>`,
@@ -56,7 +52,7 @@
   let DATA = { proyectos: [], lotes: [], lotesByProyecto: {}, asesores: [] };
   let selectedIdx = 0;
 
-  const content   = document.getElementById("pv-content");
+  const content    = document.getElementById("pv-content");
   const loginFrame = document.getElementById("pv-login");
 
   const t = (k) => (I18N[state.lang] || I18N.es)[k];
@@ -68,9 +64,12 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+  function refreshIcons() { try { window.lucide && window.lucide.createIcons(); } catch (_) {} }
+
   function resolveTheme() {
-    const t = localStorage.getItem(THEME_KEY);
-    if (t === "dark" || t === "light") return t;
+    const v = localStorage.getItem(THEME_KEY);
+    if (v === "dark" || v === "light") return v;
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   function resolveLang() {
@@ -82,16 +81,17 @@
       const w = loginFrame && loginFrame.contentWindow;
       if (w && typeof w.previewApplyTheme === "function") w.previewApplyTheme(state.theme);
       if (w && typeof w.previewApplyLang === "function")  w.previewApplyLang(state.lang);
-    } catch (_) { /* cross-origin guard, never happens (same origin) */ }
+    } catch (_) { /* same-origin, guarded */ }
   }
 
   function renderControls() {
     const themeBtn = document.getElementById("pv-theme");
     const langBtn  = document.getElementById("pv-lang");
     themeBtn.innerHTML = state.theme === "dark"
-      ? `${ICON.sun}<span>${t("themeLight")}</span>`
-      : `${ICON.moon}<span>${t("themeDark")}</span>`;
+      ? `${icon("sun")}<span>${t("themeLight")}</span>`
+      : `${icon("moon")}<span>${t("themeDark")}</span>`;
     langBtn.innerHTML = `${FLAG[state.lang]}<span>${state.lang.toUpperCase()}</span>`;
+    refreshIcons();
   }
 
   function applyStatic() {
@@ -121,18 +121,18 @@
     syncIframe();
   }
 
-  function advisorCard(a) {
+  function advisorCard(a, i) {
     const nombre   = `${a.nombres || ""} ${a.apellidos || ""}`.trim() || t("advisorName");
     const initials = (nombre.split(/\s+/).map((w) => w[0]).slice(0, 2).join("") || "?").toUpperCase();
     const avatar   = a.photo_url
       ? `<img class="pv-avatar" src="${esc(a.photo_url)}" alt="${esc(nombre)}">`
       : `<div class="pv-avatar">${esc(initials)}</div>`;
     const contacto = [
-      a.telefono ? `<a href="tel:${esc(a.telefono)}">${esc(a.telefono)}</a>` : "",
-      a.email    ? `<a href="mailto:${esc(a.email)}">${esc(a.email)}</a>`    : "",
-    ].filter(Boolean).join("<br>");
+      a.telefono ? `<a href="tel:${esc(a.telefono)}">${icon("phone")} ${esc(a.telefono)}</a>` : "",
+      a.email    ? `<a href="mailto:${esc(a.email)}">${icon("mail")} ${esc(a.email)}</a>`      : "",
+    ].filter(Boolean).join("");
     return `
-      <div class="pv-advisor">
+      <div class="pv-advisor" style="animation-delay:${i * 0.05}s">
         ${avatar}
         <div style="min-width:0">
           <div class="pv-advisor-name">${esc(nombre)}</div>
@@ -153,12 +153,12 @@
     const disponibles = DATA.lotesByProyecto[proyecto.id_proyecto] || [];
 
     const chips = proyectos.map((p, i) =>
-      `<button class="pv-chip ${i === selectedIdx ? "active" : ""}" data-pidx="${i}">${esc(p.nombre)}</button>`
+      `<button class="pv-chip ${i === selectedIdx ? "active" : ""}" data-pidx="${i}" style="animation-delay:${i * 0.03}s">${esc(p.nombre)}</button>`
     ).join("");
 
     const lotsHtml = disponibles.length
-      ? `<div class="pv-lots">${disponibles.map((l) => `
-          <div class="pv-lot">
+      ? `<div class="pv-lots">${disponibles.map((l, i) => `
+          <div class="pv-lot" style="animation-delay:${i * 0.04}s">
             <div class="pv-lot-code">${esc(l.codigo_lote)}</div>
             <div class="pv-lot-meta">${[
               l.manzana ? "Mz " + esc(l.manzana) : "",
@@ -176,21 +176,22 @@
     content.innerHTML = `
       <div class="pv-chips">${chips}</div>
       ${proyecto.descripcion ? `<p class="pv-proj-desc">${esc(proyecto.descripcion)}</p>` : ""}
-      ${proyecto.ubicacion ? `<p class="pv-proj-loc">📍 ${esc(proyecto.ubicacion)}</p>` : ""}
+      ${proyecto.ubicacion ? `<p class="pv-proj-loc">${icon("map-pin")} ${esc(proyecto.ubicacion)}</p>` : ""}
 
       <section class="pv-section">
-        <div class="pv-section-head"><h2>${esc(t("lots"))}</h2><span class="pv-count">${disponibles.length}</span></div>
+        <div class="pv-section-head"><h2>${icon("map")} ${esc(t("lots"))}</h2><span class="pv-count">${disponibles.length}</span></div>
         ${lotsHtml}
       </section>
 
       <section class="pv-section">
-        <div class="pv-section-head"><h2>${esc(t("advisors"))}</h2></div>
+        <div class="pv-section-head"><h2>${icon("users")} ${esc(t("advisors"))}</h2></div>
         ${advisorsHtml}
       </section>`;
 
     content.querySelectorAll("[data-pidx]").forEach((btn) => {
       btn.addEventListener("click", () => { selectedIdx = Number(btn.dataset.pidx); render(); });
     });
+    refreshIcons();
   }
 
   async function getJSON(url) {
@@ -224,6 +225,7 @@
     applyTheme();
     applyStatic();
     renderControls();
+    refreshIcons();
 
     document.getElementById("pv-theme").addEventListener("click", () =>
       setTheme(state.theme === "dark" ? "light" : "dark"));
@@ -231,6 +233,7 @@
       setLang(state.lang === "en" ? "es" : "en"));
 
     if (loginFrame) loginFrame.addEventListener("load", syncIframe);
+    window.addEventListener("load", refreshIcons);
 
     load();
   }

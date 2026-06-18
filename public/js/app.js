@@ -203,7 +203,7 @@ async function iniciarApp() {
     return;
   }
 
-  if (!firebaseUser) { window.location.href = "/proyectos"; return; }
+  if (!firebaseUser) { window.location.href = "/"; return; }
 
   try {
     const token = await firebaseUser.getIdToken(true);

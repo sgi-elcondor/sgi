@@ -261,3 +261,48 @@ body {
 @media (max-width: 24rem) {
   .pv-lots { grid-template-columns: 1fr; }
 }
+
+/* ---- Icons (Lucide) ---- */
+.pv-showcase .lucide { width: 1.05em; height: 1.05em; stroke-width: 2; vertical-align: -0.15em; flex-shrink: 0; }
+.pv-iconbtn .lucide { width: 1.05rem; height: 1.05rem; vertical-align: 0; }
+.pv-section-head h2 { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pv-section-head h2 .lucide { color: var(--accent); }
+.pv-note .lucide { color: var(--accent); width: 1.25rem; height: 1.25rem; margin-top: 0.05rem; }
+.pv-proj-loc .lucide { color: var(--accent); }
+.pv-advisor-contact a { display: inline-flex; align-items: center; gap: 0.3rem; }
+.pv-advisor-contact .lucide { width: 0.9rem; height: 0.9rem; opacity: 0.8; }
+
+/* ---- Entrance animations ---- */
+@keyframes pvFadeUp { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: none; } }
+@keyframes pvPop    { from { opacity: 0; transform: scale(0.94); }        to { opacity: 1; transform: none; } }
+
+.pv-chip    { animation: pvPop 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pv-lot     { animation: pvFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pv-advisor { animation: pvFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- Right-side micro-interactions ---- */
+.pv-chip {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+              box-shadow 0.15s ease, transform 0.15s ease;
+}
+.pv-chip:hover { transform: translateY(-0.125rem); box-shadow: 0 0.45rem 0.9rem rgba(var(--accent-rgb), 0.16); }
+.pv-chip:active { transform: translateY(0) scale(0.97); }
+
+.pv-iconbtn {
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.pv-iconbtn:hover { transform: translateY(-0.125rem); box-shadow: 0 0.45rem 0.9rem rgba(var(--accent-rgb), 0.16); }
+.pv-iconbtn:active { transform: scale(0.95); }
+.pv-iconbtn .lucide { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.pv-iconbtn:hover .lucide { transform: rotate(-18deg) scale(1.12); }
+.pv-iconbtn .pv-flag { transition: transform 0.25s ease; }
+.pv-iconbtn:hover .pv-flag { transform: scale(1.12); }
+
+.pv-advisor { transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.pv-advisor:hover { border-color: rgba(var(--accent-rgb), 0.3); box-shadow: 0 0.5rem 1rem rgba(17, 17, 17, 0.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-chip, .pv-lot, .pv-advisor { animation: none; }
+  .pv-chip, .pv-iconbtn, .pv-lot, .pv-advisor,
+  .pv-iconbtn .lucide, .pv-iconbtn .pv-flag { transition: none; }
+}

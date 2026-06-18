@@ -33,9 +33,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Public landing: the bare root shows the projects page. The authenticated app is served by
-// the SPA wildcard at any other path (login redirects to /app after sign-in).
-app.get('/', (req, res) => res.redirect('/proyectos'));
+// Public landing lives at the bare root (sgi.somoselcondor.com). The authenticated app is
+// served by the SPA wildcard at any other path (login redirects to /app after sign-in).
+// The previous /proyectos URL 301s to the root to keep a single canonical landing.
+app.get('/proyectos', (req, res) => res.redirect(301, '/'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, "..", "public", "proyectos.html")));
 
 app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 
