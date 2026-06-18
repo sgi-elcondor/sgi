@@ -58,7 +58,8 @@
   };
 
   // Point 13: comprador downloads a PDF of the payment plan from "Mis Cuotas".
-  function _planCuotasPDF(venta) {
+  async function _planCuotasPDF(venta) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const jsPDFCtor = window.jspdf?.jsPDF;
     if (!jsPDFCtor) { window.SGIUI?.toast("No se pudo generar el PDF.", "error"); return; }
 

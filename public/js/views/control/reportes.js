@@ -250,7 +250,8 @@ window.reportesView = async function () {
   }
 };
 
-function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
+async function _renderRepCharts(pagos, todasVentas, cuotasVenc, cuotasPend) {
+  if (window.SGILibs) { try { await window.SGILibs.ensureCharts(); } catch { return; } }
   if (typeof Chart === "undefined") return;
 
   const isDark     = document.documentElement.getAttribute("data-theme") === "dark";
