@@ -1,5 +1,6 @@
 const supabase  = require('../config/supabase');
 const auditoria = require('../services/auditoria.service');
+const authCache = require('../services/auth-cache.service');
 
 // Resource namespaces managed by this controller (via VISTA_API_MAP).
 // Permissions in OTHER namespaces (e.g. dashboard:ver_*) are left untouched.
@@ -156,6 +157,10 @@ async function updatePermisos(req, res) {
       usuario:  req.usuario.email,
       motivo:   'gestion_permisos',
     });
+
+    // Permissions changed for this role — drop cached identity payloads so users on this role
+    // pick up the new permissions on their next request instead of waiting for the TTL.
+    authCache.clear();
 
     return res.json({ ok: true, rol: rolData.nombre, vistas });
   } catch (err) {

@@ -29,13 +29,11 @@ async function _facturaActivaConSaldo(id_cuota) {
 // Recompute and persist the estado of the active facturas of a cuota from the canonical
 // saldo (RN-03/§4.2): emitida -> parcialmente_pagada -> pagada. 'anulada' is left as-is.
 async function refrescarFacturasDeCuota(id_cuota) {
-  const { data: links } = await supabase.schema(SCHEMA)
-    .from('cuota_factura').select('id_factura, factura:id_factura(estado)').eq('id_cuota', id_cuota);
-  for (const link of (links || [])) {
-    if (link.factura?.estado === 'anulada') continue;
-    const nuevo = await saldos.getEstadoFactura(link.id_factura);
-    if (nuevo && nuevo !== link.factura?.estado) {
-      await supabase.schema(SCHEMA).from('factura').update({ estado: nuevo }).eq('id_factura', link.id_factura);
+  // Single fetch of the cuota + its facturas (no per-factura re-fetch); update only on change.
+  const estados = await saldos.getEstadosFacturasDeCuota(id_cuota);
+  for (const { id_factura, actual, nuevo } of estados) {
+    if (nuevo && nuevo !== actual) {
+      await supabase.schema(SCHEMA).from('factura').update({ estado: nuevo }).eq('id_factura', id_factura);
     }
   }
 }

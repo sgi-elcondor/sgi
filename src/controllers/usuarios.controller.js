@@ -1,5 +1,6 @@
-const supabase = require('../config/supabase');
-const SCHEMA   = 'condor';
+const supabase  = require('../config/supabase');
+const authCache = require('../services/auth-cache.service');
+const SCHEMA    = 'condor';
 
 async function listarUsuarios(req, res) {
   const { data, error } = await supabase
@@ -106,6 +107,11 @@ async function actualizarUsuario(req, res) {
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Role or active flag may have changed — drop cached identity payloads so the change takes
+    // effect on the next request instead of waiting for the TTL.
+    authCache.clear();
+
     return res.json(data);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -124,6 +130,10 @@ async function desactivarUsuario(req, res) {
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
+
+  // Deactivated user must lose access immediately, not after the TTL.
+  authCache.clear();
+
   return res.json(data);
 }
 

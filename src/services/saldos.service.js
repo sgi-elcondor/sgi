@@ -197,6 +197,36 @@ async function getEstadoFactura(id_factura) {
   return _estadoFactura(f.valor_facturado, cubierto);
 }
 
+// Batch equivalent of getEstadoFactura for every factura linked to a cuota: fetches the cuota
+// ONCE and derives each linked factura's estado from the same receipts, avoiding the N+1 of
+// calling getEstadoFactura (which re-fetches the cuota) per factura. Returns [{ id_factura,
+// actual, nuevo }] so callers can update only on change. 'anulada' is preserved as-is.
+async function getEstadosFacturasDeCuota(id_cuota) {
+  const { data: links } = await supabase.schema(SCHEMA)
+    .from('cuota_factura')
+    .select('id_factura, id_fraccion, factura:id_factura(estado, valor_facturado)')
+    .eq('id_cuota', id_cuota);
+  if (!links || !links.length) return [];
+
+  const c            = await _fetchCuota(id_cuota);
+  const totalRecibos = _sumRecibosAceptados(c?.cuota_pago);
+  const cobertura    = _coberturaFracciones(c?.cuota_fraccion, totalRecibos);
+
+  return links.map(link => {
+    const actual = link.factura?.estado;
+    let nuevo;
+    if (actual === 'anulada') {
+      nuevo = 'anulada';
+    } else {
+      const cubierto = link.id_fraccion
+        ? (cobertura.find(x => x.id_fraccion === link.id_fraccion)?.pagado || 0)
+        : totalRecibos;
+      nuevo = _estadoFactura(link.factura?.valor_facturado, cubierto);
+    }
+    return { id_factura: link.id_factura, actual, nuevo };
+  });
+}
+
 module.exports = {
   MORA_DIAS,
   clasificarMora,
@@ -206,6 +236,7 @@ module.exports = {
   getEstadoCuota,
   getSaldoFraccion,
   getEstadoFactura,
+  getEstadosFacturasDeCuota,
   // exported for unit testing the pure logic
   _sumRecibosAceptados,
   _saldo,
