@@ -33,9 +33,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Public landing: the bare root shows the preview. The authenticated app is served by the
-// SPA wildcard at any other path (login redirects to /app after sign-in).
-app.get('/', (req, res) => res.redirect('/preview'));
+// Public landing: the bare root shows the projects page. The authenticated app is served by
+// the SPA wildcard at any other path (login redirects to /app after sign-in).
+app.get('/', (req, res) => res.redirect('/proyectos'));
 
 app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 

@@ -172,6 +172,68 @@
     if (user) (window.top || window).location.href = '/app';
   });
 
+  // ── i18n + theme, synced from the public landing (same-origin) ──
+  const LOGIN_I18N = {
+    es: {
+      tabLogin: "Ingresar", tabRegister: "Crear cuenta",
+      email: "Correo electrónico", password: "Contraseña", confirm: "Confirmar contraseña",
+      forgot: "¿Olvidaste tu contraseña?", signin: "Ingresar", create: "Crear cuenta",
+      orContinue: "o continúa con", googleLogin: "Google", googleRegister: "Continuar con Google",
+      ruleLen: "Mínimo 8 caracteres", ruleUpper: "Una letra mayúscula", ruleNum: "Un número",
+      recoverText: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      sendLink: "Enviar enlace", backToLogin: "Volver al inicio de sesión",
+      phEmail: "usuario@ejemplo.com", phPassword: "••••••••", phNewPassword: "Mínimo 8 caracteres", phConfirm: "Repite la contraseña",
+    },
+    en: {
+      tabLogin: "Sign in", tabRegister: "Sign up",
+      email: "Email", password: "Password", confirm: "Confirm password",
+      forgot: "Forgot your password?", signin: "Sign in", create: "Create account",
+      orContinue: "or continue with", googleLogin: "Google", googleRegister: "Continue with Google",
+      ruleLen: "At least 8 characters", ruleUpper: "One uppercase letter", ruleNum: "One number",
+      recoverText: "Enter your email and we will send you a link to reset your password.",
+      sendLink: "Send link", backToLogin: "Back to sign in",
+      phEmail: "user@example.com", phPassword: "••••••••", phNewPassword: "At least 8 characters", phConfirm: "Repeat the password",
+    },
+  };
+
+  function applyLoginLang(lang) {
+    const d = LOGIN_I18N[lang] || LOGIN_I18N.es;
+    document.documentElement.lang = lang;
+    const set = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+    set('#tab-login', d.tabLogin); set('#tab-registro', d.tabRegister);
+    set('label[for="l-email"]', d.email); set('label[for="l-password"]', d.password);
+    set('label[for="r-email"]', d.email); set('label[for="r-password"]', d.password); set('label[for="r-confirm"]', d.confirm);
+    set('label[for="rec-email"]', d.email);
+    set('#panel-login .link-btn', d.forgot);
+    set('#rule-len', d.ruleLen); set('#rule-upper', d.ruleUpper); set('#rule-num', d.ruleNum);
+    set('#panel-recuperar p', d.recoverText);
+    document.querySelectorAll('.divider-text').forEach(el => { el.textContent = d.orContinue; });
+    const setBtn = (id, val) => { const b = document.getElementById(id); if (b && !b.querySelector('.spinner')) b.textContent = val; };
+    setBtn('btn-login', d.signin); setBtn('btn-registro', d.create); setBtn('btn-recuperar', d.sendLink);
+    const gl = document.getElementById('btn-google-login');    if (gl && gl.lastChild) gl.lastChild.nodeValue = ' ' + d.googleLogin;
+    const gr = document.getElementById('btn-google-registro'); if (gr && gr.lastChild) gr.lastChild.nodeValue = ' ' + d.googleRegister;
+    const back = document.querySelector('#panel-recuperar .link-btn'); if (back && back.lastChild) back.lastChild.nodeValue = ' ' + d.backToLogin;
+    const ph = (id, val) => { const el = document.getElementById(id); if (el) el.placeholder = val; };
+    ph('l-email', d.phEmail); ph('r-email', d.phEmail); ph('rec-email', d.phEmail);
+    ph('l-password', d.phPassword); ph('r-password', d.phNewPassword); ph('r-confirm', d.phConfirm);
+  }
+
+  function applyLoginTheme(theme) {
+    if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+  }
+
+  window.previewApplyLang  = applyLoginLang;
+  window.previewApplyTheme = applyLoginTheme;
+
+  (function initPrefs() {
+    const th = localStorage.getItem('sgi_theme');
+    applyLoginTheme((th === 'dark' || th === 'light')
+      ? th
+      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    applyLoginLang(localStorage.getItem('sgi_lang') === 'en' ? 'en' : 'es');
+  })();
+
   const ERROR_MSG = {
     'auth/invalid-email':           'El correo no tiene un formato válido.',
     'auth/user-not-found':          'No existe una cuenta con ese correo.',

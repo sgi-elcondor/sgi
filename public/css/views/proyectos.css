@@ -1,11 +1,22 @@
-/* Public preview / landing — split layout: embedded login (left) + project showcase (right).
+/* Public landing (/proyectos) — split layout: embedded login (left) + project showcase (right).
    The login is loaded in an isolated iframe so login.css never clashes with the app styles. */
 
-body { margin: 0; background: var(--bg); }
+/* The app shell locks body scroll (global.css: body{height:100vh;overflow:hidden}). Undo it
+   here so the public page scrolls normally. */
+html, body {
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+body {
+  display: block;
+  background: var(--bg);
+}
 
 .pv-split {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   min-height: 100vh;
 }
 
@@ -37,8 +48,34 @@ body { margin: 0; background: var(--bg); }
 .pv-inner {
   max-width: 60rem;
   margin: 0 auto;
-  padding: 3rem 2.25rem 4rem;
+  padding: 1.5rem 2.25rem 4rem;
 }
+
+/* Controls (theme + language) */
+.pv-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.pv-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+.pv-iconbtn:hover { border-color: rgba(var(--accent-rgb), 0.45); }
+.pv-iconbtn:active { transform: scale(0.96); }
+.pv-iconbtn svg { width: 1.05rem; height: 1.05rem; display: block; }
+.pv-flag { width: 1.25rem; height: 0.9rem; border-radius: 0.125rem; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
 
 /* Hero */
 .pv-hero { margin-bottom: 1.75rem; }
@@ -53,7 +90,7 @@ body { margin: 0; background: var(--bg); }
 }
 .pv-hero h1 {
   margin: 0 0 0.5rem;
-  font-size: clamp(1.7rem, 3.2vw, 2.35rem);
+  font-size: clamp(1.6rem, 3.2vw, 2.35rem);
   line-height: 1.1;
   letter-spacing: -0.01em;
   color: var(--text);
@@ -97,11 +134,7 @@ body { margin: 0; background: var(--bg); }
   letter-spacing: -0.01em;
   color: var(--text);
 }
-.pv-count {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--accent);
-}
+.pv-count { font-size: 0.8rem; font-weight: 800; color: var(--accent); }
 
 /* Project chips */
 .pv-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.1rem; }
@@ -189,7 +222,7 @@ body { margin: 0; background: var(--bg); }
 }
 .pv-advisor-name { font-weight: 700; color: var(--text); font-size: 0.95rem; }
 .pv-advisor-contact { margin-top: 0.15rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
-.pv-advisor-contact a { color: var(--accent); text-decoration: none; }
+.pv-advisor-contact a { color: var(--accent); text-decoration: none; word-break: break-word; }
 .pv-advisor-contact a:hover { text-decoration: underline; }
 
 /* Empty states */
@@ -202,21 +235,29 @@ body { margin: 0; background: var(--bg); }
   text-align: center;
 }
 
-/* Responsive — stack, login on top */
+/* ---- Responsive ---- */
 @media (max-width: 60rem) {
-  .pv-split { flex-direction: column; }
+  .pv-split { flex-direction: column; align-items: stretch; }
   .pv-aside {
     position: static;
     height: auto;
     max-width: none;
-    flex-basis: auto;
+    flex: 0 0 auto;
+    width: 100%;
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
-  .pv-aside iframe { height: 40rem; }
-  .pv-inner { padding: 2rem 1.25rem 2.5rem; }
+  .pv-aside iframe { height: 44rem; }
+  .pv-inner { padding: 1.25rem 1.25rem 2.5rem; }
 }
 @media (max-width: 35rem) {
-  .pv-aside iframe { height: 38rem; }
-  .pv-lots { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+  .pv-aside iframe { height: 42rem; }
+  .pv-inner { padding: 1rem 1rem 2rem; }
+  .pv-lots { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .pv-advisors { grid-template-columns: 1fr; }
+  .pv-hero h1 { font-size: 1.55rem; }
+  .pv-section-head { flex-wrap: wrap; }
+}
+@media (max-width: 24rem) {
+  .pv-lots { grid-template-columns: 1fr; }
 }
