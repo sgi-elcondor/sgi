@@ -169,7 +169,7 @@
   } from '/js/auth.js';
 
   esperarAuthListo().then(user => {
-    if (user) window.location.href = '/';
+    if (user) (window.top || window).location.href = '/app';
   });
 
   const ERROR_MSG = {
@@ -260,7 +260,7 @@
 
     try {
       await loginEmail(email, pwd);
-      window.location.href = '/';
+      (window.top || window).location.href = '/app';
     } catch (err) {
       showError('l-error', err);
     } finally {
@@ -279,7 +279,7 @@
 
     try {
       await loginGoogle();
-      window.location.href = '/';
+      (window.top || window).location.href = '/app';
     } catch (err) {
       showError('l-error', err);
     } finally {
@@ -319,7 +319,7 @@
 
     try {
       await registerEmail(email, pwd);
-      window.location.href = '/';
+      (window.top || window).location.href = '/app';
     } catch (err) {
       showError('r-error', err);
     } finally {
@@ -334,7 +334,7 @@
 
     try {
       await loginGoogle();
-      window.location.href = '/';
+      (window.top || window).location.href = '/app';
     } catch (err) {
       showError('r-error', err);
     } finally {

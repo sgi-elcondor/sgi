@@ -33,6 +33,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Public landing: the bare root shows the preview. The authenticated app is served by the
+// SPA wildcard at any other path (login redirects to /app after sign-in).
+app.get('/', (req, res) => res.redirect('/preview'));
+
 app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 
 // Servir favicon.ico sin requerir token â€” evita 401
