@@ -11,6 +11,7 @@ exports.getProyectos = async (req, res) => {
       .select('id_proyecto, nombre, ubicacion, descripcion')
       .order('nombre');
     if (error) return res.status(500).json({ error: error.message });
+    res.set('Cache-Control', 'public, max-age=60');
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -25,6 +26,7 @@ exports.getLotesDisponibles = async (req, res) => {
       .eq('estado', 'disponible')
       .order('codigo_lote');
     if (error) return res.status(500).json({ error: error.message });
+    res.set('Cache-Control', 'public, max-age=60');
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -47,6 +49,7 @@ exports.getAsesores = async (req, res) => {
       .eq('activo', true)
       .order('nombres');
     if (error) return res.status(500).json({ error: error.message });
+    res.set('Cache-Control', 'public, max-age=60');
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });

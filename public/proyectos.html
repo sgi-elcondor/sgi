@@ -8,6 +8,20 @@
   <meta name="theme-color" content="#ff6a00" />
   <meta name="robots" content="index, follow" />
 
+  <script>
+    // Set theme/lang before first paint to avoid a flash (FOUC).
+    (function () {
+      try {
+        var t = localStorage.getItem('sgi_theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.lang = localStorage.getItem('sgi_lang') === 'en' ? 'en' : 'es';
+      } catch (e) {}
+    })();
+  </script>
+
   <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
   <link rel="canonical" href="https://sgi.somoselcondor.com/" />
   <meta property="og:type" content="website" />
@@ -52,7 +66,7 @@
   </main>
 </div>
 
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
 <script src="/js/proyectos.js"></script>
 </body>
 </html>

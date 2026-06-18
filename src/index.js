@@ -13,6 +13,15 @@ const { verificarPermiso } = require('./middlewares/permisos.middleware');
 app.use(cors());
 app.use(express.json());
 
+// Baseline security headers. SAMEORIGIN still allows the same-origin login iframe used by the
+// public landing, while blocking external framing (clickjacking).
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 if (process.env.NODE_ENV !== 'production') {
   const livereload        = require('livereload');
   const connectLivereload = require('connect-livereload');
