@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Cóndor — Proyecto y lotes disponibles</title>
+  <meta name="description" content="Conoce el proyecto, los lotes disponibles y nuestros asesores comerciales. El Cóndor S.A.S." />
+  <meta name="theme-color" content="#ff6a00" />
+  <meta name="robots" content="index, follow" />
+
+  <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
+  <link rel="canonical" href="https://sgi.somoselcondor.com/preview" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SGI El Cóndor" />
+  <meta property="og:title" content="El Cóndor · Proyecto y lotes disponibles" />
+  <meta property="og:description" content="Conoce el proyecto, los lotes disponibles y nuestros asesores comerciales." />
+  <meta property="og:url" content="https://sgi.somoselcondor.com/preview" />
+  <meta property="og:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/views/comprador.css" />
+  <link rel="stylesheet" href="/css/responsive.css?v=1" />
+
+  <style>
+    body { background: var(--bg, #f5f6f8); }
+    .pv-bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      padding: 0.75rem 1.25rem;
+      background: var(--surface, #fff);
+      border-bottom: 1px solid var(--border, #e5e7eb);
+      box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,.05);
+    }
+    .pv-bar-logo { height: 2rem; width: auto; }
+    .pv-bar-msg {
+      flex: 1 1 16rem; min-width: 0;
+      font-size: 0.85rem; color: var(--text-muted, #6b7280); line-height: 1.4;
+    }
+    .pv-bar-msg strong { color: var(--text, #111827); }
+    .pv-bar-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .pv-hero { padding: 2rem 1.25rem 0.5rem; max-width: 70rem; margin: 0 auto; }
+    .pv-hero h1 { margin: 0 0 0.35rem; font-size: 1.6rem; color: var(--text, #111827); }
+    .pv-hero p { margin: 0; color: var(--text-muted, #6b7280); font-size: 0.95rem; }
+    .pv-main { max-width: 70rem; margin: 0 auto; padding: 0.5rem 1.25rem 3rem; }
+    .pv-asesores-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+      gap: 0.75rem;
+    }
+    .pv-asesor-card {
+      display: flex; gap: 0.75rem; align-items: center;
+      padding: 0.9rem 1rem;
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e5e7eb); border-radius: 0.75rem;
+    }
+    .pv-asesor-avatar {
+      width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      background: var(--surface-2, #eef1f5); display: flex; align-items: center; justify-content: center;
+      font-weight: 700; color: var(--text-muted, #6b7280); font-size: 1rem;
+    }
+    .pv-asesor-name { font-weight: 600; color: var(--text, #111827); font-size: 0.95rem; }
+    .pv-asesor-contact { font-size: 0.8rem; color: var(--text-muted, #6b7280); line-height: 1.5; }
+    .pv-asesor-contact a { color: var(--color-primary, #ff6a00); text-decoration: none; }
+    .pv-empty { color: var(--text-muted, #6b7280); padding: 1rem 0.25rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<header class="pv-bar">
+  <picture>
+    <source srcset="/src/img/brand_logo_white.svg" media="(prefers-color-scheme: dark)" />
+    <img src="/src/img/brand_logo_black.svg" alt="El Cóndor" class="pv-bar-logo" />
+  </picture>
+  <div class="pv-bar-msg">
+    <strong>¿Ya tienes un lote?</strong> Usa nuestro sistema para ver tus cuotas, plan de pagos, facturas y recibos.
+  </div>
+  <div class="pv-bar-actions">
+    <a class="btn btn-ghost btn-sm" href="/login">Iniciar sesión</a>
+    <a class="btn btn-primary btn-sm" href="/login">Registrarse</a>
+  </div>
+</header>
+
+<section class="pv-hero">
+  <h1>Conoce el proyecto</h1>
+  <p>Explora los lotes disponibles y contacta a nuestros asesores comerciales.</p>
+</section>
+
+<main class="pv-main" id="pv-content"></main>
+
+<script src="/js/preview.js"></script>
+</body>
+</html>

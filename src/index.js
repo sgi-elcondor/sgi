@@ -42,6 +42,9 @@ app.get('/favicon.ico', (req, res) => {
 
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 
+// Public showcase endpoints — no token required (must stay before verificarToken below)
+app.use('/api/v1/public', require('./routes/public.routes'));
+
 app.get('/api/v1/firebase-config', (req, res) => {
   res.json({
     apiKey:            process.env.FIREBASE_API_KEY,
