@@ -248,7 +248,7 @@
   }
 
   async function sgiCargarProyectosBackend() {
-    const data = await API.get("/proyectos");
+    const data = await API.getCached("/proyectos");
     return sgiExtraerArray(data).map(sgiNormalizarProyecto).filter(p => p.id);
   }
 
