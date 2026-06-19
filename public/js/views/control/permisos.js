@@ -329,7 +329,7 @@
     const vc = container || document.getElementById('viewContainer');
     vc.innerHTML = UI.loader();
     try {
-      const roles = await API.get('/roles');
+      const roles = await API.getCached('/roles', { ttl: 300000 });
       vc.innerHTML = `
         <section class="page-shell">
           ${window.SGIUI?.pageHeader({ kicker:'Administracion', title:'Permisos del sistema', subtitle:'Configura que pantallas y acciones puede realizar cada rol.' }) ?? ''}

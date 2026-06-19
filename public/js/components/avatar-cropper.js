@@ -8,6 +8,9 @@ const AvatarCropper = (function () {
   function open({ onSuccess }) {
     _cleanup();
 
+    // Start fetching CropperJS as soon as the modal opens, before a file is picked.
+    if (window.SGILibs) window.SGILibs.ensureCropper();
+
     const overlay = document.createElement('div');
     overlay.id = 'avatar-cropper-overlay';
     overlay.innerHTML = `
@@ -72,22 +75,32 @@ const AvatarCropper = (function () {
       img.style.display = '';
       img.src = ev.target.result;
 
-      if (_cropperInstance) { _cropperInstance.destroy(); _cropperInstance = null; }
+      const initCropper = function () {
+        if (_cropperInstance) { _cropperInstance.destroy(); _cropperInstance = null; }
 
-      _cropperInstance = new window.Cropper(img, {
-        aspectRatio:     1,
-        viewMode:        1,
-        dragMode:        'move',
-        autoCropArea:    0.85,
-        responsive:      true,
-        restore:         false,
-        guides:          true,
-        center:          true,
-        highlight:       false,
-        cropBoxMovable:  true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-      });
+        _cropperInstance = new window.Cropper(img, {
+          aspectRatio:     1,
+          viewMode:        1,
+          dragMode:        'move',
+          autoCropArea:    0.85,
+          responsive:      true,
+          restore:         false,
+          guides:          true,
+          center:          true,
+          highlight:       false,
+          cropBoxMovable:  true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+        });
+      };
+
+      if (window.SGILibs) {
+        window.SGILibs.ensureCropper()
+          .then(initCropper)
+          .catch(function () { _showError('No se pudo cargar el editor de imagen.'); });
+      } else {
+        initCropper();
+      }
     };
     reader.readAsDataURL(file);
   }

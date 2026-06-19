@@ -468,7 +468,7 @@ window.gastosView = async function() {
 
   const [gastos, proyectos] = await Promise.all([
     API.get("/gastos").catch(() => []),
-    API.get("/proyectos").catch(() => []),
+    API.getCached("/proyectos").catch(() => []),
   ]);
 
   _gastosList      = gastos;

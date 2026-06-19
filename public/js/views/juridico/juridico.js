@@ -258,7 +258,8 @@ window.juridicoView = async function () {
     });
   }
 
-  function generarPDF(venta, cuotasVencidas, totalVencido, tipo) {
+  async function generarPDF(venta, cuotasVencidas, totalVencido, tipo) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const SX  = window.SGIExport.pdf;

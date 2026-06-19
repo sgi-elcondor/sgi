@@ -3,6 +3,7 @@ node_modules/
 desktop.ini
 Thumbs.db
 dist/
+public/index.prod.html
 git-workflow.md
 aux-changes.md
 db/

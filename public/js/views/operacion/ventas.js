@@ -2060,7 +2060,8 @@ window.guardarSolicitudVenta = async function() {
 
 window._actualizarCalculos = _actualizarCalculos;
 
-function _exportVentaPDF(v, cuotas, fin) {
+async function _exportVentaPDF(v, cuotas, fin) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const SX  = window.SGIExport.pdf;
@@ -2209,6 +2210,7 @@ function _exportVentaPDF(v, cuotas, fin) {
 }
 
 async function _exportVentaExcel(v, cuotas, fin) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
   const SX = window.SGIExport.xlsx;
   const wb = SX.setup();
 

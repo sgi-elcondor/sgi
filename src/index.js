@@ -1,16 +1,25 @@
 ﻿require("dotenv").config();
-const express = require("express");
-const cors    = require("cors");
-const path    = require("path");
+const express     = require("express");
+const cors        = require("cors");
+const compression = require("compression");
+const path        = require("path");
+const fs          = require("fs");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// In production serve the built, hashed index.prod.html (falls back to the dev index if the build
+// hasn't run). Dev always serves the loose-script index.html, so livereload needs no build step.
+const PROD_INDEX = path.join(__dirname, "..", "public", "index.prod.html");
+const DEV_INDEX  = path.join(__dirname, "..", "public", "index.html");
+const APP_INDEX  = process.env.NODE_ENV === "production" && fs.existsSync(PROD_INDEX) ? PROD_INDEX : DEV_INDEX;
 
 const { verificarToken }   = require('./middlewares/auth.middleware');
 const { verificarPermiso } = require('./middlewares/permisos.middleware');
 
 
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 
 // Baseline security headers. SAMEORIGIN still allows the same-origin login iframe used by the
@@ -47,6 +56,13 @@ app.use((req, res, next) => {
 // The previous /proyectos URL 301s to the root to keep a single canonical landing.
 app.get('/proyectos', (req, res) => res.redirect(301, '/'));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, "..", "public", "proyectos.html")));
+
+// Hashed, immutable bundles built into public/dist by build.mjs. Safe to long-cache because the
+// ?v=<hash> query changes whenever the bundle content changes.
+app.use('/dist', express.static(path.join(__dirname, "..", "public", "dist"), {
+  immutable: true,
+  maxAge: '1y',
+}));
 
 app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 
@@ -94,7 +110,7 @@ app.use('/api/v1/recepciones',    require('./routes/recepciones.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
+  res.sendFile(APP_INDEX);
 });
 
 const { actualizarMora } = require('./services/mora.service');

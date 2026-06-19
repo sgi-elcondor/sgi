@@ -248,7 +248,7 @@
   }
 
   async function sgiCargarProyectosBackend() {
-    const data = await API.get("/proyectos");
+    const data = await API.getCached("/proyectos");
     return sgiExtraerArray(data).map(sgiNormalizarProyecto).filter(p => p.id);
   }
 
@@ -535,6 +535,7 @@
   // ── Exportación ───────────────────────────────────────────────────────────
 
   async function exportLotesExcel(filteredLotes, proyectos) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const SX = window.SGIExport.xlsx;
     const wb = SX.setup();
 
@@ -666,7 +667,8 @@
     await SX.download(wb, `lotes_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
-  function exportLotesPDF(filteredLotes, ctx = {}) {
+  async function exportLotesPDF(filteredLotes, ctx = {}) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const SX  = window.SGIExport.pdf;

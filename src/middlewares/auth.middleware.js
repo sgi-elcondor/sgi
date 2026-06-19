@@ -1,5 +1,6 @@
-const admin    = require('../config/firebase');
-const supabase = require('../config/supabase');
+const admin     = require('../config/firebase');
+const supabase  = require('../config/supabase');
+const authCache = require('../services/auth-cache.service');
 
 async function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -11,6 +12,20 @@ async function verificarToken(req, res, next) {
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
+
+    // The token is always verified above. Reuse the cached identity payload (resolved from
+    // Supabase) for this uid within the TTL, rebuilding a fresh permisos Set each request.
+    const cached = authCache.get(decoded.uid);
+    if (cached) {
+      req.usuario = {
+        uid:        decoded.uid,
+        id_usuario: cached.id_usuario,
+        email:      cached.email,
+        rol:        cached.rol,
+        permisos:   new Set(cached.permisos),
+      };
+      return next();
+    }
 
     let { data: usuario, error } = await supabase
       .schema('condor')
@@ -71,11 +86,17 @@ async function verificarToken(req, res, next) {
       return res.status(403).json({ error: 'No se pudo cargar el rol del usuario.' });
     }
 
-    const permisos = new Set(
-      (rolData.rol_permiso ?? []).map(rp =>
-        `${rp.permisos.recurso}:${rp.permisos.accion}`
-      )
+    const permisosArray = (rolData.rol_permiso ?? []).map(rp =>
+      `${rp.permisos.recurso}:${rp.permisos.accion}`
     );
+    const permisos = new Set(permisosArray);
+
+    authCache.set(decoded.uid, {
+      id_usuario: usuario.id_usuario,
+      email:      usuario.email,
+      rol:        rolData.nombre,
+      permisos:   permisosArray,
+    });
 
     req.usuario = {
       uid:        decoded.uid,
