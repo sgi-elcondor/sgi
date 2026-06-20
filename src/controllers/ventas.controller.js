@@ -48,8 +48,10 @@ exports.getAll = async (req, res) => {
   if (proyecto) {
     const pn = proyecto.toLowerCase();
 
+    // Exact (case-insensitive) match: the proyecto filter comes from a dropdown, so partial
+    // matches would let a shorter project name over-match longer ones sharing the same prefix.
     result = result.filter(v =>
-      (v.lote?.proyecto?.nombre || "").toLowerCase().includes(pn)
+      (v.lote?.proyecto?.nombre || "").toLowerCase() === pn
     );
   }
 
@@ -57,12 +59,14 @@ exports.getAll = async (req, res) => {
     const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     const cn = norm(cliente);
 
-    // Point 5/7: search by comprador name/document, lote code or project in a single box.
+    // Point 5/7: search by comprador name/document or lote code in a single box. Project is
+    // excluded here on purpose — it has its own dropdown filter, so a client search must not
+    // cross-match project names.
     result = result.filter(v => {
       const compradores = (v.venta_comprador || [])
         .map(vc => `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""} ${vc.usuario?.documento || ""}`)
         .join(" ");
-      const haystack = `${compradores} ${v.lote?.codigo_lote || ""} ${v.lote?.proyecto?.nombre || ""} ${v.codigo_venta || ""}`;
+      const haystack = `${compradores} ${v.lote?.codigo_lote || ""} ${v.codigo_venta || ""}`;
       return norm(haystack).includes(cn);
     });
   }
