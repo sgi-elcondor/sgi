@@ -4,6 +4,9 @@
   let pagoOrigen   = "pagos";
   let _baucherFile = null;
   let _baucherUrl  = null;
+  let _pagosAll    = [];
+
+  const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -104,6 +107,9 @@
     });
     if (!data) return;
 
+    _pagosAll = data;
+    const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
+
     window._pagosMap = {};
     data.forEach(p => { window._pagosMap[p.id_pago] = p; });
 
@@ -151,7 +157,18 @@
             <h3>Pagos por Venta</h3>
             <span class="count-chip" id="pv-count">${grupos.length} venta${grupos.length === 1 ? "" : "s"}</span>
           </div>
-          ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            ${canExport ? `
+              <button class="btn btn-ghost btn-sm" id="pv-export-excel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Exportar Excel
+              </button>
+              <button class="btn btn-ghost btn-sm" id="pv-export-pdf">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="10" y2="9"/></svg>
+                Exportar PDF
+              </button>` : ""}
+            ${canWrite ? `<button class="btn btn-primary btn-sm" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>` : ""}
+          </div>
         </div>
         ${window.SGIUI.filterBar({
           fields: [
@@ -208,6 +225,11 @@
       ["pv-proyecto", "pv-estado", "pv-comprador"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
       aplicarFiltros();
     });
+
+    if (canExport) {
+      document.getElementById("pv-export-excel")?.addEventListener("click", () => exportPagosExcel(_pagosVisibles()));
+      document.getElementById("pv-export-pdf")?.addEventListener("click", () => exportPagosPDF(_pagosVisibles()));
+    }
 
     tbody.addEventListener("click", e => {
       const btn = e.target.closest(".btn-ver-pagos");
@@ -889,6 +911,161 @@
           <button class="btn btn-primary" onclick="pagoForm()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Pago</button>
         </div>
       </div>`;
+  }
+
+  // ── Exportación ───────────────────────────────────────────────────────────────
+
+  // Payments matching the master list filters, at the pago grain.
+  function _pagosVisibles() {
+    const fProyecto = document.getElementById("pv-proyecto")?.value || "";
+    const fEstado   = document.getElementById("pv-estado")?.value || "";
+    const fBuscar   = document.getElementById("pv-comprador")?.value || "";
+    return _pagosAll.filter(p => {
+      if (fProyecto && p.proyecto !== fProyecto) return false;
+      if (fEstado && p.estado !== fEstado) return false;
+      if (!SGISearch.matches(fBuscar, p.comprador, p.codigo_lote, p.proyecto, p.numero_pago || "", SGIUI.ventaCode(p))) return false;
+      return true;
+    });
+  }
+
+  function _cuotaLabelExport(p) {
+    if (p.tipo_pago === "abono_extraordinario") return "Abono al total";
+    return p.numero_cuota != null ? `#${p.numero_cuota}` : "—";
+  }
+
+  async function exportPagosExcel(rows) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
+    const SX = window.SGIExport.xlsx;
+    const wb = SX.setup();
+
+    const aceptados  = rows.filter(p => p.estado === "aceptado");
+    const enRevision = rows.filter(p => p.estado === "pendiente_revision").length;
+    const valorAcept = aceptados.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+
+    const ws = wb.addWorksheet("Pagos", { tabColor: { argb: SX.C.primary } });
+    ws.columns = [
+      { width: 16 }, { width: 28 }, { width: 22 }, { width: 16 }, { width: 20 },
+      { width: 14 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 12 },
+      { width: 22 }, { width: 18 }, { width: 20 },
+    ];
+
+    SX.masthead(ws, {
+      title:     "Pagos Registrados",
+      subtitle:  "Estado actual aplicando los filtros activos al momento de exportar",
+      mergeCols: 13,
+    });
+
+    SX.kpiRow(ws, [
+      { label: "Pagos",          value: rows.length },
+      { label: "Aceptados",      value: aceptados.length },
+      { label: "En revisión",    value: enRevision },
+      { label: "Valor aceptado", value: valorAcept, money: true },
+    ]);
+
+    ws.addRow([]).height = 4;
+    const hRow = ws.addRow([
+      "Venta", "Comprador", "Proyecto", "Lote", "N° Pago", "Fecha", "Valor",
+      "Método", "Factura", "Cuota", "Referencia", "Estado", "Recibo",
+    ]);
+    SX.styleHeader(hRow);
+    const headerRowNum = hRow.number;
+
+    rows.forEach((p, i) => {
+      const r = ws.addRow([
+        p.id_venta ? SGIUI.ventaCode(p) : "—",
+        p.comprador   || "—",
+        p.proyecto    || "—",
+        p.codigo_lote || "—",
+        p.numero_pago || `#${p.id_pago}`,
+        p.fecha_pago ? UI.date(p.fecha_pago) : "—",
+        Number(p.valor_pago || 0),
+        p.metodo_pago || "—",
+        fmtFactNum(p.numero_factura),
+        _cuotaLabelExport(p),
+        p.referencia || "—",
+        p.estado || "—",
+        p.numero_recibo || "—",
+      ]);
+      SX.styleBody(r, i % 2 !== 0);
+      r.getCell(7).numFmt = SX.NF.money;
+      r.getCell(7).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+    });
+
+    ws.views = [{ state: "frozen", ySplit: headerRowNum }];
+    ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: 13 } };
+
+    await SX.download(wb, `pagos_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  async function exportPagosPDF(rows) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const SX  = window.SGIExport.pdf;
+
+    const aceptados  = rows.filter(p => p.estado === "aceptado");
+    const enRevision = rows.filter(p => p.estado === "pendiente_revision").length;
+    const valorAcept = aceptados.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+    const valorTotal = rows.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
+
+    let y = SX.brand(doc);
+    y = SX.title(doc, y + 2, {
+      title:    "Pagos Registrados",
+      subtitle: `${rows.length} pago${rows.length === 1 ? "" : "s"} en la vista exportada`,
+    });
+    y = SX.kpiCards(doc, y + 2, [
+      { label: "Pagos",          value: String(rows.length),      desc: "Registrados en la vista" },
+      { label: "Aceptados",      value: String(aceptados.length), desc: "Validados" },
+      { label: "En revisión",    value: String(enRevision),       desc: "Pendientes de validar" },
+      { label: "Valor aceptado", value: UI.fmt(valorAcept),       desc: "Ingresos confirmados" },
+    ], { perRow: 4 });
+    y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Listado de pagos" });
+
+    doc.autoTable({
+      startY: y,
+      head: [["Venta", "Comprador", "Proyecto / Lote", "N° Pago", "Fecha", "Valor", "Método", "Estado", "Recibo"]],
+      body: rows.map(p => [
+        p.id_venta ? SGIUI.ventaCode(p) : "—",
+        p.comprador || "—",
+        `${p.proyecto || "—"}${p.codigo_lote ? " · " + p.codigo_lote : ""}`,
+        p.numero_pago || `#${p.id_pago}`,
+        p.fecha_pago ? UI.date(p.fecha_pago) : "—",
+        UI.fmt(p.valor_pago),
+        p.metodo_pago || "—",
+        p.estado || "—",
+        p.numero_recibo || "—",
+      ]),
+      foot: [[
+        `Total · ${rows.length} pago${rows.length === 1 ? "" : "s"}`,
+        "", "", "", "",
+        UI.fmt(valorTotal),
+        "", "", "",
+      ]],
+      showFoot: "lastPage",
+      ...SX.tableTheme(),
+      footStyles: SX.footStyles(),
+      columnStyles: {
+        0: { cellWidth: 24 },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 44 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 20, halign: "center" },
+        5: { cellWidth: 28, halign: "right"  },
+        6: { cellWidth: 22, halign: "center" },
+        7: { cellWidth: 24, halign: "center" },
+        8: { cellWidth: 30 },
+      },
+      ...SX.statusColumn(7, e => {
+        const n = String(e).toLowerCase();
+        if (n.includes("aceptado"))  return "success";
+        if (n.includes("revision"))  return "warning";
+        if (n.includes("rechazado")) return "danger";
+        return "muted";
+      }),
+    });
+
+    SX.footer(doc);
+    doc.save(`pagos_sgi_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // ── Entry point ───────────────────────────────────────────────────────────────

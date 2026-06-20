@@ -10,12 +10,21 @@
   let canPagar   = false;
   let mostrarAcciones = false;
 
+  const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
+
   function groupKey(c) { return String(c.id_venta ?? c.codigo_venta ?? "none"); }
 
   function diasCell(dias) {
     if (dias > 0)   return `<span class="badge badge-danger">${dias} días atraso</span>`;
     if (dias === 0) return `<span class="badge badge-warning">Vence hoy</span>`;
     return `<span class="badge badge-success">En ${Math.abs(dias)} días</span>`;
+  }
+
+  function diasTexto(dias) {
+    const d = Number(dias);
+    if (d > 0)   return `${d} días de atraso`;
+    if (d === 0) return "Vence hoy";
+    return `Faltan ${Math.abs(d)} días`;
   }
 
   function accionesCuota(c) {
@@ -67,6 +76,7 @@
     esAuxiliar      = AppState.can('cuotas', 'editar_valores');
     canPagar        = AppState.can('pagos', 'crear');
     mostrarAcciones = esAuxiliar || canPagar;
+    const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
 
     _cuotas    = data;
     _cuotasMap = {};
@@ -110,6 +120,16 @@
             <h3>Cuotas por Venta</h3>
             <span class="count-chip" id="cuotas-count">${_grupos.length} venta${_grupos.length === 1 ? "" : "s"}</span>
           </div>
+          ${canExport ? `<div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-ghost btn-sm" id="cuotas-export-excel">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Exportar Excel
+            </button>
+            <button class="btn btn-ghost btn-sm" id="cuotas-export-pdf">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="10" y2="9"/></svg>
+              Exportar PDF
+            </button>
+          </div>` : ""}
         </div>
 
         ${window.SGIUI.filterBar({
@@ -175,6 +195,11 @@
       if (sub) sub.checked = false;
       aplicarFiltros();
     });
+
+    if (canExport) {
+      document.getElementById("cuotas-export-excel")?.addEventListener("click", () => exportCuotasExcel(_cuotasVisibles()));
+      document.getElementById("cuotas-export-pdf")?.addEventListener("click", () => exportCuotasPDF(_cuotasVisibles()));
+    }
 
     tbody.addEventListener("click", e => {
       const btn = e.target.closest(".btn-ver-cuotas");
@@ -666,6 +691,151 @@
         window.SGIUI?.toast(e.message || "Error al guardar.", "error", "Error");
       }
     };
+  }
+
+  // ── Exportación ───────────────────────────────────────────────────────────────
+
+  // Pending cuotas matching the master list filters, flattened to the cuota grain.
+  function _cuotasVisibles() {
+    const fProyecto = document.getElementById("f-proyecto")?.value || "";
+    const fBuscar   = document.getElementById("f-buscar")?.value || "";
+    const fEstado   = document.getElementById("f-estado")?.value || "";
+    const fSub      = document.getElementById("f-subdivididas")?.checked || false;
+    return _cuotas.filter(c => {
+      if (fProyecto && c.proyecto !== fProyecto) return false;
+      if (fEstado && c.estado !== fEstado) return false;
+      if (fSub && !c.tiene_fracciones) return false;
+      if (!SGISearch.matches(fBuscar, c.comprador, c.documento, c.codigo_lote, c.proyecto, SGIUI.ventaCode(c))) return false;
+      return true;
+    });
+  }
+
+  async function exportCuotasExcel(rows) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
+    const SX = window.SGIExport.xlsx;
+    const wb = SX.setup();
+
+    const vencidas  = rows.filter(c => Number(c.dias_atraso) > 0).length;
+    const venceHoy  = rows.filter(c => Number(c.dias_atraso) === 0).length;
+    const porCobrar = rows.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
+
+    const ws = wb.addWorksheet("Cuotas", { tabColor: { argb: SX.C.primary } });
+    ws.columns = [
+      { width: 16 }, { width: 28 }, { width: 24 }, { width: 16 },
+      { width: 16 }, { width: 18 }, { width: 16 }, { width: 16 }, { width: 16 },
+    ];
+
+    SX.masthead(ws, {
+      title:     "Cuotas Pendientes",
+      subtitle:  "Estado actual aplicando los filtros activos al momento de exportar",
+      mergeCols: 9,
+    });
+
+    SX.kpiRow(ws, [
+      { label: "Cuotas",     value: rows.length },
+      { label: "Vencidas",   value: vencidas },
+      { label: "Vencen hoy", value: venceHoy },
+      { label: "Por cobrar", value: porCobrar, money: true },
+    ]);
+
+    ws.addRow([]).height = 4;
+    const hRow = ws.addRow(["Venta", "Comprador", "Proyecto", "Lote", "Vencimiento", "Días", "Valor", "Pendiente", "Estado"]);
+    SX.styleHeader(hRow);
+    const headerRowNum = hRow.number;
+
+    rows.forEach((c, i) => {
+      const r = ws.addRow([
+        SGIUI.ventaCode(c),
+        c.comprador   || "—",
+        c.proyecto    || "—",
+        c.codigo_lote || "—",
+        c.fecha_vencimiento ? UI.date(c.fecha_vencimiento) : "—",
+        diasTexto(c.dias_atraso),
+        Number(c.valor_cuota || 0),
+        Number(c.valor_pendiente || 0),
+        c.estado || "—",
+      ]);
+      SX.styleBody(r, i % 2 !== 0);
+      r.getCell(7).numFmt = SX.NF.money;
+      r.getCell(8).numFmt = SX.NF.money;
+      r.getCell(7).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      r.getCell(8).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+    });
+
+    ws.views = [{ state: "frozen", ySplit: headerRowNum }];
+    ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: 9 } };
+
+    await SX.download(wb, `cuotas_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  async function exportCuotasPDF(rows) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const SX  = window.SGIExport.pdf;
+
+    const vencidas   = rows.filter(c => Number(c.dias_atraso) > 0).length;
+    const venceHoy   = rows.filter(c => Number(c.dias_atraso) === 0).length;
+    const porCobrar  = rows.reduce((s, c) => s + Number(c.valor_pendiente || 0), 0);
+    const valorTotal = rows.reduce((s, c) => s + Number(c.valor_cuota || 0), 0);
+
+    let y = SX.brand(doc);
+    y = SX.title(doc, y + 2, {
+      title:    "Cuotas Pendientes",
+      subtitle: `${rows.length} cuota${rows.length === 1 ? "" : "s"} en la vista exportada`,
+    });
+    y = SX.kpiCards(doc, y + 2, [
+      { label: "Cuotas",     value: String(rows.length), desc: "Pendientes en la vista" },
+      { label: "Vencidas",   value: String(vencidas),    desc: "En atraso" },
+      { label: "Vencen hoy", value: String(venceHoy),    desc: "Atención" },
+      { label: "Por cobrar", value: UI.fmt(porCobrar),   desc: "Saldo pendiente" },
+    ], { perRow: 4 });
+    y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Cuotas por cobrar" });
+
+    doc.autoTable({
+      startY: y,
+      head: [["Venta", "Comprador", "Proyecto / Lote", "Vencimiento", "Días", "Valor", "Pendiente", "Estado"]],
+      body: rows.map(c => [
+        SGIUI.ventaCode(c),
+        c.comprador || "—",
+        `${c.proyecto || "—"}${c.codigo_lote ? " · " + c.codigo_lote : ""}`,
+        UI.date(c.fecha_vencimiento),
+        diasTexto(c.dias_atraso),
+        UI.fmt(c.valor_cuota),
+        UI.fmt(c.valor_pendiente),
+        c.estado || "—",
+      ]),
+      foot: [[
+        `Total · ${rows.length} cuota${rows.length === 1 ? "" : "s"}`,
+        "", "", "", "",
+        UI.fmt(valorTotal),
+        UI.fmt(porCobrar),
+        "",
+      ]],
+      showFoot: "lastPage",
+      ...SX.tableTheme(),
+      footStyles: SX.footStyles(),
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 46 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 26, halign: "center" },
+        4: { cellWidth: 28, halign: "center" },
+        5: { cellWidth: 30, halign: "right"  },
+        6: { cellWidth: 30, halign: "right"  },
+        7: { cellWidth: 24, halign: "center" },
+      },
+      ...SX.statusColumn(7, e => {
+        const n = String(e).toLowerCase();
+        if (n.includes("pagada"))    return "info";
+        if (n.includes("vencida"))   return "danger";
+        if (n.includes("pendiente")) return "warning";
+        return "muted";
+      }),
+    });
+
+    SX.footer(doc);
+    doc.save(`cuotas_sgi_${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
 })();
