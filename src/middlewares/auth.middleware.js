@@ -52,14 +52,63 @@ async function verificarToken(req, res, next) {
       }
     }
 
-    // Identity is never auto-created: a fresh login with no matching usuarios row (by uid or
-    // email) is NOT granted a role. The only ways in are an email match above, or claiming a
-    // pre-registered account by documento via POST /api/v1/auth/vincular.
+    // First-time self-signup: provision a usuarios row with the default 'usuario' role
+    // (catalog-only, no portal yet). A real venta later promotes them to 'comprador' (RN-23).
+    // Concurrent inserts can race, so on insert failure we re-fetch by firebase_uid and use
+    // whichever row won.
     if (!usuario) {
-      return res.status(403).json({
-        error: 'Tu cuenta aún no está vinculada. Vincúlala con tu documento o contacta la oficina.',
-        code:  'CUENTA_NO_VINCULADA',
-      });
+      const { data: rolDefault } = await supabase
+        .schema('condor')
+        .from('roles')
+        .select('id_rol')
+        .eq('nombre', 'usuario')
+        .single();
+
+      if (!rolDefault) {
+        return res.status(403).json({
+          error: 'Rol por defecto "usuario" no configurado. Contacta al administrador.',
+          code:  'ROL_DEFAULT_NO_CONFIGURADO',
+        });
+      }
+
+      const displayName = (decoded.name || '').trim();
+      const firstSpace  = displayName.indexOf(' ');
+      const nombres     = firstSpace > 0 ? displayName.slice(0, firstSpace) : (displayName || null);
+      const apellidos   = firstSpace > 0 ? displayName.slice(firstSpace + 1) : null;
+
+      const { data: created, error: eCreate } = await supabase
+        .schema('condor')
+        .from('usuarios')
+        .insert([{
+          firebase_uid: decoded.uid,
+          email:        decoded.email,
+          id_rol:       rolDefault.id_rol,
+          activo:       true,
+          tipo_persona: 'natural',
+          nombres,
+          apellidos,
+          photo_url:    decoded.picture || null,
+        }])
+        .select('id_usuario, email, activo, id_rol')
+        .single();
+
+      if (eCreate) {
+        const { data: refetched } = await supabase
+          .schema('condor')
+          .from('usuarios')
+          .select('id_usuario, email, activo, id_rol')
+          .eq('firebase_uid', decoded.uid)
+          .single();
+        if (!refetched) {
+          return res.status(403).json({
+            error: 'No se pudo crear tu cuenta. Contacta a la oficina.',
+            code:  'AUTOCREACION_FALLA',
+          });
+        }
+        usuario = refetched;
+      } else {
+        usuario = created;
+      }
     }
 
     if (!usuario.activo) {
