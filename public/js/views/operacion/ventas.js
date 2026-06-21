@@ -92,6 +92,19 @@ window.ventasView = async function() {
     ? ["pre_mora", "en_mora"]
     : ["activa","pre_mora","en_mora","cancelada","liquidada","pendiente_autorizacion"];
 
+  let _proyectosVenta = [];
+  try {
+    const pres = await API.getCached("/proyectos");
+    const arr  = Array.isArray(pres) ? pres : (pres?.data || pres?.proyectos || []);
+    _proyectosVenta = [...new Set(arr.map(p => p?.nombre).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  } catch (_) {}
+
+  const proyectoOpts = [
+    { value: "", label: "Todos los proyectos" },
+    ..._proyectosVenta.map(n => ({ value: n, label: n })),
+  ];
+
   vc.innerHTML = `
     <div id="fv-summary"></div>
     <div class="table-wrap">
@@ -107,8 +120,8 @@ window.ventasView = async function() {
       </p>` : ""}
       ${window.SGIUI.filterBar({
         fields: [
-          { type: "search", id: "fv_proyecto", label: "Proyecto", placeholder: "Filtrar por proyecto…", oninput: "_cargarVentasFiltro()" },
-          { type: "search", id: "fv_cliente", label: "Cliente (cédula o nombre)", placeholder: "Buscar cliente, lote…", oninput: "_cargarVentasFiltro()", grow: true },
+          { type: "select", id: "fv_proyecto", label: "Proyecto", onchange: "_cargarVentasFiltro()", options: proyectoOpts },
+          { type: "search", id: "fv_cliente", label: "Cliente (cédula o nombre)", placeholder: "Buscar por cliente, documento o lote…", oninput: "_cargarVentasFiltro()", grow: true },
           { type: "select", id: "fv_estado", label: "Estado", onchange: "_cargarVentasFiltro()",
             options: [{ value: "", label: "Todos los estados" }, ...ESTADOS.map(e => ({ value: e, label: e.replace(/_/g, " ") }))] },
           { type: "month", id: "fv_mes", label: "Mes", onchange: "_cargarVentasFiltro()" },

@@ -2,6 +2,8 @@
 
 let _currentComisiones = [];
 
+const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
+
 function _parseMoney(value) {
   return MoneyInput.parse(value);
 }
@@ -90,6 +92,9 @@ window.cargarComisionesDetalle = async function() {
     return;
   }
 
+  const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
+  const nombre    = sel?.selectedOptions?.[0]?.textContent?.replace(/\s+/g, " ").trim() || "Comisionista";
+
   const totalValor   = comisiones.reduce((s, c) => s + Number(c.valor_comision), 0);
   const totalMicros  = comisiones.reduce((s, c) =>
     s + (c.micropagos || []).reduce((ms, m) => ms + Number(m.valor), 0), 0);
@@ -97,6 +102,16 @@ window.cargarComisionesDetalle = async function() {
   const countPagadas = comisiones.filter(c => c.pagada).length;
 
   container.innerHTML = `
+    ${canExport ? `<div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
+      <button class="btn btn-ghost btn-sm" id="comis-export-excel">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Exportar Excel
+      </button>
+      <button class="btn btn-ghost btn-sm" id="comis-export-pdf">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="10" y2="9"/></svg>
+        Exportar PDF
+      </button>
+    </div>` : ""}
     <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(11.25rem,1fr));margin-bottom:1.5rem">
       <div class="stat-card">
         <div class="stat-label">Comisiones</div>
@@ -121,6 +136,11 @@ window.cargarComisionesDetalle = async function() {
   `;
 
   SGIUI.hydrate();
+
+  if (canExport) {
+    document.getElementById("comis-export-excel")?.addEventListener("click", () => exportComisionesExcel(nombre, _currentComisiones));
+    document.getElementById("comis-export-pdf")?.addEventListener("click", () => exportComisionesPDF(nombre, _currentComisiones));
+  }
 };
 
 // ─── Accordion card ───────────────────────────────────────────────────────────
@@ -531,5 +551,151 @@ window.guardarComisionista = async function() {
 
 window._toggleComisionCard  = _toggleComisionCard;
 window._verReciboMicropago  = _verReciboMicropago;
+
+// ─── Exportación ────────────────────────────────────────────────────────────────
+
+function _comisionRow(c) {
+  const v           = c.venta || {};
+  const proyecto    = v.lote?.proyecto?.nombre || "—";
+  const lote        = v.lote ? `${v.lote.codigo_lote} M${v.lote.manzana}-${v.lote.numero_lote}` : "—";
+  const compradores = (v.compradores || [])
+    .map(x => `${x.nombres} ${x.apellidos || ""}`.trim()).join(", ") || "—";
+  const micros      = (c.micropagos || []).reduce((s, m) => s + Number(m.valor || 0), 0);
+  const pendiente   = Math.max(0, Number(c.valor_comision || 0) - micros);
+  return { v, proyecto, lote, compradores, micros, pendiente };
+}
+
+async function exportComisionesExcel(nombre, rows) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
+  const SX = window.SGIExport.xlsx;
+  const wb = SX.setup();
+
+  const ganadas        = rows.filter(c => c.ganada).length;
+  const pagadas        = rows.filter(c => c.pagada).length;
+  const totalValor     = rows.reduce((s, c) => s + Number(c.valor_comision || 0), 0);
+  const totalMicros    = rows.reduce((s, c) => s + (c.micropagos || []).reduce((m, x) => m + Number(x.valor || 0), 0), 0);
+  const pendienteTotal = Math.max(0, totalValor - totalMicros);
+
+  const ws = wb.addWorksheet("Comisiones", { tabColor: { argb: SX.C.primary } });
+  ws.columns = [
+    { width: 16 }, { width: 14 }, { width: 24 }, { width: 18 }, { width: 30 }, { width: 18 },
+    { width: 12 }, { width: 12 }, { width: 12 }, { width: 18 }, { width: 18 },
+  ];
+
+  SX.masthead(ws, { title: "Comisiones del Comisionista", subtitle: nombre, mergeCols: 11 });
+
+  SX.kpiRow(ws, [
+    { label: "Comisiones",  value: rows.length },
+    { label: "Ganadas",     value: ganadas },
+    { label: "Pagadas",     value: pagadas },
+    { label: "Valor total", value: totalValor,     money: true },
+    { label: "Pendiente",   value: pendienteTotal, money: true },
+  ]);
+
+  ws.addRow([]).height = 4;
+  const hRow = ws.addRow([
+    "Venta", "Fecha venta", "Proyecto", "Lote", "Comprador(es)",
+    "Valor comisión", "% pagado", "Ganada", "Pagada", "Micropagos", "Pendiente",
+  ]);
+  SX.styleHeader(hRow);
+  const headerRowNum = hRow.number;
+
+  rows.forEach((c, i) => {
+    const x = _comisionRow(c);
+    const r = ws.addRow([
+      SGIUI.ventaCode(x.v),
+      x.v.fecha_venta ? UI.date(x.v.fecha_venta) : "—",
+      x.proyecto,
+      x.lote,
+      x.compradores,
+      Number(c.valor_comision || 0),
+      Math.min(100, Number(c.porcentaje_pagado || 0)) / 100,
+      c.ganada ? "Sí" : "No",
+      c.pagada ? "Sí" : "No",
+      x.micros,
+      x.pendiente,
+    ]);
+    SX.styleBody(r, i % 2 !== 0);
+    r.getCell(6).numFmt  = SX.NF.money;
+    r.getCell(7).numFmt  = SX.NF.percent;
+    r.getCell(10).numFmt = SX.NF.money;
+    r.getCell(11).numFmt = SX.NF.money;
+    [6, 10, 11].forEach(col => { r.getCell(col).alignment = { vertical: "middle", horizontal: "right", indent: 1 }; });
+    r.getCell(7).alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  ws.views = [{ state: "frozen", ySplit: headerRowNum }];
+  ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: 11 } };
+
+  await SX.download(wb, `comisiones_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+async function exportComisionesPDF(nombre, rows) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const SX  = window.SGIExport.pdf;
+
+  const ganadas        = rows.filter(c => c.ganada).length;
+  const pagadas        = rows.filter(c => c.pagada).length;
+  const totalValor     = rows.reduce((s, c) => s + Number(c.valor_comision || 0), 0);
+  const totalMicros    = rows.reduce((s, c) => s + (c.micropagos || []).reduce((m, x) => m + Number(x.valor || 0), 0), 0);
+  const pendienteTotal = Math.max(0, totalValor - totalMicros);
+
+  let y = SX.brand(doc);
+  y = SX.title(doc, y + 2, { title: "Comisiones del Comisionista", subtitle: nombre });
+  y = SX.kpiCards(doc, y + 2, [
+    { label: "Comisiones",  value: String(rows.length),  desc: "En la vista" },
+    { label: "Ganadas",     value: String(ganadas),      desc: "Al 30% del valor" },
+    { label: "Pagadas",     value: String(pagadas),      desc: "Liquidadas" },
+    { label: "Valor total", value: UI.fmt(totalValor),   desc: "Suma de comisiones" },
+    { label: "Pendiente",   value: UI.fmt(pendienteTotal), desc: "Por pagar" },
+  ], { perRow: 5 });
+  y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Comisiones por venta" });
+
+  doc.autoTable({
+    startY: y,
+    head: [["Venta", "Fecha", "Proyecto / Lote", "Comprador(es)", "Valor", "% pag.", "Estado", "Pagada", "Pendiente"]],
+    body: rows.map(c => {
+      const x = _comisionRow(c);
+      return [
+        SGIUI.ventaCode(x.v),
+        x.v.fecha_venta ? UI.date(x.v.fecha_venta) : "—",
+        `${x.proyecto}${x.lote !== "—" ? " · " + x.lote : ""}`,
+        x.compradores,
+        UI.fmt(c.valor_comision),
+        `${Math.min(100, Number(c.porcentaje_pagado || 0)).toFixed(0)}%`,
+        c.ganada ? "Ganada" : "No ganada",
+        c.pagada ? "Sí" : "No",
+        UI.fmt(x.pendiente),
+      ];
+    }),
+    foot: [[
+      `Total · ${rows.length} comisión${rows.length === 1 ? "" : "es"}`,
+      "", "", "",
+      UI.fmt(totalValor),
+      "", "", "",
+      UI.fmt(pendienteTotal),
+    ]],
+    showFoot: "lastPage",
+    ...SX.tableTheme(),
+    footStyles: SX.footStyles(),
+    columnStyles: {
+      0: { cellWidth: 26 },
+      1: { cellWidth: 22, halign: "center" },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 28, halign: "right"  },
+      5: { cellWidth: 18, halign: "center" },
+      6: { cellWidth: 24, halign: "center" },
+      7: { cellWidth: 18, halign: "center" },
+      8: { cellWidth: 28, halign: "right"  },
+    },
+    ...SX.statusColumn(6, e => String(e).toLowerCase().includes("no") ? "muted" : "success"),
+  });
+
+  SX.footer(doc);
+  doc.save(`comisiones_sgi_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
 
 })();
