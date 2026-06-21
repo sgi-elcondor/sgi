@@ -1477,11 +1477,21 @@ window._buscarComprador = function(texto) {
   const resultados = qn
     ? todos.filter(c =>
         _normalizar(c.documento).includes(qn) ||
-        _normalizar(`${c.nombres} ${c.apellidos || ""}`).includes(qn))
+        _normalizar(`${c.nombres || ""} ${c.apellidos || ""}`).includes(qn) ||
+        _normalizar(c.email).includes(qn))
     : todos.slice(0, 10);
 
   const div = document.getElementById("f_comp_results");
   if (!resultados.length && !qn) { div.style.display = "none"; return; }
+
+  const _label = c => {
+    const full = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
+    return full || c.email || `Usuario #${c.id_usuario}`;
+  };
+  const _docTxt = c => c.documento ? `Cédula: ${c.documento}` : "Sin cédula";
+  const _badge  = c => c.is_comprador === false
+    ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#fff3e0;color:#c2410c;font-size:.7rem;font-weight:600;">Nuevo</span>`
+    : "";
 
   div.style.display = "block";
   div.innerHTML = resultados.length === 0
@@ -1491,8 +1501,8 @@ window._buscarComprador = function(texto) {
              onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
              onmouseout="this.style.background=''"
              onclick="_seleccionarComprador(${c.id_usuario})">
-          <div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>
-          <div style="color:var(--text-muted);font-size:.78rem">Cédula: ${c.documento}${c.telefono ? " · Tel: " + c.telefono : ""}${c.email ? " · " + c.email : ""}</div>
+          <div style="font-weight:600">${_label(c)}${_badge(c)}</div>
+          <div style="color:var(--text-muted);font-size:.78rem">${_docTxt(c)}${c.telefono ? " · Tel: " + c.telefono : ""}${c.email && _label(c) !== c.email ? " · " + c.email : ""}</div>
         </div>`).join("");
 };
 
@@ -1502,14 +1512,22 @@ window._seleccionarComprador = function(id) {
   window._compradorSeleccionado = c;
   document.getElementById("f_comp").value = id;
 
-  const linea2 = ["Cédula: " + c.documento];
+  const fullName = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
+  const label    = fullName || c.email || `Usuario #${c.id_usuario}`;
+
+  const linea2 = [c.documento ? "Cédula: " + c.documento : "Sin cédula"];
   if (c.telefono) linea2.push("Tel: " + c.telefono);
-  if (c.email) linea2.push(c.email);
+  if (c.email && c.email !== label) linea2.push(c.email);
   if (c.tipo_persona) linea2.push(c.tipo_persona === "juridica" ? "Persona Jurídica" : "Persona Natural");
 
+  const aviso = c.is_comprador === false
+    ? `<div style="margin-top:4px;color:#c2410c;font-size:.78rem;">Este usuario aún no es comprador — al confirmar la venta se promocionará automáticamente.</div>`
+    : "";
+
   document.getElementById("f_comp_card_info").innerHTML =
-    `<div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>` +
-    `<div style="color:var(--text-muted)">${linea2.join(" · ")}</div>`;
+    `<div style="font-weight:600">${label}</div>` +
+    `<div style="color:var(--text-muted)">${linea2.join(" · ")}</div>` +
+    aviso;
   document.getElementById("f_comp_card").style.display = "block";
   document.getElementById("f_comp_search_wrap").style.display = "none";
   document.getElementById("f_comp_results").style.display = "none";
@@ -1888,7 +1906,7 @@ window.ventaForm = async function() {
   let lotes, compradores, comisionistas;
   try {
     [lotes, compradores, comisionistas] = await Promise.all([
-      API.get("/lotes/disponibles"), API.get("/compradores"), API.get("/comisionistas")
+      API.get("/lotes/disponibles"), API.get("/compradores?elegibles=true"), API.get("/comisionistas")
     ]);
   } catch(e) {
     UI.toast("Error al cargar datos del formulario: " + e.message, "error");
@@ -1992,7 +2010,7 @@ window.ventaFormSolicitud = async function() {
   let lotes, compradores, comisionistas;
   try {
     [lotes, compradores, comisionistas] = await Promise.all([
-      API.get("/lotes/disponibles"), API.get("/compradores"), API.get("/comisionistas")
+      API.get("/lotes/disponibles"), API.get("/compradores?elegibles=true"), API.get("/comisionistas")
     ]);
   } catch(e) {
     UI.toast("Error al cargar datos del formulario: " + e.message, "error");

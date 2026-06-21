@@ -1,24 +1,66 @@
 const supabase = require("../config/supabase");
 const admin    = require("../config/firebase");
+const { PROTECTED_ROLES, COMPRADOR_ROL } = require("../services/role-promotion.service");
 const SCHEMA   = "condor";
 
 async function compradorRolId() {
-  const { data } = await supabase.schema(SCHEMA).from("roles").select("id_rol").eq("nombre", "comprador").single();
+  const { data } = await supabase.schema(SCHEMA).from("roles").select("id_rol").eq("nombre", COMPRADOR_ROL).single();
   return data?.id_rol ?? null;
 }
 
+// With ?elegibles=true the venta form also gets users eligible to be promoted on their first
+// sale (RN-23) — i.e. active users whose current rol is not protected and not already
+// 'comprador'. Without the flag, the legacy behaviour stays: only existing compradores.
 exports.getAll = async (req, res) => {
-  const id_rol = await compradorRolId();
-  if (!id_rol) return res.status(500).json({ error: "Rol comprador no encontrado" });
+  const id_rol_comprador = await compradorRolId();
+  if (!id_rol_comprador) return res.status(500).json({ error: "Rol comprador no encontrado" });
 
-  const { data, error } = await supabase.schema(SCHEMA)
+  const incluirElegibles = String(req.query.elegibles || "").toLowerCase() === "true";
+
+  if (!incluirElegibles) {
+    const { data, error } = await supabase.schema(SCHEMA)
+      .from("usuarios")
+      .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, fecha_creacion")
+      .eq("id_rol", id_rol_comprador)
+      .order("nombres");
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json((data || []).map(u => ({ ...u, has_access: !!u.firebase_uid, is_comprador: true })));
+  }
+
+  const { data: rolesData, error: eRoles } = await supabase.schema(SCHEMA)
+    .from("roles").select("id_rol, nombre");
+  if (eRoles) return res.status(500).json({ error: eRoles.message });
+  const protectedIds = new Set(
+    (rolesData || []).filter(r => PROTECTED_ROLES.has(r.nombre)).map(r => r.id_rol)
+  );
+
+  const { data: rows, error } = await supabase.schema(SCHEMA)
     .from("usuarios")
-    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, fecha_creacion")
-    .eq("id_rol", id_rol)
+    .select("id_usuario, email, activo, firebase_uid, photo_url, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono, fecha_creacion, id_rol")
+    .eq("activo", true)
     .order("nombres");
-
   if (error) return res.status(500).json({ error: error.message });
-  res.json((data || []).map(u => ({ ...u, has_access: !!u.firebase_uid })));
+
+  const eligibles = (rows || []).filter(u =>
+    u.id_rol === id_rol_comprador || u.id_rol == null || !protectedIds.has(u.id_rol)
+  );
+
+  res.json(eligibles.map(u => ({
+    id_usuario:     u.id_usuario,
+    email:          u.email,
+    activo:         u.activo,
+    firebase_uid:   u.firebase_uid,
+    photo_url:      u.photo_url,
+    nombres:        u.nombres,
+    apellidos:      u.apellidos,
+    documento:      u.documento,
+    tipo_persona:   u.tipo_persona,
+    tipo_documento: u.tipo_documento,
+    telefono:       u.telefono,
+    fecha_creacion: u.fecha_creacion,
+    has_access:     !!u.firebase_uid,
+    is_comprador:   u.id_rol === id_rol_comprador,
+  })));
 };
 
 exports.getById = async (req, res) => {

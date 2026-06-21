@@ -4,6 +4,9 @@ const auditoria    = require("../services/auditoria.service");
 const saldos       = require("../services/saldos.service");
 const usuariosSvc  = require("../services/usuarios.service");
 const consecutivos = require("../services/consecutivos.service");
+const rolePromotion = require("../services/role-promotion.service");
+const emailService  = require("../services/email.service");
+const authCache     = require("../services/auth-cache.service");
 const SCHEMA       = "condor";
 
 exports.getAll = async (req, res) => {
@@ -428,10 +431,86 @@ async function crearVenta(req, res, estadoFijo) {
     });
   }
 
+  // Promote first-time compradores and notify by email. Non-fatal: a failure here must not
+  // invalidate the sale — the venta has already been created and the response is sent regardless.
+  // Skipped for ventas in 'pendiente_autorizacion' (no role change until the sale is confirmed).
+  if (estadoVenta !== "pendiente_autorizacion") {
+    promoverYNotificarCompradores({
+      compradores,
+      venta,
+      id_lote,
+      cuotasGeneradas,
+      ejecutor: req.usuario?.email || "sistema",
+    }).catch(err => console.error("[ventas] promocion a comprador fallo:", err.message));
+  }
+
   res.status(201).json({
     ...venta,
     cuotas_generadas: cuotasGeneradas
   });
+}
+
+// Runs after a venta is created (estado !== 'pendiente_autorizacion').
+// For each comprador whose current role is neither protected nor already 'comprador',
+// switches them to 'comprador', audits the change, clears auth-cache and sends a
+// confirmation email with the sale detail. Each step is best-effort; errors are logged.
+async function promoverYNotificarCompradores({ compradores, venta, id_lote, cuotasGeneradas, ejecutor }) {
+  const lista = Array.isArray(compradores) ? compradores : [];
+  if (!lista.length) return;
+
+  const promoted = [];
+  for (const c of lista) {
+    const result = await rolePromotion.promoverACompradorSiAplica(Number(c.id_usuario));
+    if (!result.promoted) continue;
+
+    await auditoria.log({
+      tabla:    "usuarios",
+      id:       result.usuario.id_usuario,
+      campo:    "id_rol",
+      anterior: result.prevRolName || "sin_rol",
+      nuevo:    result.newRolName,
+      usuario:  ejecutor,
+      motivo:   `promocion_automatica_primera_venta:${venta.id_venta}`,
+    });
+
+    promoted.push(result);
+  }
+
+  if (!promoted.length) return;
+
+  authCache.clear();
+
+  let proyectoNombre = null;
+  let codigoLote     = null;
+  try {
+    const { data: loteInfo } = await supabase.schema(SCHEMA)
+      .from("lote")
+      .select("codigo_lote, proyecto:id_proyecto(nombre)")
+      .eq("id_lote", Number(id_lote))
+      .single();
+    proyectoNombre = loteInfo?.proyecto?.nombre || null;
+    codigoLote     = loteInfo?.codigo_lote || null;
+  } catch (_) {}
+
+  const totalCuotas = Number(cuotasGeneradas) || 0;
+
+  for (const r of promoted) {
+    const to = r.usuario?.email;
+    if (!to) continue;
+    try {
+      await emailService.sendCompraConfirmacionEmail(to, {
+        nombres:       r.usuario?.nombres || null,
+        codigo_venta:  venta.codigo_venta || null,
+        proyecto:      proyectoNombre,
+        codigo_lote:   codigoLote,
+        valor_total:   venta.valor_total,
+        cuota_inicial: venta.cuota_inicial,
+        total_cuotas:  totalCuotas || null,
+      });
+    } catch (err) {
+      console.error(`[ventas] email confirmacion fallo (usuario ${r.usuario?.id_usuario}):`, err.message);
+    }
+  }
 }
 
 exports.updateFinanciero = async (req, res) => {
