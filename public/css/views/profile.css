@@ -33,6 +33,11 @@
   margin-bottom: 1.5rem;
 }
 
+.auth-card-brand > div:not(.auth-card-icon) {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .auth-card-icon {
   width: 3.25rem;
   height: 3.25rem;
@@ -60,9 +65,7 @@
   font-size: 0.88rem;
   color: var(--text-muted);
   margin-top: 0.1875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 
 .auth-card-field {

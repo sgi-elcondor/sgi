@@ -95,6 +95,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/v1/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/v1/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
+  'PATCH /api/v1/roles/manual': { recurso: 'roles', accion: 'actualizar' },
   'GET /api/v1/bank-transactions':        { recurso: 'bank_transactions', accion: 'leer' },
   'POST /api/v1/bank-transactions/batch': { recurso: 'bank_transactions', accion: 'crear' },
   'PUT /api/v1/bank-transactions':        { recurso: 'bank_transactions', accion: 'actualizar' },
