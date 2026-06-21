@@ -43,7 +43,7 @@ async function getAll(req, res) {
     const { data, error } = await supabase
       .schema('condor')
       .from('roles')
-      .select('id_rol, nombre, descripcion')
+      .select('id_rol, nombre, descripcion, obligaciones')
       .order('id_rol');
 
     if (error) return res.status(400).json({ error: error.message });
@@ -168,4 +168,64 @@ async function updatePermisos(req, res) {
   }
 }
 
-module.exports = { getAll, getPermisos, updatePermisos };
+// Admin-only: edit a rol's manual (descripcion + obligaciones). Audited.
+// Returns 204 No Content on success. Cache cleared so users see the new text on next request.
+async function updateManual(req, res) {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID de rol invalido' });
+
+  const { descripcion, obligaciones } = req.body || {};
+  if (descripcion === undefined && obligaciones === undefined) {
+    return res.status(400).json({ error: 'Debes enviar descripcion u obligaciones' });
+  }
+
+  try {
+    const { data: actual, error: eRead } = await supabase
+      .schema('condor').from('roles')
+      .select('nombre, descripcion, obligaciones').eq('id_rol', id).single();
+    if (eRead || !actual) return res.status(404).json({ error: 'Rol no encontrado' });
+
+    const updates = {};
+    if (descripcion !== undefined)  updates.descripcion  = descripcion;
+    if (obligaciones !== undefined) updates.obligaciones = obligaciones;
+
+    const { error: eUpd } = await supabase
+      .schema('condor').from('roles')
+      .update(updates).eq('id_rol', id);
+    if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+    const auditRows = [];
+    if (descripcion !== undefined && descripcion !== actual.descripcion) {
+      auditRows.push({
+        tabla_afectada: 'roles',
+        id_registro:    id,
+        campo:          'descripcion',
+        valor_anterior: actual.descripcion || null,
+        valor_nuevo:    descripcion || null,
+        usuario_db:     req.usuario.email,
+        motivo:         'edicion_manual_rol',
+      });
+    }
+    if (obligaciones !== undefined && obligaciones !== actual.obligaciones) {
+      auditRows.push({
+        tabla_afectada: 'roles',
+        id_registro:    id,
+        campo:          'obligaciones',
+        valor_anterior: actual.obligaciones || null,
+        valor_nuevo:    obligaciones || null,
+        usuario_db:     req.usuario.email,
+        motivo:         'edicion_manual_rol',
+      });
+    }
+    if (auditRows.length) {
+      await supabase.schema('condor').from('auditoria').insert(auditRows);
+    }
+
+    authCache.clear();
+    return res.json({ ok: true, rol: actual.nombre });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { getAll, getPermisos, updatePermisos, updateManual };

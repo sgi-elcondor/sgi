@@ -183,6 +183,58 @@ async function actualizarAvatar(req, res) {
   }
 }
 
+// Returns the manual of the authenticated user's role: descripcion, obligaciones and the list
+// of permissions actually granted to that role (with their human description). Admin role gets
+// a synthetic 'acceso total' response because it bypasses rol_permiso.
+async function miRol(req, res) {
+  const { rol, id_usuario } = req.usuario;
+
+  const { data: usuario } = await supabase.schema(SCHEMA)
+    .from('usuarios').select('id_rol').eq('id_usuario', id_usuario).single();
+  const id_rol = usuario?.id_rol;
+  if (!id_rol) return res.status(404).json({ error: 'Tu cuenta no tiene un rol asignado.' });
+
+  const { data: rolRow, error: eRol } = await supabase.schema(SCHEMA)
+    .from('roles').select('id_rol, nombre, descripcion, obligaciones').eq('id_rol', id_rol).single();
+  if (eRol || !rolRow) return res.status(404).json({ error: 'Rol no encontrado.' });
+
+  if (rolRow.nombre === 'admin') {
+    return res.json({
+      nombre:       rolRow.nombre,
+      descripcion:  rolRow.descripcion,
+      obligaciones: rolRow.obligaciones,
+      acceso_total: true,
+      acciones:     [],
+    });
+  }
+
+  const { data: links } = await supabase.schema(SCHEMA)
+    .from('rol_permiso')
+    .select('permisos:id_permiso(recurso, accion, descripcion)')
+    .eq('id_rol', id_rol);
+
+  const acciones = (links || [])
+    .map(l => l.permisos)
+    .filter(Boolean)
+    .filter(p => p.recurso !== 'vista')
+    .map(p => ({
+      recurso:     p.recurso,
+      accion:      p.accion,
+      descripcion: p.descripcion || `${p.recurso}:${p.accion}`,
+    }))
+    .sort((a, b) => (a.recurso === b.recurso
+      ? a.accion.localeCompare(b.accion)
+      : a.recurso.localeCompare(b.recurso)));
+
+  res.json({
+    nombre:       rolRow.nombre,
+    descripcion:  rolRow.descripcion,
+    obligaciones: rolRow.obligaciones,
+    acceso_total: false,
+    acciones,
+  });
+}
+
 async function enviarEmailReset(req, res) {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
@@ -198,4 +250,4 @@ async function enviarEmailReset(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta };
+module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta };

@@ -169,6 +169,8 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 
 | Tabla                  | Rol                                                               |
 | ---------------------- | ----------------------------------------------------------------- |
+| `roles`                | Roles del sistema. Columnas `descripcion` y `obligaciones` editables (manual MFN-01). |
+| `permisos`             | Catálogo `(recurso, accion)`. Columna `descripcion` con texto humano editable para el manual del rol. |
 | `proyecto`             | Proyectos urbanísticos. Campo `sigla` propaga prefijos a lotes.   |
 | `lote`                 | Inventario. `precio_base` sincronizado al editar `valor_total`.   |
 | `venta`                | Encabezado de venta; `codigo_venta` formato `#NNN-SIGLA-LOTE`.    |
@@ -191,8 +193,6 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 | `recepcion`            | Entrega registrada por el almacenista.                            |
 | `recepcion_item`       | Detalle de la recepción.                                          |
 | `usuarios`             | Personas. `firebase_uid` enlaza con Firebase Auth.                |
-| `roles`                | Catálogo de roles (incluye `admin`).                              |
-| `permisos`             | `(recurso, accion)`. La vista se modela como `recurso='vista'`.   |
 | `rol_permiso`          | M2M rol↔permiso.                                                  |
 | `auditoria`            | Bitácora de cambios sensibles.                                    |
 
@@ -215,7 +215,8 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 - `GET /firebase-config` (config pública del cliente Firebase).
 
 ### Auth (token requerido)
-- `GET /auth/perfil`, `PUT /auth/perfil`, `PUT /auth/avatar`, `POST /auth/completar-perfil`, `POST /auth/usuarios`.
+- `GET /auth/perfil`, `GET /auth/mi-rol`, `PUT /auth/perfil`, `PUT /auth/avatar`, `POST /auth/completar-perfil`, `POST /auth/usuarios`.
+- `GET /auth/mi-rol` devuelve el **manual** del rol del usuario (descripcion, obligaciones y lista humana de acciones permitidas). El rol `admin` devuelve `acceso_total: true` (no usa `rol_permiso`).
 
 ### Proyectos / Lotes / Compradores / Ventas
 - `proyectos`: `GET / · GET /:id · POST / · PUT /:id`. Cambiar `sigla` propaga al `codigo_lote` (auditado).
@@ -245,7 +246,7 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 
 ### Usuarios / Roles
 - `usuarios`: `GET / · GET /roles · POST / · PUT /:id · PATCH /:id/desactivar`.
-- `roles`: `GET / · GET /:id/permisos · PUT /:id/permisos`. Cualquier escritura llama `authCache.clear()`.
+- `roles`: `GET / · GET /:id/permisos · PUT /:id/permisos · PATCH /:id/manual`. Cualquier escritura llama `authCache.clear()`. `PATCH /:id/manual` actualiza `descripcion` + `obligaciones` del rol (texto plano editable por admin desde la vista "Permisos", auditado).
 
 ### Otros
 - `uploads`: `POST /baucher` (8 MB, JPG/PNG/WEBP/GIF/PDF), `POST /avatar` (5 MB, JPG/PNG/WEBP, redimensionado a 400×400 WebP).
