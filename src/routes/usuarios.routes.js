@@ -8,6 +8,7 @@ router.get('/',          ctrl.listarUsuarios);
 router.get('/roles',     ctrl.listarRoles);
 router.post('/',         ctrl.crearUsuario);
 router.put('/:id',       ctrl.actualizarUsuario);
-router.patch('/:id/desactivar', ctrl.desactivarUsuario);
+router.patch('/:id/desactivar',   ctrl.desactivarUsuario);
+router.patch('/:id/desbloquear', ctrl.desbloquearUsuario);
 
 module.exports = router;

@@ -44,6 +44,7 @@ async function cargarUsuariosTabla() {
               <option value="">Todos</option>
               <option value="activo">Activos</option>
               <option value="inactivo">Inactivos</option>
+              <option value="bloqueado">Bloqueados</option>
             </select>
           </div>
           ${canCreate ? `<button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo usuario</button>` : ""}
@@ -102,6 +103,8 @@ function renderTablaUsuarios(usuarios) {
     return;
   }
 
+  const canUpdate = AppState.can('usuarios', 'actualizar');
+
   tbody.innerHTML = usuarios.map(u => {
     const vinculo = (u.nombres || u.apellidos)
       ? `${u.nombres || ""} ${u.apellidos || ""}`.trim()
@@ -116,6 +119,14 @@ function renderTablaUsuarios(usuarios) {
       `<option value="${r.id_rol}" ${u.roles?.id_rol === r.id_rol ? 'selected' : ''}>${r.nombre}</option>`
     ).join('');
 
+    const isBloqueado = u.bloqueado_hasta && new Date(u.bloqueado_hasta) > new Date();
+    const estadoBadge = UI.badge(u.activo ? 'activo' : 'inactivo') +
+      (isBloqueado ? ' <span class="badge badge-danger" style="font-size:.65rem">bloqueado</span>' : '');
+
+    const unlockBtn = (isBloqueado && canUpdate)
+      ? `<button class="btn btn-sm btn-ghost" onclick="desbloquearUsuario(${u.id_usuario}, '${u.email}')">Desbloquear</button>`
+      : '';
+
     return `<tr>
       <td>${avatarCell}</td>
       <td>${u.email}</td>
@@ -125,8 +136,8 @@ function renderTablaUsuarios(usuarios) {
         </select>
       </td>
       <td>${vinculo}</td>
-      <td>${UI.badge(u.activo ? 'activo' : 'inactivo')}</td>
-      <td style="display:flex; gap:.4rem;">
+      <td>${estadoBadge}</td>
+      <td style="display:flex; gap:.4rem; flex-wrap:wrap;">
         <button class="btn btn-sm btn-secondary"
           onclick="abrirModalEditarUsuario(${u.id_usuario})">Editar</button>
         ${u.activo
@@ -135,6 +146,7 @@ function renderTablaUsuarios(usuarios) {
           : `<button class="btn btn-sm btn-secondary"
                onclick="reactivarUsuario(${u.id_usuario})">Reactivar</button>`
         }
+        ${unlockBtn}
       </td>
     </tr>`;
   }).join('');
@@ -175,11 +187,13 @@ function filtrarUsuarios() {
   const estado = document.getElementById('filtro-estado')?.value ?? '';
 
   const filtrados = _todosUsuarios.filter(u => {
+    const isBloqueado = u.bloqueado_hasta && new Date(u.bloqueado_hasta) > new Date();
     const okEmail  = SGISearch.matches(email, u.email, u.nombres, u.apellidos, u.documento);
     const okRol    = !rol    || u.roles?.nombre === rol;
     const okEstado = !estado
-      || (estado === 'activo'   &&  u.activo)
-      || (estado === 'inactivo' && !u.activo);
+      || (estado === 'activo'    &&  u.activo)
+      || (estado === 'inactivo'  && !u.activo)
+      || (estado === 'bloqueado' && isBloqueado);
     return okEmail && okRol && okEstado;
   });
   renderTablaUsuarios(filtrados);
@@ -402,6 +416,17 @@ async function reactivarUsuario(id) {
   }
 }
 
+async function desbloquearUsuario(id, email) {
+  if (!confirm(`Desbloquear a ${email}?`)) return;
+  try {
+    await API.patch(`/usuarios/${id}/desbloquear`);
+    UI.toast(`${email} desbloqueado`, 'ok');
+    await cargarUsuariosTabla();
+  } catch (err) {
+    UI.toast('Error al desbloquear: ' + err.message, 'error');
+  }
+}
+
 // Expose functions called from inline onclick handlers
 window.filtrarUsuarios         = filtrarUsuarios;
 window.abrirModalNuevoUsuario  = abrirModalNuevoUsuario;
@@ -411,5 +436,6 @@ window.guardarEdicionUsuario   = guardarEdicionUsuario;
 window.confirmarDesactivar     = confirmarDesactivar;
 window.reactivarUsuario        = reactivarUsuario;
 window.cambiarRolInline        = cambiarRolInline;
+window.desbloquearUsuario      = desbloquearUsuario;
 
 })();

@@ -6,7 +6,8 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/usuarios':              { recurso: 'usuarios',      accion: 'actualizar' },
   'PATCH /api/v1/usuarios':            { recurso: 'usuarios',      accion: 'actualizar' },
   'GET /api/v1/usuarios/roles':        { recurso: 'usuarios',      accion: 'leer' },
-  'PATCH /api/v1/usuarios/desactivar': { recurso: 'usuarios',      accion: 'actualizar' },
+  'PATCH /api/v1/usuarios/desactivar':   { recurso: 'usuarios',      accion: 'actualizar' },
+  'PATCH /api/v1/usuarios/desbloquear': { recurso: 'usuarios',      accion: 'actualizar' },
 
   'GET /api/v1/proyectos':             { recurso: 'proyectos',     accion: 'leer' },
   'POST /api/v1/proyectos':            { recurso: 'proyectos',     accion: 'crear' },
