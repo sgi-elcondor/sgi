@@ -235,6 +235,68 @@ async function miRol(req, res) {
   });
 }
 
+const MAX_INTENTOS    = 5;
+const BLOQUEO_MINUTOS = 30;
+
+async function loginStatus(req, res) {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) return res.json({ bloqueado: false });
+
+  const { data } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('bloqueado_hasta')
+    .ilike('email', email)
+    .maybeSingle();
+
+  if (!data) return res.json({ bloqueado: false });
+
+  const bloqueado = data.bloqueado_hasta && new Date(data.bloqueado_hasta) > new Date();
+  return res.json({ bloqueado: !!bloqueado, bloqueado_hasta: bloqueado ? data.bloqueado_hasta : null });
+}
+
+async function loginFailed(req, res) {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) return res.json({ bloqueado: false });
+
+  const { data } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('id_usuario, intentos_fallidos, bloqueado_hasta')
+    .ilike('email', email)
+    .maybeSingle();
+
+  if (!data) return res.json({ bloqueado: false });
+
+  // Already blocked — don't touch the counter, just confirm the block.
+  if (data.bloqueado_hasta && new Date(data.bloqueado_hasta) > new Date()) {
+    return res.json({ bloqueado: true, bloqueado_hasta: data.bloqueado_hasta });
+  }
+
+  const nuevosIntentos = (data.intentos_fallidos || 0) + 1;
+  const updates = { intentos_fallidos: nuevosIntentos };
+
+  if (nuevosIntentos >= MAX_INTENTOS) {
+    updates.bloqueado_hasta = new Date(Date.now() + BLOQUEO_MINUTOS * 60 * 1000).toISOString();
+  }
+
+  await supabase.schema(SCHEMA).from('usuarios')
+    .update(updates)
+    .eq('id_usuario', data.id_usuario);
+
+  if (updates.bloqueado_hasta) {
+    return res.json({ bloqueado: true, bloqueado_hasta: updates.bloqueado_hasta });
+  }
+  return res.json({ bloqueado: false, intentos_restantes: MAX_INTENTOS - nuevosIntentos });
+}
+
+async function loginSuccess(req, res) {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) return res.json({ ok: true });
+
+  await supabase.schema(SCHEMA).from('usuarios')
+    .update({ intentos_fallidos: 0, bloqueado_hasta: null })
+    .ilike('email', email);
+
+  return res.json({ ok: true });
+}
+
 async function enviarEmailReset(req, res) {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
@@ -250,4 +312,4 @@ async function enviarEmailReset(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta };
+module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta, loginStatus, loginFailed, loginSuccess };

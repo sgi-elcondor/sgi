@@ -305,6 +305,36 @@
     document.getElementById('rule-num').classList.toggle('ok', /[0-9]/.test(val));
   };
 
+  async function checkLock(email) {
+    try {
+      const r = await fetch('/api/v1/auth/login-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      return await r.json();
+    } catch { return { bloqueado: false }; }
+  }
+
+  async function reportFailure(email) {
+    try {
+      const r = await fetch('/api/v1/auth/login-failed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      return await r.json();
+    } catch { return { bloqueado: false }; }
+  }
+
+  function reportSuccess(email) {
+    fetch('/api/v1/auth/login-success', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
+  }
+
   document.getElementById('btn-login').addEventListener('click', async () => {
     hideMessages('l-error');
     const email = document.getElementById('l-email').value.trim();
@@ -321,10 +351,41 @@
     setLoading(btn, true);
 
     try {
+      const lockStatus = await checkLock(email);
+      if (lockStatus.bloqueado) {
+        const el = document.getElementById('l-error');
+        el.textContent = 'Demasiados intentos fallidos. Intenta de nuevo en 30 minutos.';
+        el.style.display = 'block';
+        setLoading(btn, false);
+        return;
+      }
+
       await loginEmail(email, pwd);
+      reportSuccess(email);
       (window.top || window).location.href = '/app';
     } catch (err) {
-      showError('l-error', err);
+      const isCredentialError = ['auth/wrong-password', 'auth/invalid-credential', 'auth/user-not-found'].includes(err.code);
+      const el = document.getElementById('l-error');
+
+      if (isCredentialError) {
+        const result = await reportFailure(email);
+        if (result.bloqueado) {
+          el.textContent = 'Demasiados intentos fallidos. Intenta de nuevo en 30 minutos.';
+        } else {
+          el.textContent = mensajeError(err);
+          if (result.intentos_restantes != null && result.intentos_restantes <= 2) {
+            el.textContent += ` Cuidado: te queda${result.intentos_restantes === 1 ? '' : 'n'} ${result.intentos_restantes} intento${result.intentos_restantes === 1 ? '' : 's'}.`;
+          }
+        }
+      } else {
+        if (err.code in ERROR_MSG && ERROR_MSG[err.code] === null) {
+          setLoading(btn, false);
+          return;
+        }
+        el.textContent = mensajeError(err);
+      }
+
+      el.style.display = 'block';
     } finally {
       setLoading(btn, false);
     }
