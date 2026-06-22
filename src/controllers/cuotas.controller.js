@@ -890,6 +890,13 @@ exports.deleteCuota = async (req, res) => {
     return res.status(400).json({ error: 'La cuota tiene una factura activa; anúlala primero' });
   }
 
+  // Remove cuota_factura links (anulled facturas leave orphan links that block the FK).
+  const { error: cfErr } = await supabase.schema(SCHEMA)
+    .from('cuota_factura')
+    .delete()
+    .eq('id_cuota', id);
+  if (cfErr) return res.status(500).json({ error: cfErr.message });
+
   const { error: delErr } = await supabase.schema(SCHEMA)
     .from('cuota')
     .delete()
