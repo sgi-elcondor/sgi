@@ -46,7 +46,15 @@ exports.getCarteraJuridica = async (req, res) => {
 };
 
 exports.getAuditoria = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("vw_auditoria_basica_operaciones").select("*").limit(200);
+  const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+  let q = supabase.schema(SCHEMA)
+    .from("vw_auditoria_basica_operaciones")
+    .select("*")
+    .order("fecha_cambio", { ascending: false })
+    .limit(limit);
+  if (req.query.desde) q = q.gte("fecha_cambio", req.query.desde);
+  if (req.query.hasta) q = q.lte("fecha_cambio", `${req.query.hasta}T23:59:59`);
+  const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 };
