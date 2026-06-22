@@ -34,6 +34,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/cuotas/fracciones':      { recurso: 'cuotas',        accion: 'leer' },
   'POST /api/v1/cuotas/fracciones':     { recurso: 'cuotas',        accion: 'editar_valores' },
   'DELETE /api/v1/cuotas/fracciones':   { recurso: 'cuotas',        accion: 'editar_valores' },
+  'DELETE /api/v1/cuotas':              { recurso: 'cuotas',        accion: 'eliminar' },
 
   'GET /api/v1/pagos':                       { recurso: 'pagos', accion: 'leer' },
   'POST /api/v1/pagos':                      { recurso: 'pagos', accion: 'crear' },

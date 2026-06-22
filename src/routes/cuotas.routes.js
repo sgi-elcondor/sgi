@@ -9,6 +9,7 @@ router.put("/venta/:idVenta/plan",      ctrl.setPlan);
 router.get("/:id/fracciones",        ctrl.getFracciones);
 router.post("/:id/fracciones",       ctrl.setFracciones);
 router.delete("/:id/fracciones",     ctrl.deleteFracciones);
+router.delete("/:id",                ctrl.deleteCuota);
 router.post("/",                     ctrl.create);
 router.patch("/:id/valores",         ctrl.updateValores);
 module.exports = router;

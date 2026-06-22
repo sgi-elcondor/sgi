@@ -6,9 +6,11 @@
   let _cuotasMap = {};    // by id_cuota
   let _grupos    = [];    // grouped by venta
   let _activeGroupKey = null; // key of the venta shown in detail, or null on master
-  let esAuxiliar = false;
-  let canPagar   = false;
+  let esAuxiliar    = false;
+  let canPagar      = false;
   let mostrarAcciones = false;
+  let canEliminar   = false;
+  let _elimJustificacion = "";
 
   const EXPORT_ROLES = ["admin", "gerencia", "auxiliar_contable"];
 
@@ -35,6 +37,8 @@
     }
     if (canPagar)
       acciones.push(`<button class="btn btn-primary btn-sm btn-cuota-pagar" data-id="${c.id_cuota}">Pagar</button>`);
+    if (canEliminar && c.estado !== "pagada" && !c.tiene_fracciones)
+      acciones.push(`<button class="btn btn-danger btn-sm btn-cuota-eliminar" data-id="${c.id_cuota}" title="Eliminar cuota">Eliminar</button>`);
     return acciones.join(" ");
   }
 
@@ -75,7 +79,8 @@
     _activeGroupKey = null;
     esAuxiliar      = AppState.can('cuotas', 'editar_valores');
     canPagar        = AppState.can('pagos', 'crear');
-    mostrarAcciones = esAuxiliar || canPagar;
+    canEliminar     = esAuxiliar || AppState.can('cuotas', 'eliminar');
+    mostrarAcciones = esAuxiliar || canPagar || canEliminar;
     const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
 
     _cuotas    = data;
@@ -292,6 +297,7 @@
       }
       if (btn.classList.contains("btn-cuota-editar"))     { abrirModalReajustePlan(_cuotasMap[id]); return; }
       if (btn.classList.contains("btn-cuota-fraccionar")) { abrirModalFracciones(_cuotasMap[id]); return; }
+      if (btn.classList.contains("btn-cuota-eliminar"))   { abrirModalEliminarCuota(_cuotasMap[id]); return; }
     });
   }
 
@@ -691,6 +697,111 @@
         window.SGIUI?.toast(e.message || "Error al guardar.", "error", "Error");
       }
     };
+  }
+
+  // ── Eliminar cuota (ALR-01) ───────────────────────────────────────────────────
+
+  function abrirModalEliminarCuota(cuota) {
+    if (!cuota) return;
+    const isAdmin = window.currentUser?.rol === 'admin';
+
+    function updateCounter() {
+      const len = (document.getElementById("elim-justificacion")?.value || "").trim().length;
+      const counter = document.getElementById("elim-counter");
+      const btn     = document.getElementById("btn-elim-continuar");
+      if (counter) {
+        counter.textContent = `${len} / 20 caracteres mínimo`;
+        counter.style.color = len >= 20 ? "var(--success,#22c55e)" : "var(--text-muted)";
+      }
+      if (btn) btn.disabled = len < 20;
+    }
+
+    window._cqElimContinuar = function() {
+      _elimJustificacion = (document.getElementById("elim-justificacion")?.value || "").trim();
+      if (_elimJustificacion.length < 20) return;
+
+      if (!isAdmin) {
+        document.getElementById("modalBody").innerHTML = `
+          <div style="background:var(--warning-soft,#fef9c3);border:1px solid var(--warning,#eab308);border-radius:.5rem;padding:.875rem 1rem;margin-bottom:1.25rem;font-size:.875rem">
+            <strong>Autorización requerida</strong><br>
+            Como auxiliar contable no puede ejecutar esta eliminación directamente.
+            Comparta la justificación con un administrador y solicítele que la confirme desde su sesión.
+          </div>
+          <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.75rem 1rem;font-size:.875rem;font-style:italic;margin-bottom:1.5rem">
+            "${_elimJustificacion}"
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="UI.closeModal()">Cerrar</button>
+          </div>`;
+        return;
+      }
+
+      document.getElementById("modalBody").innerHTML = `
+        <div style="background:var(--danger-soft,#fee2e2);border:1px solid var(--danger,#ef4444);border-radius:.5rem;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.85rem">
+          <strong>Confirmar eliminación irreversible</strong><br>
+          La cuota será eliminada permanentemente y el cambio quedará registrado en auditoría.
+        </div>
+        <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.625rem .875rem;margin-bottom:1.25rem;font-size:.84rem">
+          <strong>Cuota #${cuota.numero_cuota}</strong> · ${UI.fmt(cuota.valor_cuota)} · Vence ${UI.date(cuota.fecha_vencimiento)}<br>
+          <span style="color:var(--text-muted);font-size:.8rem">${cuota.comprador || ""}</span>
+        </div>
+        <div style="font-size:.855rem;margin-bottom:1.5rem">
+          <span style="color:var(--text-muted)">Justificación:</span><br>
+          <em>${_elimJustificacion}</em>
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+          <button id="btn-elim-ejecutar" class="btn btn-danger" onclick="_cqElimEjecutar(${cuota.id_cuota})">
+            Eliminar definitivamente
+          </button>
+        </div>`;
+    };
+
+    window._cqElimEjecutar = async function(idCuota) {
+      const btn = document.getElementById("btn-elim-ejecutar");
+      if (btn) { btn.disabled = true; btn.textContent = "Eliminando..."; }
+      try {
+        await API.delete(`/cuotas/${idCuota}`, { justificacion: _elimJustificacion });
+        UI.closeModal();
+        window.SGIUI?.toast("Cuota eliminada correctamente.", "success", "Listo");
+        delete _cuotasMap[idCuota];
+        refreshActive();
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = "Eliminar definitivamente"; }
+        window.SGIUI?.toast(e.message || "Error al eliminar la cuota.", "error", "Error");
+      }
+    };
+
+    const politica = isAdmin
+      ? "Como administrador puede confirmar y ejecutar la eliminación directamente."
+      : "Como auxiliar contable puede iniciar la solicitud, pero <strong>un administrador debe confirmarla</strong> desde su sesión.";
+
+    UI.openModal(`Eliminar cuota #${cuota.numero_cuota}`, `
+      <div style="background:var(--warning-soft,#fef9c3);border:1px solid var(--warning,#eab308);border-radius:.5rem;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.85rem">
+        <strong>Política de eliminación de cuotas</strong><br>
+        Una cuota solo puede eliminarse cuando no tiene pagos, facturas activas ni subdivisiones.
+        Esta operación es <strong>irreversible</strong>. ${politica}
+      </div>
+      <div style="background:var(--surface-2,#f0f4f8);border-radius:.5rem;padding:.625rem .875rem;margin-bottom:1.25rem;font-size:.84rem">
+        <strong>Cuota #${cuota.numero_cuota}</strong> · ${UI.fmt(cuota.valor_cuota)} · Vence ${UI.date(cuota.fecha_vencimiento)}<br>
+        <span style="color:var(--text-muted);font-size:.8rem">${cuota.comprador || ""}</span>
+      </div>
+      <label style="font-size:.85rem;font-weight:500;margin-bottom:.375rem;display:block">
+        Justificación <span style="color:var(--danger)">*</span>
+      </label>
+      <textarea id="elim-justificacion" rows="3"
+        placeholder="Describe el motivo de la eliminación (mín. 20 caracteres)"
+        style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:.375rem;font-size:.875rem;resize:vertical;box-sizing:border-box"
+        oninput="_cqElimCounter()"></textarea>
+      <small id="elim-counter" style="color:var(--text-muted);font-size:.78rem;display:block;margin-top:.25rem">0 / 20 caracteres mínimo</small>
+      <div style="display:flex;gap:.5rem;margin-top:1.25rem;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+        <button id="btn-elim-continuar" class="btn btn-danger" disabled onclick="_cqElimContinuar()">
+          ${isAdmin ? "Continuar" : "Solicitar autorización"}
+        </button>
+      </div>`);
+
+    window._cqElimCounter = updateCounter;
   }
 
   // ── Exportación ───────────────────────────────────────────────────────────────

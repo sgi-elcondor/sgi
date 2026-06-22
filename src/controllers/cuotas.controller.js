@@ -850,3 +850,64 @@ exports.deleteFracciones = async (req, res) => {
   res.json({ ok: true });
 };
 
+exports.deleteCuota = async (req, res) => {
+  if (req.usuario.rol !== 'admin') {
+    return res.status(403).json({ error: 'Solo el administrador puede eliminar cuotas' });
+  }
+
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID de cuota inválido' });
+
+  const { justificacion } = req.body;
+  if (!justificacion || String(justificacion).trim().length < 20) {
+    return res.status(400).json({ error: 'La justificación es obligatoria (mín. 20 caracteres)' });
+  }
+
+  const { data: cuota, error: cErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select(`id_cuota, numero_cuota, valor_cuota, estado,
+      cuota_pago(id_cuota_pago),
+      cuota_fraccion(id_fraccion),
+      cuota_factura(id_factura, factura:id_factura(estado))`)
+    .eq('id_cuota', id)
+    .single();
+
+  if (cErr || !cuota) return res.status(404).json({ error: 'Cuota no encontrada' });
+
+  if (cuota.estado === 'pagada') {
+    return res.status(400).json({ error: 'Una cuota pagada no puede eliminarse' });
+  }
+  if ((cuota.cuota_pago || []).length > 0) {
+    return res.status(400).json({ error: 'La cuota tiene pagos registrados y no puede eliminarse' });
+  }
+  if ((cuota.cuota_fraccion || []).length > 0) {
+    return res.status(400).json({ error: 'La cuota tiene subdivisiones; elimínalas primero' });
+  }
+  const tieneFacturaActiva = (cuota.cuota_factura || []).some(cf =>
+    ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado)
+  );
+  if (tieneFacturaActiva) {
+    return res.status(400).json({ error: 'La cuota tiene una factura activa; anúlala primero' });
+  }
+
+  const { error: delErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .delete()
+    .eq('id_cuota', id);
+
+  if (delErr) return res.status(500).json({ error: delErr.message });
+
+  await supabase.schema(SCHEMA).from('auditoria').insert({
+    tabla_afectada: 'cuota',
+    id_registro:    id,
+    campo:          'eliminacion',
+    valor_anterior: String(cuota.valor_cuota),
+    valor_nuevo:    null,
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         String(justificacion).trim(),
+  });
+
+  res.json({ ok: true });
+};
+
