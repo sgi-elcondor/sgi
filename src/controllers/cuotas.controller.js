@@ -866,7 +866,7 @@ exports.deleteCuota = async (req, res) => {
   const { data: cuota, error: cErr } = await supabase.schema(SCHEMA)
     .from('cuota')
     .select(`id_cuota, numero_cuota, valor_cuota, estado,
-      cuota_pago(id_cuota_pago),
+      cuota_pago(valor_aplicado),
       cuota_fraccion(id_fraccion),
       cuota_factura(id_factura, factura:id_factura(estado))`)
     .eq('id_cuota', id)
