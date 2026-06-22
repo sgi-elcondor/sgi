@@ -176,8 +176,9 @@
 .lote-detail-value { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
 
 .lotes-disponibles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.75rem; padding: 1rem 1.25rem; }
-.lote-disponible-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.625rem; padding: 0.875rem; display: flex; flex-direction: column; gap: 0.25rem; transition: border-color 0.15s; }
+.lote-disponible-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.625rem; padding: 0.875rem; display: flex; flex-direction: column; gap: 0.25rem; transition: border-color 0.15s, box-shadow 0.15s; cursor: pointer; }
 .lote-disponible-card:hover { border-color: var(--success); }
+.lote-disponible-card.selected { border-color: var(--success); box-shadow: 0 0 0 1px var(--success); }
 .lote-disponible-code   { font-size: 0.875rem; font-weight: 700; color: var(--text); }
 .lote-disponible-meta   { font-size: 0.75rem; color: var(--text-muted); }
 .lote-disponible-precio { font-size: 0.875rem; font-weight: 700; color: var(--success); margin-top: 0.25rem; }
