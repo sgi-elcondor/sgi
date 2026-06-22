@@ -12,7 +12,7 @@ const VISTA_API_MAP = {
   'lotes':         ['lotes:leer', 'lotes:crear', 'lotes:actualizar'],
   'compradores':   ['compradores:leer', 'compradores:crear', 'compradores:actualizar'],
   'ventas':        ['ventas:leer', 'ventas:crear', 'ventas:actualizar', 'ventas:solicitar', 'ventas:editar_financiero'],
-  'cuotas':        ['cuotas:leer', 'cuotas:crear', 'cuotas:actualizar', 'cuotas:editar_valores'],
+  'cuotas':        ['cuotas:leer', 'cuotas:crear', 'cuotas:actualizar', 'cuotas:editar_valores', 'cuotas:eliminar'],
   'pagos':         ['pagos:leer', 'pagos:crear', 'mis_pagos:leer', 'mis_pagos:crear', 'uploads:crear'],
   'comisionistas': ['comisionistas:leer', 'comisionistas:crear', 'comisionistas:actualizar'],
   'facturas':      ['facturas:leer', 'facturas:crear', 'facturas:actualizar'],
