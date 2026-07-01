@@ -74,7 +74,10 @@ const API = {
       } catch {}
 
       if (!response.ok) {
-        throw new Error(data?.error || response.statusText || "Error en la solicitud");
+        const err  = new Error(data?.error || response.statusText || "Error en la solicitud");
+        err.code   = data?.code;
+        err.status = response.status;
+        throw err;
       }
 
       return data;

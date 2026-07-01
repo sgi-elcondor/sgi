@@ -365,6 +365,11 @@ async function crearVenta(req, res, estadoFijo) {
         error: "Error al asociar comprador(es): " + ec.message
       });
     }
+
+    // Self-registered visitors (role 'usuario') become compradores when they buy.
+    try {
+      await usuariosSvc.promoverACompradores(compradores.map(c => c.id_usuario));
+    } catch (_) { /* best-effort: promotion must never block the sale */ }
   }
 
   // Comisionista

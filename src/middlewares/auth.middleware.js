@@ -42,7 +42,7 @@ async function verificarToken(req, res, next) {
         .schema('condor')
         .from('roles')
         .select('id_rol')
-        .eq('nombre', 'comprador')
+        .eq('nombre', 'usuario')
         .single();
 
       if (rolError || !rolDefault) {
@@ -89,6 +89,15 @@ async function verificarToken(req, res, next) {
 
     if (rolError || !rolData) {
       return res.status(403).json({ error: 'No se pudo cargar el rol del usuario.' });
+    }
+
+    // Self-registered visitors must verify their email before accessing anything.
+    // Staff roles are unaffected; only the 'usuario' role is gated.
+    if (rolData.nombre === 'usuario' && decoded.email_verified !== true) {
+      return res.status(403).json({
+        error: 'Debes verificar tu correo electrónico para acceder.',
+        code:  'EMAIL_NOT_VERIFIED',
+      });
     }
 
     const permisos = new Set(
