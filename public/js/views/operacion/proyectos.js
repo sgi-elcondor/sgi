@@ -195,7 +195,8 @@
     }
   }
 
-  function exportProjectPDF(row, projectLotes) {
+  async function exportProjectPDF(row, projectLotes) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const SX  = window.SGIExport.pdf;
@@ -283,6 +284,7 @@
   }
 
   async function exportExcel(rows, lotes) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const SX = window.SGIExport.xlsx;
     const wb = SX.setup();
 
@@ -450,7 +452,8 @@
     await SX.download(wb, `proyectos_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
-  function exportPDF(rows, lotes) {
+  async function exportPDF(rows, lotes) {
+    if (window.SGILibs) await window.SGILibs.ensureExport();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const SX  = window.SGIExport.pdf;

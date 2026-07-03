@@ -210,10 +210,10 @@
 
     const buildTable = rows => `
       <article class="panel-card" style="padding:0;overflow:hidden">
-        <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <table class="stackable" style="width:100%;border-collapse:collapse;font-size:.875rem">
           <thead>
             <tr style="background:var(--surface-2,var(--bg-alt));text-align:left">
-              ${TH("#")}${TH("Comprador")}${TH("Lote")}${TH("Valor")}${TH("Vencimiento")}${TH("Días")}
+              ${TH("#")}${TH("Venta")}${TH("Comprador")}${TH("Lote")}${TH("Valor")}${TH("Vencimiento")}${TH("Días")}
               <th style="padding:.625rem 1rem"></th>
             </tr>
           </thead>
@@ -221,6 +221,7 @@
             ${rows.map((c, idx) => `
               <tr style="border-top:1px solid var(--border);${idx % 2 === 1 ? "background:var(--surface-1,var(--bg-alt))" : ""}">
                 <td style="padding:.75rem 1rem;color:var(--text-muted)">${c.numero_cuota}</td>
+                <td style="padding:.75rem 1rem;font-weight:600">${SGIUI.ventaCode(c)}</td>
                 <td style="padding:.75rem 1rem;font-weight:500">${c.comprador}</td>
                 <td style="padding:.75rem 1rem;color:var(--text-muted);font-size:.8125rem">${c.codigo_lote} · ${c.proyecto}</td>
                 <td style="padding:.75rem 1rem;font-weight:600">${fmtM(c.valor_cuota)}</td>
@@ -514,7 +515,7 @@ function renderMoraEscritura(ventas = []) {
               </div>
 
               <p>
-                Lote <strong>${v.codigo_lote || "—"}</strong>
+                <strong>${SGIUI.ventaCode(v)}</strong> · Lote ${v.codigo_lote || "—"}
                 ${v.proyecto ? ` · ${v.proyecto}` : ""}
               </p>
             </div>

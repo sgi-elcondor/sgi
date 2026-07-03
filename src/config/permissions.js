@@ -6,7 +6,8 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/usuarios':              { recurso: 'usuarios',      accion: 'actualizar' },
   'PATCH /api/v1/usuarios':            { recurso: 'usuarios',      accion: 'actualizar' },
   'GET /api/v1/usuarios/roles':        { recurso: 'usuarios',      accion: 'leer' },
-  'PATCH /api/v1/usuarios/desactivar': { recurso: 'usuarios',      accion: 'actualizar' },
+  'PATCH /api/v1/usuarios/desactivar':   { recurso: 'usuarios',      accion: 'actualizar' },
+  'PATCH /api/v1/usuarios/desbloquear': { recurso: 'usuarios',      accion: 'actualizar' },
 
   'GET /api/v1/proyectos':             { recurso: 'proyectos',     accion: 'leer' },
   'POST /api/v1/proyectos':            { recurso: 'proyectos',     accion: 'crear' },
@@ -31,6 +32,10 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/v1/cuotas/valores':      { recurso: 'cuotas',        accion: 'editar_valores' },
   'PATCH /api/v1/cuotas/venta/valores': { recurso: 'cuotas',       accion: 'editar_valores' },
   'PUT /api/v1/cuotas/venta/plan':      { recurso: 'cuotas',       accion: 'editar_valores' },
+  'GET /api/v1/cuotas/fracciones':      { recurso: 'cuotas',        accion: 'leer' },
+  'POST /api/v1/cuotas/fracciones':     { recurso: 'cuotas',        accion: 'editar_valores' },
+  'DELETE /api/v1/cuotas/fracciones':   { recurso: 'cuotas',        accion: 'editar_valores' },
+  'DELETE /api/v1/cuotas':              { recurso: 'cuotas',        accion: 'eliminar' },
 
   'GET /api/v1/pagos':                       { recurso: 'pagos', accion: 'leer' },
   'POST /api/v1/pagos':                      { recurso: 'pagos', accion: 'crear' },
@@ -92,6 +97,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/v1/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/v1/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
+  'PATCH /api/v1/roles/manual': { recurso: 'roles', accion: 'actualizar' },
   'GET /api/v1/bank-transactions':        { recurso: 'bank_transactions', accion: 'leer' },
   'POST /api/v1/bank-transactions/batch': { recurso: 'bank_transactions', accion: 'crear' },
   'PUT /api/v1/bank-transactions':        { recurso: 'bank_transactions', accion: 'actualizar' },

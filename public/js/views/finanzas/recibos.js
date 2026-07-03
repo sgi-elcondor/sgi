@@ -49,7 +49,7 @@ function _buildReciboHTML(r) {
         { icon: "receipt",  label: "N° de recibo",             value: r.numero_recibo },
         { icon: "user",     label: "Cliente",                  value: r.comprador },
         { icon: "hash",     label: "Documento",                value: r.documento },
-        { icon: "briefcase",label: "N° de venta",              value: r.id_venta != null ? `#${r.id_venta}` : "" },
+        { icon: "briefcase",label: "N° de venta",              value: r.id_venta != null ? SGIUI.ventaCode(r) : "" },
         { icon: "pin",      label: "Proyecto / Lote",          value: [r.proyecto, r.codigo_lote].filter(x => x && x !== "—").join(" · ") },
         { icon: "calendar", label: "Fecha de pago",            value: fechaPago },
         { icon: "card",     label: "Medio de pago",            value: r.metodo_pago ? metodoLabel : "" },
@@ -99,11 +99,12 @@ window.recibosView = async function() {
     const key = r.id_venta ?? "none";
     if (!ventasMap.has(key)) {
       ventasMap.set(key, {
-        id_venta:    r.id_venta,
-        comprador:   r.comprador,
-        proyecto:    r.proyecto,
-        codigo_lote: r.codigo_lote,
-        recibos:     [],
+        id_venta:     r.id_venta,
+        codigo_venta: r.codigo_venta,
+        comprador:    r.comprador,
+        proyecto:     r.proyecto,
+        codigo_lote:  r.codigo_lote,
+        recibos:      [],
       });
     }
     ventasMap.get(key).recibos.push(r);
@@ -117,7 +118,7 @@ window.recibosView = async function() {
   function filaVenta(g) {
     const total = g.recibos.reduce((s, r) => s + Number(r.valor_pago || 0), 0);
     return `<tr data-grupo-key="${g.id_venta ?? "none"}" style="cursor:pointer">
-      <td>${g.id_venta ? `<strong>#${g.id_venta}</strong>` : "—"}</td>
+      <td>${g.id_venta ? `<strong>${SGIUI.ventaCode(g)}</strong>` : "—"}</td>
       <td>${g.comprador}</td>
       <td>${g.proyecto !== "—" ? `${g.proyecto} · <strong>${g.codigo_lote}</strong>` : "—"}</td>
       <td style="text-align:center"><strong>${g.recibos.length}</strong></td>
@@ -167,7 +168,7 @@ window.recibosView = async function() {
       <div class="sticky-table-scroll">
         <table>
           <thead><tr>
-            <th>Venta #</th><th>Comprador</th><th>Proyecto / Lote</th>
+            <th>Venta</th><th>Comprador</th><th>Proyecto / Lote</th>
             <th style="text-align:center">Recibos</th>
             <th style="text-align:right">Total pagado</th><th></th>
           </tr></thead>
@@ -262,7 +263,7 @@ window.recibosDeVentaView = function(grupo) {
       <div class="table-header">
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn btn-ghost btn-sm" onclick="recibosView()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
-          <h3>Recibos &mdash; Venta #${grupo.id_venta ?? "sin venta"}</h3>
+          <h3>Recibos &mdash; Venta ${grupo.id_venta ? SGIUI.ventaCode(grupo) : "sin venta"}</h3>
         </div>
       </div>
 

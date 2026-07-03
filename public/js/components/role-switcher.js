@@ -131,7 +131,7 @@ function initRoleViewSwitcher(perfil) {
   if (!container) return;
   container.style.display = "";
 
-  API.get("/roles").then(function(roles) {
+  API.getCached("/roles", { ttl: 300000 }).then(function(roles) {
     const select = document.getElementById("roleViewSelect");
     if (!select) return;
 

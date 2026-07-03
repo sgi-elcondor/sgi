@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyectos y lotes disponibles — El Cóndor S.A.S.</title>
+  <meta name="description" content="Lotes y proyectos inmobiliarios de El Cóndor S.A.S. en Flandes, Tolima. Consulta disponibilidad, precios y contacta a un asesor comercial." />
+  <meta name="theme-color" content="#ff6a00" />
+  <meta name="robots" content="index, follow" />
+
+  <script>
+    // Set theme/lang before first paint to avoid a flash (FOUC).
+    (function () {
+      try {
+        var t = localStorage.getItem('sgi_theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.lang = localStorage.getItem('sgi_lang') === 'en' ? 'en' : 'es';
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
+  <link rel="canonical" href="https://sgi.somoselcondor.com/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="SGI El Cóndor" />
+  <meta property="og:title" content="Proyectos y lotes disponibles · El Cóndor S.A.S." />
+  <meta property="og:description" content="Consulta lotes disponibles, precios y asesores comerciales de El Cóndor S.A.S." />
+  <meta property="og:url" content="https://sgi.somoselcondor.com/" />
+  <meta property="og:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
+  <meta property="og:image:alt" content="Logo de El Cóndor S.A.S." />
+  <meta property="og:locale" content="es_CO" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Proyectos y lotes disponibles · El Cóndor S.A.S." />
+  <meta name="twitter:description" content="Consulta lotes disponibles, precios y asesores comerciales de El Cóndor S.A.S." />
+  <meta name="twitter:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/views/proyectos.css" />
+</head>
+<body>
+
+<div class="pv-split">
+  <aside class="pv-aside">
+    <iframe id="pv-login" src="/login" title="Iniciar sesión o crear cuenta" loading="eager"></iframe>
+  </aside>
+
+  <main class="pv-showcase">
+    <div class="pv-inner">
+      <div class="pv-controls">
+        <button class="pv-iconbtn" id="pv-theme" type="button" aria-label="Cambiar tema"></button>
+        <button class="pv-iconbtn" id="pv-lang" type="button" aria-label="Cambiar idioma"></button>
+      </div>
+
+      <header class="pv-hero">
+        <span class="pv-hero-kicker">El Cóndor S.A.S.</span>
+        <h1 id="pv-title">Conoce el proyecto</h1>
+        <p class="pv-hero-sub" id="pv-sub">Explora los lotes disponibles y contacta a nuestros asesores comerciales.</p>
+        <div class="pv-note">
+          <i data-lucide="key-round" aria-hidden="true"></i>
+          <span id="pv-note"><strong>¿Ya tienes un lote?</strong> Inicia sesión para ver tus cuotas, plan de pagos, facturas y recibos.</span>
+        </div>
+      </header>
+
+      <div id="pv-content"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
+<script src="/js/proyectos.js"></script>
+</body>
+</html>

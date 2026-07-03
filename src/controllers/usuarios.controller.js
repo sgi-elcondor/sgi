@@ -1,5 +1,6 @@
-const supabase = require('../config/supabase');
-const SCHEMA   = 'condor';
+const supabase  = require('../config/supabase');
+const authCache = require('../services/auth-cache.service');
+const SCHEMA    = 'condor';
 
 async function listarUsuarios(req, res) {
   const { data, error } = await supabase
@@ -8,6 +9,7 @@ async function listarUsuarios(req, res) {
     .select(`
       id_usuario, firebase_uid, email, activo, fecha_creacion, photo_url,
       nombres, apellidos, documento, tipo_persona, tipo_documento, telefono,
+      intentos_fallidos, bloqueado_hasta,
       roles:id_rol ( id_rol, nombre )
     `)
     .order('fecha_creacion', { ascending: false });
@@ -106,6 +108,11 @@ async function actualizarUsuario(req, res) {
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Role or active flag may have changed — drop cached identity payloads so the change takes
+    // effect on the next request instead of waiting for the TTL.
+    authCache.clear();
+
     return res.json(data);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -124,7 +131,40 @@ async function desactivarUsuario(req, res) {
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
+
+  // Deactivated user must lose access immediately, not after the TTL.
+  authCache.clear();
+
   return res.json(data);
 }
 
-module.exports = { listarUsuarios, listarRoles, crearUsuario, actualizarUsuario, desactivarUsuario };
+async function desbloquearUsuario(req, res) {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .schema(SCHEMA)
+    .from('usuarios')
+    .update({ intentos_fallidos: 0, bloqueado_hasta: null })
+    .eq('id_usuario', id)
+    .select('id_usuario, email')
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  authCache.clear();
+
+  await supabase.schema(SCHEMA).from('auditoria').insert([{
+    tabla_afectada: 'usuarios',
+    id_registro:    id,
+    campo:          'bloqueado_hasta',
+    valor_anterior: null,
+    valor_nuevo:    null,
+    usuario_db:     req.usuario?.email || 'admin',
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         'desbloqueo_manual',
+  }]);
+
+  return res.json({ ok: true, email: data.email });
+}
+
+module.exports = { listarUsuarios, listarRoles, crearUsuario, actualizarUsuario, desactivarUsuario, desbloquearUsuario };

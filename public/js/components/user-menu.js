@@ -40,6 +40,8 @@ function initUserMenu(perfil) {
     '</div></div>' +
     (canEdit ? '<div class="ump-divider"></div><button class="ump-action" id="ump-edit-profile"><i data-lucide="user-pen"></i><span>Editar perfil</span></button>' : '') +
     '<div class="ump-divider"></div>' +
+    '<button class="ump-action" id="ump-mi-rol"><i data-lucide="book-marked"></i><span>Mi rol</span></button>' +
+    '<div class="ump-divider"></div>' +
     '<button class="ump-action" id="ump-change-pwd"><i data-lucide="key-round"></i><span>Cambiar contrasena</span></button>' +
     '<div class="ump-divider"></div>' +
     '<button class="ump-action ump-action--danger" id="ump-logout"><i data-lucide="log-out"></i><span>Cerrar sesion</span></button>';
@@ -88,6 +90,143 @@ function initUserMenu(perfil) {
     panel.classList.remove("open");
     btn.setAttribute("aria-expanded", "false");
     renderChangePasswordView();
+  });
+
+  document.getElementById("ump-mi-rol")?.addEventListener("click", function() {
+    panel.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+    renderMiRolView();
+  });
+}
+
+function _miRolEscape(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+const _MI_ROL_LABELS = {
+  ventas:            "Ventas",
+  cuotas:            "Cuotas",
+  pagos:             "Pagos",
+  facturas:          "Facturas",
+  recibos:           "Recibos",
+  compradores:       "Compradores",
+  comisionistas:     "Comisionistas",
+  proyectos:         "Proyectos",
+  lotes:             "Lotes",
+  usuarios:          "Usuarios",
+  roles:             "Roles y permisos",
+  reportes:          "Reportes",
+  reportes_dir:      "Reportes directivos",
+  alertas_jur:       "Alertas juridicas",
+  observaciones_jur: "Observaciones juridicas",
+  dashboard:         "Panel de control",
+  mi_cuenta:         "Mi cuenta",
+  mis_ventas:        "Mis ventas",
+  mis_pagos:         "Mis pagos",
+  mis_facturas:      "Mis facturas",
+  mis_recibos:       "Mis recibos",
+  mis_cuotas:        "Mis cuotas",
+  uploads:           "Subida de archivos",
+  bank_transactions: "Transacciones bancarias",
+  validacion_pagos:  "Validacion de pagos",
+  gastos:            "Gastos operativos",
+  recepciones:       "Recepcion de materiales",
+};
+
+function _miRolRenderContent(data) {
+  const titulo = humanizeRole(data.nombre || "");
+
+  const desc = data.descripcion
+    ? _miRolEscape(data.descripcion)
+    : '<em style="color:var(--text-muted)">Aun no hay descripcion configurada para tu rol.</em>';
+
+  const lineasObl = (data.obligaciones || "")
+    .split("\n").map(function(t) { return t.trim(); }).filter(Boolean);
+  const obligHtml = lineasObl.length
+    ? '<ul style="margin:0;padding-left:1.25rem;line-height:1.7">' +
+        lineasObl.map(function(t) { return '<li>' + _miRolEscape(t) + '</li>'; }).join("") +
+      '</ul>'
+    : '<div style="color:var(--text-muted)"><em>Aun no hay obligaciones configuradas para tu rol.</em></div>';
+
+  let accionesHtml;
+  if (data.acceso_total) {
+    accionesHtml =
+      '<div style="padding:.85rem 1rem;background:var(--surface-2,#f0f4f8);border-radius:.5rem;line-height:1.5">' +
+        '<strong>Acceso total al sistema.</strong> Puedes usar todas las funcionalidades sin restriccion.' +
+      '</div>';
+  } else if (!data.acciones || !data.acciones.length) {
+    accionesHtml = '<div style="color:var(--text-muted)"><em>Tu rol no tiene acciones asignadas todavia.</em></div>';
+  } else {
+    const grupos = {};
+    data.acciones.forEach(function(a) {
+      (grupos[a.recurso] = grupos[a.recurso] || []).push(a);
+    });
+    const keys = Object.keys(grupos).sort(function(a, b) {
+      return (_MI_ROL_LABELS[a] || a).localeCompare(_MI_ROL_LABELS[b] || b);
+    });
+    accionesHtml = keys.map(function(rec) {
+      const items = grupos[rec].map(function(a) {
+        return '<li>' + _miRolEscape(a.descripcion) + '</li>';
+      }).join("");
+      return '<div style="margin-bottom:1rem">' +
+               '<div style="font-weight:600;margin-bottom:.25rem">' + _miRolEscape(_MI_ROL_LABELS[rec] || rec) + '</div>' +
+               '<ul style="margin:0;padding-left:1.25rem;line-height:1.6">' + items + '</ul>' +
+             '</div>';
+    }).join("");
+  }
+
+  return '' +
+    '<div style="margin-bottom:1.25rem">' +
+      '<div style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">Tu rol</div>' +
+      '<div style="font-size:1.1rem;font-weight:600">' + _miRolEscape(titulo) + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:1.25rem">' +
+      '<div style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem">Descripcion</div>' +
+      '<div style="line-height:1.5">' + desc + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:1.25rem">' +
+      '<div style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Tus obligaciones</div>' +
+      obligHtml +
+    '</div>' +
+    '<div style="margin-bottom:.5rem">' +
+      '<div style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Lo que puedes hacer en la plataforma</div>' +
+      accionesHtml +
+    '</div>';
+}
+
+function renderMiRolView() {
+  const prev = window.currentViewKey || "dashboard";
+  const vc   = document.getElementById("viewContainer");
+  if (!vc) return;
+  setActiveNav(""); setViewTitle("Mi rol");
+
+  vc.innerHTML =
+    '<div class="auth-card-wrap"><div class="auth-card">' +
+      '<div class="auth-card-brand"><div class="auth-card-icon"><i data-lucide="book-marked"></i></div>' +
+        '<div><div class="auth-card-title">Mi rol</div><div class="auth-card-sub">Tus funciones, obligaciones y permisos en la plataforma</div></div>' +
+      '</div>' +
+      '<div id="mirol-content" style="text-align:left">Cargando...</div>' +
+      '<button class="auth-card-btn" id="back-from-mirol"><i data-lucide="arrow-left"></i> Volver</button>' +
+    '</div></div>';
+
+  window.SGIUI?.hydrate();
+  document.getElementById("back-from-mirol")?.addEventListener("click", function() { navigate(prev); });
+
+  API.get("/auth/mi-rol").then(function(data) {
+    const content = document.getElementById("mirol-content");
+    if (!content || !data) return;
+    content.innerHTML = _miRolRenderContent(data);
+    window.SGIUI?.hydrate();
+  }).catch(function(err) {
+    const content = document.getElementById("mirol-content");
+    if (content) {
+      content.innerHTML =
+        '<div style="color:var(--danger)">No se pudo cargar tu rol: ' +
+        _miRolEscape(err && err.message ? err.message : "error desconocido") +
+        '</div>';
+    }
   });
 }
 

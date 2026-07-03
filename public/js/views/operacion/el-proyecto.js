@@ -37,6 +37,69 @@ window.elProyectoView = async function (container) {
     }
   }
 
+  let sortKey = "codigo";
+
+  const SORT_OPTIONS = [
+    { key: "codigo",      label: "Código" },
+    { key: "precio_asc",  label: "Precio ↑" },
+    { key: "precio_desc", label: "Precio ↓" },
+    { key: "area_asc",    label: "Área ↑" },
+    { key: "area_desc",   label: "Área ↓" },
+  ];
+
+  function sortDisponibles(list) {
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case "precio_asc":  return (a.precio_base ?? Infinity)  - (b.precio_base ?? Infinity);
+        case "precio_desc": return (b.precio_base ?? -Infinity) - (a.precio_base ?? -Infinity);
+        case "area_asc":    return (a.area_m2 ?? Infinity)      - (b.area_m2 ?? Infinity);
+        case "area_desc":   return (b.area_m2 ?? -Infinity)     - (a.area_m2 ?? -Infinity);
+        default:            return (a.codigo_lote || "").localeCompare(b.codigo_lote || "");
+      }
+    });
+  }
+
+  function selectLote(loteId, loteMap) {
+    const detailSection = document.getElementById("lote-detail-section");
+    const detailPanel   = document.getElementById("lote-detail-panel");
+    const detailHeader  = document.getElementById("lote-detail-header");
+
+    vc.querySelectorAll(".lote-cell.selected").forEach(c => c.classList.remove("selected"));
+    vc.querySelectorAll(".lote-disponible-card.selected").forEach(c => c.classList.remove("selected"));
+
+    const cell = vc.querySelector(`.lote-cell[data-id="${loteId}"]`);
+    if (cell) cell.classList.add("selected");
+
+    const card = vc.querySelector(`.lote-disponible-card[data-id="${loteId}"]`);
+    if (card) card.classList.add("selected");
+
+    const l = loteMap[Number(loteId)];
+    if (!l) { detailSection.style.display = "none"; return; }
+
+    const isMine = misCodigosLote.has(l.codigo_lote);
+    detailSection.style.display = "";
+    detailHeader.innerHTML = `<h3>${window.SGIUI?.icon("info") ?? ""} ${l.codigo_lote}${isMine ? ' <span class="badge badge-accent" style="margin-left:0.5rem">Tu lote</span>' : ""}</h3>`;
+    detailPanel.innerHTML = `
+      <div class="lote-detail-field">
+        <span class="lote-detail-label">Estado</span>
+        <span class="lote-detail-value">${UI.badge(l.estado)}</span>
+      </div>
+      ${l.manzana ? `<div class="lote-detail-field"><span class="lote-detail-label">Manzana</span><span class="lote-detail-value">${l.manzana}</span></div>` : ""}
+      ${l.area_m2 ? `<div class="lote-detail-field"><span class="lote-detail-label">Area</span><span class="lote-detail-value">${l.area_m2} m²</span></div>` : ""}
+      ${l.dimensiones ? `<div class="lote-detail-field"><span class="lote-detail-label">Dimensiones</span><span class="lote-detail-value">${l.dimensiones}</span></div>` : ""}
+      ${l.precio_base ? `<div class="lote-detail-field"><span class="lote-detail-label">Precio base</span><span class="lote-detail-value" style="color:var(--success)">${fmtM(l.precio_base)}</span></div>` : ""}
+      ${l.descripcion ? `<div class="lote-detail-field" style="grid-column:1/-1"><span class="lote-detail-label">Descripcion</span><span class="lote-detail-value" style="font-size:0.875rem;font-weight:400">${l.descripcion}</span></div>` : ""}
+    `;
+    window.SGIUI?.hydrate();
+  }
+
+  function clearSelection() {
+    vc.querySelectorAll(".lote-cell.selected").forEach(c => c.classList.remove("selected"));
+    vc.querySelectorAll(".lote-disponible-card.selected").forEach(c => c.classList.remove("selected"));
+    const detailSection = document.getElementById("lote-detail-section");
+    if (detailSection) detailSection.style.display = "none";
+  }
+
   function render(pidx) {
     const proyecto         = (proyectos || [])[pidx];
     const lotesDelProyecto = proyecto ? (lotesPorProyecto[proyecto.id_proyecto] || []) : [];
@@ -74,9 +137,17 @@ window.elProyectoView = async function (container) {
         </div>`;
     }).join("");
 
-    const disponiblesHtml = disponibles.length
-      ? disponibles.map(l => `
-        <div class="lote-disponible-card">
+    const sortedDisponibles = sortDisponibles(disponibles);
+
+    const sortControlHtml = disponibles.length > 1
+      ? `<div class="lote-selector" style="padding:0.75rem 1.25rem 0">${SORT_OPTIONS.map(o =>
+          `<button class="lote-tab ${sortKey === o.key ? "active" : ""}" data-sort="${o.key}">${o.label}</button>`
+        ).join("")}</div>`
+      : "";
+
+    const disponiblesHtml = sortedDisponibles.length
+      ? sortedDisponibles.map(l => `
+        <div class="lote-disponible-card" data-id="${l.id_lote}" role="button" tabindex="0" title="Ver en plano">
           <div class="lote-disponible-code">${l.codigo_lote}</div>
           <div class="lote-disponible-meta">${[l.manzana ? "Mz " + l.manzana : "", l.area_m2 ? l.area_m2 + " m²" : ""].filter(Boolean).join(" · ")}</div>
           <div class="lote-disponible-precio">${fmtM(l.precio_base)}</div>
@@ -145,7 +216,10 @@ window.elProyectoView = async function (container) {
         </section>
 
         <section class="table-wrap" style="margin-top:1rem">
-          <div class="table-header"><h3>${window.SGIUI?.icon("tag") ?? ""} Lotes disponibles (${disponibles.length})</h3></div>
+          <div class="table-header">
+            <h3>${window.SGIUI?.icon("tag") ?? ""} Lotes disponibles (${disponibles.length})</h3>
+          </div>
+          ${sortControlHtml}
           <div class="lotes-disponibles-grid">${disponiblesHtml}</div>
         </section>
       </section>`;
@@ -159,38 +233,33 @@ window.elProyectoView = async function (container) {
       });
     });
 
+    vc.querySelectorAll("[data-sort]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        sortKey = btn.dataset.sort;
+        render(selectedProyectoIdx);
+      });
+    });
+
     vc.querySelectorAll(".lote-cell").forEach(cell => {
       cell.addEventListener("click", () => {
-        const wasSelected   = cell.classList.contains("selected");
-        const detailSection = document.getElementById("lote-detail-section");
-        const detailPanel   = document.getElementById("lote-detail-panel");
-        const detailHeader  = document.getElementById("lote-detail-header");
+        const wasSelected = cell.classList.contains("selected");
+        if (wasSelected) { clearSelection(); return; }
+        selectLote(cell.dataset.id, loteMap);
+        document.getElementById("lote-detail-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
 
-        vc.querySelectorAll(".lote-cell.selected").forEach(c => c.classList.remove("selected"));
-
-        if (wasSelected) {
-          detailSection.style.display = "none";
-          return;
-        }
-
-        cell.classList.add("selected");
-        const l      = loteMap[Number(cell.dataset.id)];
-        const isMine = misCodigosLote.has(l.codigo_lote);
-
-        detailSection.style.display = "";
-        detailHeader.innerHTML = `<h3>${window.SGIUI?.icon("info") ?? ""} ${l.codigo_lote}${isMine ? ' <span class="badge badge-accent" style="margin-left:0.5rem">Tu lote</span>' : ""}</h3>`;
-        detailPanel.innerHTML = `
-          <div class="lote-detail-field">
-            <span class="lote-detail-label">Estado</span>
-            <span class="lote-detail-value">${UI.badge(l.estado)}</span>
-          </div>
-          ${l.manzana ? `<div class="lote-detail-field"><span class="lote-detail-label">Manzana</span><span class="lote-detail-value">${l.manzana}</span></div>` : ""}
-          ${l.area_m2 ? `<div class="lote-detail-field"><span class="lote-detail-label">Area</span><span class="lote-detail-value">${l.area_m2} m²</span></div>` : ""}
-          ${l.dimensiones ? `<div class="lote-detail-field"><span class="lote-detail-label">Dimensiones</span><span class="lote-detail-value">${l.dimensiones}</span></div>` : ""}
-          ${l.precio_base ? `<div class="lote-detail-field"><span class="lote-detail-label">Precio base</span><span class="lote-detail-value" style="color:var(--success)">${fmtM(l.precio_base)}</span></div>` : ""}
-          ${l.descripcion ? `<div class="lote-detail-field" style="grid-column:1/-1"><span class="lote-detail-label">Descripcion</span><span class="lote-detail-value" style="font-size:0.875rem;font-weight:400">${l.descripcion}</span></div>` : ""}
-        `;
-        detailSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    vc.querySelectorAll(".lote-disponible-card").forEach(card => {
+      const activate = () => {
+        const wasSelected = card.classList.contains("selected");
+        if (wasSelected) { clearSelection(); return; }
+        selectLote(card.dataset.id, loteMap);
+        vc.querySelector(".lote-mapa-container")?.closest(".table-wrap")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+      card.addEventListener("click", activate);
+      card.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
       });
     });
   }

@@ -1,0 +1,308 @@
+/* Public landing (/proyectos) — split layout: embedded login (left) + project showcase (right).
+   The login is loaded in an isolated iframe so login.css never clashes with the app styles. */
+
+/* The app shell locks body scroll (global.css: body{height:100vh;overflow:hidden}). Undo it
+   here so the public page scrolls normally. */
+html, body {
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+body {
+  display: block;
+  background: var(--bg);
+}
+
+.pv-split {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+/* Left — the real login, embedded */
+.pv-aside {
+  flex: 0 0 31rem;
+  max-width: 42vw;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  border-right: 1px solid var(--border);
+  background: var(--bg-elevated, var(--bg));
+}
+.pv-aside iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Right — showcase */
+.pv-showcase {
+  flex: 1 1 auto;
+  min-width: 0;
+  background:
+    radial-gradient(55rem 38rem at 115% -10%, rgba(var(--accent-rgb), 0.07), transparent 60%),
+    var(--bg);
+}
+.pv-inner {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 2.25rem 4rem;
+}
+
+/* Controls (theme + language) */
+.pv-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.pv-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+}
+.pv-iconbtn:hover { border-color: rgba(var(--accent-rgb), 0.45); }
+.pv-iconbtn:active { transform: scale(0.96); }
+.pv-iconbtn svg { width: 1.05rem; height: 1.05rem; display: block; }
+.pv-flag { width: 1.25rem; height: 0.9rem; border-radius: 0.125rem; display: block; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+
+/* Hero */
+.pv-hero { margin-bottom: 1.75rem; }
+.pv-hero-kicker {
+  display: inline-block;
+  margin-bottom: 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.pv-hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 3.2vw, 2.35rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.pv-hero-sub {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.pv-note {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: 0.85rem;
+  background: rgba(var(--accent-rgb), 0.06);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+.pv-note strong { color: var(--accent); }
+
+/* Sections */
+.pv-section { margin-top: 2rem; }
+.pv-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.pv-section-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.pv-count { font-size: 0.8rem; font-weight: 800; color: var(--accent); }
+
+/* Project chips */
+.pv-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.1rem; }
+.pv-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.42rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pv-chip:hover { color: var(--text); border-color: rgba(var(--accent-rgb), 0.4); }
+.pv-chip.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--text-on-accent);
+  border-color: transparent;
+  box-shadow: 0 0.5rem 1rem rgba(var(--accent-rgb), 0.22);
+}
+
+/* Project meta */
+.pv-proj-desc { margin: 0 0 0.4rem; color: var(--text); font-size: 0.95rem; line-height: 1.6; }
+.pv-proj-loc {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Lots */
+.pv-lots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: 0.75rem;
+}
+.pv-lot {
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  padding: 1rem 1.1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pv-lot:hover {
+  transform: translateY(-0.125rem);
+  box-shadow: 0 0.75rem 1.5rem rgba(17, 17, 17, 0.07);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+.pv-lot-code { font-weight: 800; font-size: 1rem; color: var(--text); letter-spacing: -0.01em; }
+.pv-lot-meta { margin-top: 0.2rem; font-size: 0.8rem; color: var(--text-muted); }
+.pv-lot-price { margin-top: 0.7rem; font-weight: 800; font-size: 1.05rem; color: var(--accent); }
+
+/* Advisors */
+.pv-advisors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+.pv-advisor {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  padding: 0.9rem 1rem;
+}
+.pv-avatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.18), rgba(var(--accent-rgb), 0.08));
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 1.05rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+.pv-advisor-name { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+.pv-advisor-contact { margin-top: 0.15rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+.pv-advisor-contact a { color: var(--accent); text-decoration: none; word-break: break-word; }
+.pv-advisor-contact a:hover { text-decoration: underline; }
+
+/* Empty states */
+.pv-empty {
+  border: 1px dashed var(--border);
+  border-radius: 0.85rem;
+  padding: 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 60rem) {
+  .pv-split { flex-direction: column; align-items: stretch; }
+  .pv-aside {
+    position: static;
+    height: auto;
+    max-width: none;
+    flex: 0 0 auto;
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .pv-aside iframe { height: 44rem; }
+  .pv-inner { padding: 1.25rem 1.25rem 2.5rem; }
+}
+@media (max-width: 35rem) {
+  .pv-aside iframe { height: 42rem; }
+  .pv-inner { padding: 1rem 1rem 2rem; }
+  .pv-lots { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .pv-advisors { grid-template-columns: 1fr; }
+  .pv-hero h1 { font-size: 1.55rem; }
+  .pv-section-head { flex-wrap: wrap; }
+}
+@media (max-width: 24rem) {
+  .pv-lots { grid-template-columns: 1fr; }
+}
+
+/* ---- Icons (Lucide) ---- */
+.pv-showcase .lucide { width: 1.05em; height: 1.05em; stroke-width: 2; vertical-align: -0.15em; flex-shrink: 0; }
+.pv-iconbtn .lucide { width: 1.05rem; height: 1.05rem; vertical-align: 0; }
+.pv-section-head h2 { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pv-section-head h2 .lucide { color: var(--accent); }
+.pv-note .lucide { color: var(--accent); width: 1.25rem; height: 1.25rem; margin-top: 0.05rem; }
+.pv-proj-loc .lucide { color: var(--accent); }
+.pv-advisor-contact a { display: inline-flex; align-items: center; gap: 0.3rem; }
+.pv-advisor-contact .lucide { width: 0.9rem; height: 0.9rem; opacity: 0.8; }
+
+/* ---- Entrance animations ---- */
+@keyframes pvFadeUp { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: none; } }
+@keyframes pvPop    { from { opacity: 0; transform: scale(0.94); }        to { opacity: 1; transform: none; } }
+
+.pv-chip    { animation: pvPop 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pv-lot     { animation: pvFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pv-advisor { animation: pvFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---- Right-side micro-interactions ---- */
+.pv-chip {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+              box-shadow 0.15s ease, transform 0.15s ease;
+}
+.pv-chip:hover { transform: translateY(-0.125rem); box-shadow: 0 0.45rem 0.9rem rgba(var(--accent-rgb), 0.16); }
+.pv-chip:active { transform: translateY(0) scale(0.97); }
+
+.pv-iconbtn {
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.pv-iconbtn:hover { transform: translateY(-0.125rem); box-shadow: 0 0.45rem 0.9rem rgba(var(--accent-rgb), 0.16); }
+.pv-iconbtn:active { transform: scale(0.95); }
+.pv-iconbtn .lucide { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.pv-iconbtn:hover .lucide { transform: rotate(-18deg) scale(1.12); }
+.pv-iconbtn .pv-flag { transition: transform 0.25s ease; }
+.pv-iconbtn:hover .pv-flag { transform: scale(1.12); }
+
+.pv-advisor { transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.pv-advisor:hover { border-color: rgba(var(--accent-rgb), 0.3); box-shadow: 0 0.5rem 1rem rgba(17, 17, 17, 0.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-chip, .pv-lot, .pv-advisor { animation: none; }
+  .pv-chip, .pv-iconbtn, .pv-lot, .pv-advisor,
+  .pv-iconbtn .lucide, .pv-iconbtn .pv-flag { transition: none; }
+}

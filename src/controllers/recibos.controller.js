@@ -19,7 +19,7 @@ exports.getAll = async (req, res) => {
           id_cuota, numero_cuota,
           cuota_factura(factura:id_factura(id_factura, numero_factura, estado)),
           venta:id_venta(
-            id_venta,
+            id_venta, codigo_venta,
             lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
             venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
@@ -55,6 +55,7 @@ exports.getAll = async (req, res) => {
         referencia:     p.referencia,
         estado_pago:    p.estado,
         id_venta:       venta?.id_venta         ?? p.id_venta ?? null,
+        codigo_venta:   venta?.codigo_venta     ?? null,
         numero_cuota:   cuota?.numero_cuota     ?? null,
         id_factura:     factura?.id_factura     ?? null,
         numero_factura: factura?.numero_factura ?? null,
@@ -113,7 +114,7 @@ exports.getMisRecibos = async (req, res) => {
           id_cuota, numero_cuota,
           cuota_factura(factura:id_factura(id_factura, numero_factura, estado)),
           venta:id_venta(
-            id_venta,
+            id_venta, codigo_venta,
             lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
             venta_comprador(usuario:id_usuario(nombres, apellidos, documento))
           )
@@ -150,6 +151,7 @@ exports.getMisRecibos = async (req, res) => {
         referencia:     p.referencia,
         estado_pago:    p.estado,
         id_venta:       venta?.id_venta         ?? p.id_venta ?? null,
+        codigo_venta:   venta?.codigo_venta     ?? null,
         numero_cuota:   cuota?.numero_cuota     ?? null,
         id_factura:     factura?.id_factura     ?? null,
         numero_factura: factura?.numero_factura ?? null,

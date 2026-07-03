@@ -74,7 +74,7 @@ window.ventasView = async function() {
         : "—";
       const lote = v.lote ? `${v.lote.codigo_lote} M${v.lote.manzana}-${v.lote.numero_lote}` : "—";
       return `<tr>
-        <td>${v.id_venta}</td>
+        <td><strong>${SGIUI.ventaCode(v)}</strong></td>
         <td>${v.lote?.proyecto?.nombre || "—"}</td>
         <td>${lote}</td>
         <td style="max-width:180px;font-size:.82rem">${compradores}</td>
@@ -92,6 +92,19 @@ window.ventasView = async function() {
     ? ["pre_mora", "en_mora"]
     : ["activa","pre_mora","en_mora","cancelada","liquidada","pendiente_autorizacion"];
 
+  let _proyectosVenta = [];
+  try {
+    const pres = await API.getCached("/proyectos");
+    const arr  = Array.isArray(pres) ? pres : (pres?.data || pres?.proyectos || []);
+    _proyectosVenta = [...new Set(arr.map(p => p?.nombre).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  } catch (_) {}
+
+  const proyectoOpts = [
+    { value: "", label: "Todos los proyectos" },
+    ..._proyectosVenta.map(n => ({ value: n, label: n })),
+  ];
+
   vc.innerHTML = `
     <div id="fv-summary"></div>
     <div class="table-wrap">
@@ -107,8 +120,8 @@ window.ventasView = async function() {
       </p>` : ""}
       ${window.SGIUI.filterBar({
         fields: [
-          { type: "search", id: "fv_proyecto", label: "Proyecto", placeholder: "Filtrar por proyecto…", oninput: "_cargarVentasFiltro()" },
-          { type: "search", id: "fv_cliente", label: "Cliente (cédula o nombre)", placeholder: "Buscar cliente, lote…", oninput: "_cargarVentasFiltro()", grow: true },
+          { type: "select", id: "fv_proyecto", label: "Proyecto", onchange: "_cargarVentasFiltro()", options: proyectoOpts },
+          { type: "search", id: "fv_cliente", label: "Cliente (cédula o nombre)", placeholder: "Buscar por cliente, documento o lote…", oninput: "_cargarVentasFiltro()", grow: true },
           { type: "select", id: "fv_estado", label: "Estado", onchange: "_cargarVentasFiltro()",
             options: [{ value: "", label: "Todos los estados" }, ...ESTADOS.map(e => ({ value: e, label: e.replace(/_/g, " ") }))] },
           { type: "month", id: "fv_mes", label: "Mes", onchange: "_cargarVentasFiltro()" },
@@ -118,7 +131,7 @@ window.ventasView = async function() {
       <div class="sticky-table-scroll">
         <table>
           <thead><tr>
-            <th>#</th><th>Proyecto</th><th>Lote</th><th>Comprador(es)</th>
+            <th>Venta</th><th>Proyecto</th><th>Lote</th><th>Comprador(es)</th>
             <th>Fecha</th><th>Valor Total</th><th>Cuota Inicial</th>
             <th>Comisionista</th><th>Estado</th><th></th>
           </tr></thead>
@@ -293,7 +306,7 @@ window.verVenta = async function(id) {
       <div class="venta-detail-hero">
         <div>
           <span class="venta-detail-kicker">Detalle de venta</span>
-          <h3>Venta #${v.id_venta}</h3>
+          <h3>Venta ${SGIUI.ventaCode(v)}</h3>
           <p>Registrada el ${UI.date(v.fecha_venta)}</p>
         </div>
 
@@ -487,7 +500,7 @@ window.verVenta = async function(id) {
       </div>` : ""}
     </div>`;
 
-  UI.openModal(`Detalle · Venta #${v.id_venta}`, html);
+  UI.openModal(`Detalle · Venta ${SGIUI.ventaCode(v)}`, html);
 
   if (canExport) {
     const fin = { vt, ci, tp, totalPagado, saldo, pct, cumple, escrit, cuotasIni, cuotasReg, pagIni, pagReg, sumVal };
@@ -788,7 +801,7 @@ function _renderPlanEditor() {
   document.getElementById("pl-motivo")?.addEventListener("input", _planRefresh);
   _planRefresh();
 }
-window._editarPlanCuotas = async function(idVenta, seedVt) {
+window._editarPlanCuotas = async function(idVenta, seedVt, opts = {}) {
   UI.openModal(`Editar venta · #${idVenta}`, UI.loader());
   let v;
   try { v = await API.get(`/ventas/${idVenta}`); }
@@ -797,15 +810,22 @@ window._editarPlanCuotas = async function(idVenta, seedVt) {
     if (body) body.innerHTML = `<p style="color:var(--danger);padding:1rem">${e.message}</p>`;
     return;
   }
+  const _mt = document.getElementById("modalTitle");
+  if (_mt) _mt.textContent = `Editar venta · ${SGIUI.ventaCode(v)}`;
   const cuotas = (v.cuota || []).slice().sort((a, b) => a.numero_cuota - b.numero_cuota);
   window._planRows = cuotas.map(c => {
     const pagada      = c.pagada === true || c.estado === "pagada";
-    const valorLocked = pagada || c.tiene_fracciones === true || c.factura_activa === true;
+    const conPagos    = c.factura_con_pagos === true || Number(c.valor_pagado || 0) > 0;
+    // An 'emitida' factura without receipts does NOT lock the value: changing it auto-annuls
+    // that factura (§4.3) and the cuota is re-billed. Only paid/subdivided/with-receipts lock.
+    const valorLocked = pagada || c.tiene_fracciones === true || conPagos;
+    const regenera    = !valorLocked && c.factura_activa === true; // emitida sin pagos
     const deletable   = !pagada && c.tiene_fracciones !== true && c.factura_activa !== true && Number(c.valor_pagado || 0) === 0;
     const hint        = pagada               ? "Pagada"
                       : c.tiene_fracciones    ? "Subdividida"
-                      : c.factura_activa      ? "Con factura activa"
-                      : Number(c.valor_pagado || 0) > 0 ? `mín ${UI.fmt(c.valor_pagado)}` : "";
+                      : conPagos              ? "Con pagos aplicados"
+                      : regenera              ? "Factura se regenerará"
+                      : "";
     return {
       id_cuota: c.id_cuota, numero: c.numero_cuota, tipo: c.tipo === "inicial" ? "inicial" : "regular",
       pagada, valorLocked, deletable, hint,
@@ -817,6 +837,7 @@ window._editarPlanCuotas = async function(idVenta, seedVt) {
     vt: Number(v.valor_total || 0),
     ci: Number(v.cuota_inicial || 0),
     permutas: Number(v.total_permutas || 0),
+    returnTo: opts?.returnTo || null,
   };
   // When opened to apply a new lote value, seed the "Valor total" so the plan starts
   // descuadrado and the aux is forced to rebalance the cuotas before saving (RN-17/§8.4).
@@ -846,9 +867,19 @@ window._guardarPlanCuotas = async function() {
   const btn = document.getElementById("pl-guardar");
   if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
   try {
-    await API.put(`/cuotas/venta/${ctx.idVenta}/plan`, {
+    const r = await API.put(`/cuotas/venta/${ctx.idVenta}/plan`, {
       valor_total: Number(ctx.vt), cuota_inicial: Number(ctx.ci), cuotas, motivo,
     });
+    // When the editor was opened from the factura flow, return there: any factura whose
+    // cuota value changed was auto-annulled (§4.3), so reopen the generation preview with
+    // the new values/dates to re-emit (approve) them.
+    if (ctx.returnTo === "facturas" && typeof window.regenerarFacturasVenta === "function") {
+      const n = Number(r?.facturas_anuladas || 0);
+      UI.toast(`Plan actualizado${n ? ` · ${n} factura${n !== 1 ? "s" : ""} anulada${n !== 1 ? "s" : ""} para regenerar` : ""}`, "ok");
+      UI.closeModal();
+      window.regenerarFacturasVenta(ctx.idVenta);
+      return;
+    }
     UI.toast("Venta actualizada", "ok");
     verVenta(ctx.idVenta);
   } catch (e) {
@@ -1459,11 +1490,21 @@ window._buscarComprador = function(texto) {
   const resultados = qn
     ? todos.filter(c =>
         _normalizar(c.documento).includes(qn) ||
-        _normalizar(`${c.nombres} ${c.apellidos || ""}`).includes(qn))
+        _normalizar(`${c.nombres || ""} ${c.apellidos || ""}`).includes(qn) ||
+        _normalizar(c.email).includes(qn))
     : todos.slice(0, 10);
 
   const div = document.getElementById("f_comp_results");
   if (!resultados.length && !qn) { div.style.display = "none"; return; }
+
+  const _label = c => {
+    const full = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
+    return full || c.email || `Usuario #${c.id_usuario}`;
+  };
+  const _docTxt = c => c.documento ? `Cédula: ${c.documento}` : "Sin cédula";
+  const _badge  = c => c.is_comprador === false
+    ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#fff3e0;color:#c2410c;font-size:.7rem;font-weight:600;">Nuevo</span>`
+    : "";
 
   div.style.display = "block";
   div.innerHTML = resultados.length === 0
@@ -1473,8 +1514,8 @@ window._buscarComprador = function(texto) {
              onmouseover="this.style.background='var(--surface-2,#f0f4f8)'"
              onmouseout="this.style.background=''"
              onclick="_seleccionarComprador(${c.id_usuario})">
-          <div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>
-          <div style="color:var(--text-muted);font-size:.78rem">Cédula: ${c.documento}${c.telefono ? " · Tel: " + c.telefono : ""}${c.email ? " · " + c.email : ""}</div>
+          <div style="font-weight:600">${_label(c)}${_badge(c)}</div>
+          <div style="color:var(--text-muted);font-size:.78rem">${_docTxt(c)}${c.telefono ? " · Tel: " + c.telefono : ""}${c.email && _label(c) !== c.email ? " · " + c.email : ""}</div>
         </div>`).join("");
 };
 
@@ -1484,14 +1525,22 @@ window._seleccionarComprador = function(id) {
   window._compradorSeleccionado = c;
   document.getElementById("f_comp").value = id;
 
-  const linea2 = ["Cédula: " + c.documento];
+  const fullName = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
+  const label    = fullName || c.email || `Usuario #${c.id_usuario}`;
+
+  const linea2 = [c.documento ? "Cédula: " + c.documento : "Sin cédula"];
   if (c.telefono) linea2.push("Tel: " + c.telefono);
-  if (c.email) linea2.push(c.email);
+  if (c.email && c.email !== label) linea2.push(c.email);
   if (c.tipo_persona) linea2.push(c.tipo_persona === "juridica" ? "Persona Jurídica" : "Persona Natural");
 
+  const aviso = c.is_comprador === false
+    ? `<div style="margin-top:4px;color:#c2410c;font-size:.78rem;">Este usuario aún no es comprador — al confirmar la venta se promocionará automáticamente.</div>`
+    : "";
+
   document.getElementById("f_comp_card_info").innerHTML =
-    `<div style="font-weight:600">${c.nombres} ${c.apellidos || ""}</div>` +
-    `<div style="color:var(--text-muted)">${linea2.join(" · ")}</div>`;
+    `<div style="font-weight:600">${label}</div>` +
+    `<div style="color:var(--text-muted)">${linea2.join(" · ")}</div>` +
+    aviso;
   document.getElementById("f_comp_card").style.display = "block";
   document.getElementById("f_comp_search_wrap").style.display = "none";
   document.getElementById("f_comp_results").style.display = "none";
@@ -1870,7 +1919,7 @@ window.ventaForm = async function() {
   let lotes, compradores, comisionistas;
   try {
     [lotes, compradores, comisionistas] = await Promise.all([
-      API.get("/lotes/disponibles"), API.get("/compradores"), API.get("/comisionistas")
+      API.get("/lotes/disponibles"), API.get("/compradores?elegibles=true"), API.get("/comisionistas")
     ]);
   } catch(e) {
     UI.toast("Error al cargar datos del formulario: " + e.message, "error");
@@ -1974,7 +2023,7 @@ window.ventaFormSolicitud = async function() {
   let lotes, compradores, comisionistas;
   try {
     [lotes, compradores, comisionistas] = await Promise.all([
-      API.get("/lotes/disponibles"), API.get("/compradores"), API.get("/comisionistas")
+      API.get("/lotes/disponibles"), API.get("/compradores?elegibles=true"), API.get("/comisionistas")
     ]);
   } catch(e) {
     UI.toast("Error al cargar datos del formulario: " + e.message, "error");
@@ -2042,7 +2091,8 @@ window.guardarSolicitudVenta = async function() {
 
 window._actualizarCalculos = _actualizarCalculos;
 
-function _exportVentaPDF(v, cuotas, fin) {
+async function _exportVentaPDF(v, cuotas, fin) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const SX  = window.SGIExport.pdf;
@@ -2062,7 +2112,7 @@ function _exportVentaPDF(v, cuotas, fin) {
 
   const subtitle = `${lote.proyecto?.nombre || "—"}${lote.codigo_lote ? `  ·  ${lote.codigo_lote}` : ""}  ·  Estado ${(v.estado || "—").replace(/_/g, " ").toUpperCase()}  ·  Fecha de venta ${fmtDate(v.fecha_venta)}`;
   y = SX.title(doc, y + 2, {
-    title:    `Detalle de Venta #${v.id_venta}`,
+    title:    `Detalle de Venta ${SGIUI.ventaCode(v)}`,
     subtitle,
   });
 
@@ -2191,6 +2241,7 @@ function _exportVentaPDF(v, cuotas, fin) {
 }
 
 async function _exportVentaExcel(v, cuotas, fin) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
   const SX = window.SGIExport.xlsx;
   const wb = SX.setup();
 
@@ -2212,7 +2263,7 @@ async function _exportVentaExcel(v, cuotas, fin) {
   ];
 
   SX.masthead(ws1, {
-    title:    `Detalle de Venta #${v.id_venta}`,
+    title:    `Detalle de Venta ${SGIUI.ventaCode(v)}`,
     subtitle: `${lote.proyecto?.nombre || "—"} · ${lote.codigo_lote || "—"}  ·  Estado: ${(v.estado || "—").replace(/_/g, " ")}`,
     mergeCols: 4,
   });
@@ -2286,7 +2337,7 @@ async function _exportVentaExcel(v, cuotas, fin) {
   ];
 
   SX.masthead(ws2, {
-    title:    `Venta #${v.id_venta} — Plan de Pagos`,
+    title:    `Venta ${SGIUI.ventaCode(v)} — Plan de Pagos`,
     subtitle: `${lote.proyecto?.nombre || ""}${lote.codigo_lote ? ` · ${lote.codigo_lote}` : ""}`,
     mergeCols: 6,
   });

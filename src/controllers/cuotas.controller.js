@@ -25,7 +25,7 @@ exports.getMisDocumentos = async (req, res) => {
     .select(`
       id_cuota, numero_cuota, fecha_vencimiento, id_venta,
       venta:id_venta(
-        id_venta,
+        id_venta, codigo_venta,
         lote:id_lote(codigo_lote, proyecto:id_proyecto(nombre)),
         venta_comprador(id_usuario, usuario:id_usuario(nombres, apellidos, documento))
       ),
@@ -45,6 +45,7 @@ exports.getMisDocumentos = async (req, res) => {
   const proyecto    = c.venta?.lote?.proyecto?.nombre ?? "—";
   const codigo_lote = c.venta?.lote?.codigo_lote ?? "—";
   const id_venta    = c.venta?.id_venta ?? c.id_venta ?? null;
+  const codigo_venta = c.venta?.codigo_venta ?? null;
 
   // Factura: most relevant non-anulada (pagada > parcialmente_pagada > emitida), scoped to the
   // fraction when one is requested.
@@ -82,7 +83,7 @@ exports.getMisDocumentos = async (req, res) => {
     fecha_emision:     facturaRaw.fecha_emision,
     valor_facturado:   facturaRaw.valor_facturado,
     observaciones:     facturaRaw.observaciones,
-    id_venta,
+    id_venta, codigo_venta,
     comprador, proyecto, codigo_lote,
     numero_cuota:      c.numero_cuota,
     fecha_vencimiento: c.fecha_vencimiento,
@@ -102,7 +103,7 @@ exports.getMisDocumentos = async (req, res) => {
     metodo_pago:    pagoConRecibo?.metodo_pago ?? null,
     referencia:     pagoConRecibo?.referencia ?? null,
     fecha_pago:     pagoConRecibo?.fecha_pago ?? null,
-    id_venta,
+    id_venta, codigo_venta,
     comprador, documento, proyecto, codigo_lote,
     numero_cuota:   c.numero_cuota,
     numero_factura: facturaRaw?.numero_factura ?? null,
@@ -131,7 +132,7 @@ const { data, error } = await supabase.schema(SCHEMA).from("cuota")
 };
 
 exports.updateValores = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
   }
 
@@ -213,7 +214,7 @@ exports.updateValores = async (req, res) => {
 // venta's cuotas must stay equal to the financed value (valor_total − permutas). The aux
 // sends a balanced batch of changes; if it does not balance, the whole change is rejected.
 exports.rebalanceValores = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Solo el auxiliar contable puede editar valores de cuotas' });
   }
 
@@ -243,6 +244,7 @@ exports.rebalanceValores = async (req, res) => {
 
   const byId = new Map((cuotas || []).map(c => [c.id_cuota, c]));
 
+  const cuotasAReanular = new Set(); // value changed + had an 'emitida' factura → auto-annul
   for (const ch of cambios) {
     const c = byId.get(Number(ch.id_cuota));
     if (!c) return res.status(400).json({ error: `La cuota ${ch.id_cuota} no pertenece a esta venta` });
@@ -259,13 +261,19 @@ exports.rebalanceValores = async (req, res) => {
       if (Number(ch.valor_cuota) < pagado) {
         return res.status(400).json({ error: `La cuota #${c.numero_cuota} ya tiene recibos por ${pagado}; su valor no puede ser menor` });
       }
-      // §3.3/§4.3: a subdivided cuota or one with an active factura cannot change its value
-      // here, or its fracciones / factura would be left inconsistent.
+      // §3.3: a subdivided cuota cannot change its value here.
       if (cambiaValor && (c.cuota_fraccion || []).length > 0) {
         return res.status(400).json({ error: `La cuota #${c.numero_cuota} está subdividida; ajusta sus fracciones desde "Subdividir".` });
       }
-      if (cambiaValor && (c.cuota_factura || []).some(cf => ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado))) {
-        return res.status(400).json({ error: `La cuota #${c.numero_cuota} tiene una factura activa; anúlala antes de cambiar su valor.` });
+      // §4.3/§4.2: a 'parcialmente_pagada' factura (has receipts) blocks the change; an
+      // 'emitida' factura without receipts is auto-annulled so the cuota can be re-billed.
+      const facturaParcial = (c.cuota_factura || []).some(cf => cf.factura?.estado === 'parcialmente_pagada');
+      const facturaEmitida = (c.cuota_factura || []).some(cf => cf.factura?.estado === 'emitida');
+      if (cambiaValor && facturaParcial) {
+        return res.status(400).json({ error: `La cuota #${c.numero_cuota} tiene una factura con pagos aplicados; termina ese cobro antes de cambiar su valor.` });
+      }
+      if (cambiaValor && facturaEmitida) {
+        cuotasAReanular.add(Number(ch.id_cuota));
       }
     }
     if (ch.fecha_vencimiento !== undefined && isNaN(Date.parse(ch.fecha_vencimiento))) {
@@ -309,7 +317,18 @@ exports.rebalanceValores = async (req, res) => {
   }
   if (registros.length) await supabase.schema(SCHEMA).from('auditoria').insert(registros);
 
-  res.json({ ok: true, financiado, sum: sumTotal, cambios: registros.length });
+  // §4.3/§4.2: auto-annul the 'emitida' factura of every cuota whose value changed (its
+  // valor no longer equals the saldo), so it can be re-billed/approved with the new value.
+  for (const idC of cuotasAReanular) {
+    const r = await facturas.anularFacturasActivas(idC, {
+      scope: 'all', motivo: 'reajuste_plan_cuotas', usuario: req.usuario.email,
+    });
+    if (r.blocked) {
+      return res.status(400).json({ error: 'Una cuota tiene una factura con pagos aplicados; no se puede reajustar su valor. Termina ese cobro antes.' });
+    }
+  }
+
+  res.json({ ok: true, financiado, sum: sumTotal, cambios: registros.length, facturas_anuladas: cuotasAReanular.size });
 };
 
 // Task 1: full plan editor. Lets the aux/admin edit cuota values, dates AND the number of
@@ -371,15 +390,22 @@ exports.setPlan = async (req, res) => {
 
   const lockInfo = (c) => {
     const pagado          = saldos._sumRecibosAceptados(c.cuota_pago);
-    const facturaActiva   = (c.cuota_factura || []).some(cf => ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado));
+    const activas         = (c.cuota_factura || []).filter(cf => ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado));
+    const facturaEmitida  = activas.some(cf => cf.factura?.estado === 'emitida');
+    const facturaParcial  = activas.some(cf => cf.factura?.estado === 'parcialmente_pagada');
     const tieneFracciones = (c.cuota_fraccion || []).length > 0;
     const tieneDocs       = (c.cuota_pago || []).length > 0 || (c.cuota_factura || []).length > 0 || tieneFracciones;
-    const valorLocked     = c.estado === 'pagada' || pagado >= Number(c.valor_cuota) || facturaActiva || tieneFracciones;
-    return { pagado, facturaActiva, tieneFracciones, tieneDocs, valorLocked };
+    // An 'emitida' factura WITHOUT receipts does NOT lock the value: §4.3 requires the
+    // factura value to equal the saldo, so on a value change it is auto-annulled and the
+    // cuota is re-billed. A partially-paid factura (has receipts), a paid cuota or a
+    // subdivided one stay locked.
+    const valorLocked     = c.estado === 'pagada' || pagado >= Number(c.valor_cuota) || facturaParcial || tieneFracciones;
+    return { pagado, facturaEmitida, facturaParcial, tieneFracciones, tieneDocs, valorLocked };
   };
 
   // Validate each desired cuota and flag the existing ones that stay.
-  const idsDeseados = new Set();
+  const idsDeseados     = new Set();
+  const cuotasAReanular = new Set(); // value changed + had an 'emitida' factura → auto-annul
   for (const d of deseadas) {
     const valor = Number(d.valor_cuota);
     if (!Number.isFinite(valor) || valor <= 0) {
@@ -395,15 +421,19 @@ exports.setPlan = async (req, res) => {
     idsDeseados.add(Number(d.id_cuota));
 
     const lk = lockInfo(c);
-    if (lk.valorLocked && valor !== Number(c.valor_cuota)) {
+    const cambiaValor = valor !== Number(c.valor_cuota);
+    if (lk.valorLocked && cambiaValor) {
       const razon = c.estado === 'pagada' ? 'está pagada'
-        : lk.facturaActiva   ? 'tiene una factura activa'
+        : lk.facturaParcial  ? 'tiene una factura con pagos aplicados'
         : lk.tieneFracciones ? 'está subdividida'
         :                      'tiene recibos';
-      return res.status(400).json({ error: `La cuota #${c.numero_cuota} ${razon}; su valor no puede cambiar. Anula la factura o quita la subdivisión antes.` });
+      return res.status(400).json({ error: `La cuota #${c.numero_cuota} ${razon}; su valor no puede cambiar. Termina ese cobro o quita la subdivisión antes.` });
     }
     if (!lk.valorLocked && valor < lk.pagado) {
       return res.status(400).json({ error: `La cuota #${c.numero_cuota} ya tiene recibos por ${lk.pagado}; su valor no puede ser menor` });
+    }
+    if (!lk.valorLocked && cambiaValor && lk.facturaEmitida) {
+      cuotasAReanular.add(Number(d.id_cuota));
     }
   }
 
@@ -503,6 +533,18 @@ exports.setPlan = async (req, res) => {
     }
   }
 
+  // 2.5) §4.3/§4.2: a value change invalidates the cuota's active 'emitida' factura (its
+  // valor no longer equals the saldo). Auto-annul it (audited) so the cuota becomes
+  // billable again and the aux re-generates/approves a fresh factura with the new value.
+  for (const idC of cuotasAReanular) {
+    const r = await facturas.anularFacturasActivas(idC, {
+      scope: 'all', motivo: 'reajuste_plan_cuotas', usuario: req.usuario.email,
+    });
+    if (r.blocked) {
+      return res.status(400).json({ error: 'Una cuota tiene una factura con pagos aplicados; no se puede reajustar su valor. Termina ese cobro antes.' });
+    }
+  }
+
   // 3) Inserts (new cuotas) — appended after the current max numero_cuota, in date order.
   let maxNum = (actuales || []).reduce((m, c) => Math.max(m, Number(c.numero_cuota) || 0), 0);
   const nuevas = deseadas
@@ -539,6 +581,7 @@ exports.setPlan = async (req, res) => {
     eliminadas:   aEliminar.length,
     creadas:      nuevas.length,
     actualizadas: deseadas.filter(d => d.id_cuota != null).length,
+    facturas_anuladas: cuotasAReanular.size,
   });
 };
 
@@ -547,7 +590,7 @@ exports.getPendientes = async (req, res) => {
     .from("cuota")
     .select(`
       *,
-      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento))),
+      venta(codigo_venta, lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos, documento))),
       cuota_fraccion(id_fraccion, numero_fraccion, valor_fraccion, fecha_propuesta),
       cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo)))
     `)
@@ -566,6 +609,7 @@ exports.getPendientes = async (req, res) => {
     const base = {
       id_cuota:          c.id_cuota,
       id_venta:          c.id_venta,
+      codigo_venta:      c.venta?.codigo_venta || null,
       proyecto:          lote?.proyecto?.nombre || "—",
       codigo_lote:       lote?.codigo_lote      || "—",
       comprador:         comprador ? `${comprador.nombres} ${comprador.apellidos || ""}`.trim() : "—",
@@ -623,9 +667,9 @@ exports.getVencidas = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("cuota")
     .select(`
-      id_cuota, numero_cuota, fecha_vencimiento, valor_cuota,
+      id_cuota, id_venta, numero_cuota, fecha_vencimiento, valor_cuota,
       cuota_pago(valor_aplicado, pago:id_pago(estado, recibo_pago(id_recibo))),
-      venta(lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))
+      venta(codigo_venta, lote(codigo_lote, proyecto(nombre)), venta_comprador(usuario:id_usuario(nombres, apellidos)))
     `)
     .lt("fecha_vencimiento", hoy)
     .neq("estado", "pagada")
@@ -644,6 +688,8 @@ exports.getVencidas = async (req, res) => {
     const dias      = Math.floor((Date.now() - new Date(c.fecha_vencimiento).getTime()) / 86_400_000);
     result.push({
       id_cuota:          c.id_cuota,
+      id_venta:          c.id_venta,
+      codigo_venta:      c.venta?.codigo_venta || null,
       proyecto:          lote?.proyecto?.nombre || "—",
       codigo_lote:       lote?.codigo_lote      || "—",
       comprador:         comprador ? `${comprador.nombres} ${comprador.apellidos || ""}`.trim() : "—",
@@ -674,7 +720,7 @@ exports.getFracciones = async (req, res) => {
 };
 
 exports.setFracciones = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Only auxiliar_contable can manage cuota fractions' });
   }
 
@@ -757,7 +803,7 @@ exports.setFracciones = async (req, res) => {
 };
 
 exports.deleteFracciones = async (req, res) => {
-  if (req.usuario.rol !== 'auxiliar_contable') {
+  if (!['auxiliar_contable', 'admin'].includes(req.usuario.rol)) {
     return res.status(403).json({ error: 'Only auxiliar_contable can delete cuota fractions' });
   }
 
@@ -799,6 +845,74 @@ exports.deleteFracciones = async (req, res) => {
     usuario_db:     req.usuario.email,
     fecha_cambio:   new Date().toISOString(),
     motivo:         'eliminar_subdivision_cuota',
+  });
+
+  res.json({ ok: true });
+};
+
+exports.deleteCuota = async (req, res) => {
+  if (req.usuario.rol !== 'admin') {
+    return res.status(403).json({ error: 'Solo el administrador puede eliminar cuotas' });
+  }
+
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID de cuota inválido' });
+
+  const { justificacion } = req.body;
+  if (!justificacion || String(justificacion).trim().length < 20) {
+    return res.status(400).json({ error: 'La justificación es obligatoria (mín. 20 caracteres)' });
+  }
+
+  const { data: cuota, error: cErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .select(`id_cuota, numero_cuota, valor_cuota, estado,
+      cuota_pago(valor_aplicado),
+      cuota_fraccion(id_fraccion),
+      cuota_factura(id_factura, factura:id_factura(estado))`)
+    .eq('id_cuota', id)
+    .single();
+
+  if (cErr || !cuota) return res.status(404).json({ error: 'Cuota no encontrada' });
+
+  if (cuota.estado === 'pagada') {
+    return res.status(400).json({ error: 'Una cuota pagada no puede eliminarse' });
+  }
+  if ((cuota.cuota_pago || []).length > 0) {
+    return res.status(400).json({ error: 'La cuota tiene pagos registrados y no puede eliminarse' });
+  }
+  if ((cuota.cuota_fraccion || []).length > 0) {
+    return res.status(400).json({ error: 'La cuota tiene subdivisiones; elimínalas primero' });
+  }
+  const tieneFacturaActiva = (cuota.cuota_factura || []).some(cf =>
+    ['emitida', 'parcialmente_pagada'].includes(cf.factura?.estado)
+  );
+  if (tieneFacturaActiva) {
+    return res.status(400).json({ error: 'La cuota tiene una factura activa; anúlala primero' });
+  }
+
+  // Remove cuota_factura links (anulled facturas leave orphan links that block the FK).
+  const { error: cfErr } = await supabase.schema(SCHEMA)
+    .from('cuota_factura')
+    .delete()
+    .eq('id_cuota', id);
+  if (cfErr) return res.status(500).json({ error: cfErr.message });
+
+  const { error: delErr } = await supabase.schema(SCHEMA)
+    .from('cuota')
+    .delete()
+    .eq('id_cuota', id);
+
+  if (delErr) return res.status(500).json({ error: delErr.message });
+
+  await supabase.schema(SCHEMA).from('auditoria').insert({
+    tabla_afectada: 'cuota',
+    id_registro:    id,
+    campo:          'eliminacion',
+    valor_anterior: String(cuota.valor_cuota),
+    valor_nuevo:    null,
+    usuario_db:     req.usuario.email,
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         String(justificacion).trim(),
   });
 
   res.json({ ok: true });

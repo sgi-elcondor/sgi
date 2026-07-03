@@ -252,7 +252,79 @@
     ).join('');
   }
 
+  // ── Manual del rol (descripcion + obligaciones, editable) ───────────────────
+
+  function _escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function buildManualSection(rol) {
+    return `
+      <section class="perm-section" id="perm-manual-section">
+        <div class="perm-section-header">
+          <div class="perm-section-title"><i data-lucide="book-marked"></i> Manual del rol</div>
+          <p class="perm-section-sub">Texto en espanol claro que vera el usuario en su menu "Mi rol". Se actualiza automaticamente al perder el foco.</p>
+        </div>
+        <div class="perm-manual-row">
+          <label for="perm-manual-desc">Descripcion corta</label>
+          <textarea id="perm-manual-desc" rows="2" placeholder="En una o dos lineas, que es este rol.">${_escapeHtml(rol.descripcion || '')}</textarea>
+        </div>
+        <div class="perm-manual-row">
+          <label for="perm-manual-obl">Obligaciones</label>
+          <textarea id="perm-manual-obl" rows="6" placeholder="Una obligacion por linea.&#10;Ej:&#10;Atender clientes&#10;Crear solicitudes de venta">${_escapeHtml(rol.obligaciones || '')}</textarea>
+        </div>
+        <div id="perm-manual-status" style="margin-top:.4rem;min-height:1.1rem"></div>
+      </section>`;
+  }
+
+  function makeManualAutoSave(rolId) {
+    let timer = null;
+    let last  = null;
+
+    function setStatus(state) {
+      const el = document.getElementById('perm-manual-status');
+      if (!el) return;
+      const MAP = {
+        idle:    '',
+        pending: '<span class="perm-status pending"><i data-lucide="clock"></i> Guardando manual...</span>',
+        saved:   '<span class="perm-status saved"><i data-lucide="check-circle"></i> Manual guardado</span>',
+        error:   '<span class="perm-status error"><i data-lucide="x-circle"></i> Error al guardar manual</span>',
+      };
+      el.innerHTML = MAP[state] || '';
+      window.SGIUI?.hydrate();
+    }
+
+    async function doSave() {
+      const desc = document.getElementById('perm-manual-desc')?.value ?? '';
+      const obl  = document.getElementById('perm-manual-obl')?.value  ?? '';
+      const payload = { descripcion: desc, obligaciones: obl };
+      const key = JSON.stringify(payload);
+      if (key === last) { setStatus('idle'); return; }
+      last = key;
+      setStatus('pending');
+      try {
+        await API.patch('/roles/' + rolId + '/manual', payload);
+        setStatus('saved');
+        setTimeout(() => setStatus('idle'), 2500);
+      } catch (err) {
+        setStatus('error');
+        window.SGIUI?.toast(err.message || 'Error al guardar manual', 'error');
+        setTimeout(() => setStatus('idle'), 3000);
+      }
+    }
+
+    return function schedule() {
+      setStatus('pending');
+      clearTimeout(timer);
+      timer = setTimeout(doSave, 800);
+    };
+  }
+
   // ── Detail panel ──────────────────────────────────────────────────────────────
+
+  let _rolesCache = [];
 
   async function loadRolPermisos(rolId, rolNombre) {
     const panel = document.getElementById('perm-detail-panel');
@@ -266,6 +338,8 @@
       const vistas = resp.vistas || [];
       const can    = resp.can    || [];
       const schedule = makeAutoSave(rolId);
+      const manualSchedule = makeManualAutoSave(rolId);
+      const rolData = _rolesCache.find(r => String(r.id_rol) === String(rolId)) || { nombre: rolNombre };
 
       panel.innerHTML = `
         <div class="perm-detail-header">
@@ -279,6 +353,7 @@
           <div id="perm-save-status"></div>
         </div>
         <div class="perm-sections">
+          ${buildManualSection(rolData)}
           <section class="perm-section">
             <div class="perm-section-header">
               <div class="perm-section-title"><i data-lucide="layout-grid"></i> Accesos y acciones</div>
@@ -296,6 +371,9 @@
         </div>`;
 
       window.SGIUI?.hydrate();
+
+      document.getElementById('perm-manual-desc')?.addEventListener('input', manualSchedule);
+      document.getElementById('perm-manual-obl')?.addEventListener('input', manualSchedule);
 
       // Wire module toggles
       panel.querySelectorAll('.perm-module-check').forEach(toggle => {
@@ -329,7 +407,8 @@
     const vc = container || document.getElementById('viewContainer');
     vc.innerHTML = UI.loader();
     try {
-      const roles = await API.get('/roles');
+      const roles = await API.getCached('/roles', { ttl: 300000 });
+      _rolesCache = roles || [];
       vc.innerHTML = `
         <section class="page-shell">
           ${window.SGIUI?.pageHeader({ kicker:'Administracion', title:'Permisos del sistema', subtitle:'Configura que pantallas y acciones puede realizar cada rol.' }) ?? ''}
@@ -430,6 +509,10 @@
     .perm-api-group{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem}
     .perm-api-resource{font-size:.75rem;font-weight:600;color:var(--text-muted);min-width:7rem}
     .perm-api-chip{font-size:.72rem;font-weight:500;padding:.15rem .5rem;border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+    .perm-manual-row{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.75rem}
+    .perm-manual-row label{font-size:.78rem;font-weight:500;color:var(--text)}
+    .perm-manual-row textarea{width:100%;padding:.55rem .75rem;font-size:.85rem;line-height:1.5;border:1px solid var(--border);border-radius:.45rem;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;min-height:2.5rem}
+    .perm-manual-row textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
   `;
   document.head.appendChild(style);
 

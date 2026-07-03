@@ -50,6 +50,16 @@ async function apiFetch(endpoint, options = {}) {
   return response;
 }
 
+// Client-side cache for stable catalogs (proyectos, lotes, roles...). Opt-in via getCached();
+// plain get() is never cached. Any mutation (POST/PUT/PATCH/DELETE) auto-invalidates the cached
+// GETs of the same top-level resource, so a cached catalog never outlives a change to it.
+const _cache = new Map(); // path -> { data, ts, revalidating }
+
+function _clone(d) {
+  if (d == null) return d;
+  return typeof structuredClone === "function" ? structuredClone(d) : JSON.parse(JSON.stringify(d));
+}
+
 const API = {
   base: "/api/v1",
 
@@ -74,10 +84,17 @@ const API = {
       } catch {}
 
       if (!response.ok) {
-        const err  = new Error(data?.error || response.statusText || "Error en la solicitud");
-        err.code   = data?.code;
+        const err = new Error(data?.error || response.statusText || "Error en la solicitud");
         err.status = response.status;
+        err.code   = data?.code || null;
         throw err;
+      }
+
+      // A successful write to a resource invalidates its cached reads (e.g. POST /proyectos
+      // clears cached GET /proyectos and GET /proyectos/123).
+      if (isMutation) {
+        const resource = "/" + path.replace(/^\//, "").split(/[/?]/)[0];
+        this.invalidate(resource);
       }
 
       return data;
@@ -88,6 +105,41 @@ const API = {
 
   get(path) {
     return this.request(path);
+  },
+
+  // Cached GET for stable catalogs. Returns a clone (so callers can sort/mutate freely). Within
+  // `ttl` the cached value is returned as-is; past it, with `swr` the stale value is returned
+  // immediately and refreshed in the background for the next read.
+  async getCached(path, { ttl = 60000, swr = true } = {}) {
+    const entry = _cache.get(path);
+    const fresh = entry && (Date.now() - entry.ts) < ttl;
+
+    if (entry && (fresh || swr)) {
+      if (!fresh) this._revalidate(path);
+      return _clone(entry.data);
+    }
+
+    const data = await this.get(path);
+    _cache.set(path, { data, ts: Date.now(), revalidating: false });
+    return _clone(data);
+  },
+
+  _revalidate(path) {
+    const entry = _cache.get(path);
+    if (!entry || entry.revalidating) return;
+    entry.revalidating = true;
+    this.get(path)
+      .then((data) => _cache.set(path, { data, ts: Date.now(), revalidating: false }))
+      .catch(() => { entry.revalidating = false; });
+  },
+
+  // Remove cached reads whose path equals or starts with `prefix`.
+  invalidate(prefix) {
+    for (const key of [..._cache.keys()]) {
+      if (key === prefix || key.startsWith(prefix + "/") || key.startsWith(prefix + "?")) {
+        _cache.delete(key);
+      }
+    }
   },
 
   post(path, body) {

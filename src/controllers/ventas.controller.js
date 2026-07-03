@@ -1,9 +1,13 @@
-const supabase    = require("../config/supabase");
-const cuotasSvc   = require("../services/cuotas.service");
-const auditoria   = require("../services/auditoria.service");
-const saldos      = require("../services/saldos.service");
-const usuariosSvc = require("../services/usuarios.service");
-const SCHEMA      = "condor";
+const supabase     = require("../config/supabase");
+const cuotasSvc    = require("../services/cuotas.service");
+const auditoria    = require("../services/auditoria.service");
+const saldos       = require("../services/saldos.service");
+const usuariosSvc  = require("../services/usuarios.service");
+const consecutivos = require("../services/consecutivos.service");
+const rolePromotion = require("../services/role-promotion.service");
+const emailService  = require("../services/email.service");
+const authCache     = require("../services/auth-cache.service");
+const SCHEMA       = "condor";
 
 exports.getAll = async (req, res) => {
   const { estado, mes, proyecto, cliente } = req.query;
@@ -47,8 +51,10 @@ exports.getAll = async (req, res) => {
   if (proyecto) {
     const pn = proyecto.toLowerCase();
 
+    // Exact (case-insensitive) match: the proyecto filter comes from a dropdown, so partial
+    // matches would let a shorter project name over-match longer ones sharing the same prefix.
     result = result.filter(v =>
-      (v.lote?.proyecto?.nombre || "").toLowerCase().includes(pn)
+      (v.lote?.proyecto?.nombre || "").toLowerCase() === pn
     );
   }
 
@@ -56,12 +62,14 @@ exports.getAll = async (req, res) => {
     const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
     const cn = norm(cliente);
 
-    // Point 5/7: search by comprador name/document, lote code or project in a single box.
+    // Point 5/7: search by comprador name/document or lote code in a single box. Project is
+    // excluded here on purpose — it has its own dropdown filter, so a client search must not
+    // cross-match project names.
     result = result.filter(v => {
       const compradores = (v.venta_comprador || [])
         .map(vc => `${vc.usuario?.nombres || ""} ${vc.usuario?.apellidos || ""} ${vc.usuario?.documento || ""}`)
         .join(" ");
-      const haystack = `${compradores} ${v.lote?.codigo_lote || ""} ${v.lote?.proyecto?.nombre || ""}`;
+      const haystack = `${compradores} ${v.lote?.codigo_lote || ""} ${v.codigo_venta || ""}`;
       return norm(haystack).includes(cn);
     });
   }
@@ -101,6 +109,10 @@ exports.getById = async (req, res) => {
     c.tiene_fracciones = (c.cuota_fraccion || []).length > 0;
     c.factura_activa   = (c.cuota_factura || []).some(cf =>
       ["emitida", "parcialmente_pagada"].includes(cf.factura?.estado));
+    // An 'emitida' factura without receipts is auto-annulled on a value change (§4.3), so it
+    // does NOT lock the cuota value. Only a partially-paid factura (with receipts) does.
+    c.factura_con_pagos = (c.cuota_factura || []).some(cf =>
+      cf.factura?.estado === "parcialmente_pagada");
   }
 
   res.json(data);
@@ -323,11 +335,25 @@ async function crearVenta(req, res, estadoFijo) {
 
   const estadoVenta = estadoFijo || estado || "activa";
 
+  // Descriptive, immutable venta code (#NNN-SIGLA-LOTE). Non-fatal: if it cannot be
+  // generated the venta is still created and the frontend falls back to #id_venta.
+  let codigoVenta = null;
+  try {
+    const { data: loteInfo } = await supabase.schema(SCHEMA).from("lote")
+      .select("codigo_lote, proyecto:id_proyecto(sigla)")
+      .eq("id_lote", Number(id_lote)).single();
+    codigoVenta = await consecutivos.generarCodigoVenta({
+      sigla:       loteInfo?.proyecto?.sigla,
+      codigo_lote: loteInfo?.codigo_lote,
+    });
+  } catch (_) { codigoVenta = null; }
+
   const { data: venta, error: eventa } = await supabase
     .schema(SCHEMA)
     .from("venta")
     .insert([{
       id_lote:          Number(id_lote),
+      codigo_venta:     codigoVenta,
       valor_total:      Number(valor_total),
       cuota_inicial:    Number(cuota_inicial) || 0,
       estado:           estadoVenta,
@@ -365,11 +391,6 @@ async function crearVenta(req, res, estadoFijo) {
         error: "Error al asociar comprador(es): " + ec.message
       });
     }
-
-    // Self-registered visitors (role 'usuario') become compradores when they buy.
-    try {
-      await usuariosSvc.promoverACompradores(compradores.map(c => c.id_usuario));
-    } catch (_) { /* best-effort: promotion must never block the sale */ }
   }
 
   // Comisionista
@@ -414,10 +435,86 @@ async function crearVenta(req, res, estadoFijo) {
     });
   }
 
+  // Promote first-time compradores and notify by email. Non-fatal: a failure here must not
+  // invalidate the sale — the venta has already been created and the response is sent regardless.
+  // Skipped for ventas in 'pendiente_autorizacion' (no role change until the sale is confirmed).
+  if (estadoVenta !== "pendiente_autorizacion") {
+    promoverYNotificarCompradores({
+      compradores,
+      venta,
+      id_lote,
+      cuotasGeneradas,
+      ejecutor: req.usuario?.email || "sistema",
+    }).catch(err => console.error("[ventas] promocion a comprador fallo:", err.message));
+  }
+
   res.status(201).json({
     ...venta,
     cuotas_generadas: cuotasGeneradas
   });
+}
+
+// Runs after a venta is created (estado !== 'pendiente_autorizacion').
+// For each comprador whose current role is neither protected nor already 'comprador',
+// switches them to 'comprador', audits the change, clears auth-cache and sends a
+// confirmation email with the sale detail. Each step is best-effort; errors are logged.
+async function promoverYNotificarCompradores({ compradores, venta, id_lote, cuotasGeneradas, ejecutor }) {
+  const lista = Array.isArray(compradores) ? compradores : [];
+  if (!lista.length) return;
+
+  const promoted = [];
+  for (const c of lista) {
+    const result = await rolePromotion.promoverACompradorSiAplica(Number(c.id_usuario));
+    if (!result.promoted) continue;
+
+    await auditoria.log({
+      tabla:    "usuarios",
+      id:       result.usuario.id_usuario,
+      campo:    "id_rol",
+      anterior: result.prevRolName || "sin_rol",
+      nuevo:    result.newRolName,
+      usuario:  ejecutor,
+      motivo:   `promocion_automatica_primera_venta:${venta.id_venta}`,
+    });
+
+    promoted.push(result);
+  }
+
+  if (!promoted.length) return;
+
+  authCache.clear();
+
+  let proyectoNombre = null;
+  let codigoLote     = null;
+  try {
+    const { data: loteInfo } = await supabase.schema(SCHEMA)
+      .from("lote")
+      .select("codigo_lote, proyecto:id_proyecto(nombre)")
+      .eq("id_lote", Number(id_lote))
+      .single();
+    proyectoNombre = loteInfo?.proyecto?.nombre || null;
+    codigoLote     = loteInfo?.codigo_lote || null;
+  } catch (_) {}
+
+  const totalCuotas = Number(cuotasGeneradas) || 0;
+
+  for (const r of promoted) {
+    const to = r.usuario?.email;
+    if (!to) continue;
+    try {
+      await emailService.sendCompraConfirmacionEmail(to, {
+        nombres:       r.usuario?.nombres || null,
+        codigo_venta:  venta.codigo_venta || null,
+        proyecto:      proyectoNombre,
+        codigo_lote:   codigoLote,
+        valor_total:   venta.valor_total,
+        cuota_inicial: venta.cuota_inicial,
+        total_cuotas:  totalCuotas || null,
+      });
+    } catch (err) {
+      console.error(`[ventas] email confirmacion fallo (usuario ${r.usuario?.id_usuario}):`, err.message);
+    }
+  }
 }
 
 exports.updateFinanciero = async (req, res) => {
@@ -654,6 +751,7 @@ exports.getEstadoFinanciero = async (req, res) => {
       .from("venta")
       .select(`
         id_venta,
+        codigo_venta,
         fecha_venta,
         estado,
         valor_total,
@@ -762,6 +860,7 @@ exports.getEstadoFinanciero = async (req, res) => {
 
       return {
         id_venta: venta.id_venta,
+        codigo_venta: venta.codigo_venta || null,
         fecha_venta: venta.fecha_venta,
         estado: venta.estado,
 
@@ -802,7 +901,7 @@ exports.getMisVentas = async (req, res) => {
     .select(`
       porcentaje,
       venta:id_venta (
-        id_venta, valor_total, cuota_inicial, estado, fecha_venta,
+        id_venta, codigo_venta, valor_total, cuota_inicial, estado, fecha_venta,
         observaciones, total_permutas,
         lote:id_lote (
           codigo_lote, manzana, numero_lote,
@@ -894,6 +993,7 @@ const porcentajePagado    = valorTotal > 0 ? Math.min(100, (totalPagado / valorT
 
 return {
   id_venta:                     v.id_venta,
+  codigo_venta:                 v.codigo_venta || null,
   estado:                       v.estado,
   fecha_venta:                  v.fecha_venta,
   valor_total:                  valorTotal,

@@ -15,15 +15,17 @@
   <meta property="og:description" content="Sistema de Gestión Inmobiliaria El Cóndor" />
   <meta property="og:url" content="https://sgi.somoselcondor.com/" />
   <meta property="og:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image:alt" content="Logo de El Cóndor S.A.S." />
+  <meta property="og:locale" content="es_CO" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SGI · El Cóndor" />
   <meta name="twitter:description" content="Sistema de Gestión Inmobiliaria El Cóndor" />
+  <meta name="twitter:image" content="https://sgi.somoselcondor.com/src/img/brand_logo_white.svg" />
 
   <link rel="icon" href="/src/img/favicon.svg" type="image/svg+xml" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
 
   <link
     href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
@@ -31,6 +33,7 @@
   />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 
+  <!-- build:css -->
   <!-- Estilos principales -->
   <link rel="stylesheet" href="/css/style.css" />
 
@@ -39,6 +42,7 @@
 
   <!-- Responsive global: debe ir después de todos los CSS -->
   <link rel="stylesheet" href="/css/responsive.css?v=1" />
+  <!-- /build:css -->
 </head>
 
 <body>
@@ -159,7 +163,9 @@
     6. app.js           -> inicializa navegación y lógica principal
   -->
 
+  <!-- build:auth -->
   <script type="module" src="/js/auth.js"></script>
+  <!-- /build:auth -->
 
   <script>
     window.onerror = (msg, src, line) => {
@@ -167,63 +173,72 @@
     };
   </script>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/ui.js"></script>
-  <script src="/js/components/money-input.js"></script>
-  <script src="/js/helpers.js"></script>
-  <script src="/js/state.js"></script>
+  <!-- build:js -->
+  <script defer src="/js/api.js"></script>
+  <script defer src="/js/ui.js"></script>
+  <script defer src="/js/components/money-input.js"></script>
+  <script defer src="/js/helpers.js"></script>
+  <script defer src="/js/state.js"></script>
 
-  <script src="/js/views/dashboard.js"></script>
+  <script defer src="/js/views/dashboard.js"></script>
 
   <!-- Operacion -->
-  <script src="/js/views/operacion/el-proyecto.js"></script>
-  <script src="/js/views/operacion/proyectos.js"></script>
-  <script src="/js/views/operacion/lotes.js"></script>
-  <script src="/js/views/operacion/compradores.js"></script>
-  <script src="/js/views/operacion/ventas.js"></script>
-  <script src="/js/views/operacion/recepciones.js"></script>
+  <script defer src="/js/views/operacion/el-proyecto.js"></script>
+  <script defer src="/js/views/operacion/proyectos.js"></script>
+  <script defer src="/js/views/operacion/lotes.js"></script>
+  <script defer src="/js/views/operacion/compradores.js"></script>
+  <script defer src="/js/views/operacion/ventas.js"></script>
+  <script defer src="/js/views/operacion/recepciones.js"></script>
 
   <!-- Finanzas -->
-  <script src="/js/views/finanzas/cuotas.js"></script>
-  <script src="/js/views/finanzas/pagos.js"></script>
-  <script src="/js/views/finanzas/comisionistas.js"></script>
-  <script src="/js/views/finanzas/facturas.js"></script>
-  <script src="/js/views/finanzas/recibos.js"></script>
-  <script src="/js/views/finanzas/gastos.js"></script>
-  <script src="/js/views/finanzas/transacciones.js"></script>
-  <script src="/js/views/finanzas/validacion-pagos.js"></script>
+  <script defer src="/js/views/finanzas/cuotas.js"></script>
+  <script defer src="/js/views/finanzas/pagos.js"></script>
+  <script defer src="/js/views/finanzas/comisionistas.js"></script>
+  <script defer src="/js/views/finanzas/facturas.js"></script>
+  <script defer src="/js/views/finanzas/recibos.js"></script>
+  <script defer src="/js/views/finanzas/gastos.js"></script>
+  <script defer src="/js/views/finanzas/transacciones.js"></script>
+  <script defer src="/js/views/finanzas/validacion-pagos.js"></script>
 
   <!-- Control -->
-  <script src="/js/views/control/reportes.js"></script>
-  <script src="/js/views/control/auditoria.js"></script>
-  <script src="/js/views/control/personal.js"></script>
-  <script src="/js/views/control/usuarios.js"></script>
-  <script src="/js/views/control/permisos.js"></script>
+  <script defer src="/js/views/control/reportes.js"></script>
+  <script defer src="/js/views/control/auditoria.js"></script>
+  <script defer src="/js/views/control/personal.js"></script>
+  <script defer src="/js/views/control/usuarios.js"></script>
+  <script defer src="/js/views/control/permisos.js"></script>
 
   <!-- Juridico -->
-  <script src="/js/views/juridico/juridico.js"></script>
+  <script defer src="/js/views/juridico/juridico.js"></script>
 
   <!-- Mi cuenta -->
-  <script src="/js/views/mi-cuenta/mis-cuotas.js"></script>
-  <script src="/js/views/mi-cuenta/mis-facturas.js"></script>
-  <script src="/js/views/mi-cuenta/mis-recibos.js"></script>
+  <script defer src="/js/views/mi-cuenta/mis-cuotas.js"></script>
+  <script defer src="/js/views/mi-cuenta/mis-facturas.js"></script>
+  <script defer src="/js/views/mi-cuenta/mis-recibos.js"></script>
+  <!-- /build:js -->
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-  <script src="/js/components/avatar-cropper.js"></script>
-  <script src="/js/components/sgi-select.js"></script>
-  <script src="/js/lib/qrcode.min.js"></script>
-  <script src="/js/components/export-styles.js"></script>
-  <script src="/js/components/brand-assets.js"></script>
-  <script src="/js/components/sidebar.js"></script>
-  <script src="/js/components/user-menu.js"></script>
-  <script src="/js/components/onboarding.js"></script>
-  <script src="/js/components/role-switcher.js"></script>
+  <!-- lucide is required app-wide for icons, so it stays eager (pinned, no @latest) -->
+  <script defer src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
 
+  <!-- Heavy libs (chart.js, exceljs, jspdf, jspdf-autotable, cropperjs) are NOT loaded here.
+       They are fetched on demand via SGILibs (lib-loader.js) only when a chart, an export or
+       the avatar cropper is actually used — keeping them out of the critical path. -->
+  <!-- build:js2 -->
+  <script defer src="/js/lib-loader.js"></script>
+
+  <script defer src="/js/components/avatar-cropper.js"></script>
+  <script defer src="/js/components/sgi-select.js"></script>
+  <script defer src="/js/lib/qrcode.min.js"></script>
+  <script defer src="/js/components/export-styles.js"></script>
+  <script defer src="/js/components/brand-assets.js"></script>
+  <script defer src="/js/components/responsive-tables.js"></script>
+  <script defer src="/js/components/sidebar.js"></script>
+  <script defer src="/js/components/user-menu.js"></script>
+  <script defer src="/js/components/onboarding.js"></script>
+  <script defer src="/js/components/role-switcher.js"></script>
+  <!-- /build:js2 -->
+
+  <!-- build:module -->
   <script type="module" src="/js/app.js"></script>
+  <!-- /build:module -->
 </body>
 </html>

@@ -369,3 +369,25 @@ input:focus {
     background: var(--surface-3);
   }
 }
+
+/* Manual dark theme (set by the public landing toggle via data-theme) */
+[data-theme="dark"] .card {
+  background: linear-gradient(180deg, rgba(32, 29, 26, 0.96) 0%, rgba(40, 36, 32, 0.94) 100%);
+  border-color: var(--border);
+}
+[data-theme="dark"] input {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+[data-theme="dark"] .btn-google {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="dark"] .btn-google:hover:not(:disabled) { background: var(--surface-3); }
+
+/* Manual light theme override (in case the OS is dark but the landing forces light) */
+[data-theme="light"] .card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 250, 244, 0.94) 100%);
+}

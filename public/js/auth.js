@@ -8,45 +8,57 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const res = await fetch('/api/v1/firebase-config');
-const firebaseConfig = await res.json();
-
-const app      = initializeApp(firebaseConfig);
-const auth     = getAuth(app);
-const provider = new GoogleAuthProvider();
+// Firebase is initialized from a backend-provided config. This runs in an async IIFE (NOT
+// top-level await) so the production esbuild bundle stays a valid ES module — top-level await
+// forces esbuild to wrap the entry in a non-async helper, which breaks the whole SPA bundle.
+let auth;
+let provider;
 
 // ─────────────────────────────────────────────────────────
-// PUENTE: expone Firebase para scripts regulares (app.js, api.js)
-// window._firebaseAuth  → instancia de auth
-// window._authReady     → Promise que resuelve con el usuario (o null)
+// BRIDGE: exposes Firebase for regular scripts (app.js, api.js)
+// window._firebaseAuth  → auth instance
+// window._authReady     → Promise that resolves with the user (or null)
 // ─────────────────────────────────────────────────────────
-window._firebaseAuth = auth;
+const _ready = (async () => {
+  const res = await fetch('/api/v1/firebase-config');
+  const firebaseConfig = await res.json();
 
-window._authReady = new Promise((resolve) => {
-  const unsub = onAuthStateChanged(auth, async (user) => {
-    unsub();
-    if (user) {
-      const token = await user.getIdToken(true);
-      localStorage.setItem('fb_token', token);
-    } else {
-      localStorage.removeItem('fb_token');
-    }
-    resolve(user);
+  const app = initializeApp(firebaseConfig);
+  auth     = getAuth(app);
+  provider = new GoogleAuthProvider();
+  window._firebaseAuth = auth;
+
+  const user = await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      unsub();
+      if (u) {
+        const token = await u.getIdToken(true);
+        localStorage.setItem('fb_token', token);
+      } else {
+        localStorage.removeItem('fb_token');
+      }
+      resolve(u);
+    });
   });
-});
 
-// Escucha continua para refrescar el token cuando Firebase lo renueva
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const token = await user.getIdToken();
-    localStorage.setItem('fb_token', token);
-  }
-});
+  // Continuous listener to refresh the token when Firebase rotates it
+  onAuthStateChanged(auth, async (u) => {
+    if (u) {
+      const token = await u.getIdToken();
+      localStorage.setItem('fb_token', token);
+    }
+  });
+
+  return user;
+})();
+
+window._authReady = _ready;
 
 // ─────────────────────────────────────────────────────────
 // Funciones de login/logout (usadas por login.html)
 // ─────────────────────────────────────────────────────────
 async function loginEmail(email, password) {
+  await _ready;
   const cred  = await signInWithEmailAndPassword(auth, email, password);
   const token = await cred.user.getIdToken();
   localStorage.setItem('fb_token', token);
@@ -54,6 +66,7 @@ async function loginEmail(email, password) {
 }
 
 async function loginGoogle() {
+  await _ready;
   const cred  = await signInWithPopup(auth, provider);
   const token = await cred.user.getIdToken();
   localStorage.setItem('fb_token', token);
@@ -61,6 +74,7 @@ async function loginGoogle() {
 }
 
 async function logout() {
+  await _ready;
   await signOut(auth);
   localStorage.removeItem('fb_token');
   window.location.href = '/login';
@@ -77,6 +91,7 @@ function esperarAuthListo() {
 // their inbox before logging in (USR-01).
 // ─────────────────────────────────────────────────────────
 async function registerEmail(email, password) {
+  await _ready;
   const { createUserWithEmailAndPassword, sendEmailVerification } = await import(
     "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
   );
@@ -91,6 +106,7 @@ async function registerEmail(email, password) {
 // Email-verification helpers exposed to regular scripts (app.js)
 // ─────────────────────────────────────────────────────────
 async function reenviarVerificacion() {
+  await _ready;
   const { sendEmailVerification } = await import(
     "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
   );
@@ -100,6 +116,7 @@ async function reenviarVerificacion() {
 }
 
 async function recargarUsuario() {
+  await _ready;
   const user = auth.currentUser;
   if (!user) return false;
   await user.reload();

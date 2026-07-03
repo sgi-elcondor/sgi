@@ -1,7 +1,15 @@
 (function () {
 
 const DOC_LABEL     = { cc: "C.C.", ce: "C.E.", ppt: "PPT", pasaporte: "Pasaporte" };
+const DOC_FULL      = { cc: "Cédula de ciudadanía", ce: "Cédula de extranjería", ppt: "PPT", pasaporte: "Pasaporte" };
 const PERSONA_LABEL = { natural: "Natural", juridica: "Jurídica" };
+const EXPORT_ROLES  = ["admin", "gerencia", "auxiliar_contable"];
+
+function accessLabel(c) {
+  if (c.has_access)   return "Con acceso";
+  if (c.linked_email) return "Sin ingresar";
+  return "Sin cuenta";
+}
 
 let _mailTimer           = null;
 let _selectedUserId      = null;
@@ -27,6 +35,7 @@ window.compradoresView = async function () {
   const vc        = document.getElementById("viewContainer");
   const canCreate = AppState.can("compradores", "crear");
   const canEdit   = AppState.can("compradores", "actualizar");
+  const canExport = EXPORT_ROLES.includes(window.currentUser?.rol);
   vc.innerHTML    = UI.loader();
 
   const data = await API.get("/compradores").catch(e => {
@@ -44,6 +53,17 @@ window.compradoresView = async function () {
               stroke-linecap="round" stroke-linejoin="round">
            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
          </svg> Nuevo
+       </button>`
+    : "";
+
+  const exportBtns = canExport
+    ? `<button class="btn btn-ghost btn-sm" id="btnCompExportExcel">
+         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+         Exportar Excel
+       </button>
+       <button class="btn btn-ghost btn-sm" id="btnCompExportPDF">
+         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="9" x2="10" y2="9"/></svg>
+         Exportar PDF
        </button>`
     : "";
 
@@ -96,7 +116,10 @@ window.compradoresView = async function () {
           <h3>Compradores</h3>
           <span class="count-chip" id="comp-count">${data.length} registros</span>
         </div>
-        ${nuevoBtn}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+          ${exportBtns}
+          ${nuevoBtn}
+        </div>
       </div>
 
       <p style="margin:.15rem 0 .85rem;font-size:.78rem;color:var(--text-muted);display:flex;align-items:center;gap:.4rem">
@@ -141,6 +164,8 @@ window.compradoresView = async function () {
   const tbody = document.getElementById("comp-tbody");
   const count = document.getElementById("comp-count");
 
+  let _visibles = data.slice();
+
   function aplicarFiltros() {
     const q       = norm(document.getElementById("cf-buscar").value);
     const persona = document.getElementById("cf-persona").value;
@@ -154,6 +179,7 @@ window.compradoresView = async function () {
       if (q && !norm(`${c.nombres} ${c.apellidos} ${c.documento} ${c.email}`).includes(q)) return false;
       return true;
     });
+    _visibles = visibles;
 
     if (visibles.length) {
       tbody.innerHTML = visibles.map(filaComprador).join("");
@@ -169,6 +195,11 @@ window.compradoresView = async function () {
   ["cf-persona", "cf-tipodoc", "cf-estado"].forEach(id =>
     document.getElementById(id).addEventListener("change", aplicarFiltros));
   document.getElementById("cf-buscar").addEventListener("input", aplicarFiltros);
+
+  if (canExport) {
+    document.getElementById("btnCompExportExcel")?.addEventListener("click", () => exportCompradoresExcel(_visibles));
+    document.getElementById("btnCompExportPDF")?.addEventListener("click", () => exportCompradoresPDF(_visibles));
+  }
 
   tbody.addEventListener("click", e => {
     const editBtn = e.target.closest(".btn-comprador-editar");
@@ -515,5 +546,126 @@ window.copiarEnlaceAcceso = function () {
   if (!input) return;
   navigator.clipboard.writeText(input.value).then(() => UI.toast("Enlace copiado", "ok"));
 };
+
+async function exportCompradoresExcel(rows) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
+  const SX = window.SGIExport.xlsx;
+  const wb = SX.setup();
+
+  const conAcceso = rows.filter(c => c.has_access).length;
+  const inactivos = rows.filter(c => !c.activo).length;
+  const sinCuenta = rows.length - conAcceso;
+
+  const ws = wb.addWorksheet("Compradores", { tabColor: { argb: SX.C.primary } });
+  ws.columns = [
+    { key: "nombre",    width: 30 },
+    { key: "tipodoc",   width: 22 },
+    { key: "documento", width: 18 },
+    { key: "persona",   width: 14 },
+    { key: "telefono",  width: 16 },
+    { key: "email",     width: 32 },
+    { key: "acceso",    width: 16 },
+    { key: "estado",    width: 12 },
+  ];
+
+  SX.masthead(ws, {
+    title:     "Directorio de Compradores",
+    subtitle:  "Estado actual aplicando los filtros activos al momento de exportar",
+    mergeCols: 8,
+  });
+
+  SX.kpiRow(ws, [
+    { label: "Compradores", value: rows.length },
+    { label: "Con acceso",  value: conAcceso },
+    { label: "Sin cuenta",  value: sinCuenta },
+    { label: "Inactivos",   value: inactivos },
+  ]);
+
+  ws.addRow([]).height = 4;
+  const hRow = ws.addRow([
+    "Comprador", "Tipo documento", "Documento", "Tipo persona",
+    "Teléfono", "Correo", "Acceso", "Estado",
+  ]);
+  SX.styleHeader(hRow);
+  const headerRowNum = hRow.number;
+
+  rows.forEach((c, i) => {
+    const nombre = `${c.nombres || ""} ${c.apellidos || ""}`.trim();
+    const r = ws.addRow([
+      nombre || "—",
+      DOC_FULL[c.tipo_documento] || "—",
+      c.documento || "—",
+      PERSONA_LABEL[c.tipo_persona] || c.tipo_persona || "—",
+      c.telefono || "—",
+      c.email || "—",
+      accessLabel(c),
+      c.activo ? "Activo" : "Inactivo",
+    ]);
+    SX.styleBody(r, i % 2 !== 0);
+  });
+
+  ws.views = [{ state: "frozen", ySplit: headerRowNum }];
+  ws.autoFilter = {
+    from: { row: headerRowNum, column: 1 },
+    to:   { row: headerRowNum, column: 8 },
+  };
+
+  await SX.download(wb, `compradores_sgi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+async function exportCompradoresPDF(rows) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const SX  = window.SGIExport.pdf;
+
+  const conAcceso = rows.filter(c => c.has_access).length;
+  const inactivos = rows.filter(c => !c.activo).length;
+  const sinCuenta = rows.length - conAcceso;
+
+  let y = SX.brand(doc);
+
+  y = SX.title(doc, y + 2, {
+    title:    "Directorio de Compradores",
+    subtitle: `${rows.length} comprador${rows.length === 1 ? "" : "es"} en la vista exportada`,
+  });
+
+  y = SX.kpiCards(doc, y + 2, [
+    { label: "Compradores", value: String(rows.length), desc: "Total en la vista" },
+    { label: "Con acceso",  value: String(conAcceso),   desc: "Cuenta activa" },
+    { label: "Sin cuenta",  value: String(sinCuenta),   desc: "Aún sin acceso" },
+    { label: "Inactivos",   value: String(inactivos),   desc: "Deshabilitados" },
+  ], { perRow: 4 });
+
+  y = SX.section(doc, y + 6, { kicker: "Detalle", title: "Listado de compradores" });
+
+  doc.autoTable({
+    startY: y,
+    head: [["Comprador", "Documento", "Tipo", "Teléfono", "Correo", "Acceso", "Estado"]],
+    body: rows.map(c => [
+      `${c.nombres || ""} ${c.apellidos || ""}`.trim() || "—",
+      `${DOC_LABEL[c.tipo_documento] || "—"} ${c.documento || ""}`.trim(),
+      PERSONA_LABEL[c.tipo_persona] || c.tipo_persona || "—",
+      c.telefono || "—",
+      c.email || "—",
+      accessLabel(c),
+      c.activo ? "Activo" : "Inactivo",
+    ]),
+    ...SX.tableTheme(),
+    columnStyles: {
+      0: { cellWidth: 52 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 22, halign: "center" },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 55 },
+      5: { cellWidth: 28, halign: "center" },
+      6: { cellWidth: 24, halign: "center" },
+    },
+    ...SX.statusColumn(6, e => (e === "Activo" ? "success" : "muted")),
+  });
+
+  SX.footer(doc);
+  doc.save(`compradores_sgi_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
 
 })();

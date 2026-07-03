@@ -264,18 +264,27 @@
    DETALLE DE VENTA - MODAL PROFESIONAL
    ========================================================= */
 
-.modal-card:has(.venta-detail-modal),
-.modal-content:has(.venta-detail-modal),
-.modal-dialog:has(.venta-detail-modal) {
+.modal:has(.venta-detail-modal) {
   width: min(61.25rem, calc(100vw - 2rem));
   max-width: 61.25rem;
 }
 
 .venta-detail-modal {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  grid-auto-flow: row dense;
   gap: 0.875rem;
   color: var(--text);
+}
+
+/* Hero, KPIs, action bars and any table-bearing section take the full width;
+   the compact key/value sections flow side by side to shorten the scroll. */
+.venta-detail-hero,
+.venta-detail-stats,
+.venta-detail-modal > .form-actions,
+.venta-detail-section:has(.venta-quota-table-wrap) {
+  grid-column: 1 / -1;
 }
 
 .venta-detail-hero {
@@ -521,6 +530,10 @@
 }
 
 @media (max-width: 51.25rem) {
+  .venta-detail-modal {
+    grid-template-columns: 1fr;
+  }
+
   .venta-detail-hero {
     flex-direction: column;
   }

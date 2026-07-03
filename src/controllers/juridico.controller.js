@@ -4,6 +4,17 @@ const SCHEMA   = 'condor';
 exports.getCarteraJuridica = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA).from('vw_cartera_juridica').select('*');
   if (error) return res.status(500).json({ error: error.message });
+
+  // The cartera view does not expose codigo_venta; attach it so juridico shows the same
+  // descriptive venta code as every other view.
+  const ids = [...new Set((data || []).map(r => r.id_venta).filter(Boolean))];
+  if (ids.length) {
+    const { data: ventas } = await supabase.schema(SCHEMA)
+      .from('venta').select('id_venta, codigo_venta').in('id_venta', ids);
+    const codes = new Map((ventas || []).map(v => [v.id_venta, v.codigo_venta]));
+    for (const r of (data || [])) r.codigo_venta = codes.get(r.id_venta) ?? null;
+  }
+
   res.json(data);
 };
 
