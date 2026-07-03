@@ -17,6 +17,13 @@ async function verificarToken(req, res, next) {
     // Supabase) for this uid within the TTL, rebuilding a fresh permisos Set each request.
     const cached = authCache.get(decoded.uid);
     if (cached) {
+      // The email-verification gate below also applies to cached identities.
+      if (cached.rol === 'usuario' && decoded.email_verified !== true) {
+        return res.status(403).json({
+          error: 'Debes verificar tu correo electrónico para acceder.',
+          code:  'EMAIL_NOT_VERIFIED',
+        });
+      }
       req.usuario = {
         uid:        decoded.uid,
         id_usuario: cached.id_usuario,
@@ -133,6 +140,15 @@ async function verificarToken(req, res, next) {
 
     if (rolError || !rolData) {
       return res.status(403).json({ error: 'No se pudo cargar el rol del usuario.' });
+    }
+
+    // Self-registered visitors must verify their email before accessing anything.
+    // Staff roles are unaffected; only the 'usuario' role is gated.
+    if (rolData.nombre === 'usuario' && decoded.email_verified !== true) {
+      return res.status(403).json({
+        error: 'Debes verificar tu correo electrónico para acceder.',
+        code:  'EMAIL_NOT_VERIFIED',
+      });
     }
 
     const permisosArray = (rolData.rol_permiso ?? []).map(rp =>

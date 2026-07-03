@@ -180,7 +180,10 @@ function navigate(viewKey, updateHash) {
 
 function getInitialView() {
   const hash = window.location.hash.replace("#", "").trim();
-  return VIEWS[hash] ? hash : "dashboard";
+  if (VIEWS[hash] && AppState.hasVista(hash)) return hash;
+  if (AppState.hasVista("dashboard")) return "dashboard";
+  const firstVista = (window.currentUser?.vistas || []).find(v => VIEWS[v]);
+  return firstVista || "dashboard";
 }
 
 function redirigirConDelay(url, segundos) {
@@ -248,6 +251,8 @@ async function iniciarApp() {
     const fbUser = window._firebaseAuth?.currentUser;
     if (!fbUser) { localStorage.removeItem("fb_token"); redirigirConDelay("/login"); return; }
 
+    if (err.code === "EMAIL_NOT_VERIFIED") { mostrarVerificarCorreo(fbUser); return; }
+
     if (/inactiv/i.test(err.message || "")) { mostrarCuentaInactiva(); return; }
     if (err.code === "CUENTA_NO_VINCULADA") { mostrarVincularCuenta(); return; }
 
@@ -282,6 +287,89 @@ function mostrarCuentaInactiva() {
     '</div>';
   document.body.appendChild(o);
   document.getElementById("inactive-logout").addEventListener("click", async function() {
+    try { await logout(); } catch (_) {}
+    localStorage.removeItem("fb_token");
+    window.location.href = "/login";
+  });
+}
+
+function mostrarVerificarCorreo(firebaseUser) {
+  const email = firebaseUser?.email || "tu correo";
+  const o = document.createElement("div");
+  o.style.cssText =
+    "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
+    "padding:1.5rem;background:var(--bg-primary,var(--bg,#0e0e10))";
+  o.innerHTML =
+    '<div style="max-width:28rem;width:100%;text-align:center;background:var(--surface,var(--bg-secondary));' +
+      'border:1px solid var(--border,var(--border-color));border-radius:1rem;padding:2.5rem 2rem;' +
+      'box-shadow:0 0.625rem 2.5rem rgba(0,0,0,.25)">' +
+      '<div style="width:3.5rem;height:3.5rem;margin:0 auto 1.25rem;border-radius:50%;display:flex;' +
+        'align-items:center;justify-content:center;background:rgba(var(--accent-rgb,255,106,0),.12);color:var(--accent,#ff6a00)">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" ' +
+          'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>' +
+      '</div>' +
+      '<h1 style="margin:0 0 .5rem;font-size:1.35rem;color:var(--text,var(--text-primary))">Verifica tu correo</h1>' +
+      '<p style="margin:0 0 1.5rem;color:var(--text-muted);font-size:.9rem;line-height:1.55">' +
+        'Te enviamos un enlace de verificación a <strong>' + email + '</strong>. ' +
+        'Ábrelo para activar tu cuenta y luego continúa.</p>' +
+      '<div id="verify-msg" style="display:none;margin:0 0 1rem;font-size:.85rem;line-height:1.5"></div>' +
+      '<button class="btn btn-primary" id="verify-check" style="width:100%;margin-bottom:.6rem">Ya verifiqué mi correo</button>' +
+      '<button class="btn btn-secondary" id="verify-resend" style="width:100%;margin-bottom:.6rem">Reenviar correo</button>' +
+      '<button class="btn btn-ghost btn-sm" id="verify-logout" style="width:100%">Cerrar sesión</button>' +
+    '</div>';
+  document.body.appendChild(o);
+
+  const msg = document.getElementById("verify-msg");
+  function showMsg(text, ok) {
+    msg.textContent = text;
+    msg.style.display = "block";
+    msg.style.color = ok ? "var(--success,#16a34a)" : "var(--danger,#dc2626)";
+  }
+
+  // Auto-detect verification: opening the email link verifies the account
+  // server-side (even if the link page later shows "already used"), so we poll.
+  let polling = false;
+  const pollId = setInterval(async function() {
+    if (polling) return;
+    polling = true;
+    try {
+      if (await window._recargarUsuario()) { clearInterval(pollId); window.location.reload(); }
+    } catch (_) {
+    } finally {
+      polling = false;
+    }
+  }, 4000);
+
+  document.getElementById("verify-check").addEventListener("click", async function() {
+    const btn = this;
+    btn.disabled = true;
+    try {
+      const verificado = await window._recargarUsuario();
+      if (verificado) { window.location.reload(); return; }
+      showMsg("Aún no detectamos la verificación. Revisa tu correo y vuelve a intentar.", false);
+    } catch (e) {
+      showMsg("No se pudo comprobar. Intenta de nuevo.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("verify-resend").addEventListener("click", async function() {
+    const btn = this;
+    btn.disabled = true;
+    try {
+      await window._reenviarVerificacion();
+      showMsg("Correo de verificación reenviado. Revisa tu bandeja y la carpeta de spam.", true);
+    } catch (e) {
+      showMsg(e.message || "No se pudo reenviar el correo.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("verify-logout").addEventListener("click", async function() {
+    clearInterval(pollId);
     try { await logout(); } catch (_) {}
     localStorage.removeItem("fb_token");
     window.location.href = "/login";

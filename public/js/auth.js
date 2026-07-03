@@ -86,18 +86,50 @@ function esperarAuthListo() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Sign up with email and password
+// Sign up with email and password.
+// Sends a verification email and signs the user out: they must verify
+// their inbox before logging in (USR-01).
 // ─────────────────────────────────────────────────────────
 async function registerEmail(email, password) {
   await _ready;
-  const { createUserWithEmailAndPassword } = await import(
+  const { createUserWithEmailAndPassword, sendEmailVerification } = await import(
     "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
   );
-  const cred  = await createUserWithEmailAndPassword(auth, email, password);
-  const token = await cred.user.getIdToken();
-  localStorage.setItem('fb_token', token);
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await sendEmailVerification(cred.user);
+  await signOut(auth);
+  localStorage.removeItem('fb_token');
   return cred.user;
 }
+
+// ─────────────────────────────────────────────────────────
+// Email-verification helpers exposed to regular scripts (app.js)
+// ─────────────────────────────────────────────────────────
+async function reenviarVerificacion() {
+  await _ready;
+  const { sendEmailVerification } = await import(
+    "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"
+  );
+  const user = auth.currentUser;
+  if (!user) throw new Error('No hay una sesión activa.');
+  await sendEmailVerification(user);
+}
+
+async function recargarUsuario() {
+  await _ready;
+  const user = auth.currentUser;
+  if (!user) return false;
+  await user.reload();
+  const fresh = auth.currentUser;
+  if (fresh) {
+    const token = await fresh.getIdToken(true);
+    localStorage.setItem('fb_token', token);
+  }
+  return fresh?.emailVerified === true;
+}
+
+window._reenviarVerificacion = reenviarVerificacion;
+window._recargarUsuario      = recargarUsuario;
 
 // ─────────────────────────────────────────────────────────
 // Password recovery
@@ -114,4 +146,4 @@ async function resetPassword(email) {
   }
 }
 
-export { auth, loginEmail, loginGoogle, logout, esperarAuthListo, registerEmail, resetPassword };
+export { auth, loginEmail, loginGoogle, logout, esperarAuthListo, registerEmail, resetPassword, reenviarVerificacion, recargarUsuario };

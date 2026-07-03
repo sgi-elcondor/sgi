@@ -445,7 +445,10 @@
 
     try {
       await registerEmail(email, pwd);
-      (window.top || window).location.href = '/app';
+      document.getElementById('r-email').value = '';
+      document.getElementById('r-password').value = '';
+      document.getElementById('r-confirm').value = '';
+      showSuccess('r-success', 'Cuenta creada. Te enviamos un correo de verificación a ' + email + '. Verifícalo y luego inicia sesión.');
     } catch (err) {
       showError('r-error', err);
     } finally {
