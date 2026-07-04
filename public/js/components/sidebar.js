@@ -21,6 +21,7 @@ const SIDEBAR_GROUPS = [
     { view: "bank-transactions",  icon: "landmark",      label: "Transacciones" },
     { view: "payment-validation", icon: "shield-check",  label: "Validar pagos" },
     { view: "gastos",             icon: "trending-down", label: "Gastos" },
+    { view: "desembolsos",        icon: "banknote",      label: "Desembolsos" },
   ]},
   { label: "Mi cuenta", items: [
     { view: "dashboard",    icon: "home",     label: "Mi Lote" },

@@ -27,6 +27,7 @@ const VIEWS = {
   recepciones:         { fn: "recepcionesView",        title: "Recepción de Materiales" },
   requerimientos:      { fn: "requerimientosView",     title: "Requerimientos" },
   aprobaciones:        { fn: "aprobacionesView",       title: "Aprobaciones" },
+  desembolsos:         { fn: "desembolsosView",        title: "Desembolsos" },
 };
 
 const TOPBAR_SUBTITLES = {
@@ -56,6 +57,7 @@ const TOPBAR_SUBTITLES = {
   recepciones:         "Registro de entrega de materiales y actualizacion de stock",
   requerimientos:      "Solicita materiales para tu área y consulta su estado",
   aprobaciones:        "Revisa y aprueba los requerimientos de materiales",
+  desembolsos:         "Registra los pagos de requerimientos aprobados",
 };
 
 window.currentUser    = null;

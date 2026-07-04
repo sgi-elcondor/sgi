@@ -113,6 +113,7 @@ const ROUTE_PERMISSIONS = {
   'PUT /api/v1/gastos':                   { recurso: 'gastos', accion: 'actualizar' },
 
   'GET /api/v1/recepciones/pendientes':   { recurso: 'recepciones', accion: 'leer' },
+  'GET /api/v1/recepciones/historial':    { recurso: 'recepciones', accion: 'leer' },
   'GET /api/v1/recepciones':              { recurso: 'recepciones', accion: 'leer' },
   'POST /api/v1/recepciones':             { recurso: 'recepciones', accion: 'crear' },
 
@@ -121,6 +122,8 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/v1/requerimientos/cancelar':         { recurso: 'requerimientos', accion: 'crear' },
   'GET /api/v1/requerimientos/aprobaciones':       { recurso: 'requerimientos', accion: 'leer' },
   'GET /api/v1/requerimientos/historial':          { recurso: 'requerimientos', accion: 'leer' },
+  'GET /api/v1/requerimientos/desembolsos':        { recurso: 'requerimientos', accion: 'desembolsar' },
+  'PATCH /api/v1/requerimientos/desembolsar':      { recurso: 'requerimientos', accion: 'desembolsar' },
   'PATCH /api/v1/requerimientos/aprobar-jefe':     { recurso: 'requerimientos', accion: 'aprobar_jefe' },
   'PATCH /api/v1/requerimientos/aprobar-final':    { recurso: 'requerimientos', accion: 'aprobar_final' },
   'PATCH /api/v1/requerimientos/rechazar':         { recurso: 'requerimientos', accion: 'leer' },
