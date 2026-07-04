@@ -661,8 +661,8 @@ exports.acceptBatch = async (req, res) => {
       continue;
     }
 
-    // A pago may be already 'aceptado' if it was auto-accepted by exports.create but never
-    // allocated. Allow re-processing ONLY when it has no cuota_pago records yet.
+    // Defensive: if a pago is already 'aceptado' (e.g. legacy data or a retried batch) but was
+    // never allocated, allow re-processing ONLY when it still has no cuota_pago records.
     if (pagoActual.estado === 'aceptado') {
       const { count } = await supabase.schema(SCHEMA)
         .from('cuota_pago')

@@ -231,31 +231,39 @@ exports.registrarMicropago = async (req, res) => {
 };
 
 exports.togglePagada = async (req, res) => {
-  const ventaId      = req.params.ventaId;
+  const ventaId = Number(req.params.ventaId);
+  if (!ventaId) return res.status(400).json({ error: "ID de venta inválido" });
+
   const { pagada }   = req.body;
   const fecha_pagado = pagada ? new Date().toISOString().split("T")[0] : null;
 
+  // A venta may have more than one comisionista row. The UI toggles the paid state per venta, so
+  // update every row for the venta (the old .single() threw when >1 row and silently ignored the
+  // rest). Audit each row.
   const { data: prev } = await supabase.schema(SCHEMA)
-    .from("venta_comisionista").select("pagada").eq("id_venta", ventaId).single();
+    .from("venta_comisionista").select("id_usuario, pagada").eq("id_venta", ventaId);
+  if (!prev || prev.length === 0) {
+    return res.status(404).json({ error: "La venta no tiene comisionistas asociados" });
+  }
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .update({ pagada: !!pagada, fecha_pagado })
     .eq("id_venta", ventaId)
-    .select()
-    .single();
-
+    .select();
   if (error) return res.status(400).json({ error: error.message });
 
-  await supabase.schema(SCHEMA).from("auditoria").insert([{
-    tabla_afectada: "venta_comisionista",
-    id_registro:    ventaId,
-    campo:          "pagada",
-    valor_anterior: String(prev?.pagada ?? false),
-    valor_nuevo:    String(!!pagada),
-    usuario_db:     req.usuario?.email,
-    motivo:         "cambio_estado_pago_comision",
-  }]);
+  await supabase.schema(SCHEMA).from("auditoria").insert(
+    prev.map(p => ({
+      tabla_afectada: "venta_comisionista",
+      id_registro:    ventaId,
+      campo:          "pagada",
+      valor_anterior: String(p.pagada ?? false),
+      valor_nuevo:    String(!!pagada),
+      usuario_db:     req.usuario?.email,
+      motivo:         "cambio_estado_pago_comision",
+    }))
+  );
 
   res.json(data);
 };
