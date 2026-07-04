@@ -39,7 +39,9 @@ const CSP = [
   "img-src 'self' data: https:",
   "font-src 'self' https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  `script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://apis.google.com${DEV_SCRIPT}`,
+  // jsdelivr/cdnjs host the lazy-loaded export libs (jspdf, exceljs, chart.js, html2pdf)
+  // used by lib-loader.js and the printable comprobantes (which inherit this CSP).
+  `script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://apis.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com${DEV_SCRIPT}`,
   `connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com${DEV_CONNECT}`,
   "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com",
 ].join("; ");
