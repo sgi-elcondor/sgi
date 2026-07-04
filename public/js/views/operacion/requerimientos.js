@@ -26,26 +26,34 @@ const CATEGORIAS = [
   { value: "otros",        label: "Otros",        icon: "box"       },
 ];
 
-// Document flow shown in the detail timeline. `stepOf` maps each estado to the
-// step currently in progress (0-based); -1 on `failedAt` marks a terminal rejection.
+// Two-level approval flow (REQ-02/03) shown in the detail timeline.
+// `flowStateOf` maps each estado to the step in progress (0-based);
+// `failedAt` marks a terminal rejection/cancellation at that step.
 const FLOW_STEPS = [
   { label: "Solicitado",   icon: "file-plus"     },
   { label: "Jefe de área", icon: "user-check"    },
+  { label: "Dueño",        icon: "shield-check"  },
   { label: "Tesorería",    icon: "landmark"      },
   { label: "Desembolso",   icon: "banknote"      },
   { label: "Recepción",    icon: "package-check" },
 ];
 
-function flowStateOf(estado) {
+// Accepts the full row (to know which level rejected) or a plain estado string.
+function flowStateOf(r) {
+  const estado = typeof r === "string" ? r : r?.estado;
+  const row    = (r && typeof r === "object") ? r : {};
   switch (estado) {
     case "pendiente_jefe":      return { current: 1 };
     case "aprobado":
-    case "aprobado_jefe":
-    case "pendiente_tesoreria": return { current: 2 };
-    case "desembolsado":        return { current: 4 };
-    case "recibido_parcial":    return { current: 4 };
-    case "en_inventario":       return { current: 5, done: true };
-    case "rechazado":           return { current: 1, failedAt: 1 };
+    case "aprobado_jefe":       return { current: 2 };
+    case "pendiente_tesoreria": return { current: 3 };
+    case "desembolsado":        return { current: 5 };
+    case "recibido_parcial":    return { current: 5 };
+    case "en_inventario":       return { current: 6, done: true };
+    case "rechazado": {
+      const at = row.fecha_aprobado_jefe ? 2 : 1;
+      return { current: at, failedAt: at };
+    }
     case "cancelado":           return { current: 1, failedAt: 1 };
     default:                    return { current: 1 };
   }
@@ -61,10 +69,11 @@ let _proyectos      = [];
 let _highlightId    = null;
 const _filtros      = { q: "", est: "", urg: "" };
 
-// Mini version of the flow timeline: five dots at a glance inside the table.
-function miniFlowHTML(estado) {
-  const flow  = flowStateOf(estado);
-  const title = ESTADO_LABEL[estado]?.label || estado;
+// Mini version of the flow timeline: one dot per step at a glance inside the table.
+function miniFlowHTML(r) {
+  const flow  = flowStateOf(r);
+  const estado = typeof r === "string" ? r : r?.estado;
+  const title  = ESTADO_LABEL[estado]?.label || estado;
   return `<div class="req-mini-flow" title="${title}">${FLOW_STEPS.map((s, i) => {
     let cls = "pending";
     if (flow.failedAt === i) cls = "failed";
@@ -151,7 +160,8 @@ window.requerimientosView = async function () {
           <select id="req-estado" class="select-sm" style="flex:1;min-width:10rem">
             <option value="">Todos los estados</option>
             <option value="pendiente_jefe">Pendiente de jefe</option>
-            <option value="aprobado">Aprobado</option>
+            <option value="aprobado_jefe">Aprobado por jefe</option>
+            <option value="pendiente_tesoreria">En tesorería</option>
             <option value="rechazado">Rechazado</option>
             <option value="cancelado">Cancelado</option>
           </select>
@@ -204,7 +214,7 @@ window.requerimientosView = async function () {
         <td data-label="Categoría">${cat.label}</td>
         <td data-label="Urgencia"><span class="badge ${urg.cls}">${urg.label}</span></td>
         <td data-label="Monto estimado" class="req-money">${fmtMoney(r.valor_total)}</td>
-        <td data-label="Estado"><div class="req-estado-cell"><span class="badge ${est.cls}">${est.label}</span>${miniFlowHTML(r.estado)}</div></td>
+        <td data-label="Estado"><div class="req-estado-cell"><span class="badge ${est.cls}">${est.label}</span>${miniFlowHTML(r)}</div></td>
         <td class="req-td-actions">
           <div class="req-actions">
             <button class="btn btn-ghost btn-sm btn-req-detalle" data-id="${r.id_requerimiento}">Ver detalle</button>
@@ -302,8 +312,8 @@ window.requerimientosView = async function () {
 // ─────────────────────────────────────────────────────────────────────────────
 // Timeline del flujo (detalle)
 // ─────────────────────────────────────────────────────────────────────────────
-function timelineHTML(estado) {
-  const flow = flowStateOf(estado);
+function timelineHTML(r) {
+  const flow = flowStateOf(r);
   return `
     <div class="req-flow">
       ${FLOW_STEPS.map((s, i) => {
@@ -365,9 +375,19 @@ function _buildRequerimientoHTML(r) {
       </table>
     </div>`;
 
+  const flow = flowStateOf(r);
+
   const jefeValue =
-    r.estado === "rechazado" ? "Rechazado" :
-    ["aprobado", "aprobado_jefe", "pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario"].includes(r.estado) ? "Aprobado" : "";
+    r.aprobador_jefe ? `${r.aprobador_jefe} · ${fmtD(r.fecha_aprobado_jefe)}` :
+    (r.estado === "rechazado" && !r.fecha_aprobado_jefe) ? "Rechazado" : "";
+
+  const duenoValue =
+    r.aprobador_final ? `${r.aprobador_final} · ${fmtD(r.fecha_aprobado_final)}` :
+    (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
+
+  const tesoreriaValue =
+    r.estado === "pendiente_tesoreria" ? "En gestión" :
+    ["desembolsado", "recibido_parcial", "en_inventario"].includes(r.estado) ? "Gestionado" : "";
 
   const desembolsoValue =
     ["desembolsado", "recibido_parcial", "en_inventario"].includes(r.estado)
@@ -398,16 +418,18 @@ function _buildRequerimientoHTML(r) {
       { icon: "clock",    label: "Urgencia",         value: urg.label, badge: URG_BADGE[r.urgencia] || "muted" },
       { icon: "calendar", label: "Fecha de solicitud", value: fmtD(r.fecha_solicitud) },
       { icon: "note",     label: "Justificación",    value: r.justificacion },
+      { icon: "note",     label: "Motivo de rechazo", value: r.motivo_rechazo },
     ],
     extraHTML: itemsHTML,
     trace: [
-      { label: "Requerimiento",   value: r.numero, current: true },
-      { label: "Aprobación jefe", value: jefeValue },
-      { label: "Tesorería",       value: "" },
-      { label: "Desembolso",      value: desembolsoValue },
-      { label: "Recepción",       value: recepcionValue },
-    ],
-    traceSubtitle: "Cadena Requerimiento → Jefe → Tesorería → Desembolso → Recepción",
+      { label: "Requerimiento",    value: r.numero },
+      { label: "Aprobación jefe",  value: jefeValue },
+      { label: "Aprobación dueño", value: duenoValue },
+      { label: "Tesorería",        value: tesoreriaValue },
+      { label: "Desembolso",       value: desembolsoValue },
+      { label: "Recepción",        value: recepcionValue },
+    ].map((t, i) => ({ ...t, current: i === Math.min(flow.failedAt ?? flow.current, 5) })),
+    traceSubtitle: "Cadena Requerimiento → Jefe → Dueño → Tesorería → Desembolso → Recepción",
     totalLabel: "Monto estimado total",
     totalValue: valorTxt,
     totalWords: valorWords,
@@ -505,7 +527,17 @@ function abrirDetalle(r) {
 
       <div class="form-section">
         <span class="form-section-label">Estado de la solicitud &nbsp;<span class="badge ${est.cls}">${est.label}</span></span>
-        ${timelineHTML(r.estado)}
+        ${timelineHTML(r)}
+        ${r.aprobador_jefe || r.aprobador_final ? `
+          <div class="req-aprobaciones-info">
+            ${r.aprobador_jefe ? `<span>${icon("user-check")} Jefe: <strong>${r.aprobador_jefe}</strong> · ${fmtDate(r.fecha_aprobado_jefe)}</span>` : ""}
+            ${r.aprobador_final ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_final}</strong> · ${fmtDate(r.fecha_aprobado_final)}</span>` : ""}
+          </div>` : ""}
+        ${r.motivo_rechazo ? `
+          <div class="req-rechazo-box">
+            ${icon("x-circle")}
+            <div><strong>Motivo del rechazo:</strong> ${r.motivo_rechazo}</div>
+          </div>` : ""}
       </div>
 
       <div class="form-section">
@@ -721,5 +753,8 @@ async function guardarRequerimiento() {
     errorEl.style.display = "block";
   }
 }
+
+// Shared with the aprobaciones view (loaded after this file).
+window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML };
 
 })();

@@ -207,6 +207,245 @@ async function cancelar(req, res) {
   }
 }
 
+// ── Approval flow (REQ-02 / REQ-03) ─────────────────────────────────────────
+
+function _puede(reqUsuario, accion) {
+  return reqUsuario.rol === "admin" || reqUsuario.permisos?.has(`requerimientos:${accion}`);
+}
+
+async function _emailsDeRol(nombreRol) {
+  const { data: rol } = await supabase.schema(SCHEMA)
+    .from("roles").select("id_rol").eq("nombre", nombreRol).single();
+  if (!rol) return [];
+  const { data: usuarios } = await supabase.schema(SCHEMA)
+    .from("usuarios").select("email")
+    .eq("id_rol", rol.id_rol).eq("activo", true);
+  return (usuarios || []).map(u => u.email).filter(Boolean);
+}
+
+async function _emailDeUsuario(idUsuario) {
+  if (!idUsuario) return null;
+  const { data } = await supabase.schema(SCHEMA)
+    .from("usuarios").select("email, activo").eq("id_usuario", idUsuario).single();
+  return data?.activo ? data.email : null;
+}
+
+function _notificar(emails, datos) {
+  const list = (emails || []).filter(Boolean);
+  if (!list.length) return Promise.resolve();
+  return Promise.allSettled(list.map(to => emailService.sendRequerimientoEstadoEmail(to, datos)));
+}
+
+// GET /api/v1/requerimientos/aprobaciones
+// Inbox for approvers: jefes see 'pendiente_jefe', final approvers see 'aprobado_jefe'.
+async function getAprobaciones(req, res) {
+  try {
+    const puedeJefe  = _puede(req.usuario, "aprobar_jefe");
+    const puedeFinal = _puede(req.usuario, "aprobar_final");
+    if (!puedeJefe && !puedeFinal) {
+      return res.status(403).json({ error: "No tienes permisos de aprobación" });
+    }
+
+    const estados = [];
+    if (puedeJefe)  estados.push("pendiente_jefe");
+    if (puedeFinal) estados.push("aprobado_jefe");
+
+    const { data, error } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, fecha_solicitud, estado,
+        valor_total, categoria, urgencia, justificacion,
+        fecha_aprobado_jefe,
+        solicitante:id_solicitante (nombres, apellidos, email),
+        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        proyecto:id_proyecto (nombre, sigla),
+        items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
+      `)
+      .in("estado", estados)
+      .order("fecha_solicitud", { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    return res.json((data || []).map(r => ({
+      ...r,
+      solicitante: `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+      aprobador_jefe: r.aprobador_jefe
+        ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()
+        : null,
+      proyecto: r.proyecto?.nombre || null,
+      sigla:    r.proyecto?.sigla || null,
+      nivel:    r.estado === "pendiente_jefe" ? "jefe" : "final",
+    })));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+async function _getRequerimiento(id) {
+  const { data } = await supabase.schema(SCHEMA)
+    .from("requerimiento")
+    .select("id_requerimiento, numero, descripcion, estado, valor_total, urgencia, categoria, id_solicitante")
+    .eq("id_requerimiento", id)
+    .single();
+  return data || null;
+}
+
+// PATCH /api/v1/requerimientos/:id/aprobar-jefe  (REQ-02: pendiente_jefe → aprobado_jefe)
+async function aprobarJefe(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const r = await _getRequerimiento(id);
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "pendiente_jefe") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; solo se aprueban los pendientes de jefe` });
+    }
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const { error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update({ estado: "aprobado_jefe", aprobado_jefe_por: req.usuario.id_usuario, fecha_aprobado_jefe: hoy })
+      .eq("id_requerimiento", id)
+      .eq("estado", "pendiente_jefe");
+
+    if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: "estado",
+      anterior: "pendiente_jefe", nuevo: "aprobado_jefe",
+      usuario: req.usuario.email, motivo: "aprobacion_jefe",
+    });
+
+    try {
+      const duenos = await _emailsDeRol("gerencia");
+      await _notificar(duenos, {
+        asunto:  `Requerimiento ${r.numero} listo para tu aprobación final — El Cóndor`,
+        titulo:  "Aprobación final pendiente",
+        mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Falta tu aprobación final para autorizar el desembolso.`,
+        numero:  r.numero,
+        valor_total: r.valor_total,
+      });
+    } catch (e) { console.error("[requerimientos] Notificación a gerencia falló:", e.message); }
+
+    return res.json({ ok: true, numero: r.numero, estado: "aprobado_jefe" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/aprobar-final  (REQ-03: aprobado_jefe → pendiente_tesoreria)
+async function aprobarFinal(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const r = await _getRequerimiento(id);
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "aprobado_jefe") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; la aprobación final requiere que el jefe lo haya aprobado primero` });
+    }
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const { error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update({ estado: "pendiente_tesoreria", aprobado_final_por: req.usuario.id_usuario, fecha_aprobado_final: hoy })
+      .eq("id_requerimiento", id)
+      .eq("estado", "aprobado_jefe");
+
+    if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: "estado",
+      anterior: "aprobado_jefe", nuevo: "pendiente_tesoreria",
+      usuario: req.usuario.email, motivo: "aprobacion_final",
+    });
+
+    // REQ-03: tesorería takes over and the tesorero gets notified; the requester too.
+    try {
+      const tesoreros    = await _emailsDeRol("tesorero");
+      const solicitante  = await _emailDeUsuario(r.id_solicitante);
+      await _notificar(tesoreros, {
+        asunto:  `Requerimiento ${r.numero} aprobado — gestionar desembolso — El Cóndor`,
+        titulo:  "Nuevo requerimiento en tesorería",
+        mensaje: `El requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la aprobación final y pasa a tesorería para gestionar el desembolso.`,
+        numero:  r.numero,
+        valor_total: r.valor_total,
+      });
+      await _notificar([solicitante], {
+        asunto:  `Tu requerimiento ${r.numero} fue aprobado — El Cóndor`,
+        titulo:  "¡Requerimiento aprobado!",
+        mensaje: `Tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la aprobación final y está en tesorería para el desembolso.`,
+        numero:  r.numero,
+        valor_total: r.valor_total,
+      });
+    } catch (e) { console.error("[requerimientos] Notificación de aprobación final falló:", e.message); }
+
+    return res.json({ ok: true, numero: r.numero, estado: "pendiente_tesoreria" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/rechazar
+// Body: { motivo }. Level is inferred from the current estado; the caller must hold
+// the matching approval permission (enforced here, not in ROUTE_PERMISSIONS).
+async function rechazar(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const motivo = String(req.body?.motivo || "").trim();
+    if (motivo.length < 5) {
+      return res.status(422).json({ error: "Indica un motivo de rechazo (mínimo 5 caracteres)" });
+    }
+
+    const r = await _getRequerimiento(id);
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+
+    const permisoRequerido =
+      r.estado === "pendiente_jefe" ? "aprobar_jefe" :
+      r.estado === "aprobado_jefe"  ? "aprobar_final" : null;
+
+    if (!permisoRequerido) {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}' y no admite rechazo` });
+    }
+    if (!_puede(req.usuario, permisoRequerido)) {
+      return res.status(403).json({ error: "No tienes permiso para rechazar en este nivel" });
+    }
+
+    const { error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update({ estado: "rechazado", motivo_rechazo: motivo })
+      .eq("id_requerimiento", id)
+      .eq("estado", r.estado);
+
+    if (eUpd) return res.status(400).json({ error: eUpd.message });
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: "estado",
+      anterior: r.estado, nuevo: "rechazado",
+      usuario: req.usuario.email, motivo,
+    });
+
+    try {
+      const solicitante = await _emailDeUsuario(r.id_solicitante);
+      await _notificar([solicitante], {
+        asunto:  `Tu requerimiento ${r.numero} fue rechazado — El Cóndor`,
+        titulo:  "Requerimiento rechazado",
+        mensaje: `Tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}) fue rechazado durante la revisión.`,
+        numero:  r.numero,
+        valor_total: r.valor_total,
+        motivo,
+      });
+    } catch (e) { console.error("[requerimientos] Notificación de rechazo falló:", e.message); }
+
+    return res.json({ ok: true, numero: r.numero, estado: "rechazado" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 // GET /api/v1/requerimientos/mis-requerimientos
 async function getMios(req, res) {
   try {
@@ -215,6 +454,9 @@ async function getMios(req, res) {
       .select(`
         id_requerimiento, numero, descripcion, fecha_solicitud, fecha_desembolso, estado,
         valor_total, categoria, urgencia, justificacion, id_proyecto,
+        fecha_aprobado_jefe, fecha_aprobado_final, motivo_rechazo,
+        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        aprobador_final:aprobado_final_por (nombres, apellidos),
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
@@ -225,6 +467,8 @@ async function getMios(req, res) {
 
     return res.json((data || []).map(r => ({
       ...r,
+      aprobador_jefe:  r.aprobador_jefe  ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()  : null,
+      aprobador_final: r.aprobador_final ? `${r.aprobador_final.nombres || ""} ${r.aprobador_final.apellidos || ""}`.trim() : null,
       proyecto: r.proyecto?.nombre || null,
       sigla:    r.proyecto?.sigla || null,
     })));
@@ -233,4 +477,8 @@ async function getMios(req, res) {
   }
 }
 
-module.exports = { create, getMios, cancelar, CATEGORIAS, URGENCIAS };
+module.exports = {
+  create, getMios, cancelar,
+  getAprobaciones, aprobarJefe, aprobarFinal, rechazar,
+  CATEGORIAS, URGENCIAS,
+};

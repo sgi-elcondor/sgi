@@ -10,6 +10,7 @@ const SIDEBAR_GROUPS = [
     { view: "ventas",      icon: "briefcase",  label: "Ventas" },
     { view: "recepciones", icon: "package",    label: "Recepciones" },
     { view: "requerimientos", icon: "clipboard-list", label: "Requerimientos" },
+    { view: "aprobaciones",   icon: "clipboard-check", label: "Aprobaciones" },
   ]},
   { label: "Finanzas", items: [
     { view: "cuotas",             icon: "calendar",      label: "Cuotas" },
