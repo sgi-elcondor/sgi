@@ -1,5 +1,6 @@
-const supabase  = require("../config/supabase");
-const auditoria = require("../services/auditoria.service");
+const supabase     = require("../config/supabase");
+const auditoria    = require("../services/auditoria.service");
+const emailService = require("../services/email.service");
 
 const SCHEMA = "condor";
 const ESTADOS_ABIERTOS = ["desembolsado", "recibido_parcial"];
@@ -27,6 +28,39 @@ exports.getPendientes = async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   res.json(_normalizarRequerimientos(data));
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/recepciones/historial
+// Requerimientos con actividad de recepción: completados (en_inventario) y
+// parciales, con el resumen de entregas registradas.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getHistorial = async (req, res) => {
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("requerimiento")
+    .select(`
+      id_requerimiento, numero, descripcion, fecha_solicitud, fecha_desembolso,
+      estado, valor_total, observaciones,
+      proyecto:id_proyecto ( id_proyecto, nombre, sigla ),
+      items:requerimiento_item (
+        id_item, descripcion, unidad, cantidad_solicitada, precio_unitario,
+        recibido:recepcion_item ( cantidad )
+      ),
+      recepciones:recepcion ( id_recepcion, fecha, comprobante_url )
+    `)
+    .in("estado", ["recibido_parcial", "en_inventario"])
+    .order("id_requerimiento", { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const normalizados = _normalizarRequerimientos(data);
+  normalizados.forEach((n, i) => {
+    const recs = (data[i].recepciones || []).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    n.entregas        = recs.length;
+    n.ultima_entrega  = recs[0]?.fecha || null;
+  });
+
+  res.json(normalizados);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,9 +133,9 @@ exports.create = async (req, res) => {
   const { data: req0, error: reqErr } = await supabase.schema(SCHEMA)
     .from("requerimiento")
     .select(`
-      id_requerimiento, estado,
+      id_requerimiento, numero, descripcion, estado, id_solicitante, valor_total,
       items:requerimiento_item (
-        id_item, descripcion, cantidad_solicitada,
+        id_item, descripcion, unidad, cantidad_solicitada,
         recibido:recepcion_item ( cantidad )
       )
     `)
@@ -198,6 +232,38 @@ exports.create = async (req, res) => {
       usuario:  req.usuario.email,
       motivo:   "recepcion_almacenista",
     });
+  }
+
+  // 6. Notificar al peticionario que su material llegó (best-effort)
+  try {
+    if (req0.id_solicitante) {
+      const { data: solicitante } = await supabase.schema(SCHEMA)
+        .from("usuarios").select("email, activo")
+        .eq("id_usuario", req0.id_solicitante).single();
+
+      if (solicitante?.activo && solicitante.email) {
+        const recibidoTxt = itemsParaInsertar
+          .map(r => {
+            const ref = itemsMap.get(r.id_item);
+            return `${ref?.descripcion || "ítem"} × ${r.cantidad}${ref?.unidad ? " " + ref.unidad : ""}`;
+          })
+          .join(", ");
+
+        const completa = nuevoEstado === "en_inventario";
+        await emailService.sendRequerimientoEstadoEmail(solicitante.email, {
+          asunto:  completa
+            ? `Tu requerimiento ${req0.numero} está completo en inventario — El Cóndor`
+            : `Llegó una entrega de tu requerimiento ${req0.numero} — El Cóndor`,
+          titulo:  completa ? "¡Material completo en inventario!" : "Llegó parte de tu material",
+          mensaje: completa
+            ? `El almacenista recibió la última entrega de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Todo el material está en inventario: ${recibidoTxt}.`
+            : `El almacenista registró una entrega parcial de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Recibido en esta entrega: ${recibidoTxt}. El resto sigue pendiente.`,
+          numero:  req0.numero,
+        });
+      }
+    }
+  } catch (e) {
+    console.error("[recepciones] Notificación al peticionario falló:", e.message);
   }
 
   res.status(201).json({
