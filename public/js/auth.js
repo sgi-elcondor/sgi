@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getAuth,
-  signInWithEmailAndPassword,
+  signInWithCustomToken,
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -57,9 +57,27 @@ window._authReady = _ready;
 // ─────────────────────────────────────────────────────────
 // Funciones de login/logout (usadas por login.html)
 // ─────────────────────────────────────────────────────────
+// Password login goes through our backend so the failed-attempt lockout is enforced authoritatively
+// (the browser can't self-report attempts). The backend verifies the password against Firebase and
+// returns a custom token, which we exchange for a normal client session so token refresh keeps
+// working. On failure it throws an Error carrying { code, bloqueado, bloqueado_hasta, intentos_restantes }.
 async function loginEmail(email, password) {
   await _ready;
-  const cred  = await signInWithEmailAndPassword(auth, email, password);
+  const res  = await fetch('/api/v1/auth/login', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error || 'No se pudo iniciar sesión.'), {
+      code:               data.code || 'backend/login-failed',
+      bloqueado:          data.code === 'CUENTA_BLOQUEADA',
+      bloqueado_hasta:    data.bloqueado_hasta ?? null,
+      intentos_restantes: data.intentos_restantes,
+    });
+  }
+  const cred  = await signInWithCustomToken(auth, data.customToken);
   const token = await cred.user.getIdToken();
   localStorage.setItem('fb_token', token);
   return cred.user;

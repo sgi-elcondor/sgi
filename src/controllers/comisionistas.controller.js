@@ -61,9 +61,20 @@ exports.update = async (req, res) => {
 };
 
 exports.getComisiones = async (req, res) => {
-  const { data, error } = await supabase.schema(SCHEMA).from("vw_comisiones_causadas").select("*");
+  // The authoritative "caused commission" signal is venta_comisionista.causada (set by the
+  // accept-payment flow at 30%). The previous vw_comisiones_causadas view is not present in the
+  // DB, so we read the flag directly instead of depending on it.
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("venta_comisionista")
+    .select(`
+      id_venta, id_usuario, valor_comision, causada, fecha_causada, pagada, fecha_pagado,
+      usuario:id_usuario(nombres, apellidos),
+      venta:id_venta(codigo_venta, valor_total)
+    `)
+    .eq("causada", true)
+    .order("fecha_causada", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data || []);
 };
 
 exports.getComisionesDetail = async (req, res) => {
@@ -72,7 +83,7 @@ exports.getComisionesDetail = async (req, res) => {
   const { data: comisiones, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .select(`
-      id_venta, id_usuario, valor_comision, estado, fecha_ganada, pagada, fecha_pagado,
+      id_venta, id_usuario, valor_comision, estado, causada, fecha_causada, fecha_ganada, pagada, fecha_pagado,
       venta:id_venta(
         id_venta, codigo_venta, valor_total, total_permutas, fecha_venta, estado,
         lote:id_lote(codigo_lote, manzana, numero_lote, proyecto:id_proyecto(nombre)),
@@ -131,15 +142,18 @@ exports.getComisionesDetail = async (req, res) => {
     const totalPagado = (pagadoPorVenta[vc.id_venta] || 0) + (Number(venta?.total_permutas) || 0);
     const valorTotal  = Number(venta?.valor_total) || 0;
     const umbral30    = valorTotal * 0.3;
-    const ganada      = vc.estado === "ganada" || vc.estado === "pagada"
-      || (umbral30 > 0 && totalPagado >= umbral30);
+    // Authoritative earned signal: venta_comisionista.causada (+ fecha_causada), set by the
+    // accept-payment flow. The legacy estado/fecha_ganada columns are never written, so we derive
+    // from causada and keep the 30% recompute only as a fallback for data drift / historic rows.
+    const ganada      = vc.causada === true || (umbral30 > 0 && totalPagado >= umbral30);
+    const fechaGanada = vc.fecha_causada || vc.fecha_ganada || null;
 
     return {
       id_venta:           vc.id_venta,
       codigo_venta:       venta?.codigo_venta || null,
       valor_comision:     vc.valor_comision,
-      estado_comision:    vc.estado,
-      fecha_ganada:       vc.fecha_ganada,
+      estado_comision:    vc.pagada ? "pagada" : (ganada ? "ganada" : "no_ganada"),
+      fecha_ganada:       fechaGanada,
       pagada:             vc.pagada || false,
       fecha_pagado:       vc.fecha_pagado,
       ganada,
@@ -217,31 +231,39 @@ exports.registrarMicropago = async (req, res) => {
 };
 
 exports.togglePagada = async (req, res) => {
-  const ventaId      = req.params.ventaId;
+  const ventaId = Number(req.params.ventaId);
+  if (!ventaId) return res.status(400).json({ error: "ID de venta inválido" });
+
   const { pagada }   = req.body;
   const fecha_pagado = pagada ? new Date().toISOString().split("T")[0] : null;
 
+  // A venta may have more than one comisionista row. The UI toggles the paid state per venta, so
+  // update every row for the venta (the old .single() threw when >1 row and silently ignored the
+  // rest). Audit each row.
   const { data: prev } = await supabase.schema(SCHEMA)
-    .from("venta_comisionista").select("pagada").eq("id_venta", ventaId).single();
+    .from("venta_comisionista").select("id_usuario, pagada").eq("id_venta", ventaId);
+  if (!prev || prev.length === 0) {
+    return res.status(404).json({ error: "La venta no tiene comisionistas asociados" });
+  }
 
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .update({ pagada: !!pagada, fecha_pagado })
     .eq("id_venta", ventaId)
-    .select()
-    .single();
-
+    .select();
   if (error) return res.status(400).json({ error: error.message });
 
-  await supabase.schema(SCHEMA).from("auditoria").insert([{
-    tabla_afectada: "venta_comisionista",
-    id_registro:    ventaId,
-    campo:          "pagada",
-    valor_anterior: String(prev?.pagada ?? false),
-    valor_nuevo:    String(!!pagada),
-    usuario_db:     req.usuario?.email,
-    motivo:         "cambio_estado_pago_comision",
-  }]);
+  await supabase.schema(SCHEMA).from("auditoria").insert(
+    prev.map(p => ({
+      tabla_afectada: "venta_comisionista",
+      id_registro:    ventaId,
+      campo:          "pagada",
+      valor_anterior: String(p.pagada ?? false),
+      valor_nuevo:    String(!!pagada),
+      usuario_db:     req.usuario?.email,
+      motivo:         "cambio_estado_pago_comision",
+    }))
+  );
 
   res.json(data);
 };

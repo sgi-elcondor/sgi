@@ -123,7 +123,7 @@ exports.getComisionesGerencia = async (req, res) => {
   const { data, error } = await supabase.schema(SCHEMA)
     .from("venta_comisionista")
     .select(`
-      id_venta, valor_comision, pagada, fecha_ganada, fecha_pagado, estado,
+      id_venta, valor_comision, pagada, causada, fecha_causada, fecha_ganada, fecha_pagado, estado,
       usuario:id_usuario(nombres, apellidos),
       venta:id_venta(
         id_venta, codigo_venta, fecha_venta, valor_total, total_permutas,
@@ -175,8 +175,10 @@ exports.getComisionesGerencia = async (req, res) => {
 
       r.micropagos       = micros;
       r.total_micropagos = micros.reduce((s, m) => s + Number(m.valor || 0), 0);
-      r.ganada = r.estado === "ganada" || r.estado === "pagada"
-        || (umbral30 > 0 && totalPagado >= umbral30);
+      // Authoritative earned signal: causada (+ fecha_causada). The legacy estado/fecha_ganada
+      // columns are never written; derive from causada and keep the 30% recompute as a fallback.
+      r.ganada = r.causada === true || (umbral30 > 0 && totalPagado >= umbral30);
+      if (!r.fecha_ganada && r.fecha_causada) r.fecha_ganada = r.fecha_causada;
     });
   }
 

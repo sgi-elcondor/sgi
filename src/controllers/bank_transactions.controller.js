@@ -9,7 +9,13 @@ exports.getAll = async (req, res) => {
   if (date_to)    query = query.lte('transaction_date', date_to);
   if (amount_min) query = query.gte('amount', parseFloat(amount_min));
   if (amount_max) query = query.lte('amount', parseFloat(amount_max));
-  if (search)     query = query.or(`description.ilike.%${search}%,reference.ilike.%${search}%`);
+  if (search) {
+    // Strip characters that have meaning in the PostgREST .or() filter grammar so user input
+    // cannot break out of the ilike and inject arbitrary filter conditions. The rest is used as
+    // a plain substring match.
+    const safe = String(search).replace(/[,()\\%*]/g, '').trim();
+    if (safe) query = query.or(`description.ilike.%${safe}%,reference.ilike.%${safe}%`);
+  }
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);

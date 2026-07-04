@@ -149,7 +149,30 @@ FROM condor.auditoria
 ORDER BY fecha_cambio DESC;
 
 -- ================================================================
--- Verificacion: las 4 vistas deben aparecer
+-- 5. Resumen de comisiones para direccion (KPI dashboard/gerencia)
+--    Campos: fecha_corte, comisiones_causadas, comisiones_pagadas,
+--            comisiones_pendientes (montos en $, no conteos)
+--
+--    FIX: la version previa derivaba de venta_comisionista.estado, que
+--    NUNCA se actualiza (queda siempre 'no_ganada'), por lo que el KPI
+--    reportaba 0/0/0. La verdad vive en las columnas causada y pagada
+--    (escritas por el flujo de aceptacion de pagos y por togglePagada).
+--    'pendientes' = causada pero aun no pagada.
+--    Se usa DROP + CREATE (no CREATE OR REPLACE) porque el tipo de las
+--    columnas cambia (montos numericos) respecto a la version anterior.
+-- ================================================================
+DROP VIEW IF EXISTS condor.vw_dir_comisiones_resumen;
+CREATE VIEW condor.vw_dir_comisiones_resumen
+WITH (security_invoker = on) AS
+SELECT
+  CURRENT_DATE AS fecha_corte,
+  COALESCE(SUM(vc.valor_comision) FILTER (WHERE vc.causada), 0)                   AS comisiones_causadas,
+  COALESCE(SUM(vc.valor_comision) FILTER (WHERE vc.pagada), 0)                    AS comisiones_pagadas,
+  COALESCE(SUM(vc.valor_comision) FILTER (WHERE vc.causada AND NOT vc.pagada), 0) AS comisiones_pendientes
+FROM condor.venta_comisionista vc;
+
+-- ================================================================
+-- Verificacion: las 5 vistas deben aparecer
 -- ================================================================
 SELECT table_name
 FROM information_schema.views
@@ -158,6 +181,7 @@ WHERE table_schema = 'condor'
     'v_aux_panel_operaciones_diarias',
     'vw_cartera_consolidada',
     'vw_cartera_juridica',
-    'vw_auditoria_basica_operaciones'
+    'vw_auditoria_basica_operaciones',
+    'vw_dir_comisiones_resumen'
   )
 ORDER BY table_name;

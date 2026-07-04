@@ -10,6 +10,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Escapes values interpolated into the HTML email bodies. The data is internal (DB / Firebase),
+// but escaping keeps a stray '<', '&' or quote in a name/proyecto/lote from corrupting the markup.
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 async function sendPasswordResetEmail(to, resetLink) {
   await transporter.sendMail({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
@@ -30,7 +38,7 @@ async function sendPasswordResetEmail(to, resetLink) {
         <tr>
           <td style="padding:32px 32px 8px;">
             <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">Hola,</p>
-            <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">Recibimos una solicitud para restablecer la contraseña de <strong style="color:#111111;">${to}</strong>. Haz clic en el botón para crear una nueva.</p>
+            <p style="margin:0 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">Recibimos una solicitud para restablecer la contraseña de <strong style="color:#111111;">${esc(to)}</strong>. Haz clic en el botón para crear una nueva.</p>
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td align="center" style="padding-bottom:28px;">
@@ -71,12 +79,12 @@ async function sendCompraConfirmacionEmail(to, datos) {
 
   const appUrl   = process.env.APP_URL || 'https://sgi.somoselcondor.com';
   const portal   = `${appUrl.replace(/\/+$/, '')}/#mis-cuotas`;
-  const saludo   = nombres ? `Hola ${String(nombres).split(' ')[0]},` : 'Hola,';
+  const saludo   = nombres ? `Hola ${esc(String(nombres).split(' ')[0])},` : 'Hola,';
   const valorFmt = `$ ${_fmtMoney(valor_total)}`;
   const ciFmt    = cuota_inicial ? `$ ${_fmtMoney(cuota_inicial)}` : '—';
-  const codigoV  = codigo_venta || '—';
-  const proyectoTxt = proyecto || '—';
-  const loteTxt  = codigo_lote || '—';
+  const codigoV  = esc(codigo_venta || '—');
+  const proyectoTxt = esc(proyecto || '—');
+  const loteTxt  = esc(codigo_lote || '—');
   const cuotasTxt = total_cuotas ? `${total_cuotas} cuotas` : 'plan de pago disponible';
 
   await transporter.sendMail({
