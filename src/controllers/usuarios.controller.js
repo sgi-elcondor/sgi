@@ -48,6 +48,13 @@ async function crearUsuario(req, res) {
   }
 
   const rolNombre = rolData.nombre;
+
+  // Only an admin can create an admin account (prevents privilege escalation by a non-admin who
+  // was granted the "usuarios" view).
+  if (rolNombre === 'admin' && req.usuario?.rol !== 'admin') {
+    return res.status(403).json({ error: 'Solo un administrador puede asignar el rol admin' });
+  }
+
   const esPersona = rolNombre === 'comprador' || rolNombre === 'comisionista';
 
   if (esPersona && (!nombres || !apellidos || !documento)) {
@@ -85,8 +92,36 @@ async function crearUsuario(req, res) {
 }
 
 async function actualizarUsuario(req, res) {
-  const { id } = req.params;
+  const targetId = Number(req.params.id);
   const { id_rol, activo, nombres, apellidos, documento, tipo_persona, tipo_documento, telefono } = req.body;
+
+  const { data: actual, error: eRead } = await supabase
+    .schema(SCHEMA).from('usuarios')
+    .select('id_usuario, id_rol, activo, roles:id_rol(nombre)')
+    .eq('id_usuario', targetId)
+    .single();
+  if (eRead || !actual) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+  const cambiaRol = id_rol !== undefined && Number(id_rol) !== Number(actual.id_rol);
+
+  if (cambiaRol) {
+    const { data: nuevoRol } = await supabase
+      .schema(SCHEMA).from('roles').select('nombre').eq('id_rol', id_rol).single();
+    if (!nuevoRol) return res.status(400).json({ error: 'Rol no encontrado' });
+    // Only an admin can grant the admin role.
+    if (nuevoRol.nombre === 'admin' && req.usuario?.rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo un administrador puede asignar el rol admin' });
+    }
+    // No self role change — blocks privilege self-escalation.
+    if (targetId === req.usuario?.id_usuario) {
+      return res.status(403).json({ error: 'No puedes cambiar tu propio rol' });
+    }
+  }
+
+  // No self-deactivation (avoids locking yourself out / removing the last active admin by accident).
+  if (activo === false && targetId === req.usuario?.id_usuario) {
+    return res.status(403).json({ error: 'No puedes desactivar tu propia cuenta' });
+  }
 
   const updates = {};
   if (id_rol         !== undefined) updates.id_rol         = id_rol;
@@ -103,11 +138,32 @@ async function actualizarUsuario(req, res) {
       .schema(SCHEMA)
       .from('usuarios')
       .update(updates)
-      .eq('id_usuario', id)
+      .eq('id_usuario', targetId)
       .select()
       .single();
 
     if (error) return res.status(400).json({ error: error.message });
+
+    // Audit the sensitive changes (role / active flag) — mandatory per project policy.
+    const auditRows = [];
+    const now = new Date().toISOString();
+    if (cambiaRol) {
+      auditRows.push({
+        tabla_afectada: 'usuarios', id_registro: targetId, campo: 'id_rol',
+        valor_anterior: actual.roles?.nombre ?? (actual.id_rol != null ? String(actual.id_rol) : null),
+        valor_nuevo:    String(id_rol),
+        usuario_db:     req.usuario?.email || 'sistema', fecha_cambio: now, motivo: 'cambio_rol_usuario',
+      });
+    }
+    if (activo !== undefined && activo !== actual.activo) {
+      auditRows.push({
+        tabla_afectada: 'usuarios', id_registro: targetId, campo: 'activo',
+        valor_anterior: String(actual.activo), valor_nuevo: String(activo),
+        usuario_db:     req.usuario?.email || 'sistema', fecha_cambio: now,
+        motivo:         activo ? 'reactivacion_usuario' : 'desactivacion_usuario',
+      });
+    }
+    if (auditRows.length) await supabase.schema(SCHEMA).from('auditoria').insert(auditRows);
 
     // Role or active flag may have changed — drop cached identity payloads so the change takes
     // effect on the next request instead of waiting for the TTL.
@@ -120,13 +176,18 @@ async function actualizarUsuario(req, res) {
 }
 
 async function desactivarUsuario(req, res) {
-  const { id } = req.params;
+  const targetId = Number(req.params.id);
+
+  // No self-deactivation.
+  if (targetId === req.usuario?.id_usuario) {
+    return res.status(403).json({ error: 'No puedes desactivar tu propia cuenta' });
+  }
 
   const { data, error } = await supabase
     .schema(SCHEMA)
     .from('usuarios')
     .update({ activo: false })
-    .eq('id_usuario', id)
+    .eq('id_usuario', targetId)
     .select()
     .single();
 
@@ -134,6 +195,14 @@ async function desactivarUsuario(req, res) {
 
   // Deactivated user must lose access immediately, not after the TTL.
   authCache.clear();
+
+  await supabase.schema(SCHEMA).from('auditoria').insert([{
+    tabla_afectada: 'usuarios', id_registro: targetId, campo: 'activo',
+    valor_anterior: 'true', valor_nuevo: 'false',
+    usuario_db:     req.usuario?.email || 'sistema',
+    fecha_cambio:   new Date().toISOString(),
+    motivo:         'desactivacion_usuario',
+  }]);
 
   return res.json(data);
 }

@@ -97,6 +97,12 @@ exports.getById = async (req, res) => {
 
   if (error) return res.status(404).json({ error: error.message });
 
+  // Same visibility restriction as getAll: juridico only sees ventas in pre_mora/en_mora, so a
+  // direct by-id fetch must not leak any other venta to that role.
+  if (req.usuario?.rol === "juridico" && !["pre_mora", "en_mora"].includes(data.estado)) {
+    return res.status(403).json({ error: "No tienes acceso a esta venta" });
+  }
+
   // RN-10/RN-19: attach the receipt-backed paid amount and derived paid flag per cuota,
   // so the ventas module shows the same reality as every other view (no stored-estado trust).
   // tiene_fracciones / factura_activa let the plan editor lock cuotas whose value cannot
