@@ -120,6 +120,7 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/requerimientos':                   { recurso: 'requerimientos', accion: 'crear' },
   'PATCH /api/v1/requerimientos/cancelar':         { recurso: 'requerimientos', accion: 'crear' },
   'GET /api/v1/requerimientos/aprobaciones':       { recurso: 'requerimientos', accion: 'leer' },
+  'GET /api/v1/requerimientos/historial':          { recurso: 'requerimientos', accion: 'leer' },
   'PATCH /api/v1/requerimientos/aprobar-jefe':     { recurso: 'requerimientos', accion: 'aprobar_jefe' },
   'PATCH /api/v1/requerimientos/aprobar-final':    { recurso: 'requerimientos', accion: 'aprobar_final' },
   'PATCH /api/v1/requerimientos/rechazar':         { recurso: 'requerimientos', accion: 'leer' },

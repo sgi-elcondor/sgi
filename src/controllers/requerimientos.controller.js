@@ -281,6 +281,44 @@ async function getAprobaciones(req, res) {
   }
 }
 
+// GET /api/v1/requerimientos/historial
+// Decision history for approvers: everything that already passed (or failed) review.
+async function getHistorial(req, res) {
+  try {
+    if (!_puede(req.usuario, "aprobar_jefe") && !_puede(req.usuario, "aprobar_final")) {
+      return res.status(403).json({ error: "No tienes permisos de aprobación" });
+    }
+
+    const { data, error } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, fecha_solicitud, estado,
+        valor_total, categoria, urgencia, justificacion, motivo_rechazo,
+        fecha_aprobado_jefe, fecha_aprobado_final, fecha_desembolso,
+        solicitante:id_solicitante (nombres, apellidos, email),
+        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        aprobador_final:aprobado_final_por (nombres, apellidos),
+        proyecto:id_proyecto (nombre, sigla),
+        items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
+      `)
+      .in("estado", ["aprobado_jefe", "pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario", "rechazado"])
+      .order("id_requerimiento", { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    return res.json((data || []).map(r => ({
+      ...r,
+      solicitante: `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+      aprobador_jefe:  r.aprobador_jefe  ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()  : null,
+      aprobador_final: r.aprobador_final ? `${r.aprobador_final.nombres || ""} ${r.aprobador_final.apellidos || ""}`.trim() : null,
+      proyecto: r.proyecto?.nombre || null,
+      sigla:    r.proyecto?.sigla || null,
+    })));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 async function _getRequerimiento(id) {
   const { data } = await supabase.schema(SCHEMA)
     .from("requerimiento")
@@ -479,6 +517,6 @@ async function getMios(req, res) {
 
 module.exports = {
   create, getMios, cancelar,
-  getAprobaciones, aprobarJefe, aprobarFinal, rechazar,
+  getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, rechazar,
   CATEGORIAS, URGENCIAS,
 };

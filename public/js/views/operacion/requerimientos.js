@@ -755,6 +755,6 @@ async function guardarRequerimiento() {
 }
 
 // Shared with the aprobaciones view (loaded after this file).
-window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML };
+window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML, abrirRequerimientoPDF };
 
 })();
