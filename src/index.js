@@ -163,6 +163,7 @@ app.use('/api/v1/bank-transactions',  require('./routes/bank_transactions.routes
 app.use('/api/v1/juridico',       require('./routes/juridico.routes'));
 app.use('/api/v1/gastos',         require('./routes/gastos.routes'));
 app.use('/api/v1/recepciones',    require('./routes/recepciones.routes'));
+app.use('/api/v1/requerimientos', require('./routes/requerimientos.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.get("*", (req, res) => {

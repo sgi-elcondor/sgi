@@ -116,6 +116,10 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/recepciones':              { recurso: 'recepciones', accion: 'leer' },
   'POST /api/v1/recepciones':             { recurso: 'recepciones', accion: 'crear' },
 
+  'GET /api/v1/requerimientos/mis-requerimientos': { recurso: 'requerimientos', accion: 'leer' },
+  'POST /api/v1/requerimientos':                   { recurso: 'requerimientos', accion: 'crear' },
+  'PATCH /api/v1/requerimientos/cancelar':         { recurso: 'requerimientos', accion: 'crear' },
+
 };
 
 module.exports = ROUTE_PERMISSIONS;
