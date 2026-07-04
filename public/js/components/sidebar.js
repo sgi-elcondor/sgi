@@ -9,6 +9,7 @@ const SIDEBAR_GROUPS = [
     { view: "compradores", icon: "users",      label: "Compradores" },
     { view: "ventas",      icon: "briefcase",  label: "Ventas" },
     { view: "recepciones", icon: "package",    label: "Recepciones" },
+    { view: "requerimientos", icon: "clipboard-list", label: "Requerimientos" },
   ]},
   { label: "Finanzas", items: [
     { view: "cuotas",             icon: "calendar",      label: "Cuotas" },

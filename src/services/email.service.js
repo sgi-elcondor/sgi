@@ -158,4 +158,66 @@ async function sendCompraConfirmacionEmail(to, datos) {
   });
 }
 
-module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail };
+const URGENCIA_STYLE = {
+  baja:  { label: 'Baja',  color: '#6b7280', bg: '#f3f4f6' },
+  media: { label: 'Media', color: '#2563eb', bg: '#eff6ff' },
+  alta:  { label: 'Alta',  color: '#dc2626', bg: '#fef2f2' },
+};
+
+// Notifies a jefe de área that a new requerimiento awaits their review (REQ-01).
+async function sendRequerimientoNuevoEmail(to, datos) {
+  const { numero, solicitante, categoria, urgencia, valor_total, descripcion, items_count } = datos;
+  const urg    = URGENCIA_STYLE[urgencia] || URGENCIA_STYLE.media;
+  const portal = 'https://sgi.somoselcondor.com';
+
+  await transporter.sendMail({
+    from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `Nuevo requerimiento ${numero} pendiente de tu revisión — El Cóndor`,
+    html: `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ea;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#f97316,#ea6010);padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:28px;">&#128203;</p>
+            <h1 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:700;color:#ffffff;">Nuevo requerimiento de materiales</h1>
+            <p style="margin:6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:rgba(255,255,255,0.82);">El Cóndor · Sistema de Gestión Inmobiliaria</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 8px;">
+            <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;"><strong style="color:#111111;">${solicitante}</strong> creó el requerimiento <strong style="color:#111111;">${numero}</strong> y está pendiente de tu revisión.</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;border-radius:10px;margin-bottom:24px;">
+              <tr><td style="padding:14px 18px 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#999;">Descripción</td></tr>
+              <tr><td style="padding:0 18px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#333;font-weight:600;">${descripcion}</td></tr>
+              <tr><td style="padding:0 18px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#666;">
+                Categoría: <strong style="color:#333;text-transform:capitalize;">${categoria}</strong> &nbsp;·&nbsp;
+                Ítems: <strong style="color:#333;">${items_count}</strong> &nbsp;·&nbsp;
+                Urgencia: <span style="display:inline-block;padding:2px 10px;border-radius:99px;background:${urg.bg};color:${urg.color};font-weight:700;font-size:12px;">${urg.label}</span>
+              </td></tr>
+              <tr><td style="padding:0 18px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#333;">Monto estimado: <strong style="color:#111;">$ ${_fmtMoney(valor_total)}</strong></td></tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom:24px;">
+                  <a href="${portal}" style="display:inline-block;padding:14px 36px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;font-weight:700;">Revisar en el SGI</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 24px;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#bbbbbb;text-align:center;line-height:1.6;">Correo enviado automáticamente por <strong>El Cóndor SGI</strong>.<br>Por favor, no respondas a este mensaje.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`,
+  });
+}
+
+module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail, sendRequerimientoNuevoEmail };

@@ -25,6 +25,7 @@ const VIEWS = {
   "payment-validation":{ fn: "paymentValidationView", title: "Validacion de Pagos" },
   gastos:              { fn: "gastosView",             title: "Gastos Operativos" },
   recepciones:         { fn: "recepcionesView",        title: "Recepción de Materiales" },
+  requerimientos:      { fn: "requerimientosView",     title: "Requerimientos" },
 };
 
 const TOPBAR_SUBTITLES = {
@@ -52,6 +53,7 @@ const TOPBAR_SUBTITLES = {
   gastos:              "Registro y control de gastos operativos por proyecto",
   juridico:            "Ventas en mora, pre-mora y devolucion — observaciones juridicas",
   recepciones:         "Registro de entrega de materiales y actualizacion de stock",
+  requerimientos:      "Solicita materiales para tu área y consulta su estado",
 };
 
 window.currentUser    = null;
