@@ -484,6 +484,166 @@ async function rechazar(req, res) {
   }
 }
 
+// ── Desembolso por tesorería (REQ-04) ───────────────────────────────────────
+
+// GET /api/v1/requerimientos/desembolsos
+// Treasury inbox: 'pendiente_tesoreria' waiting for payment plus the disbursed history.
+async function getDesembolsos(req, res) {
+  try {
+    const { data, error } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, fecha_solicitud, estado,
+        valor_total, categoria, urgencia, justificacion, id_proyecto,
+        fecha_aprobado_jefe, fecha_aprobado_final,
+        fecha_desembolso, valor_desembolsado, comprobante_desembolso_url, id_gasto,
+        solicitante:id_solicitante (nombres, apellidos, email),
+        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        aprobador_final:aprobado_final_por (nombres, apellidos),
+        desembolsador:desembolsado_por (nombres, apellidos),
+        proyecto:id_proyecto (nombre, sigla),
+        items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
+      `)
+      .in("estado", ["pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario"])
+      .order("fecha_aprobado_final", { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const nombre = u => u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() : null;
+
+    return res.json((data || []).map(r => ({
+      ...r,
+      solicitante:     nombre(r.solicitante) || r.solicitante?.email || "—",
+      aprobador_jefe:  nombre(r.aprobador_jefe),
+      aprobador_final: nombre(r.aprobador_final),
+      desembolsador:   nombre(r.desembolsador),
+      proyecto: r.proyecto?.nombre || null,
+      sigla:    r.proyecto?.sigla || null,
+    })));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/desembolsar
+// Body: { valor?, fecha?, comprobante_url, observaciones? }
+// Marks the requerimiento as 'desembolsado', auto-creates the gasto (best-effort when
+// the requerimiento has no project) and notifies almacenistas + the requester.
+async function desembolsar(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const comprobanteUrl = String(req.body?.comprobante_url || "").trim();
+    if (!comprobanteUrl) {
+      return res.status(422).json({ error: "El comprobante del pago es obligatorio" });
+    }
+
+    const { data: r } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select("id_requerimiento, numero, descripcion, estado, valor_total, categoria, id_proyecto, id_solicitante")
+      .eq("id_requerimiento", id)
+      .single();
+
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "pendiente_tesoreria") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; solo se desembolsan los aprobados por el dueño` });
+    }
+
+    const valor = Number(req.body?.valor) > 0 ? Number(req.body.valor) : Number(r.valor_total || 0);
+    if (!(valor > 0)) return res.status(422).json({ error: "El valor del desembolso debe ser mayor a cero" });
+
+    const fecha         = req.body?.fecha || new Date().toISOString().slice(0, 10);
+    const observaciones = String(req.body?.observaciones || "").trim();
+
+    // 1. Auto-create the gasto. Best-effort: a missing project (gasto requires one)
+    //    must not block the treasury operation; the warning is surfaced to the UI.
+    let idGasto = null;
+    let gastoWarning = null;
+    const { data: gasto, error: eGasto } = await supabase.schema(SCHEMA)
+      .from("gasto")
+      .insert([{
+        id_proyecto:     r.id_proyecto,
+        fecha,
+        descripcion:     `Desembolso requerimiento ${r.numero} — ${r.descripcion}`,
+        valor,
+        categoria:       r.categoria === "servicios" ? "servicios" : "otros",
+        detalle_recurso: `Requerimiento ${r.numero} (${r.categoria})${observaciones ? " · " + observaciones : ""}`,
+        comprobante_url: comprobanteUrl,
+      }])
+      .select("id_gasto")
+      .single();
+
+    if (eGasto) {
+      gastoWarning = "El gasto automático no pudo crearse (" + eGasto.message + "); regístralo manualmente en Gastos.";
+      console.error("[requerimientos] Gasto automático falló:", eGasto.message);
+    } else {
+      idGasto = gasto.id_gasto;
+    }
+
+    // 2. Move the requerimiento to 'desembolsado' (guarded by current estado).
+    const { data: updated, error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update({
+        estado:                     "desembolsado",
+        fecha_desembolso:           fecha,
+        desembolsado_por:           req.usuario.id_usuario,
+        valor_desembolsado:         valor,
+        comprobante_desembolso_url: comprobanteUrl,
+        id_gasto:                   idGasto,
+      })
+      .eq("id_requerimiento", id)
+      .eq("estado", "pendiente_tesoreria")
+      .select("id_requerimiento");
+
+    if (eUpd || !updated?.length) {
+      if (idGasto) {
+        await supabase.schema(SCHEMA).from("gasto").delete().eq("id_gasto", idGasto);
+      }
+      return res.status(400).json({ error: eUpd?.message || "No se pudo registrar el desembolso (el estado cambió)" });
+    }
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: "estado",
+      anterior: "pendiente_tesoreria", nuevo: "desembolsado",
+      usuario: req.usuario.email,
+      motivo: `desembolso por $${valor}${idGasto ? ` (gasto #${idGasto})` : " (sin gasto automático)"}`,
+    });
+
+    if (idGasto) {
+      await auditoria.log({
+        tabla: "gasto", id: idGasto, campo: "creacion",
+        nuevo: JSON.stringify({ valor, fecha, requerimiento: r.numero }),
+        usuario: req.usuario.email,
+        motivo: "gasto_automatico_desembolso",
+      });
+    }
+
+    try {
+      const almacenistas = await _emailsDeRol("almacenista");
+      const solicitante  = await _emailDeUsuario(r.id_solicitante);
+      await _notificar(almacenistas, {
+        asunto:  `Requerimiento ${r.numero} desembolsado — preparar recepción — El Cóndor`,
+        titulo:  "Material en camino",
+        mensaje: `Tesorería desembolsó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Cuando llegue el material, registra la recepción en el módulo Recepciones.`,
+        numero:  r.numero,
+        valor_total: valor,
+      });
+      await _notificar([solicitante], {
+        asunto:  `Tu requerimiento ${r.numero} fue desembolsado — El Cóndor`,
+        titulo:  "¡Desembolso realizado!",
+        mensaje: `Tesorería realizó el pago de tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}). El material queda en proceso de compra y entrega.`,
+        numero:  r.numero,
+        valor_total: valor,
+      });
+    } catch (e) { console.error("[requerimientos] Notificación de desembolso falló:", e.message); }
+
+    return res.json({ ok: true, numero: r.numero, estado: "desembolsado", id_gasto: idGasto, gasto_warning: gastoWarning });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 // GET /api/v1/requerimientos/mis-requerimientos
 async function getMios(req, res) {
   try {
@@ -518,5 +678,6 @@ async function getMios(req, res) {
 module.exports = {
   create, getMios, cancelar,
   getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, rechazar,
+  getDesembolsos, desembolsar,
   CATEGORIAS, URGENCIAS,
 };
