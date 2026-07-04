@@ -33,6 +33,7 @@ const CLASSIC = [
   "js/views/operacion/ventas.js",
   "js/views/operacion/recepciones.js",
   "js/views/operacion/requerimientos.js",
+  "js/views/operacion/aprobaciones.js",
   "js/views/finanzas/cuotas.js",
   "js/views/finanzas/pagos.js",
   "js/views/finanzas/comisionistas.js",

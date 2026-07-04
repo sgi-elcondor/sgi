@@ -280,6 +280,171 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Tabs (aprobaciones: pendientes / registros) ───────────────────────── */
+.req-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.req-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border, var(--border-color));
+  background: var(--surface-2, var(--bg-secondary));
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.req-tab svg, .req-tab .sgi-icon { width: 1rem; height: 1rem; }
+
+.req-tab:hover { color: var(--text); border-color: var(--accent); }
+
+.req-tab.active {
+  background: rgba(var(--accent-rgb, 249, 115, 22), 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.req-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border, var(--border-color));
+  font-size: 0.7rem;
+}
+
+.req-tab.active .req-tab-count {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Registros: KPI danger + split bar ─────────────────────────────────── */
+.req-kpi.danger .req-kpi-icon {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger, #dc2626);
+}
+
+.req-split-card {
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border, var(--border-color));
+  border-radius: 0.75rem;
+  background: var(--surface-2, var(--bg-secondary));
+}
+
+.req-split-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.req-split-head svg, .req-split-head .sgi-icon {
+  width: 0.95rem; height: 0.95rem;
+  vertical-align: -0.15rem;
+  color: var(--accent);
+}
+
+.req-split-pcts .ok  { color: var(--success, #16a34a); }
+.req-split-pcts .bad { color: var(--danger, #dc2626); }
+
+.req-split-bar {
+  display: flex;
+  height: 0.7rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.req-split-ok  { background: var(--success, #16a34a); transition: width 0.4s ease; }
+.req-split-bad { background: var(--danger, #dc2626);  transition: width 0.4s ease; }
+
+.req-split-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.req-split-legend .dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+}
+
+.req-split-legend .dot.ok  { background: var(--success, #16a34a); }
+.req-split-legend .dot.bad { background: var(--danger, #dc2626); }
+
+/* ── Approval info + rejection box (detail modals) ─────────────────────── */
+.req-aprobaciones-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.req-aprobaciones-info span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.req-aprobaciones-info svg,
+.req-aprobaciones-info .sgi-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--success, #16a34a);
+}
+
+.req-rechazo-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.req-rechazo-box svg,
+.req-rechazo-box .sgi-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--danger, #dc2626);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.req-empty-ok {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: var(--success, #16a34a) !important;
+}
+
 /* ── Misc ───────────────────────────────────────────────────────────────── */
 .req-justificacion {
   font-size: 0.875rem;

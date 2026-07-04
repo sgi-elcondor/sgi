@@ -220,4 +220,64 @@ async function sendRequerimientoNuevoEmail(to, datos) {
   });
 }
 
-module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail, sendRequerimientoNuevoEmail };
+// Generic state-change notification for the requerimiento approval flow (REQ-02/03):
+// used for "listo para aprobación final" (gerencia), "en tesorería" (tesorero),
+// "aprobado" / "rechazado" (peticionario). `motivo` renders a red reason box.
+async function sendRequerimientoEstadoEmail(to, datos) {
+  const { asunto, titulo, mensaje, numero, valor_total, motivo } = datos;
+  const portal = 'https://sgi.somoselcondor.com';
+
+  const motivoHTML = motivo ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;margin-bottom:24px;">
+      <tr><td style="padding:12px 18px 2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;font-weight:700;color:#dc2626;">MOTIVO</td></tr>
+      <tr><td style="padding:0 18px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#7f1d1d;line-height:1.5;">${motivo}</td></tr>
+    </table>` : '';
+
+  await transporter.sendMail({
+    from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
+    to,
+    subject: asunto,
+    html: `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ea;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#f97316,#ea6010);padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:28px;">&#128203;</p>
+            <h1 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:700;color:#ffffff;">${titulo}</h1>
+            <p style="margin:6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:rgba(255,255,255,0.82);">El Cóndor · Sistema de Gestión Inmobiliaria</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 8px;">
+            <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">${mensaje}</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;border-radius:10px;margin-bottom:24px;">
+              <tr><td style="padding:14px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#333;">
+                Requerimiento: <strong style="color:#111;">${numero}</strong>
+                ${valor_total != null ? ` &nbsp;·&nbsp; Monto estimado: <strong style="color:#111;">$ ${_fmtMoney(valor_total)}</strong>` : ''}
+              </td></tr>
+            </table>
+            ${motivoHTML}
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom:24px;">
+                  <a href="${portal}" style="display:inline-block;padding:14px 36px;background:#f97316;color:#ffffff;text-decoration:none;border-radius:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;font-weight:700;">Revisar en el SGI</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 24px;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#bbbbbb;text-align:center;line-height:1.6;">Correo enviado automáticamente por <strong>El Cóndor SGI</strong>.<br>Por favor, no respondas a este mensaje.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`,
+  });
+}
+
+module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail, sendRequerimientoNuevoEmail, sendRequerimientoEstadoEmail };
