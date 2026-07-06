@@ -1,6 +1,8 @@
 const supabase     = require("../config/supabase");
 const auditoria    = require("../services/auditoria.service");
 const emailService = require("../services/email.service");
+const events       = require("../services/events.service");
+const notif        = require("../services/notificaciones.service");
 
 const SCHEMA = "condor";
 const ESTADOS_ABIERTOS = ["desembolsado", "recibido_parcial"];
@@ -233,6 +235,28 @@ exports.create = async (req, res) => {
       motivo:   "recepcion_almacenista",
     });
   }
+
+  try {
+    events.emit({
+      tipo: "requerimiento",
+      por:  req.usuario.id_usuario,
+      id_requerimiento,
+      numero:  req0.numero,
+      estado:  nuevoEstado,
+      entrega: true,
+    });
+  } catch (_) { /* never blocks the request */ }
+
+  notif.crear({
+    paraIds:    [req0.id_solicitante],
+    excepto:    req.usuario.id_usuario,
+    titulo:     nuevoEstado === "en_inventario"
+      ? `${req0.numero}: material completo en inventario`
+      : `${req0.numero}: llegó una entrega parcial`,
+    mensaje:    req0.descripcion,
+    vista:      "requerimientos",
+    referencia: req0.numero,
+  }).catch(() => {});
 
   // 6. Notificar al peticionario que su material llegó (best-effort)
   try {
