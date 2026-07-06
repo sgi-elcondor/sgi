@@ -248,6 +248,8 @@ async function iniciarApp() {
     initSidebarToggle();
     window.SGIUI?.hydrate();
     setTodayDate();
+    window.SGILive?.init();
+    window.SGINotif?.init();
 
     window.addEventListener("hashchange", function() { navigate(getInitialView(), false); });
     navigate(getInitialView(), false);
