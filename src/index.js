@@ -146,6 +146,16 @@ app.get('/api/v1/firebase-config', (req, res) => {
   });
 });
 
+// EventSource cannot send an Authorization header: the live stream (REQ-07)
+// receives the same Firebase ID token via ?token= and it is mapped into the
+// header here so the normal auth middleware validates it.
+app.use('/api/v1/requerimientos/stream', (req, _res, next) => {
+  if (req.query.token && !req.headers.authorization) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+});
+
 app.use('/api/v1', verificarToken, verificarPermiso);
 
 app.use('/api/v1/proyectos',      require('./routes/proyectos.routes'));
@@ -166,6 +176,7 @@ app.use('/api/v1/juridico',       require('./routes/juridico.routes'));
 app.use('/api/v1/gastos',         require('./routes/gastos.routes'));
 app.use('/api/v1/recepciones',    require('./routes/recepciones.routes'));
 app.use('/api/v1/requerimientos', require('./routes/requerimientos.routes'));
+app.use('/api/v1/notificaciones', require('./routes/notificaciones.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.get("*", (req, res) => {
@@ -182,6 +193,13 @@ app.listen(PORT, () => {
 // Run mora sync every 24 h
 setInterval(
   () => actualizarMora().catch(err => console.error('[mora] interval error:', err.message)),
+  24 * 60 * 60 * 1000
+);
+
+// Daily housekeeping: drop read notifications older than 60 days
+const { limpiarAntiguas } = require('./services/notificaciones.service');
+setInterval(
+  () => limpiarAntiguas(60).catch(err => console.error('[notificaciones] cleanup error:', err.message)),
   24 * 60 * 60 * 1000
 );
 

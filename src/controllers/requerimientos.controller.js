@@ -2,6 +2,8 @@ const supabase     = require("../config/supabase");
 const auditoria    = require("../services/auditoria.service");
 const consecutivos = require("../services/consecutivos.service");
 const emailService = require("../services/email.service");
+const events       = require("../services/events.service");
+const notif        = require("../services/notificaciones.service");
 
 const SCHEMA     = "condor";
 const CATEGORIAS = ["materiales", "herramientas", "equipos", "servicios", "otros"];
@@ -103,6 +105,17 @@ async function create(req, res) {
       motivo:  "creacion_requerimiento",
     });
 
+    _emitLive(req.usuario, { id_requerimiento: reqCreado.id_requerimiento, numero: reqCreado.numero, estado: "pendiente_jefe" });
+
+    notif.crear({
+      paraRoles:  ["jefe_area"],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `Nuevo requerimiento ${reqCreado.numero}`,
+      mensaje:    `${reqCreado.descripcion} — pendiente de tu aprobación`,
+      vista:      "aprobaciones",
+      referencia: reqCreado.numero,
+    }).catch(() => {});
+
     // Notify jefes de área. Best-effort: the requerimiento is already saved,
     // so an email failure must never fail the request.
     try {
@@ -201,6 +214,17 @@ async function cancelar(req, res) {
       motivo,
     });
 
+    _emitLive(req.usuario, { id_requerimiento: id, numero: reqRow.numero, estado: "cancelado" });
+
+    notif.crear({
+      paraRoles:  ["jefe_area"],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${reqRow.numero} cancelado por el solicitante`,
+      mensaje:    motivo,
+      vista:      "aprobaciones",
+      referencia: reqRow.numero,
+    }).catch(() => {});
+
     return res.json({ ok: true, numero: reqRow.numero, estado: "cancelado" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -211,6 +235,85 @@ async function cancelar(req, res) {
 
 function _puede(reqUsuario, accion) {
   return reqUsuario.rol === "admin" || reqUsuario.permisos?.has(`requerimientos:${accion}`);
+}
+
+// ── Live updates (REQ-07) ───────────────────────────────────────────────────
+
+// Any role that participates in the requerimiento flow may listen to the stream.
+const STREAM_PERMS = [
+  "requerimientos:leer", "requerimientos:aprobar_jefe", "requerimientos:aprobar_final",
+  "requerimientos:desembolsar", "recepciones:leer",
+];
+
+function _puedeStream(reqUsuario) {
+  return reqUsuario.rol === "admin" || STREAM_PERMS.some(p => reqUsuario.permisos?.has(p));
+}
+
+// GET /api/v1/requerimientos/stream (SSE).
+// EventSource cannot send an Authorization header, so index.js maps ?token=
+// into the header before the global auth middleware runs.
+function stream(req, res) {
+  if (!_puedeStream(req.usuario)) {
+    return res.status(403).json({ error: "No tienes permisos del módulo de requerimientos" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type":      "text/event-stream",
+    "Cache-Control":     "no-cache, no-transform",
+    "Connection":        "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.write("retry: 5000\n\n");
+
+  const unsubscribe = events.subscribe(res, req.usuario);
+  req.on("close", unsubscribe);
+}
+
+// Fire-and-forget notification of a state transition to every listener.
+function _emitLive(reqUsuario, datos) {
+  try {
+    events.emit({ tipo: "requerimiento", por: reqUsuario?.id_usuario ?? null, ...datos });
+  } catch (_) { /* never blocks the request */ }
+}
+
+// GET /api/v1/requerimientos/contadores
+// Pending counts for the caller's role — feeds the live sidebar badges.
+async function getContadores(req, res) {
+  try {
+    const conteo = async (estados) => {
+      const { count } = await supabase.schema(SCHEMA)
+        .from("requerimiento")
+        .select("id_requerimiento", { count: "exact", head: true })
+        .in("estado", estados);
+      return count || 0;
+    };
+
+    const out = {};
+    const esAdmin = req.usuario.rol === "admin";
+
+    let aprobaciones = 0;
+    if (esAdmin || req.usuario.permisos?.has("requerimientos:aprobar_jefe")) {
+      aprobaciones += await conteo(["pendiente_jefe"]);
+    }
+    if (esAdmin || req.usuario.permisos?.has("requerimientos:aprobar_final")) {
+      aprobaciones += await conteo(["aprobado_jefe"]);
+    }
+    if (aprobaciones) out.aprobaciones = aprobaciones;
+
+    if (esAdmin || req.usuario.permisos?.has("requerimientos:desembolsar")) {
+      const n = await conteo(["pendiente_tesoreria"]);
+      if (n) out.desembolsos = n;
+    }
+
+    if (esAdmin || req.usuario.permisos?.has("recepciones:leer")) {
+      const n = await conteo(["desembolsado", "recibido_parcial"]);
+      if (n) out.recepciones = n;
+    }
+
+    return res.json(out);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }
 
 async function _emailsDeRol(nombreRol) {
@@ -355,6 +458,25 @@ async function aprobarJefe(req, res) {
       usuario: req.usuario.email, motivo: "aprobacion_jefe",
     });
 
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "aprobado_jefe" });
+
+    notif.crear({
+      paraRoles:  ["gerencia"],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} listo para tu aprobación final`,
+      mensaje:    r.descripcion,
+      vista:      "aprobaciones",
+      referencia: r.numero,
+    }).catch(() => {});
+    notif.crear({
+      paraIds:    [r.id_solicitante],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} aprobado por el jefe de área`,
+      mensaje:    "Sigue la aprobación final del dueño",
+      vista:      "requerimientos",
+      referencia: r.numero,
+    }).catch(() => {});
+
     try {
       const duenos = await _emailsDeRol("gerencia");
       await _notificar(duenos, {
@@ -398,6 +520,25 @@ async function aprobarFinal(req, res) {
       anterior: "aprobado_jefe", nuevo: "pendiente_tesoreria",
       usuario: req.usuario.email, motivo: "aprobacion_final",
     });
+
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "pendiente_tesoreria" });
+
+    notif.crear({
+      paraRoles:  ["tesorero"],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} aprobado — gestionar desembolso`,
+      mensaje:    r.descripcion,
+      vista:      "desembolsos",
+      referencia: r.numero,
+    }).catch(() => {});
+    notif.crear({
+      paraIds:    [r.id_solicitante],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} recibió la aprobación final`,
+      mensaje:    "Pasó a tesorería para el desembolso",
+      vista:      "requerimientos",
+      referencia: r.numero,
+    }).catch(() => {});
 
     // REQ-03: tesorería takes over and the tesorero gets notified; the requester too.
     try {
@@ -465,6 +606,17 @@ async function rechazar(req, res) {
       anterior: r.estado, nuevo: "rechazado",
       usuario: req.usuario.email, motivo,
     });
+
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "rechazado" });
+
+    notif.crear({
+      paraIds:    [r.id_solicitante],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} fue rechazado`,
+      mensaje:    motivo,
+      vista:      "requerimientos",
+      referencia: r.numero,
+    }).catch(() => {});
 
     try {
       const solicitante = await _emailDeUsuario(r.id_solicitante);
@@ -619,6 +771,25 @@ async function desembolsar(req, res) {
       });
     }
 
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "desembolsado" });
+
+    notif.crear({
+      paraRoles:  ["almacenista"],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} desembolsado — preparar recepción`,
+      mensaje:    r.descripcion,
+      vista:      "recepciones",
+      referencia: r.numero,
+    }).catch(() => {});
+    notif.crear({
+      paraIds:    [r.id_solicitante],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} fue desembolsado`,
+      mensaje:    "El material queda en proceso de compra y entrega",
+      vista:      "requerimientos",
+      referencia: r.numero,
+    }).catch(() => {});
+
     try {
       const almacenistas = await _emailsDeRol("almacenista");
       const solicitante  = await _emailDeUsuario(r.id_solicitante);
@@ -679,5 +850,6 @@ module.exports = {
   create, getMios, cancelar,
   getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, rechazar,
   getDesembolsos, desembolsar,
+  stream, getContadores,
   CATEGORIAS, URGENCIAS,
 };

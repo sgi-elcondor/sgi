@@ -2,6 +2,8 @@ const router = require("express").Router();
 const ctrl   = require("../controllers/requerimientos.controller");
 
 router.get("/mis-requerimientos",  ctrl.getMios);
+router.get("/stream",              ctrl.stream);
+router.get("/contadores",          ctrl.getContadores);
 router.get("/aprobaciones",        ctrl.getAprobaciones);
 router.get("/historial",           ctrl.getHistorial);
 router.get("/desembolsos",         ctrl.getDesembolsos);

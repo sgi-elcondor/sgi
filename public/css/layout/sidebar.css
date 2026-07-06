@@ -387,3 +387,33 @@ body.sidebar-collapsed .nav-icon {
 .sidebar {
   scrollbar-gutter: stable;
 }
+/* Live pending-count badge (REQ-07) */
+.nav-item {
+  position: relative;
+}
+
+.nav-live-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sidebar-collapsed .nav-live-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  min-width: 1rem;
+  height: 1rem;
+  font-size: 0.55rem;
+}

@@ -63,6 +63,8 @@ const CLASSIC = [
   "js/components/user-menu.js",
   "js/components/onboarding.js",
   "js/components/role-switcher.js",
+  "js/components/live-updates.js",
+  "js/components/notificaciones.js",
 ];
 
 const ASSET_EXTERNALS = ["*.png", "*.jpg", "*.jpeg", "*.svg", "*.gif", "*.webp",

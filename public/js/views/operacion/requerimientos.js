@@ -754,7 +754,12 @@ async function guardarRequerimiento() {
   }
 }
 
-// Shared with the aprobaciones view (loaded after this file).
-window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML, abrirRequerimientoPDF };
+// Live updates (REQ-07): lets the SSE client glow the row whose estado just moved.
+function markLive(id) {
+  _highlightId = Number(id) || null;
+}
+
+// Shared with the aprobaciones view and the live-updates client (loaded after this file).
+window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML, abrirRequerimientoPDF, markLive };
 
 })();
