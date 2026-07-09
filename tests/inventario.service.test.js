@@ -95,6 +95,27 @@ describe("registrarEntradas", () => {
   });
 });
 
+describe("registrarSalidas", () => {
+  it("inserta movimientos tipo salida con los mismos datos del requerimiento", async () => {
+    const inserted = setupInsert();
+
+    const n = await inventario.registrarSalidas({
+      requerimiento: { id_requerimiento: 9, categoria: "materiales", id_proyecto: 2 },
+      id_usuario: 8,
+      items: [{ descripcion: "Cemento Gris", unidad: "bulto", cantidad: 10 }],
+    });
+
+    expect(n).toBe(1);
+    expect(inserted[0]).toMatchObject({
+      tipo: "salida",
+      material: "cemento gris",
+      cantidad: 10,
+      id_requerimiento: 9,
+      creado_por: 8,
+    });
+  });
+});
+
 describe("stockActual", () => {
   it("deriva el saldo: entradas suman, salidas restan, agrupado por material+unidad", async () => {
     setupSelect([

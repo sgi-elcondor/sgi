@@ -15,15 +15,15 @@ function normalizarMaterial(texto) {
     .trim();
 }
 
-// Appends 'entrada' movements for the items received in a recepcion.
-// Best-effort by design: the recepcion itself is the source document, so a
-// ledger failure is logged and never blocks the delivery being registered.
-async function registrarEntradas({ requerimiento, id_recepcion, items, id_usuario }) {
+// Appends movements for a requerimiento's items. Best-effort by design: the
+// recepcion/entrega is the source document, so a ledger failure is logged and
+// never blocks the operation being registered.
+async function _registrarMovimientos(tipo, { requerimiento, id_recepcion = null, items, id_usuario }) {
   try {
     const rows = (items || [])
       .filter(it => Number(it.cantidad) > 0 && String(it.descripcion || "").trim())
       .map(it => ({
-        tipo:             "entrada",
+        tipo,
         material:         normalizarMaterial(it.descripcion),
         descripcion:      String(it.descripcion).trim(),
         categoria:        requerimiento?.categoria || null,
@@ -31,7 +31,7 @@ async function registrarEntradas({ requerimiento, id_recepcion, items, id_usuari
         cantidad:         Number(it.cantidad),
         id_proyecto:      requerimiento?.id_proyecto || null,
         id_requerimiento: requerimiento?.id_requerimiento || null,
-        id_recepcion:     id_recepcion || null,
+        id_recepcion:     id_recepcion,
         creado_por:       id_usuario || null,
       }));
 
@@ -42,14 +42,23 @@ async function registrarEntradas({ requerimiento, id_recepcion, items, id_usuari
       .insert(rows);
 
     if (error) {
-      console.error("[inventario] entrada falló:", error.message);
+      console.error(`[inventario] ${tipo} falló:`, error.message);
       return 0;
     }
     return rows.length;
   } catch (err) {
-    console.error("[inventario] registrarEntradas falló:", err.message);
+    console.error(`[inventario] registrar ${tipo} falló:`, err.message);
     return 0;
   }
+}
+
+function registrarEntradas(datos) {
+  return _registrarMovimientos("entrada", datos);
+}
+
+// INV-02: stock decreases when the almacenista hands the material over.
+function registrarSalidas(datos) {
+  return _registrarMovimientos("salida", datos);
 }
 
 // Derived stock: Σ entradas − Σ salidas, grouped by material + unidad
@@ -95,4 +104,4 @@ async function stockActual({ idProyecto = null } = {}) {
   return [...grupos.values()].sort((a, b) => a.material.localeCompare(b.material));
 }
 
-module.exports = { normalizarMaterial, registrarEntradas, stockActual };
+module.exports = { normalizarMaterial, registrarEntradas, registrarSalidas, stockActual };

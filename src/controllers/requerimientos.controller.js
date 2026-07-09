@@ -4,6 +4,7 @@ const consecutivos = require("../services/consecutivos.service");
 const emailService = require("../services/email.service");
 const events       = require("../services/events.service");
 const notif        = require("../services/notificaciones.service");
+const inventario   = require("../services/inventario.service");
 
 const SCHEMA     = "condor";
 const CATEGORIAS = ["materiales", "herramientas", "equipos", "servicios", "otros"];
@@ -306,7 +307,7 @@ async function getContadores(req, res) {
     }
 
     if (esAdmin || req.usuario.permisos?.has("recepciones:leer")) {
-      const n = await conteo(["desembolsado", "recibido_parcial"]);
+      const n = await conteo(["desembolsado", "recibido_parcial", "en_inventario"]);
       if (n) out.recepciones = n;
     }
 
@@ -815,6 +816,156 @@ async function desembolsar(req, res) {
   }
 }
 
+// ── Entrega al peticionario (INV-02) ─────────────────────────────────────────
+
+// GET /api/v1/requerimientos/autorizacion?numero=REQ-...
+// Pre-loaded delivery authorization for the almacenista: the en_inventario
+// requerimiento with requester and RECEIVED quantities per item.
+async function getAutorizacion(req, res) {
+  try {
+    const numero = String(req.query.numero || "").trim();
+    if (!numero) return res.status(400).json({ error: "Indica el número del requerimiento" });
+
+    const { data: r, error } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, estado, valor_total, categoria, urgencia,
+        fecha_solicitud, fecha_desembolso, id_proyecto,
+        solicitante:id_solicitante (nombres, apellidos, email, telefono, documento),
+        proyecto:id_proyecto (nombre, sigla),
+        items:requerimiento_item (
+          id_item, descripcion, unidad, cantidad_solicitada,
+          recibido:recepcion_item ( cantidad )
+        )
+      `)
+      .ilike("numero", numero)
+      .single();
+
+    if (error || !r) return res.status(404).json({ error: `No se encontró el requerimiento '${numero}'` });
+
+    if (r.estado === "entregado") {
+      return res.status(409).json({ error: `${r.numero} ya fue entregado` });
+    }
+    if (r.estado !== "en_inventario") {
+      return res.status(409).json({
+        error: `${r.numero} está en estado '${r.estado}': aún no tiene el material completo en inventario`,
+      });
+    }
+
+    return res.json({
+      id_requerimiento: r.id_requerimiento,
+      numero:      r.numero,
+      descripcion: r.descripcion,
+      estado:      r.estado,
+      categoria:   r.categoria,
+      urgencia:    r.urgencia,
+      fecha_solicitud:  r.fecha_solicitud,
+      fecha_desembolso: r.fecha_desembolso,
+      solicitante: `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+      solicitante_documento: r.solicitante?.documento || null,
+      solicitante_telefono:  r.solicitante?.telefono || null,
+      proyecto: r.proyecto?.nombre || null,
+      sigla:    r.proyecto?.sigla || null,
+      items: (r.items || []).map(it => ({
+        id_item:     it.id_item,
+        descripcion: it.descripcion,
+        unidad:      it.unidad,
+        cantidad_recibida: (it.recibido || []).reduce((s, rc) => s + Number(rc.cantidad), 0),
+      })),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/entregar
+// Body: { receptor? }. Hands the material over: stock salidas + estado 'entregado'.
+async function entregar(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const { data: r } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, estado, categoria, id_proyecto, id_solicitante,
+        items:requerimiento_item (
+          id_item, descripcion, unidad,
+          recibido:recepcion_item ( cantidad )
+        )
+      `)
+      .eq("id_requerimiento", id)
+      .single();
+
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "en_inventario") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; solo se entrega lo que está en inventario` });
+    }
+
+    const receptor = String(req.body?.receptor || "").trim() || null;
+    const hoy      = new Date().toISOString().slice(0, 10);
+
+    const { data: updated, error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update({
+        estado:           "entregado",
+        fecha_entrega:    hoy,
+        entregado_por:    req.usuario.id_usuario,
+        entrega_receptor: receptor,
+      })
+      .eq("id_requerimiento", id)
+      .eq("estado", "en_inventario")
+      .select("id_requerimiento");
+
+    if (eUpd || !updated?.length) {
+      return res.status(400).json({ error: eUpd?.message || "No se pudo registrar la entrega (el estado cambió)" });
+    }
+
+    // Stock salidas for the received quantities (best-effort ledger).
+    inventario.registrarSalidas({
+      requerimiento: r,
+      id_usuario:    req.usuario.id_usuario,
+      items: (r.items || []).map(it => ({
+        descripcion: it.descripcion,
+        unidad:      it.unidad,
+        cantidad:    (it.recibido || []).reduce((s, rc) => s + Number(rc.cantidad), 0),
+      })),
+    }).catch(() => {});
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: "estado",
+      anterior: "en_inventario", nuevo: "entregado",
+      usuario: req.usuario.email,
+      motivo: receptor ? `entrega a ${receptor}` : "entrega al solicitante",
+    });
+
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "entregado" });
+
+    notif.crear({
+      paraIds:    [r.id_solicitante],
+      excepto:    req.usuario.id_usuario,
+      titulo:     `${r.numero} entregado`,
+      mensaje:    receptor ? `Material entregado a ${receptor}` : "Tu material fue entregado en bodega",
+      vista:      "requerimientos",
+      referencia: r.numero,
+    }).catch(() => {});
+
+    try {
+      const solicitante = await _emailDeUsuario(r.id_solicitante);
+      await _notificar([solicitante], {
+        asunto:  `Tu requerimiento ${r.numero} fue entregado — El Cóndor`,
+        titulo:  "¡Material entregado!",
+        mensaje: `El almacenista entregó el material de tu requerimiento <strong>${r.numero}</strong> (${r.descripcion})${receptor ? ` a <strong>${receptor}</strong>` : ""}. Con esto el proceso queda completo.`,
+        numero:  r.numero,
+      });
+    } catch (e) { console.error("[requerimientos] Notificación de entrega falló:", e.message); }
+
+    return res.json({ ok: true, numero: r.numero, estado: "entregado" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 // GET /api/v1/requerimientos/mis-requerimientos
 async function getMios(req, res) {
   try {
@@ -824,6 +975,7 @@ async function getMios(req, res) {
         id_requerimiento, numero, descripcion, fecha_solicitud, fecha_desembolso, estado,
         valor_total, categoria, urgencia, justificacion, id_proyecto,
         fecha_aprobado_jefe, fecha_aprobado_final, motivo_rechazo,
+        fecha_entrega, entrega_receptor,
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),
         proyecto:id_proyecto (nombre, sigla),
@@ -850,6 +1002,7 @@ module.exports = {
   create, getMios, cancelar,
   getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, rechazar,
   getDesembolsos, desembolsar,
+  getAutorizacion, entregar,
   stream, getContadores,
   CATEGORIAS, URGENCIAS,
 };

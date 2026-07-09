@@ -7,11 +7,13 @@ router.get("/contadores",          ctrl.getContadores);
 router.get("/aprobaciones",        ctrl.getAprobaciones);
 router.get("/historial",           ctrl.getHistorial);
 router.get("/desembolsos",         ctrl.getDesembolsos);
+router.get("/autorizacion",        ctrl.getAutorizacion);
 router.post("/",                   ctrl.create);
 router.patch("/:id/cancelar",      ctrl.cancelar);
 router.patch("/:id/aprobar-jefe",  ctrl.aprobarJefe);
 router.patch("/:id/aprobar-final", ctrl.aprobarFinal);
 router.patch("/:id/rechazar",      ctrl.rechazar);
 router.patch("/:id/desembolsar",   ctrl.desembolsar);
+router.patch("/:id/entregar",      ctrl.entregar);
 
 module.exports = router;
