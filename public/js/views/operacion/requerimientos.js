@@ -575,11 +575,21 @@ function esc(v) {
   return String(v ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+// Common measurement units. A closed list keeps the stock ledger clean:
+// free text produced units like "1" that break material grouping.
+const UNIDADES = ["und", "m", "m2", "m3", "cm", "kg", "ton", "lt", "galón", "bulto", "caja", "rollo", "par", "juego"];
+
 function filaItemEditable(it) {
+  const unidadActual = String(it?.unidad || "und").trim();
+  const opciones = UNIDADES.includes(unidadActual) ? UNIDADES : [unidadActual, ...UNIDADES];
   return `
     <tr class="req-item-row">
       <td><input type="text" class="req-it-desc" placeholder="Ej: Cemento gris 50kg" value="${esc(it?.descripcion)}" /></td>
-      <td><input type="text" class="req-it-unidad" placeholder="und" style="width:5.5rem" value="${esc(it?.unidad)}" /></td>
+      <td>
+        <select class="req-it-unidad" style="width:6.2rem" title="Unidad de medida">
+          ${opciones.map(u => `<option value="${esc(u)}" ${u === unidadActual ? "selected" : ""}>${esc(u)}</option>`).join("")}
+        </select>
+      </td>
       <td><input type="number" class="req-it-cantidad" min="0" step="any" placeholder="0" style="width:6rem" value="${it?.cantidad_solicitada ?? ""}" /></td>
       <td><input type="number" class="req-it-precio" min="0" step="any" placeholder="0" style="width:8.5rem" value="${it?.precio_unitario ?? ""}" /></td>
       <td class="req-td-right req-it-subtotal">—</td>

@@ -457,7 +457,8 @@
   margin: 0;
 }
 
-.req-items-editor input {
+.req-items-editor input,
+.req-items-editor select {
   width: 100%;
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
@@ -467,7 +468,8 @@
   color: var(--text);
 }
 
-.req-items-editor input:focus {
+.req-items-editor input:focus,
+.req-items-editor select:focus {
   outline: none;
   border-color: var(--accent);
 }
