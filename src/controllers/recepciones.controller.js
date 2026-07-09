@@ -3,6 +3,7 @@ const auditoria    = require("../services/auditoria.service");
 const emailService = require("../services/email.service");
 const events       = require("../services/events.service");
 const notif        = require("../services/notificaciones.service");
+const inventario   = require("../services/inventario.service");
 
 const SCHEMA = "condor";
 const ESTADOS_ABIERTOS = ["desembolsado", "recibido_parcial"];
@@ -136,6 +137,7 @@ exports.create = async (req, res) => {
     .from("requerimiento")
     .select(`
       id_requerimiento, numero, descripcion, estado, id_solicitante, valor_total,
+      categoria, id_proyecto,
       items:requerimiento_item (
         id_item, descripcion, unidad, cantidad_solicitada,
         recibido:recepcion_item ( cantidad )
@@ -246,6 +248,17 @@ exports.create = async (req, res) => {
       entrega: true,
     });
   } catch (_) { /* never blocks the request */ }
+
+  // INV-01: every received item increases the stock ledger (entrada movement).
+  inventario.registrarEntradas({
+    requerimiento: req0,
+    id_recepcion:  nuevaRecep.id_recepcion,
+    id_usuario:    req.usuario.id_usuario,
+    items: itemsParaInsertar.map(r => {
+      const ref = itemsMap.get(r.id_item);
+      return { descripcion: ref?.descripcion, unidad: ref?.unidad, cantidad: r.cantidad };
+    }),
+  }).catch(() => {});
 
   notif.crear({
     paraIds:    [req0.id_solicitante],
