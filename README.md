@@ -178,18 +178,22 @@ HTTP request
 ---
 
 ## Modelo de roles
+| Rol                 | Propósito                                                                        |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `admin`             | Acceso total (bypass del middleware de permisos).                                 |
+| `usuario`           | Rol por defecto al registrarse. Solo catálogo público.                            |
+| `comprador`         | Cliente con venta activa. Portal personal (cuotas, facturas, pagos).              |
+| `asesor_comercial`  | Comercial de campo. Crea solicitudes de venta pendientes de autorización.         |
+| `auxiliar_contable` | Operación financiera completa: ventas, pagos, facturas, recibos, ajustes.         |
+| `gerencia`          | Lectura de reportes consolidados y aprobación final (dueño) de requerimientos.    |
+| `juridico`          | Seguimiento de cartera en mora y procesos de devolución.                          |
+| `comisionista`      | Visualiza sus comisiones causadas y micropagos recibidos.                         |
+| `auditoria`         | Supervisión de la trazabilidad de cambios críticos.                               |
+| `peticionario`      | Crea requerimientos de materiales (ej. ingeniero de obra) y sigue su estado.      |
+| `jefe_area`         | Primera aprobación de los requerimientos de su equipo.                            |
+| `tesorero`          | Registra el desembolso de requerimientos aprobados (genera el gasto automático).  |
+| `almacenista`       | Recepción de materiales de requerimientos desembolsados y entradas al inventario. |
 
-| Rol                 | Propósito                                                                 |
-| ------------------- | ------------------------------------------------------------------------- |
-| `admin`             | Acceso total (bypass del middleware de permisos).                         |
-| `usuario`           | Rol por defecto al registrarse. Solo catálogo público.                    |
-| `comprador`         | Cliente con venta activa. Portal personal (cuotas, facturas, pagos).      |
-| `asesor_comercial`  | Comercial de campo. Crea solicitudes de venta pendientes de autorización. |
-| `auxiliar_contable` | Operación financiera completa: ventas, pagos, facturas, recibos, ajustes. |
-| `gerencia`          | Lectura de reportes consolidados y dashboards directivos.                 |
-| `juridico`          | Seguimiento de cartera en mora y procesos de devolución.                  |
-| `comisionista`      | Visualiza sus comisiones causadas y micropagos recibidos.                 |
-| `auditoria`         | Supervisión de la trazabilidad de cambios críticos.                       |
 
 Cada usuario consulta el detalle de su rol (funciones, obligaciones y acciones permitidas) desde el ítem **Mi rol** en el menú del avatar.
 
