@@ -34,6 +34,22 @@ async function verificarToken(req, res, next) {
       return next();
     }
 
+    // SEG-04 (session lifetime): only checked on a cache miss (at most once per uid per
+    // authCache TTL) so the forced-relogin cycle doesn't add a Firebase Admin round trip to
+    // every single request. `auth_time` is the standard ID token claim for "when this user
+    // last authenticated"; session-revocation.service.js advances tokensValidAfterTime by
+    // calling revokeRefreshTokens roughly every 30 days.
+    const userRecord = await admin.auth().getUser(decoded.uid);
+    const validSince  = userRecord.tokensValidAfterTime
+      ? new Date(userRecord.tokensValidAfterTime).getTime() / 1000
+      : 0;
+    if (decoded.auth_time < validSince) {
+      return res.status(401).json({
+        error: 'Tu sesión expiró por seguridad. Vuelve a iniciar sesión.',
+        code:  'SESION_REVOCADA',
+      });
+    }
+
     let { data: usuario, error } = await supabase
       .schema('condor')
       .from('usuarios')

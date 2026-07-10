@@ -1,6 +1,25 @@
 const supabase  = require('../config/supabase');
 const authCache = require('../services/auth-cache.service');
+const twoFactor = require('../services/two-factor.service');
 const SCHEMA    = 'condor';
+
+// SEG-07: step-up re-verification for critical writes (assigning the admin role,
+// deactivating/reactivating a user). The challenge must belong to the CALLER, not the target
+// user being edited — otherwise anyone could replay someone else's step-up code.
+async function verificarStepUp(req, res) {
+  const { step_up_challenge_id, step_up_codigo } = req.body;
+  if (!step_up_challenge_id || !step_up_codigo) {
+    res.status(400).json({ error: 'Esta acción requiere confirmar tu identidad de nuevo.', code: 'STEP_UP_REQUERIDO' });
+    return false;
+  }
+
+  const resultado = await twoFactor.verificarCodigo(step_up_challenge_id, step_up_codigo);
+  if (!resultado.ok || resultado.id_usuario !== req.usuario?.id_usuario) {
+    res.status(401).json({ error: 'El código de confirmación es incorrecto o venció.', code: resultado.error || 'STEP_UP_INVALIDO' });
+    return false;
+  }
+  return true;
+}
 
 async function listarUsuarios(req, res) {
   const { data, error } = await supabase
@@ -54,6 +73,9 @@ async function crearUsuario(req, res) {
   if (rolNombre === 'admin' && req.usuario?.rol !== 'admin') {
     return res.status(403).json({ error: 'Solo un administrador puede asignar el rol admin' });
   }
+  // SEG-07: creating a brand-new admin account is the same escalation risk as promoting an
+  // existing one — also gated behind a fresh step-up code.
+  if (rolNombre === 'admin' && !(await verificarStepUp(req, res))) return;
 
   const esPersona = rolNombre === 'comprador' || rolNombre === 'comisionista';
 
@@ -103,13 +125,15 @@ async function actualizarUsuario(req, res) {
   if (eRead || !actual) return res.status(404).json({ error: 'Usuario no encontrado' });
 
   const cambiaRol = id_rol !== undefined && Number(id_rol) !== Number(actual.id_rol);
+  let nuevoRolNombre = null;
 
   if (cambiaRol) {
     const { data: nuevoRol } = await supabase
       .schema(SCHEMA).from('roles').select('nombre').eq('id_rol', id_rol).single();
     if (!nuevoRol) return res.status(400).json({ error: 'Rol no encontrado' });
+    nuevoRolNombre = nuevoRol.nombre;
     // Only an admin can grant the admin role.
-    if (nuevoRol.nombre === 'admin' && req.usuario?.rol !== 'admin') {
+    if (nuevoRolNombre === 'admin' && req.usuario?.rol !== 'admin') {
       return res.status(403).json({ error: 'Solo un administrador puede asignar el rol admin' });
     }
     // No self role change — blocks privilege self-escalation.
@@ -122,6 +146,11 @@ async function actualizarUsuario(req, res) {
   if (activo === false && targetId === req.usuario?.id_usuario) {
     return res.status(403).json({ error: 'No puedes desactivar tu propia cuenta' });
   }
+
+  // SEG-07: assigning admin, or flipping the active flag in either direction, re-proves the
+  // acting user's identity with a fresh step-up code before the write goes through.
+  const cambiaActivo = activo !== undefined && activo !== actual.activo;
+  if ((nuevoRolNombre === 'admin' || cambiaActivo) && !(await verificarStepUp(req, res))) return;
 
   const updates = {};
   if (id_rol         !== undefined) updates.id_rol         = id_rol;
@@ -182,6 +211,8 @@ async function desactivarUsuario(req, res) {
   if (targetId === req.usuario?.id_usuario) {
     return res.status(403).json({ error: 'No puedes desactivar tu propia cuenta' });
   }
+
+  if (!(await verificarStepUp(req, res))) return;
 
   const { data, error } = await supabase
     .schema(SCHEMA)

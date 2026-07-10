@@ -20,6 +20,17 @@ async function apiFetch(endpoint, options = {}) {
   let response = await fetch(endpoint, config);
 
   if (response.status === 401) {
+    // SEG-04: the server already revoked the refresh token behind this session (monthly forced
+    // relogin, or a 2FA/account lockout event). Retrying getIdToken(true) would just fail against
+    // Firebase a moment later — skip straight to /login instead of burning a round trip on it.
+    let code = null;
+    try { code = (await response.clone().json())?.code || null; } catch {}
+    if (code === 'SESION_REVOCADA') {
+      localStorage.removeItem("fb_token");
+      window.location.href = "/login";
+      return;
+    }
+
     try {
       // Espera a que Firebase resuelva el estado de auth antes de decidir
       if (window._authReady) await window._authReady;

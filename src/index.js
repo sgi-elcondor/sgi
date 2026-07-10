@@ -42,7 +42,8 @@ const CSP = [
   // jsdelivr/cdnjs host the lazy-loaded export libs (jspdf, exceljs, chart.js, html2pdf)
   // used by lib-loader.js and the printable comprobantes (which inherit this CSP).
   `script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://apis.google.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com${DEV_SCRIPT}`,
-  `connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com${DEV_CONNECT}`,
+  // api.pwnedpasswords.com: k-anonymity password-breach check on registration/reset (SEG-06).
+  `connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.pwnedpasswords.com${DEV_CONNECT}`,
   "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://apis.google.com",
 ].join("; ");
 
@@ -201,6 +202,20 @@ setInterval(
 const { limpiarAntiguas } = require('./services/notificaciones.service');
 setInterval(
   () => limpiarAntiguas(60).catch(err => console.error('[notificaciones] cleanup error:', err.message)),
+  24 * 60 * 60 * 1000
+);
+
+// Daily housekeeping: drop expired/consumed 2FA challenges older than 2 days
+const { limpiarExpirados: limpiarExpirados2FA } = require('./services/two-factor.service');
+setInterval(
+  () => limpiarExpirados2FA().catch(err => console.error('[2fa] cleanup error:', err.message)),
+  24 * 60 * 60 * 1000
+);
+
+// Daily: force a fresh login roughly every 30 days per user (all roles), staggered.
+const { revocarSesionesVencidas } = require('./services/session-revocation.service');
+setInterval(
+  () => revocarSesionesVencidas().catch(err => console.error('[sesion] revocacion error:', err.message)),
   24 * 60 * 60 * 1000
 );
 
