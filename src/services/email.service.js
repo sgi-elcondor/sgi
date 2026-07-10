@@ -288,4 +288,109 @@ async function sendRequerimientoEstadoEmail(to, datos) {
   });
 }
 
-module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail, sendRequerimientoNuevoEmail, sendRequerimientoEstadoEmail };
+// SEG-04: 6-digit login verification code for sensitive roles (admin, auxiliar_contable,
+// gerencia). `esPrimeraConfiguracion` only changes the copy — the mechanism (send + verify
+// a code) is identical for enrollment and for every later login.
+async function sendLogin2FACodigo(to, { codigo, expiraMinutos, esPrimeraConfiguracion }) {
+  const titulo = esPrimeraConfiguracion
+    ? 'Activa la verificación en dos pasos'
+    : 'Tu código de verificación';
+  const intro = esPrimeraConfiguracion
+    ? 'Tu cuenta tiene un rol con acceso a información sensible, así que a partir de ahora cada inicio de sesión te va a pedir este código adicional. Ingrésalo para activar la verificación en dos pasos y continuar.'
+    : 'Ingresa este código para completar tu inicio de sesión.';
+
+  await transporter.sendMail({
+    from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
+    to,
+    subject: esPrimeraConfiguracion ? 'Activa tu verificación en dos pasos — El Cóndor' : `Tu código de verificación es ${codigo} — El Cóndor`,
+    html: `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ea;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#f97316,#ea6010);padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:28px;">&#128274;</p>
+            <h1 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:700;color:#ffffff;">${titulo}</h1>
+            <p style="margin:6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:rgba(255,255,255,0.82);">El Cóndor · Sistema de Gestión Inmobiliaria</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 8px;">
+            <p style="margin:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">${intro}</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;border-radius:12px;margin-bottom:16px;">
+              <tr>
+                <td align="center" style="padding:24px 18px;">
+                  <span style="font-family:'Courier New',monospace;font-size:36px;font-weight:700;letter-spacing:10px;color:#111111;">${esc(codigo)}</span>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#999999;">Este código es válido por <strong style="color:#666;">${expiraMinutos} minutos</strong> y solo se puede usar una vez.</p>
+            <p style="margin:16px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#dc2626;">Si no fuiste tú quien intentó iniciar sesión, cambia tu contraseña de inmediato desde "¿Olvidaste tu contraseña?" y avisa a la oficina.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 24px;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#bbbbbb;text-align:center;line-height:1.6;">Correo enviado automáticamente por <strong>El Cóndor SGI</strong>.<br>Por favor, no respondas a este mensaje.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`,
+  });
+}
+
+// SEG-05: sent when a login is detected from an IP different from the last one on record.
+// Applies to every role — cheap signal that costs nothing on a normal day and gives a user a
+// chance to react if it wasn't them, even on roles that don't have 2FA (SEG-04).
+async function sendNuevoLoginEmail(to, { ip, fecha, userAgent }) {
+  await transporter.sendMail({
+    from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
+    to,
+    subject: 'Nuevo inicio de sesión en tu cuenta — El Cóndor',
+    html: `
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ea;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#f97316,#ea6010);padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 10px;font-size:28px;">&#128272;</p>
+            <h1 style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:700;color:#ffffff;">Nuevo inicio de sesión</h1>
+            <p style="margin:6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:rgba(255,255,255,0.82);">El Cóndor · Sistema de Gestión Inmobiliaria</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 8px;">
+            <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#333333;">Detectamos un inicio de sesión en tu cuenta desde una ubicación distinta a la habitual.</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;border-radius:10px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0ebe4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#666;">Fecha</td>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0ebe4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#111;text-align:right;">${esc(fecha)}</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0ebe4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#666;">Dirección IP</td>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0ebe4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#111;text-align:right;">${esc(ip)}</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#666;">Dispositivo</td>
+                <td style="padding:14px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#111;text-align:right;">${esc((userAgent || '').slice(0, 90)) || '—'}</td>
+              </tr>
+            </table>
+            <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.55;color:#dc2626;">Si fuiste tú, ignora este correo. Si no reconoces este acceso, cambia tu contraseña de inmediato desde "¿Olvidaste tu contraseña?" y avisa a la oficina.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 24px;border-top:1px solid #f0ebe4;">
+            <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#bbbbbb;text-align:center;line-height:1.6;">Correo enviado automáticamente por <strong>El Cóndor SGI</strong>.<br>Por favor, no respondas a este mensaje.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`,
+  });
+}
+
+module.exports = { sendPasswordResetEmail, sendCompraConfirmacionEmail, sendRequerimientoNuevoEmail, sendRequerimientoEstadoEmail, sendLogin2FACodigo, sendNuevoLoginEmail };

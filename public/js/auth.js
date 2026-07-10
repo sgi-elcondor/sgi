@@ -58,9 +58,12 @@ window._authReady = _ready;
 // Funciones de login/logout (usadas por login.html)
 // ─────────────────────────────────────────────────────────
 // Password login goes through our backend so the failed-attempt lockout is enforced authoritatively
-// (the browser can't self-report attempts). The backend verifies the password against Firebase and
-// returns a custom token, which we exchange for a normal client session so token refresh keeps
-// working. On failure it throws an Error carrying { code, bloqueado, bloqueado_hasta, intentos_restantes }.
+// (the browser can't self-report attempts). On failure it throws an Error carrying
+// { code, bloqueado, bloqueado_hasta, intentos_restantes }.
+//
+// SEG-04: for sensitive roles the backend does NOT return a customToken here — it responds 202
+// with a challenge_id and expects the 6-digit code from login/2fa/verificar before any session
+// is opened. Callers must check `requiere2FA` on the resolved value.
 async function loginEmail(email, password) {
   await _ready;
   const res  = await fetch('/api/v1/auth/login', {
@@ -77,10 +80,46 @@ async function loginEmail(email, password) {
       intentos_restantes: data.intentos_restantes,
     });
   }
+  if (data.requiere_2fa) {
+    return { requiere2FA: true, challengeId: data.challenge_id, primeraConfig: data.primera_config };
+  }
+  const cred  = await signInWithCustomToken(auth, data.customToken);
+  const token = await cred.user.getIdToken();
+  localStorage.setItem('fb_token', token);
+  return { requiere2FA: false, user: cred.user };
+}
+
+// Second step of SEG-04. On failure throws an Error carrying { code, bloqueado, bloqueado_hasta }.
+async function verificar2FA(challengeId, codigo) {
+  const res = await fetch('/api/v1/auth/login/2fa/verificar', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ challenge_id: challengeId, codigo }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(new Error(data.error || 'Código incorrecto.'), {
+      code:            data.code || 'backend/2fa-failed',
+      bloqueado:       data.code === 'CUENTA_BLOQUEADA_2FA',
+      bloqueado_hasta: data.bloqueado_hasta ?? null,
+    });
+  }
   const cred  = await signInWithCustomToken(auth, data.customToken);
   const token = await cred.user.getIdToken();
   localStorage.setItem('fb_token', token);
   return cred.user;
+}
+
+async function reenviar2FA(challengeId) {
+  const res = await fetch('/api/v1/auth/login/2fa/reenviar', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ challenge_id: challengeId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error || 'No se pudo reenviar el código.'), { code: data.code || 'backend/error' });
+  }
 }
 
 async function loginGoogle() {
@@ -164,4 +203,4 @@ async function resetPassword(email) {
   }
 }
 
-export { auth, loginEmail, loginGoogle, logout, esperarAuthListo, registerEmail, resetPassword, reenviarVerificacion, recargarUsuario };
+export { auth, loginEmail, loginGoogle, logout, esperarAuthListo, registerEmail, resetPassword, reenviarVerificacion, recargarUsuario, verificar2FA, reenviar2FA };

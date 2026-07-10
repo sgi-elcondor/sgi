@@ -1,7 +1,25 @@
-const supabase = require('../config/supabase');
-const admin    = require('../config/firebase');
-const { sendPasswordResetEmail } = require('../services/email.service');
+const supabase   = require('../config/supabase');
+const admin      = require('../config/firebase');
+const twoFactor   = require('../services/two-factor.service');
+const auditoria   = require('../services/auditoria.service');
+const loginAlert  = require('../services/login-alert.service');
+const { sendPasswordResetEmail, sendLogin2FACodigo, sendNuevoLoginEmail } = require('../services/email.service');
 const SCHEMA   = 'condor';
+
+// SEG-05: best-effort "new login" notice. Never throws — a failed alert must never block a
+// successful login. Silent on the very first login ever (nothing to compare the IP against).
+async function avisarNuevoLoginSiAplica(id_usuario, email, req) {
+  try {
+    const ip = req.ip || req.socket?.remoteAddress || 'desconocida';
+    const { esNuevaIp } = await loginAlert.registrarLogin(id_usuario, ip);
+    if (esNuevaIp) {
+      const fecha = new Date().toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Bogota' });
+      await sendNuevoLoginEmail(email, { ip, fecha, userAgent: req.headers['user-agent'] });
+    }
+  } catch (e) {
+    console.error('[login] aviso nuevo login', e.message);
+  }
+}
 
 async function registrarUsuario(req, res) {
   const { email, id_rol } = req.body;
@@ -238,6 +256,9 @@ async function miRol(req, res) {
 const MAX_INTENTOS    = 5;
 const BLOQUEO_MINUTOS = 30;
 
+const MAX_FALLOS_2FA_CUENTA = 10; // wrong codes across ANY challenges before locking the account
+const BLOQUEO_MINUTOS_2FA   = 30;
+
 // Server-side password login. The password is verified against Firebase from the backend, so the
 // failed-attempt count and the lockout are AUTHORITATIVE — the browser can no longer self-report
 // (nor reset) attempts. This closes the previous design where login-failed/login-success were
@@ -259,7 +280,7 @@ async function login(req, res) {
   }
 
   const { data: row } = await supabase.schema(SCHEMA).from('usuarios')
-    .select('id_usuario, intentos_fallidos, bloqueado_hasta')
+    .select('id_usuario, intentos_fallidos, bloqueado_hasta, dosfa_bloqueado_hasta, dosfa_configurado_en, roles:id_rol(requiere_2fa)')
     .ilike('email', email)
     .maybeSingle();
 
@@ -331,20 +352,166 @@ async function login(req, res) {
     return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
   }
 
-  // Success (password proven): reset the counter authoritatively and hand the client a custom
-  // token to open its Firebase session.
+  // Success (password proven): reset the counter authoritatively.
   if (row && (row.intentos_fallidos || row.bloqueado_hasta)) {
     await supabase.schema(SCHEMA).from('usuarios')
       .update({ intentos_fallidos: 0, bloqueado_hasta: null }).eq('id_usuario', row.id_usuario);
   }
 
+  // SEG-04: sensitive roles (admin, auxiliar_contable, gerencia) need a second factor before
+  // we hand out a custom token. The account-level 2FA lockout is enforced here, at the same
+  // boundary as the password lockout above — a locked account can't even request a new code.
+  if (row?.roles?.requiere_2fa) {
+    if (row.dosfa_bloqueado_hasta && new Date(row.dosfa_bloqueado_hasta) > new Date()) {
+      return res.status(423).json({
+        error:           'Demasiados códigos incorrectos. Intenta de nuevo en 30 minutos.',
+        code:            'CUENTA_BLOQUEADA_2FA',
+        bloqueado_hasta: row.dosfa_bloqueado_hasta,
+      });
+    }
+
+    const primera_config = !row.dosfa_configurado_en;
+    let challenge;
+    try {
+      challenge = await twoFactor.crearChallenge(row.id_usuario);
+    } catch (e) {
+      console.error('[login] crearChallenge 2fa', e.message);
+      return res.status(500).json({ error: 'No se pudo iniciar la verificación. Intenta de nuevo.' });
+    }
+
+    try {
+      await sendLogin2FACodigo(email, { codigo: challenge.codigo, expiraMinutos: 5, esPrimeraConfiguracion: primera_config });
+    } catch (e) {
+      console.error('[login] sendLogin2FACodigo', e.message);
+      return res.status(502).json({ error: 'No se pudo enviar el código de verificación. Intenta de nuevo.' });
+    }
+
+    return res.status(202).json({ requiere_2fa: true, challenge_id: challenge.id_challenge, primera_config });
+  }
+
   try {
     const customToken = await admin.auth().createCustomToken(fbData.localId);
+    // row can be null here: a brand-new self-registered account only gets its `usuarios` row
+    // provisioned lazily on the first authenticated API call (auth.middleware.js), so it may
+    // not exist yet the moment they log in for the very first time.
+    if (row?.id_usuario) await avisarNuevoLoginSiAplica(row.id_usuario, email, req);
     return res.json({ customToken });
   } catch (e) {
     console.error('[login] createCustomToken', e.message);
     return res.status(500).json({ error: 'No se pudo iniciar sesión. Intenta de nuevo.' });
   }
+}
+
+// Second step of the sensitive-role login: verifies the 6-digit code and, only then, mints the
+// Firebase custom token. The account-level 2FA lockout counter is authoritative here, mirroring
+// how the password lockout works in login() above, but tracked separately (dosfa_*) so exhausting
+// OTP attempts never confuses or resets the password lockout state.
+async function verificar2FA(req, res) {
+  const { challenge_id, codigo } = req.body;
+  if (!challenge_id || !codigo) {
+    return res.status(400).json({ error: 'Falta el código o el identificador de verificación.' });
+  }
+
+  const resultado = await twoFactor.verificarCodigo(challenge_id, codigo);
+
+  if (!resultado.ok) {
+    if (resultado.error === 'CODIGO_INCORRECTO' && resultado.id_usuario) {
+      const { data: u } = await supabase.schema(SCHEMA).from('usuarios')
+        .select('dosfa_intentos_fallidos').eq('id_usuario', resultado.id_usuario).single();
+
+      const intentos = (u?.dosfa_intentos_fallidos || 0) + 1;
+      const updates  = { dosfa_intentos_fallidos: intentos };
+      if (intentos >= MAX_FALLOS_2FA_CUENTA) {
+        updates.dosfa_bloqueado_hasta = new Date(Date.now() + BLOQUEO_MINUTOS_2FA * 60_000).toISOString();
+      }
+      await supabase.schema(SCHEMA).from('usuarios').update(updates).eq('id_usuario', resultado.id_usuario);
+
+      if (updates.dosfa_bloqueado_hasta) {
+        await auditoria.log({
+          tabla: 'usuarios', id: resultado.id_usuario, campo: 'dosfa_bloqueado_hasta',
+          nuevo: updates.dosfa_bloqueado_hasta, usuario: String(resultado.id_usuario),
+          motivo: 'Cuenta bloqueada por exceso de códigos 2FA incorrectos',
+        });
+        return res.status(423).json({
+          error:           'Demasiados códigos incorrectos. Intenta de nuevo en 30 minutos.',
+          code:            'CUENTA_BLOQUEADA_2FA',
+          bloqueado_hasta: updates.dosfa_bloqueado_hasta,
+        });
+      }
+      return res.status(401).json({ error: 'Código incorrecto.', code: 'CODIGO_INCORRECTO' });
+    }
+
+    const MENSAJES = {
+      MAX_INTENTOS:      'Superaste el número de intentos para este código. Vuelve a iniciar sesión.',
+      CODIGO_EXPIRADO:   'El código expiró. Vuelve a iniciar sesión.',
+      CHALLENGE_INVALIDO: 'La verificación ya no es válida. Vuelve a iniciar sesión.',
+    };
+    return res.status(401).json({ error: MENSAJES[resultado.error] || MENSAJES.CHALLENGE_INVALIDO, code: resultado.error });
+  }
+
+  const { data: usuario } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('email, firebase_uid, dosfa_configurado_en, dosfa_intentos_fallidos, dosfa_bloqueado_hasta')
+    .eq('id_usuario', resultado.id_usuario)
+    .single();
+
+  if (!usuario?.firebase_uid) {
+    return res.status(500).json({ error: 'No se pudo completar el inicio de sesión. Contacta a la oficina.' });
+  }
+
+  const updates = {};
+  if (usuario.dosfa_intentos_fallidos || usuario.dosfa_bloqueado_hasta) {
+    updates.dosfa_intentos_fallidos = 0;
+    updates.dosfa_bloqueado_hasta   = null;
+  }
+  const primeraConfiguracion = !usuario.dosfa_configurado_en;
+  if (primeraConfiguracion) updates.dosfa_configurado_en = new Date().toISOString();
+
+  if (Object.keys(updates).length) {
+    await supabase.schema(SCHEMA).from('usuarios').update(updates).eq('id_usuario', resultado.id_usuario);
+  }
+  if (primeraConfiguracion) {
+    await auditoria.log({
+      tabla: 'usuarios', id: resultado.id_usuario, campo: 'dosfa_configurado_en',
+      nuevo: updates.dosfa_configurado_en, usuario: String(resultado.id_usuario),
+      motivo: 'Verificación en dos pasos activada (primer login como rol sensible)',
+    });
+  }
+
+  try {
+    const customToken = await admin.auth().createCustomToken(usuario.firebase_uid);
+    // Skip the "new login" notice on the very first 2FA setup — they already got the
+    // "activa tu verificación" email seconds ago, a second alert right after would be noise.
+    if (!primeraConfiguracion) await avisarNuevoLoginSiAplica(resultado.id_usuario, usuario.email, req);
+    return res.json({ customToken });
+  } catch (e) {
+    console.error('[login/2fa] createCustomToken', e.message);
+    return res.status(500).json({ error: 'No se pudo iniciar sesión. Intenta de nuevo.' });
+  }
+}
+
+async function reenviar2FA(req, res) {
+  const { challenge_id } = req.body;
+  if (!challenge_id) return res.status(400).json({ error: 'Falta el identificador de verificación.' });
+
+  const resultado = await twoFactor.reenviarCodigo(challenge_id);
+  if (resultado.error === 'CHALLENGE_INVALIDO') {
+    return res.status(401).json({ error: 'La verificación ya no es válida. Vuelve a iniciar sesión.', code: 'CHALLENGE_INVALIDO' });
+  }
+  if (resultado.error === 'MAX_REENVIOS') {
+    return res.status(429).json({ error: 'Ya reenviamos el código varias veces. Espera un momento o vuelve a iniciar sesión.', code: 'MAX_REENVIOS' });
+  }
+
+  const { data: usuario } = await supabase.schema(SCHEMA).from('usuarios')
+    .select('email, dosfa_configurado_en').eq('id_usuario', resultado.id_usuario).single();
+
+  try {
+    await sendLogin2FACodigo(usuario.email, { codigo: resultado.codigo, expiraMinutos: 5, esPrimeraConfiguracion: !usuario.dosfa_configurado_en });
+  } catch (e) {
+    console.error('[login/2fa/reenviar] sendLogin2FACodigo', e.message);
+    return res.status(502).json({ error: 'No se pudo reenviar el código. Intenta de nuevo.' });
+  }
+
+  return res.json({ ok: true });
 }
 
 async function enviarEmailReset(req, res) {
@@ -362,4 +529,4 @@ async function enviarEmailReset(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta, login };
+module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta, login, verificar2FA, reenviar2FA };
