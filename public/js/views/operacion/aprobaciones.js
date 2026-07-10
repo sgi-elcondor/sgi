@@ -1,8 +1,11 @@
 (function () {
 
+// POL-02: 'dueno' y 'gerencia' aparecen sólo en compras grandes.
 const NIVEL_LABEL = {
-  jefe:  { label: "Aprobación de jefe", cls: "badge-warning" },
-  final: { label: "Aprobación final",   cls: "badge-info"    },
+  jefe:     { label: "Aprobación de jefe",       cls: "badge-warning" },
+  final:    { label: "Aprobación final",         cls: "badge-info"    },
+  dueno:    { label: "Firma del dueño",          cls: "badge-info"    },
+  gerencia: { label: "Co-firma de gerencia",     cls: "badge-info"    },
 };
 
 const icon     = (name) => window.SGIUI?.icon(name) ?? "";
@@ -41,12 +44,15 @@ window.aprobacionesView = async function () {
 };
 
 function render(vc) {
-  const puedeJefe  = AppState.can("requerimientos", "aprobar_jefe");
-  const puedeFinal = AppState.can("requerimientos", "aprobar_final");
+  const puedeJefe     = AppState.can("requerimientos", "aprobar_jefe");
+  const puedeFinal    = AppState.can("requerimientos", "aprobar_final");
+  const puedeDueno    = AppState.can("requerimientos", "aprobar_dueno");
+  const puedeGerencia = AppState.can("requerimientos", "aprobar_gerencia");
+  const puedeAlgunFinal = puedeFinal || puedeDueno || puedeGerencia;
 
-  const subtitle = puedeJefe && puedeFinal
+  const subtitle = puedeJefe && puedeAlgunFinal
     ? "Requerimientos esperando tu aprobación y el historial de decisiones."
-    : puedeFinal
+    : puedeAlgunFinal
       ? "Aprobación final de requerimientos e historial de decisiones."
       : "Requerimientos de tu equipo esperando tu aprobación e historial de decisiones.";
 
@@ -78,7 +84,7 @@ function render(vc) {
     });
   });
 
-  if (_tab === "pendientes") renderPendientes(puedeJefe, puedeFinal);
+  if (_tab === "pendientes") renderPendientes(puedeJefe, puedeAlgunFinal);
   else renderRegistros();
 
   window.SGIUI?.hydrate();
@@ -87,13 +93,16 @@ function render(vc) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TAB 1: Pendientes de aprobación
 // ─────────────────────────────────────────────────────────────────────────────
-function renderPendientes(puedeJefe, puedeFinal) {
+function renderPendientes(puedeJefe, puedeAlgunFinal) {
   const cont = document.getElementById("apr-tab-content");
   const SGIReq = window.SGIReq || {};
-  const ambosNiveles = puedeJefe && puedeFinal;
+  const ambosNiveles = puedeJefe && puedeAlgunFinal;
 
-  const deJefe  = _pendientes.filter(r => r.nivel === "jefe").length;
-  const deFinal = _pendientes.filter(r => r.nivel === "final").length;
+  const deJefe   = _pendientes.filter(r => r.nivel === "jefe").length;
+  const deFinal  = _pendientes.filter(r => r.nivel === "final").length;
+  const deDueno  = _pendientes.filter(r => r.nivel === "dueno").length;
+  const deGerenc = _pendientes.filter(r => r.nivel === "gerencia").length;
+  const deFinales = deFinal + deDueno + deGerenc;
   const montoPendiente = _pendientes.reduce((s, r) => s + Number(r.valor_total || 0), 0);
 
   cont.innerHTML = `
@@ -103,10 +112,10 @@ function renderPendientes(puedeJefe, puedeFinal) {
         <span class="req-kpi-icon">${icon("user-check")}</span>
         <div><span class="req-kpi-val">${deJefe}</span><span class="req-kpi-label">Para aprobación de jefe</span></div>
       </div>` : ""}
-      ${puedeFinal ? `
+      ${puedeAlgunFinal ? `
       <div class="req-kpi">
         <span class="req-kpi-icon">${icon("shield-check")}</span>
-        <div><span class="req-kpi-val">${deFinal}</span><span class="req-kpi-label">Para aprobación final</span></div>
+        <div><span class="req-kpi-val">${deFinales}</span><span class="req-kpi-label">Para aprobación final</span></div>
       </div>` : ""}
       <div class="req-kpi accent">
         <span class="req-kpi-icon">${icon("coins")}</span>
@@ -119,10 +128,12 @@ function renderPendientes(puedeJefe, puedeFinal) {
         <input id="apr-buscar" type="text" class="filter-input"
           placeholder="Buscar por número, solicitante, descripción o proyecto..." style="flex:2;min-width:18rem">
         ${ambosNiveles ? `
-        <select id="apr-nivel" class="select-sm" style="flex:1;min-width:10rem">
-          <option value="">Ambos niveles</option>
+        <select id="apr-nivel" class="select-sm" style="flex:1;min-width:11rem">
+          <option value="">Todos los niveles</option>
           <option value="jefe">Aprobación de jefe</option>
           <option value="final">Aprobación final</option>
+          <option value="dueno">Firma del dueño</option>
+          <option value="gerencia">Co-firma de gerencia</option>
         </select>` : ""}
         <select id="apr-urgencia" class="select-sm" style="flex:1;min-width:9rem">
           <option value="">Toda urgencia</option>
@@ -156,13 +167,16 @@ function renderPendientes(puedeJefe, puedeFinal) {
     const cat   = (SGIReq.CATEGORIAS || []).find(c => c.value === r.categoria) || { label: r.categoria || "—", icon: "box" };
     const nivel = NIVEL_LABEL[r.nivel] || NIVEL_LABEL.jefe;
     const nItems = (r.items || []).length;
+    const grandeBadge = r.es_compra_grande
+      ? `<span class="badge badge-warning" title="Requiere firma del dueño y co-firma de gerencia" style="margin-left:.4rem">${icon("shield-alert")} Compra grande</span>`
+      : "";
     return `
       <tr class="req-row ${r.urgencia === "alta" ? "req-row-alta" : ""}">
         <td class="req-td-main">
           <div class="req-num-cell">
             <span class="req-cat-icon" title="${cat.label}">${icon(cat.icon)}</span>
             <div>
-              <div class="rec-num">${r.numero}</div>
+              <div class="rec-num">${r.numero}${grandeBadge}</div>
               <div class="rec-desc">${r.descripcion || "—"} <span class="req-chip-items">${nItems} ítem${nItems === 1 ? "" : "s"}</span></div>
             </div>
           </div>
@@ -514,9 +528,67 @@ function abrirRevision(r) {
       <td class="req-td-right">${fmtMoney(Number(it.cantidad_solicitada) * Number(it.precio_unitario))}</td>
     </tr>`).join("");
 
-  const infoJefe = r.nivel === "final" && r.aprobador_jefe
+  const infoJefe = (r.nivel !== "jefe") && r.aprobador_jefe
     ? `<div class="req-aprobaciones-info"><span>${icon("user-check")} Aprobado por el jefe: <strong>${r.aprobador_jefe}</strong> · ${fmtDate(r.fecha_aprobado_jefe)}</span></div>`
     : "";
+
+  // POL-02: para compras grandes en aprobado_jefe, mostrar firmas ya puestas y decidir
+  // qué botón(es) mostrar según los permisos del usuario y las firmas faltantes.
+  const currentUserId  = window.currentUser?.id_usuario ?? null;
+  const puedeDueno     = AppState.can("requerimientos", "aprobar_dueno");
+  const puedeGerencia  = AppState.can("requerimientos", "aprobar_gerencia");
+  const puedeFinal     = AppState.can("requerimientos", "aprobar_final");
+  const puedeJefe      = AppState.can("requerimientos", "aprobar_jefe");
+
+  // Precomputed booleans para la lógica de botones
+  const esPendJefe     = r.estado === "pendiente_jefe";
+  const esGrande       = !!r.es_compra_grande;
+  const yaFirmoDueno   = r.aprobador_dueno_id    != null;
+  const yaFirmoGeren   = r.aprobador_gerencia_id != null;
+  const puedoFirmarDueno    = !esPendJefe && esGrande && puedeDueno && !yaFirmoDueno && r.aprobador_gerencia_id !== currentUserId;
+  const puedoFirmarGerencia = !esPendJefe && esGrande && puedeGerencia && !yaFirmoGeren && r.aprobador_dueno_id  !== currentUserId;
+  const puedoFirmarFinal    = !esPendJefe && !esGrande && puedeFinal;
+  const puedoAprobarJefe    = esPendJefe && puedeJefe;
+
+  // Firmas ya puestas (badge + timeline)
+  const firmasHTML = esGrande && !esPendJefe ? `
+    <div class="req-aprobaciones-info" style="flex-wrap:wrap;gap:.4rem 1rem">
+      ${yaFirmoDueno ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_dueno}</strong> · ${fmtDate(r.fecha_aprobado_dueno)}</span>`
+                     : `<span style="color:var(--warning,#e6a100)">${icon("clock")} Falta firma del dueño</span>`}
+      ${yaFirmoGeren ? `<span>${icon("shield-check")} Gerencia: <strong>${r.aprobador_gerencia}</strong> · ${fmtDate(r.fecha_aprobado_gerencia)}</span>`
+                     : `<span style="color:var(--warning,#e6a100)">${icon("clock")} Falta co-firma de gerencia</span>`}
+    </div>` : "";
+
+  // Aviso si el usuario ya firmó una de las dos
+  let avisoColusion = "";
+  if (esGrande && !esPendJefe) {
+    if (r.aprobador_dueno_id === currentUserId) {
+      avisoColusion = `<div class="req-aprobaciones-info" style="color:var(--text-muted)"><span>${icon("info")} Ya firmaste como dueño. La co-firma la debe poner una persona distinta con rol gerencia.</span></div>`;
+    } else if (r.aprobador_gerencia_id === currentUserId) {
+      avisoColusion = `<div class="req-aprobaciones-info" style="color:var(--text-muted)"><span>${icon("info")} Ya co-firmaste como gerencia. La firma del dueño la debe poner una persona distinta.</span></div>`;
+    }
+  }
+
+  // Etiquetas para el botón principal
+  function labelBtnPrimary() {
+    if (puedoAprobarJefe)                             return "Aprobar";
+    if (puedoFirmarFinal)                             return "Aprobar y enviar a tesorería";
+    if (puedoFirmarDueno && puedoFirmarGerencia)      return "Firmar (elige rol abajo)";
+    if (puedoFirmarDueno)                             return yaFirmoGeren ? "Firmar como dueño y enviar a tesorería" : "Firmar como dueño";
+    if (puedoFirmarGerencia)                          return yaFirmoDueno ? "Co-firmar como gerencia y enviar a tesorería" : "Co-firmar como gerencia";
+    return null;
+  }
+
+  const btnLabel = labelBtnPrimary();
+  const puedeRechazarAqui = puedoAprobarJefe || puedoFirmarFinal || puedoFirmarDueno || puedoFirmarGerencia;
+
+  // Cuando el usuario tiene ambos permisos y ambas firmas faltan, mostramos 2 botones.
+  const botonesFirma = (puedoFirmarDueno && puedoFirmarGerencia)
+    ? `<button class="btn btn-primary" id="apr-firmar-dueno">${yaFirmoGeren ? "Firmar como dueño y enviar a tesorería" : "Firmar como dueño"}</button>
+       <button class="btn btn-primary" id="apr-firmar-gerencia">${yaFirmoDueno ? "Co-firmar como gerencia y enviar a tesorería" : "Co-firmar como gerencia"}</button>`
+    : btnLabel
+      ? `<button class="btn btn-primary" id="apr-aprobar">${btnLabel}</button>`
+      : `<div style="color:var(--text-muted);font-size:.85rem;display:flex;align-items:center;padding-right:.5rem">${icon("info")} No tienes acción disponible aquí.</div>`;
 
   UI.openModal(`Revisar · ${r.numero}`, `
     <div class="rec-modal">
@@ -526,11 +598,13 @@ function abrirRevision(r) {
         <div class="rec-summary-item"><span class="lbl">Fecha</span><span class="val">${fmtDate(r.fecha_solicitud)}</span></div>
         <div class="rec-summary-item"><span class="lbl">Categoría</span><span class="val">${cat.label}</span></div>
         <div class="rec-summary-item"><span class="lbl">Urgencia</span><span class="val"><span class="badge ${urg.cls}">${urg.label}</span></span></div>
-        <div class="rec-summary-item"><span class="lbl">Nivel</span><span class="val"><span class="badge ${nivel.cls}">${nivel.label}</span></span></div>
+        <div class="rec-summary-item"><span class="lbl">Nivel</span><span class="val"><span class="badge ${nivel.cls}">${nivel.label}</span>${esGrande ? ` <span class="badge badge-warning" style="margin-left:.3rem">${icon("shield-alert")} Compra grande</span>` : ""}</span></div>
       </div>
 
       ${SGIReq.timelineHTML ? `<div class="form-section"><span class="form-section-label">Recorrido</span>${SGIReq.timelineHTML(r)}</div>` : ""}
       ${infoJefe}
+      ${firmasHTML}
+      ${avisoColusion}
 
       <div class="form-section">
         <span class="form-section-label">Justificación</span>
@@ -560,8 +634,8 @@ function abrirRevision(r) {
     </div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="UI.closeModal()">Volver</button>
-      <button class="btn btn-danger" id="apr-rechazar">Rechazar</button>
-      <button class="btn btn-primary" id="apr-aprobar">${r.nivel === "final" ? "Aprobar y enviar a tesorería" : "Aprobar"}</button>
+      ${puedeRechazarAqui ? `<button class="btn btn-danger" id="apr-rechazar">Rechazar</button>` : ""}
+      ${botonesFirma}
     </div>
   `);
   window.SGIUI?.hydrate();
@@ -572,29 +646,54 @@ function abrirRevision(r) {
     errorEl.style.display = "block";
   }
 
-  document.getElementById("apr-aprobar").addEventListener("click", async function () {
+  // Devuelve la ruta correcta según el permiso disponible.
+  function rutaAprobacion() {
+    if (puedoAprobarJefe)     return "aprobar-jefe";
+    if (puedoFirmarFinal)     return "aprobar-final";
+    if (puedoFirmarDueno)     return "aprobar-dueno";
+    if (puedoFirmarGerencia)  return "aprobar-gerencia";
+    return null;
+  }
+
+  async function ejecutar(btn, ruta, exitoMsg) {
     errorEl.style.display = "none";
-    this.disabled = true;
-    this.textContent = "Aprobando...";
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = "Guardando...";
     try {
-      const ruta = r.nivel === "final" ? "aprobar-final" : "aprobar-jefe";
       await API.patch(`/requerimientos/${r.id_requerimiento}/${ruta}`);
       UI.closeModal();
-      UI.toast(
-        r.nivel === "final"
-          ? `${r.numero} aprobado. Pasó a tesorería y se notificó al tesorero.`
-          : `${r.numero} aprobado. Quedó pendiente de la aprobación final del dueño.`,
-        "ok"
-      );
+      UI.toast(exitoMsg, "ok");
       window.aprobacionesView();
     } catch (e) {
-      this.disabled = false;
-      this.textContent = r.nivel === "final" ? "Aprobar y enviar a tesorería" : "Aprobar";
-      fallar(e.message || "No se pudo aprobar.");
+      btn.disabled = false;
+      btn.textContent = original;
+      fallar(e.message || "No se pudo procesar la acción.");
     }
+  }
+
+  document.getElementById("apr-aprobar")?.addEventListener("click", function () {
+    const ruta = rutaAprobacion();
+    if (!ruta) return fallar("No tienes permiso para esta acción.");
+    let msg;
+    if (ruta === "aprobar-jefe")           msg = `${r.numero} aprobado. Quedó pendiente de la aprobación final.`;
+    else if (ruta === "aprobar-final")     msg = `${r.numero} aprobado. Pasó a tesorería y se notificó al tesorero.`;
+    else if (ruta === "aprobar-dueno")     msg = yaFirmoGeren ? `${r.numero} firmado por el dueño. Con las dos firmas, pasó a tesorería.` : `${r.numero} firmado por el dueño. Falta la co-firma de gerencia.`;
+    else if (ruta === "aprobar-gerencia")  msg = yaFirmoDueno ? `${r.numero} co-firmado por gerencia. Con las dos firmas, pasó a tesorería.` : `${r.numero} co-firmado por gerencia. Falta la firma del dueño.`;
+    ejecutar(this, ruta, msg);
   });
 
-  document.getElementById("apr-rechazar").addEventListener("click", async function () {
+  document.getElementById("apr-firmar-dueno")?.addEventListener("click", function () {
+    const msg = yaFirmoGeren ? `${r.numero} firmado por el dueño. Con las dos firmas, pasó a tesorería.` : `${r.numero} firmado por el dueño. Falta la co-firma de gerencia.`;
+    ejecutar(this, "aprobar-dueno", msg);
+  });
+
+  document.getElementById("apr-firmar-gerencia")?.addEventListener("click", function () {
+    const msg = yaFirmoDueno ? `${r.numero} co-firmado por gerencia. Con las dos firmas, pasó a tesorería.` : `${r.numero} co-firmado por gerencia. Falta la firma del dueño.`;
+    ejecutar(this, "aprobar-gerencia", msg);
+  });
+
+  document.getElementById("apr-rechazar")?.addEventListener("click", async function () {
     errorEl.style.display = "none";
     const wrap = document.getElementById("apr-motivo-wrap");
 

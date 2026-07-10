@@ -177,6 +177,7 @@ app.use('/api/v1/gastos',         require('./routes/gastos.routes'));
 app.use('/api/v1/recepciones',    require('./routes/recepciones.routes'));
 app.use('/api/v1/requerimientos', require('./routes/requerimientos.routes'));
 app.use('/api/v1/notificaciones', require('./routes/notificaciones.routes'));
+app.use('/api/v1/config',         require('./routes/config.routes'));
 
 // â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
 app.get("*", (req, res) => {

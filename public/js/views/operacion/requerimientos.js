@@ -381,9 +381,20 @@ function _buildRequerimientoHTML(r) {
     r.aprobador_jefe ? `${r.aprobador_jefe} · ${fmtD(r.fecha_aprobado_jefe)}` :
     (r.estado === "rechazado" && !r.fecha_aprobado_jefe) ? "Rechazado" : "";
 
-  const duenoValue =
-    r.aprobador_final ? `${r.aprobador_final} · ${fmtD(r.fecha_aprobado_final)}` :
-    (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
+  // POL-02: cuando es compra grande, mostramos las dos firmas separadas si existen.
+  let duenoValue;
+  if (r.es_compra_grande) {
+    const partes = [];
+    if (r.aprobador_dueno)    partes.push(`Dueño: ${r.aprobador_dueno} · ${fmtD(r.fecha_aprobado_dueno)}`);
+    if (r.aprobador_gerencia) partes.push(`Gerencia: ${r.aprobador_gerencia} · ${fmtD(r.fecha_aprobado_gerencia)}`);
+    duenoValue = partes.length
+      ? partes.join(" | ")
+      : (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
+  } else {
+    duenoValue =
+      r.aprobador_final ? `${r.aprobador_final} · ${fmtD(r.fecha_aprobado_final)}` :
+      (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
+  }
 
   const tesoreriaValue =
     r.estado === "pendiente_tesoreria" ? "En gestión" :
@@ -528,10 +539,15 @@ function abrirDetalle(r) {
       <div class="form-section">
         <span class="form-section-label">Estado de la solicitud &nbsp;<span class="badge ${est.cls}">${est.label}</span></span>
         ${timelineHTML(r)}
-        ${r.aprobador_jefe || r.aprobador_final ? `
-          <div class="req-aprobaciones-info">
+        ${(r.aprobador_jefe || r.aprobador_final || r.aprobador_dueno || r.aprobador_gerencia) ? `
+          <div class="req-aprobaciones-info" style="flex-wrap:wrap;gap:.4rem 1rem">
             ${r.aprobador_jefe ? `<span>${icon("user-check")} Jefe: <strong>${r.aprobador_jefe}</strong> · ${fmtDate(r.fecha_aprobado_jefe)}</span>` : ""}
-            ${r.aprobador_final ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_final}</strong> · ${fmtDate(r.fecha_aprobado_final)}</span>` : ""}
+            ${r.es_compra_grande
+              ? `
+                ${r.aprobador_dueno    ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_dueno}</strong> · ${fmtDate(r.fecha_aprobado_dueno)}</span>` : ""}
+                ${r.aprobador_gerencia ? `<span>${icon("shield-check")} Gerencia: <strong>${r.aprobador_gerencia}</strong> · ${fmtDate(r.fecha_aprobado_gerencia)}</span>` : ""}
+              `
+              : (r.aprobador_final ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_final}</strong> · ${fmtDate(r.fecha_aprobado_final)}</span>` : "")}
           </div>` : ""}
         ${r.motivo_rechazo ? `
           <div class="req-rechazo-box">
