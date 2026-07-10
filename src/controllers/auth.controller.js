@@ -3,7 +3,7 @@ const admin      = require('../config/firebase');
 const twoFactor   = require('../services/two-factor.service');
 const auditoria   = require('../services/auditoria.service');
 const loginAlert  = require('../services/login-alert.service');
-const { sendPasswordResetEmail, sendLogin2FACodigo, sendNuevoLoginEmail } = require('../services/email.service');
+const { sendPasswordResetEmail, sendLogin2FACodigo, sendNuevoLoginEmail, sendStepUpCodigo } = require('../services/email.service');
 const SCHEMA   = 'condor';
 
 // SEG-05: best-effort "new login" notice. Never throws — a failed alert must never block a
@@ -514,6 +514,31 @@ async function reenviar2FA(req, res) {
   return res.json({ ok: true });
 }
 
+// SEG-07: mid-session step-up. Any authenticated user can request a code for THEIR OWN account
+// (harmless — it only ever emails the account that is already logged in); the actual privileged
+// endpoints (usuarios.controller.js) are the ones that decide whether an action requires one and
+// verify it belongs to req.usuario.id_usuario before proceeding.
+async function solicitarStepUp(req, res) {
+  const accion = (req.body.accion || 'esta acción').toString().slice(0, 200);
+
+  let challenge;
+  try {
+    challenge = await twoFactor.crearChallenge(req.usuario.id_usuario);
+  } catch (e) {
+    console.error('[step-up] crearChallenge', e.message);
+    return res.status(500).json({ error: 'No se pudo iniciar la confirmación. Intenta de nuevo.' });
+  }
+
+  try {
+    await sendStepUpCodigo(req.usuario.email, { codigo: challenge.codigo, expiraMinutos: 5, accion });
+  } catch (e) {
+    console.error('[step-up] sendStepUpCodigo', e.message);
+    return res.status(502).json({ error: 'No se pudo enviar el código de confirmación. Intenta de nuevo.' });
+  }
+
+  return res.json({ challenge_id: challenge.id_challenge });
+}
+
 async function enviarEmailReset(req, res) {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'El correo es requerido.' });
@@ -529,4 +554,4 @@ async function enviarEmailReset(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta, login, verificar2FA, reenviar2FA };
+module.exports = { registrarUsuario, miPerfil, miRol, completarPerfil, actualizarMiPerfil, actualizarAvatar, enviarEmailReset, vincularCuenta, login, verificar2FA, reenviar2FA, solicitarStepUp };

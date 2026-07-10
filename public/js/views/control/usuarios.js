@@ -167,9 +167,18 @@ async function cambiarRolInline(sel) {
     return;
   }
 
+  let stepUp = null;
+  if (esRolAdmin(nuevoIdRol)) {
+    stepUp = await solicitarStepUp(`asignar el rol admin a ${u?.email || 'este usuario'}`);
+    if (!stepUp) {
+      await cargarUsuariosTabla(); // revert the dropdown to the real current role
+      return;
+    }
+  }
+
   sel.disabled = true;
   try {
-    await API.put(`/usuarios/${idUsuario}`, { id_rol: nuevoIdRol });
+    await API.put(`/usuarios/${idUsuario}`, { id_rol: nuevoIdRol, ...stepUp });
     UI.toast(`Rol cambiado a "${rolNombre}"`, 'ok');
     if (u) u.roles = { id_rol: nuevoIdRol, nombre: rolNombre };
     mostrarAlertaPendientes(_todosUsuarios);
@@ -208,6 +217,11 @@ const ROLES_CON_IDENTIDAD = ['comprador', 'comisionista'];
 function rolRequiereIdentidad(idRol) {
   const rol = _rolesCache.find(r => r.id_rol == idRol);
   return rol ? ROLES_CON_IDENTIDAD.includes(rol.nombre) : false;
+}
+
+// SEG-07: assigning the admin role is gated behind a step-up code (see step-up.js).
+function esRolAdmin(idRol) {
+  return _rolesCache.find(r => r.id_rol == idRol)?.nombre === 'admin';
 }
 
 function renderCamposIdentidad(visible) {
@@ -349,8 +363,14 @@ async function guardarNuevoUsuario() {
     return;
   }
 
+  let stepUp = null;
+  if (esRolAdmin(idRol)) {
+    stepUp = await solicitarStepUp(`crear un nuevo usuario con rol admin (${email})`);
+    if (!stepUp) return;
+  }
+
   try {
-    const payload = { email, id_rol: idRol };
+    const payload = { email, id_rol: idRol, ...stepUp };
     if (rolRequiereIdentidad(idRol)) {
       payload.nombres   = nombres;
       payload.apellidos = apellidos;
@@ -378,8 +398,15 @@ async function guardarEdicionUsuario() {
     return;
   }
 
+  const usuarioActual = _todosUsuarios.find(u => u.id_usuario === _usuarioEditandoId);
+  let stepUp = null;
+  if (esRolAdmin(idRol) && usuarioActual?.roles?.nombre !== 'admin') {
+    stepUp = await solicitarStepUp(`asignar el rol admin a ${usuarioActual?.email || 'este usuario'}`);
+    if (!stepUp) return;
+  }
+
   try {
-    const payload = { id_rol: idRol };
+    const payload = { id_rol: idRol, ...stepUp };
     if (rolRequiereIdentidad(idRol)) {
       payload.nombres   = nombres;
       payload.apellidos = apellidos;
@@ -397,8 +424,12 @@ async function guardarEdicionUsuario() {
 
 async function confirmarDesactivar(id, email) {
   if (!confirm(`Desactivar a ${email}?\nPodras reactivarlo despues.`)) return;
+
+  const stepUp = await solicitarStepUp(`desactivar la cuenta de ${email}`);
+  if (!stepUp) return;
+
   try {
-    await API.patch(`/usuarios/${id}/desactivar`);
+    await API.patch(`/usuarios/${id}/desactivar`, stepUp);
     UI.toast('Usuario desactivado', 'ok');
     await cargarUsuariosTabla();
   } catch (err) {
@@ -407,8 +438,13 @@ async function confirmarDesactivar(id, email) {
 }
 
 async function reactivarUsuario(id) {
+  const u = _todosUsuarios.find(x => x.id_usuario === id);
+
+  const stepUp = await solicitarStepUp(`reactivar la cuenta de ${u?.email || 'este usuario'}`);
+  if (!stepUp) return;
+
   try {
-    await API.put(`/usuarios/${id}`, { activo: true });
+    await API.put(`/usuarios/${id}`, { activo: true, ...stepUp });
     UI.toast('Usuario reactivado', 'ok');
     await cargarUsuariosTabla();
   } catch (err) {

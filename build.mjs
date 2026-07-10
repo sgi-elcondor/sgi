@@ -59,6 +59,7 @@ const CLASSIC = [
   "js/components/export-styles.js",
   "js/components/brand-assets.js",
   "js/components/responsive-tables.js",
+  "js/components/step-up.js",
   "js/components/sidebar.js",
   "js/components/user-menu.js",
   "js/components/onboarding.js",
