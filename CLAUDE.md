@@ -537,7 +537,7 @@ Catálogo definido en `condor.roles`. El backend identifica además `asesor_come
 | `auxiliar_contable`   | Operación completa: ventas, pagos, recibos, facturas, ajustes.         |
 | `asesor` / `asesor_comercial` | Crea ventas como `pendiente_autorizacion`.                     |
 | `gerencia`            | Reportes consolidados + **aprobación final de requerimientos** (REQ-03) en compras chicas + **co-firma de compras grandes** (POL-02, permiso `requerimientos:aprobar_gerencia`). |
-| `dueno`               | Dueño del negocio (POL-02). Firma la aprobación final de compras grandes (`requerimientos:aprobar_dueno`) y ajusta el `umbral_compra_grande` desde la vista Permisos (`config:leer` / `config:actualizar`). También tiene `aprobar_final` para compras chicas. |
+| `dueno`               | Dueño del negocio (POL-02). Perfil **supervisor**: lectura amplia de todo lo que involucra dinero (cartera, gastos, banco, comisiones), operación (proyectos, lotes, ventas, compradores), auditoría, personal, jurídico, reportes directivos y portal comprador. Escritura estratégica mínima: firma compras chicas (`aprobar_final`) y grandes (`aprobar_dueno`), crea sus propios requerimientos, ajusta el `umbral_compra_grande` desde Permisos (`config:actualizar`), sube archivos. **No opera el día a día** (no crea ventas, no acepta pagos, no registra gastos/desembolsos/recepciones, no edita usuarios ni permisos). |
 | `juridico`            | Sólo `ventas` en `pre_mora` o `en_mora`; observaciones jurídicas.      |
 | `comisionista`        | Sus propias comisiones y micropagos.                                   |
 | `comprador`           | `mis-ventas`, `mis-cuotas`, `mis-facturas`, `mis-pagos`, `mis-recibos`.|

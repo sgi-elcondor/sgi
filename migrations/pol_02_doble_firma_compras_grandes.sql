@@ -35,6 +35,20 @@ INSERT INTO condor.permisos (recurso, accion, descripcion)
 SELECT 'config', 'actualizar', 'Modificar la configuracion global del sistema.'
 WHERE NOT EXISTS (SELECT 1 FROM condor.permisos WHERE recurso = 'config' AND accion = 'actualizar');
 
+-- Vistas del flujo de requerimientos (si no existen aun en el catalogo).
+-- El resto (dashboard, proyectos, lotes, ...) se asume ya sembradas por instalaciones previas.
+INSERT INTO condor.permisos (recurso, accion, descripcion)
+SELECT 'vista', 'aprobaciones', 'Ver el modulo de aprobaciones de requerimientos.'
+WHERE NOT EXISTS (SELECT 1 FROM condor.permisos WHERE recurso = 'vista' AND accion = 'aprobaciones');
+
+INSERT INTO condor.permisos (recurso, accion, descripcion)
+SELECT 'vista', 'requerimientos', 'Ver el modulo de requerimientos.'
+WHERE NOT EXISTS (SELECT 1 FROM condor.permisos WHERE recurso = 'vista' AND accion = 'requerimientos');
+
+INSERT INTO condor.permisos (recurso, accion, descripcion)
+SELECT 'vista', 'desembolsos', 'Ver el modulo de desembolsos.'
+WHERE NOT EXISTS (SELECT 1 FROM condor.permisos WHERE recurso = 'vista' AND accion = 'desembolsos');
+
 -- ================================================================
 -- STEP 3: Ampliar `requerimiento` con firmas de dueno + gerencia
 --   Se conserva aprobado_final_por / fecha_aprobado_final (compras chicas: firma unica).
@@ -72,11 +86,12 @@ WHERE NOT EXISTS (SELECT 1 FROM condor.config_sistema WHERE clave = 'umbral_comp
 -- ================================================================
 -- STEP 6: rol_permiso — asignar permisos a los roles
 --
---   `dueno` (nuevo rol) recibe:
---     - requerimientos:leer, requerimientos:aprobar_final, requerimientos:aprobar_dueno
---     - config:leer, config:actualizar
---     - vista:aprobaciones (para ver la caja de aprobaciones)
---     - vista:requerimientos (para ver el modulo)
+--   `dueno` (nuevo rol): perfil "supervisor del negocio"
+--     LECTURA amplia (catalogo, cartera, gastos, banco, reportes, auditoria,
+--     juridico, personal, portal comprador). ESCRITURA estrategica minima:
+--     crear/firmar requerimientos, ajustar umbral de compra grande, subir
+--     archivos. NO opera el dia a dia (no crea ventas, no acepta pagos, no
+--     registra gastos ni desembolsos, no edita usuarios).
 --
 --   `gerencia` recibe (adicionales, mantiene los que ya tenia):
 --     - requerimientos:aprobar_gerencia (co-firma en compras grandes)
@@ -89,11 +104,47 @@ SELECT r.id_rol, p.id_permiso
 FROM condor.roles r
 CROSS JOIN condor.permisos p
 WHERE r.nombre = 'dueno'
-  AND (
-    (p.recurso = 'requerimientos' AND p.accion IN ('leer', 'aprobar_final', 'aprobar_dueno'))
-    OR (p.recurso = 'config' AND p.accion IN ('leer', 'actualizar'))
-    OR (p.recurso = 'vista'  AND p.accion IN ('aprobaciones', 'requerimientos'))
-    OR (p.recurso = 'reportes' AND p.accion = 'leer')
+  AND (p.recurso || ':' || p.accion) IN (
+    -- ── Vistas: pantallas visibles en el sidebar ──
+    'vista:dashboard',
+    'vista:proyectos', 'vista:lotes', 'vista:compradores', 'vista:ventas', 'vista:el-proyecto',
+    'vista:requerimientos', 'vista:aprobaciones', 'vista:desembolsos', 'vista:recepciones',
+    'vista:cuotas', 'vista:pagos', 'vista:comisionistas', 'vista:facturas', 'vista:recibos',
+    'vista:gastos', 'vista:bank-transactions', 'vista:payment-validation',
+    'vista:reportes', 'vista:alertas', 'vista:auditoria', 'vista:personal', 'vista:usuarios', 'vista:roles',
+    'vista:juridico',
+    'vista:mis-cuotas', 'vista:mis-facturas', 'vista:mis-recibos',
+
+    -- ── Dashboard: todos los widgets (operacion, cartera, comisiones, juridico) ──
+    'dashboard:ver_operacion', 'dashboard:ver_cartera', 'dashboard:ver_comisiones', 'dashboard:ver_juridico',
+
+    -- ── Lectura de operacion ──
+    'proyectos:leer', 'lotes:leer', 'compradores:leer', 'ventas:leer',
+
+    -- ── Lectura de finanzas (todo lo que involucra dinero) ──
+    'cuotas:leer', 'pagos:leer', 'comisionistas:leer',
+    'facturas:leer', 'recibos:leer', 'gastos:leer',
+    'bank_transactions:leer', 'validacion_pagos:leer',
+
+    -- ── Lectura de control ──
+    'reportes:leer', 'reportes_dir:leer',
+    'alertas_jur:leer', 'observaciones_jur:leer',
+    'usuarios:leer', 'roles:leer',
+
+    -- ── Portal comprador (por si el dueno tiene compras personales) ──
+    'mi_cuenta:leer',
+    'mis_ventas:leer', 'mis_pagos:leer', 'mis_facturas:leer', 'mis_recibos:leer', 'mis_cuotas:leer',
+
+    -- ── Requerimientos: crear (pedir cosas) + firmar (POL-02) ──
+    'requerimientos:leer', 'requerimientos:crear',
+    'requerimientos:aprobar_final', 'requerimientos:aprobar_dueno',
+    'recepciones:leer',
+
+    -- ── Adjuntar archivos (comprobantes cuando sea necesario) ──
+    'uploads:crear',
+
+    -- ── Configuracion global (ajustar umbral de compra grande) ──
+    'config:leer', 'config:actualizar'
   )
   AND NOT EXISTS (
     SELECT 1 FROM condor.rol_permiso rp
@@ -125,7 +176,7 @@ UNION ALL SELECT 'Columnas requerimiento', COUNT(*) FROM information_schema.colu
   WHERE table_schema = 'condor' AND table_name = 'requerimiento'
     AND column_name IN ('aprobado_dueno_por', 'fecha_aprobado_dueno', 'aprobado_gerencia_por', 'fecha_aprobado_gerencia')
 UNION ALL SELECT 'config_sistema rows', COUNT(*) FROM condor.config_sistema
-UNION ALL SELECT 'rol_permiso dueno', COUNT(*) FROM condor.rol_permiso rp
+UNION ALL SELECT 'rol_permiso dueno (esperado ~55)', COUNT(*) FROM condor.rol_permiso rp
   JOIN condor.roles r ON r.id_rol = rp.id_rol WHERE r.nombre = 'dueno'
 UNION ALL SELECT 'rol_permiso gerencia (nuevos)', COUNT(*) FROM condor.rol_permiso rp
   JOIN condor.roles r    ON r.id_rol      = rp.id_rol
