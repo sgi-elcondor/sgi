@@ -1,6 +1,14 @@
-const admin     = require('../config/firebase');
-const supabase  = require('../config/supabase');
-const authCache = require('../services/auth-cache.service');
+const admin         = require('../config/firebase');
+const supabase      = require('../config/supabase');
+const authCache     = require('../services/auth-cache.service');
+const configService = require('../services/config.service');
+
+// BCK-01: while a total backup restore is running, only admin may keep working.
+async function bloqueadoPorMantenimiento(rol) {
+  if (rol === 'admin') return false;
+  const activo = await configService.get('modo_mantenimiento');
+  return activo === true;
+}
 
 async function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -24,6 +32,13 @@ async function verificarToken(req, res, next) {
           code:  'EMAIL_NOT_VERIFIED',
         });
       }
+      if (await bloqueadoPorMantenimiento(cached.rol)) {
+        return res.status(503).json({
+          error: 'Sistema en mantenimiento por una restauración de respaldo en curso.',
+          code:  'MODO_MANTENIMIENTO',
+        });
+      }
+
       req.usuario = {
         uid:        decoded.uid,
         id_usuario: cached.id_usuario,
@@ -178,6 +193,13 @@ async function verificarToken(req, res, next) {
       rol:        rolData.nombre,
       permisos:   permisosArray,
     });
+
+    if (await bloqueadoPorMantenimiento(rolData.nombre)) {
+      return res.status(503).json({
+        error: 'Sistema en mantenimiento por una restauración de respaldo en curso.',
+        code:  'MODO_MANTENIMIENTO',
+      });
+    }
 
     req.usuario = {
       uid:        decoded.uid,

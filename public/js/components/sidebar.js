@@ -32,6 +32,7 @@ const SIDEBAR_GROUPS = [
   { label: "Control", items: [
     { view: "reportes",  icon: "bar-chart-3",    label: "Reportes" },
     { view: "auditoria", icon: "shield-check",   label: "Auditoria" },
+    { view: "respaldos", icon: "database-backup", label: "Respaldos" },
     { view: "personal",  icon: "users",          label: "Personal" },
     { view: "usuarios",  icon: "settings",       label: "Usuarios" },
     { view: "roles",     icon: "shield-check",   label: "Permisos" },
