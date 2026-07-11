@@ -135,3 +135,36 @@ jobs:
             -H "Content-Profile: condor" \
             -H "Prefer: return=minimal" \
             -d "{\"tipo\":\"completo\",\"ubicacion\":\"fallido\",\"estado\":\"fallido\",\"origen\":\"automatico\",\"detalle\":\"El workflow backup.yml fallo — revisar el run en GitHub Actions\"}" || true
+
+      - name: Notificar a los admins del fallo
+        if: failure()
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -uo pipefail
+          ROL_ID=$(curl -sf "$SUPABASE_URL/rest/v1/roles?select=id_rol&nombre=eq.admin" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor" | jq -r '.[0].id_rol // empty')
+
+          if [ -z "$ROL_ID" ]; then
+            echo "aviso: no se encontro el rol admin, no se notifica a nadie"
+            exit 0
+          fi
+
+          ADMIN_IDS=$(curl -sf "$SUPABASE_URL/rest/v1/usuarios?select=id_usuario&activo=eq.true&id_rol=eq.$ROL_ID" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor" | jq -r '.[].id_usuario')
+
+          for ID in $ADMIN_IDS; do
+            curl -sf -X POST "$SUPABASE_URL/rest/v1/notificacion" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Content-Profile: condor" \
+              -H "Prefer: return=minimal" \
+              -d "{\"id_usuario\":$ID,\"titulo\":\"Fallo el respaldo automatico\",\"mensaje\":\"El workflow backup.yml fallo esta madrugada. Revisa Actions en GitHub.\",\"vista\":\"respaldos\"}" \
+              || echo "  aviso: no se pudo notificar al usuario $ID"
+          done
