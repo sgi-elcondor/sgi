@@ -68,8 +68,11 @@ async function dispararWorkflowRestore({ id_restauracion, id_respaldo, alcance, 
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
       },
+      // "develop" is this repo's actual default/live branch (Railway deploys from it,
+      // and it's where restore.yml itself lives) — not "main", which only gets synced
+      // at sprint close.
       body: JSON.stringify({
-        ref: "main",
+        ref: "develop",
         inputs: {
           id_respaldo:      String(id_respaldo),
           alcance:          String(alcance),
