@@ -118,6 +118,10 @@
         { key: 'alertas_jur:leer', label: 'Ver alertas' },
       ]},
       { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [] },
+      { key: 'respaldos', label: 'Respaldos', icon: 'database-backup', actions: [
+        { key: 'respaldos:leer',      label: 'Ver respaldos' },
+        { key: 'respaldos:restaurar', label: 'Restaurar un respaldo' },
+      ]},
       { key: 'personal',  label: 'Personal registrado', icon: 'users-round',    actions: [
         { key: 'usuarios:leer',      label: 'Ver usuarios' },
         { key: 'compradores:leer',   label: 'Ver compradores' },

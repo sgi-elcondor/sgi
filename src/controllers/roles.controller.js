@@ -20,7 +20,7 @@ const VISTA_API_MAP = {
   'reportes':      ['reportes:leer', 'reportes_dir:leer', 'alertas_jur:leer'],
   'alertas':       ['alertas_jur:leer'],
   'auditoria':     [],
-  'respaldos':     [],
+  'respaldos':     ['respaldos:leer', 'respaldos:restaurar'],
   'usuarios':      ['usuarios:leer', 'usuarios:crear', 'usuarios:actualizar'],
   'roles':         ['roles:leer', 'roles:actualizar'],
   'juridico':      ['ventas:leer', 'compradores:leer', 'cuotas:leer', 'pagos:leer', 'alertas_jur:leer', 'observaciones_jur:leer', 'observaciones_jur:crear'],
