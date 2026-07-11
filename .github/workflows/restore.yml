@@ -36,8 +36,12 @@ jobs:
       UBICACION:              ${{ inputs.ubicacion }}
       UBICACION_R2:           ${{ inputs.ubicacion_r2 }}
     steps:
-      - name: Instalar postgresql-client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Instalar postgresql-client 17 (debe igualar o superar la version del servidor)
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
 
       - name: Validar el alcance recibido
         run: |
