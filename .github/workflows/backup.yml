@@ -9,6 +9,10 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    env:
+      # Cuantos dias se conserva un respaldo automatico antes de purgarlo (archivo
+      # + fila). Los respaldos manuales (origen=manual) nunca se purgan solos.
+      RETENTION_DIAS: "30"
     steps:
       - name: Instalar postgresql-client 17 (debe igualar o superar la version del servidor)
         run: |
@@ -73,6 +77,50 @@ jobs:
             -H "Content-Profile: condor" \
             -H "Prefer: return=minimal" \
             -d "{\"tipo\":\"completo\",\"tamano_bytes\":${TAMANO},\"ubicacion\":\"${RUTA}\",\"ubicacion_r2\":\"${RUTA_R2}\",\"checksum_sha256\":\"${CHECKSUM}\",\"estado\":\"completado\",\"origen\":\"automatico\"}"
+
+      - name: Purgar respaldos automaticos con mas de RETENTION_DIAS dias
+        if: success()
+        env:
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_KEY }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT:           ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET:             ${{ secrets.R2_BUCKET }}
+        run: |
+          set -uo pipefail
+          CUTOFF=$(date -u -d "-${RETENTION_DIAS} days" +%Y-%m-%dT%H:%M:%SZ)
+
+          VIEJOS=$(curl -sf "$SUPABASE_URL/rest/v1/respaldo?estado=eq.completado&origen=eq.automatico&fecha=lt.${CUTOFF}&select=id_respaldo,ubicacion,ubicacion_r2" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor") || VIEJOS="[]"
+
+          echo "$VIEJOS" | jq -c '.[]' | while read -r row; do
+            ID=$(echo "$row" | jq -r '.id_respaldo')
+            UBI=$(echo "$row" | jq -r '.ubicacion')
+            UBI_R2=$(echo "$row" | jq -r '.ubicacion_r2 // empty')
+            echo "Purgando respaldo #$ID ($UBI, mas de $RETENTION_DIAS dias)"
+
+            curl -sf -X DELETE "$SUPABASE_URL/storage/v1/object/respaldos/$UBI" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              || echo "  aviso: no se pudo borrar $UBI de Supabase Storage"
+
+            if [ -n "$UBI_R2" ]; then
+              aws s3 rm "s3://$R2_BUCKET/$UBI_R2" --endpoint-url "$R2_ENDPOINT" \
+                || echo "  aviso: no se pudo borrar $UBI_R2 de R2"
+            fi
+
+            curl -sf -X PATCH "$SUPABASE_URL/rest/v1/respaldo?id_respaldo=eq.$ID" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Content-Profile: condor" \
+              -H "Prefer: return=minimal" \
+              -d '{"estado":"purgado"}' \
+              || echo "  aviso: no se pudo marcar #$ID como purgado"
+          done
 
       - name: Registrar fallo en condor.respaldo (si algun paso previo fallo)
         if: failure()
