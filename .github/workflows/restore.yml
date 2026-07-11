@@ -42,6 +42,9 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
+          # El runner ya trae postgresql-client 16 preinstalado en el PATH por
+          # defecto; forzamos que los binarios de la 17 tengan prioridad.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
 
       - name: Validar el alcance recibido
         run: |
