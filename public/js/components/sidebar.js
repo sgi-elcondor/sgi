@@ -6,6 +6,7 @@ const SIDEBAR_GROUPS = [
     { view: "el-proyecto", icon: "building-2", label: "El Proyecto" },
     { view: "proyectos",   icon: "building-2", label: "Proyectos" },
     { view: "lotes",       icon: "map",        label: "Lotes" },
+    { view: "mapa-editor", icon: "pencil-ruler", label: "Editor de Mapa" },
     { view: "compradores", icon: "users",      label: "Compradores" },
     { view: "ventas",      icon: "briefcase",  label: "Ventas" },
     { view: "recepciones", icon: "package",    label: "Recepciones" },

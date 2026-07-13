@@ -28,6 +28,7 @@ window.elProyectoView = async function (container) {
     lotesPorProyecto[l.id_proyecto].push(l);
   });
 
+  let mapHandle = null;
   let selectedProyectoIdx = 0;
   if (misVentas?.length) {
     const miProyecto = misVentas[0].lote?.proyecto?.nombre;
@@ -64,11 +65,7 @@ window.elProyectoView = async function (container) {
     const detailPanel   = document.getElementById("lote-detail-panel");
     const detailHeader  = document.getElementById("lote-detail-header");
 
-    vc.querySelectorAll(".lote-cell.selected").forEach(c => c.classList.remove("selected"));
     vc.querySelectorAll(".lote-disponible-card.selected").forEach(c => c.classList.remove("selected"));
-
-    const cell = vc.querySelector(`.lote-cell[data-id="${loteId}"]`);
-    if (cell) cell.classList.add("selected");
 
     const card = vc.querySelector(`.lote-disponible-card[data-id="${loteId}"]`);
     if (card) card.classList.add("selected");
@@ -94,7 +91,6 @@ window.elProyectoView = async function (container) {
   }
 
   function clearSelection() {
-    vc.querySelectorAll(".lote-cell.selected").forEach(c => c.classList.remove("selected"));
     vc.querySelectorAll(".lote-disponible-card.selected").forEach(c => c.classList.remove("selected"));
     const detailSection = document.getElementById("lote-detail-section");
     if (detailSection) detailSection.style.display = "none";
@@ -111,31 +107,6 @@ window.elProyectoView = async function (container) {
 
     const loteMap = {};
     lotesDelProyecto.forEach(l => { loteMap[l.id_lote] = l; });
-
-    const porManzana = {};
-    lotesDelProyecto.forEach(l => {
-      const mz = l.manzana || "—";
-      if (!porManzana[mz]) porManzana[mz] = [];
-      porManzana[mz].push(l);
-    });
-
-    const gridHtml = Object.entries(porManzana).map(([mz, mzLotes]) => {
-      const cells = mzLotes.map(l => {
-        const isMine = misCodigosLote.has(l.codigo_lote);
-        return `
-          <button class="lote-cell lote-cell-${l.estado} ${isMine ? "is-mine" : ""}"
-            data-id="${l.id_lote}"
-            title="${l.codigo_lote}${isMine ? " · Tu lote" : ""}">
-            <span class="lote-cell-code">${l.codigo_lote}</span>
-            ${isMine ? '<span class="lote-cell-mine-dot"></span>' : ""}
-          </button>`;
-      }).join("");
-      return `
-        <div class="manzana-group">
-          <div class="manzana-label">Manzana ${mz}</div>
-          <div class="manzana-grid">${cells}</div>
-        </div>`;
-    }).join("");
 
     const sortedDisponibles = sortDisponibles(disponibles);
 
@@ -196,18 +167,9 @@ window.elProyectoView = async function (container) {
           </div>
         </div>
 
-        <div class="lote-grid-leyenda">
-          <span class="leyenda-item"><span class="leyenda-dot disponible"></span>Disponible</span>
-          <span class="leyenda-item"><span class="leyenda-dot vendido"></span>Vendido</span>
-          <span class="leyenda-item"><span class="leyenda-dot entregado"></span>Entregado</span>
-          ${misCodigosLote.size > 0 ? '<span class="leyenda-item"><span class="leyenda-dot mine"></span>Tu lote</span>' : ""}
-        </div>
-
         <section class="table-wrap">
-          <div class="table-header"><h3>${window.SGIUI?.icon("map") ?? ""} Plano del proyecto</h3></div>
-          <div class="lote-mapa-container">
-            ${gridHtml || '<p style="padding:1.25rem;color:var(--text-muted)">Sin lotes registrados.</p>'}
-          </div>
+          <div class="table-header"><h3>${window.SGIUI?.icon("map") ?? ""} Mapa del proyecto</h3></div>
+          <div id="lote-map-container" style="padding:1rem 1.25rem">${UI.loader()}</div>
         </section>
 
         <section class="table-wrap lote-detail-section" id="lote-detail-section" style="display:none;margin-top:0.5rem">
@@ -240,28 +202,41 @@ window.elProyectoView = async function (container) {
       });
     });
 
-    vc.querySelectorAll(".lote-cell").forEach(cell => {
-      cell.addEventListener("click", () => {
-        const wasSelected = cell.classList.contains("selected");
-        if (wasSelected) { clearSelection(); return; }
-        selectLote(cell.dataset.id, loteMap);
-        document.getElementById("lote-detail-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
-      });
-    });
-
     vc.querySelectorAll(".lote-disponible-card").forEach(card => {
       const activate = () => {
         const wasSelected = card.classList.contains("selected");
         if (wasSelected) { clearSelection(); return; }
         selectLote(card.dataset.id, loteMap);
-        vc.querySelector(".lote-mapa-container")?.closest(".table-wrap")
+        vc.querySelector("#lote-map-container")?.closest(".table-wrap")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        mapHandle?.panTo(Number(card.dataset.id));
       };
       card.addEventListener("click", activate);
       card.addEventListener("keydown", e => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
       });
     });
+
+    if (mapHandle) { mapHandle.destroy(); mapHandle = null; }
+    const mapContainer = document.getElementById("lote-map-container");
+    if (mapContainer && proyecto) {
+      window.SGILibs.ensureMap()
+        .then(() => {
+          if (!document.getElementById("lote-map-container")) return; // view changed meanwhile
+          mapHandle = window.SGIMap.render(mapContainer, {
+            lotes: lotesDelProyecto,
+            proyecto,
+            misCodigosLote,
+            onSelect: l => {
+              selectLote(l.id_lote, loteMap);
+              document.getElementById("lote-detail-section").scrollIntoView({ behavior: "smooth", block: "nearest" });
+            },
+          });
+        })
+        .catch(() => {
+          mapContainer.innerHTML = `<p style="color:var(--danger)">No se pudo cargar el mapa interactivo.</p>`;
+        });
+    }
   }
 
   render(selectedProyectoIdx);

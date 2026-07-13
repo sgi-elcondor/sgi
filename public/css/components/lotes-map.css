@@ -1,0 +1,117 @@
+.sgi-map-wrap { position: relative; border-radius: 0.75rem; overflow: hidden; border: 1px solid var(--border); }
+
+.sgi-map-canvas { width: 100%; height: 28rem; background: var(--surface-2); }
+.sgi-map-canvas.sgi-map-canvas-editor { height: 34rem; }
+
+.sgi-map-empty {
+  position: absolute; inset: 0; z-index: 500; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 0.5rem; text-align: center;
+  padding: 1.5rem; background: var(--surface-2); color: var(--text-muted); font-size: 0.875rem;
+}
+.sgi-map-empty strong { color: var(--text); font-size: 0.9375rem; }
+
+/* Leaflet chrome kept minimal — no default shadows/borders on controls */
+.leaflet-container { font-family: inherit; background: var(--surface-2); }
+.leaflet-control-attribution { font-size: 0.625rem; background: var(--surface-glass) !important; color: var(--text-muted); }
+.leaflet-control-zoom a { color: var(--text) !important; background: var(--surface) !important; border-color: var(--border) !important; }
+
+/* ── Legend ── */
+.sgi-map-legend {
+  position: absolute; left: 0.75rem; bottom: 0.75rem; z-index: 500;
+  display: flex; flex-wrap: wrap; gap: 0.5rem 0.875rem; align-items: center;
+  background: var(--surface-glass); backdrop-filter: blur(6px);
+  border: 1px solid var(--border-soft); border-radius: 0.5rem; padding: 0.5rem 0.75rem;
+  font-size: 0.75rem; color: var(--text-muted);
+}
+.sgi-map-legend-item { display: flex; align-items: center; gap: 0.375rem; }
+.sgi-map-legend-dot { width: 0.625rem; height: 0.625rem; border-radius: 0.15rem; display: inline-block; flex-shrink: 0; }
+
+/* ── Layer / base tile toggle ── */
+.sgi-map-tile-toggle {
+  position: absolute; top: 0.75rem; right: 0.75rem; z-index: 500;
+  display: flex; background: var(--surface-glass); backdrop-filter: blur(6px);
+  border: 1px solid var(--border-soft); border-radius: 0.5rem; overflow: hidden;
+}
+.sgi-map-tile-toggle button {
+  border: none; background: transparent; color: var(--text-muted); font-size: 0.75rem;
+  font-weight: 600; padding: 0.375rem 0.625rem; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.sgi-map-tile-toggle button.active { background: var(--accent); color: var(--accent-2); }
+
+/* ── Filters panel (MAP-03) ── */
+.sgi-map-filters {
+  position: absolute; top: 0.75rem; left: 0.75rem; z-index: 500; width: 15rem; max-width: calc(100% - 1.5rem);
+  background: var(--surface-glass); backdrop-filter: blur(6px);
+  border: 1px solid var(--border-soft); border-radius: 0.625rem; padding: 0.75rem;
+  display: flex; flex-direction: column; gap: 0.625rem; font-size: 0.8125rem;
+}
+.sgi-map-filters-title { font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.375rem; }
+.sgi-map-filters-row { display: flex; flex-direction: column; gap: 0.25rem; }
+.sgi-map-filters-row label { color: var(--text-muted); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.sgi-map-filters-range { display: flex; gap: 0.375rem; }
+.sgi-map-filters-range input {
+  width: 0; flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 0.375rem;
+  background: var(--surface); color: var(--text); padding: 0.3125rem 0.5rem; font-size: 0.75rem;
+}
+.sgi-map-filters-chips { display: flex; flex-wrap: wrap; gap: 0.3125rem; }
+.sgi-map-filters-chip {
+  border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.625rem; font-size: 0.6875rem;
+  cursor: pointer; background: var(--surface); color: var(--text-muted); user-select: none;
+}
+.sgi-map-filters-chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sgi-map-filters-reset { align-self: flex-start; font-size: 0.6875rem; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; }
+
+/* ── Popup card ── */
+.leaflet-popup-content-wrapper { border-radius: 0.625rem; background: var(--surface); color: var(--text); box-shadow: 0 0.375rem 1.25rem rgba(0, 0, 0, 0.18); }
+.leaflet-popup-tip { background: var(--surface); }
+.leaflet-popup-content { margin: 0; width: 15.5rem !important; }
+.sgi-lote-card-photo { width: 100%; height: 7rem; object-fit: cover; display: block; background: var(--surface-3); }
+.sgi-lote-card-body { padding: 0.75rem 0.875rem; display: flex; flex-direction: column; gap: 0.375rem; }
+.sgi-lote-card-code { font-weight: 700; font-size: 0.9375rem; }
+.sgi-lote-card-meta { font-size: 0.75rem; color: var(--text-muted); }
+.sgi-lote-card-precio { font-weight: 700; color: var(--success); font-size: 0.9375rem; }
+.sgi-lote-card-btn {
+  margin-top: 0.25rem; text-align: center; background: var(--accent); color: var(--accent-2);
+  border: none; border-radius: 0.4375rem; padding: 0.4375rem; font-size: 0.75rem; font-weight: 700;
+  cursor: pointer; text-decoration: none; display: block;
+}
+
+/* ── Tooltip (hover) ── */
+.sgi-lote-tooltip.leaflet-tooltip {
+  background: var(--surface-glass); backdrop-filter: blur(6px); color: var(--text);
+  border: 1px solid var(--border-soft); border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;
+  padding: 0.25rem 0.5rem; box-shadow: none;
+}
+.sgi-lote-tooltip.leaflet-tooltip::before { display: none; }
+
+/* ── Polygon states (applied via Leaflet layer `className`) ── */
+.sgi-lote-poly-disponible { stroke: var(--success); fill: var(--success); }
+.sgi-lote-poly-vendido    { stroke: var(--accent);  fill: var(--accent); }
+.sgi-lote-poly-entregado  { stroke: var(--info, #3b82f6); fill: var(--info, #3b82f6); }
+.sgi-lote-poly-devolucion { stroke: var(--danger);  fill: var(--danger); }
+.sgi-lote-poly-mine { stroke: var(--accent) !important; stroke-width: 3 !important; }
+.sgi-lote-poly-dim  { opacity: 0.18; }
+
+/* ── Editor mode (MAP-02) ── */
+.sgi-map-editor-layout { display: grid; grid-template-columns: 16rem 1fr; gap: 1rem; }
+@media (max-width: 56rem) { .sgi-map-editor-layout { grid-template-columns: 1fr; } }
+
+.sgi-map-editor-sidebar { display: flex; flex-direction: column; gap: 0.5rem; max-height: 34rem; overflow-y: auto; }
+.sgi-map-lote-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.5rem 0.75rem;
+  background: var(--surface); cursor: pointer; transition: border-color 0.15s;
+}
+.sgi-map-lote-item:hover { border-color: var(--accent); }
+.sgi-map-lote-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.sgi-map-lote-item-code { font-weight: 700; font-size: 0.8125rem; }
+.sgi-map-lote-item-meta { font-size: 0.6875rem; color: var(--text-muted); }
+.sgi-map-lote-item-status { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.sgi-map-lote-item-status.pending { color: var(--warning); }
+.sgi-map-lote-item-status.done    { color: var(--success); }
+
+.sgi-map-editor-toolbar {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border); border-radius: 0.625rem; background: var(--surface-2);
+}
+.sgi-map-editor-toolbar .sgi-map-editor-hint { font-size: 0.75rem; color: var(--text-muted); }

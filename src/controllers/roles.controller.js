@@ -36,6 +36,7 @@ const VISTA_API_MAP = {
   'mis-facturas':  ['mis_facturas:leer'],
   'mis-recibos':   ['mis_recibos:leer'],
   'el-proyecto':   ['proyectos:leer', 'lotes:leer'],
+  'mapa-editor':   ['proyectos:leer', 'proyectos:editar_ubicacion', 'lotes:leer', 'lotes:editar_geometria'],
 };
 
 // Build the set of managed resource namespaces from VISTA_API_MAP

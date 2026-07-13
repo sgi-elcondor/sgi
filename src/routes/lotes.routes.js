@@ -5,4 +5,5 @@ router.get("/disponibles", ctrl.getDisponibles);
 router.get("/:id",         ctrl.getById);
 router.post("/",           ctrl.create);
 router.put("/:id",         ctrl.update);
+router.patch("/:id/geometria", ctrl.updateGeometria);
 module.exports = router;

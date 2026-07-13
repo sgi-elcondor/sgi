@@ -19,6 +19,7 @@
 @import url("./components/toast.css");
 @import url("./components/loading-overlay.css");
 @import url("./components/notificaciones.css");
+@import url("./components/lotes-map.css");
 
 @import url("./views/dashboard.css");
 @import url("./views/compradores.css");

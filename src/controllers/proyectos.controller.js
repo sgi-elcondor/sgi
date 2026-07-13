@@ -120,3 +120,25 @@ exports.update = async (req, res) => {
 
   res.json(data);
 };
+
+// MAP-02: ajustar la coordenada de referencia (centro por defecto del mapa) de un proyecto.
+// Endpoint separado del update general (permiso proyectos:editar_ubicacion) para no exponer
+// nombre/sigla/descripcion a quien solo geolocaliza (topografo).
+exports.updateUbicacion = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de proyecto inválido" });
+
+  const { lat, lng } = req.body;
+  if (lat != null && (isNaN(Number(lat)) || Number(lat) < -90 || Number(lat) > 90)) {
+    return res.status(422).json({ error: "Latitud invalida" });
+  }
+  if (lng != null && (isNaN(Number(lng)) || Number(lng) < -180 || Number(lng) > 180)) {
+    return res.status(422).json({ error: "Longitud invalida" });
+  }
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("proyecto").update({ lat: lat ?? null, lng: lng ?? null }).eq("id_proyecto", id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
+};

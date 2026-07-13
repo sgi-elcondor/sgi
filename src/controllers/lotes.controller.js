@@ -82,8 +82,8 @@ exports.getById = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { id_proyecto, codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones } = req.body;
-  const { data, error } = await supabase.schema(SCHEMA).from("lote").insert([{ id_proyecto, codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones }]).select().single();
+  const { id_proyecto, codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones, foto_url } = req.body;
+  const { data, error } = await supabase.schema(SCHEMA).from("lote").insert([{ id_proyecto, codigo_lote, area_m2, precio_base, descripcion, manzana, numero_lote, dimensiones, foto_url: foto_url || null }]).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 };
@@ -96,7 +96,7 @@ exports.update = async (req, res) => {
     .from("lote").select("precio_base").eq("id_lote", id).single();
   if (eRead || !actual) return res.status(404).json({ error: "Lote no encontrado" });
 
-  const ALLOWED = ["id_proyecto", "codigo_lote", "area_m2", "precio_base", "descripcion", "manzana", "numero_lote", "dimensiones"];
+  const ALLOWED = ["id_proyecto", "codigo_lote", "area_m2", "precio_base", "descripcion", "manzana", "numero_lote", "dimensiones", "foto_url"];
   const campos = {};
   for (const k of ALLOWED) if (req.body[k] !== undefined) campos[k] = req.body[k];
 
@@ -145,6 +145,42 @@ exports.update = async (req, res) => {
       motivo:   "edicion_lote",
     });
   }
+
+  res.json(data);
+};
+
+// MAP-02: dibujar/ajustar el contorno geografico de un lote. Guardado separado del
+// update general (permiso lotes:editar_geometria) para no exponer precio/descripcion
+// a quien solo geolocaliza lotes (topografo).
+exports.updateGeometria = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id <= 0) return res.status(400).json({ error: "ID de lote inválido" });
+
+  const { geom } = req.body;
+  if (geom !== null) {
+    const coords = geom?.coordinates?.[0];
+    if (geom?.type !== "Polygon" || !Array.isArray(coords) || coords.length < 3) {
+      return res.status(422).json({ error: "geom debe ser un GeoJSON Polygon con al menos 3 puntos, o null para borrar el contorno" });
+    }
+  }
+
+  const { data: actual, error: eRead } = await supabase.schema(SCHEMA)
+    .from("lote").select("id_lote").eq("id_lote", id).single();
+  if (eRead || !actual) return res.status(404).json({ error: "Lote no encontrado" });
+
+  const { data, error } = await supabase.schema(SCHEMA)
+    .from("lote").update({ geom }).eq("id_lote", id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  await auditoria.log({
+    tabla:    "lote",
+    id,
+    campo:    "geom",
+    anterior: geom === null ? "definido" : "sin definir",
+    nuevo:    geom === null ? "sin definir" : "definido",
+    usuario:  req.usuario?.email || "sistema",
+    motivo:   "edicion_geometria_mapa",
+  });
 
   res.json(data);
 };

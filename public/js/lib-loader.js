@@ -12,6 +12,10 @@
     jspdfAuto:    "https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js",
     cropperCss:   "https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css",
     cropperJs:    "https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js",
+    leafletCss:   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+    leafletJs:    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+    geomanCss:    "https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css",
+    geomanJs:     "https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js",
   };
 
   const _scripts = {};
@@ -43,7 +47,7 @@
     return _styles[href];
   }
 
-  let _charts, _export, _cropper;
+  let _charts, _export, _cropper, _map, _mapEditor;
 
   // Chart.js — exposes window.Chart.
   function ensureCharts() {
@@ -67,5 +71,20 @@
     return _cropper;
   }
 
-  window.SGILibs = { ensureCharts, ensureExport, ensureCropper };
+  // Leaflet — exposes window.L. Base map, read-only (MAP-01/MAP-03).
+  function ensureMap() {
+    if (!_map) _map = Promise.all([loadStyle(CDN.leafletCss), loadScript(CDN.leafletJs)]);
+    return _map;
+  }
+
+  // Leaflet + Geoman free — adds drawing/editing tools on top of L (MAP-02).
+  function ensureMapEditor() {
+    if (!_mapEditor) {
+      _mapEditor = ensureMap()
+        .then(() => Promise.all([loadStyle(CDN.geomanCss), loadScript(CDN.geomanJs)]));
+    }
+    return _mapEditor;
+  }
+
+  window.SGILibs = { ensureCharts, ensureExport, ensureCropper, ensureMap, ensureMapEditor };
 })();
