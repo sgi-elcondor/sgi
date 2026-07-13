@@ -12,10 +12,13 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/proyectos':             { recurso: 'proyectos',     accion: 'leer' },
   'POST /api/v1/proyectos':            { recurso: 'proyectos',     accion: 'crear' },
   'PUT /api/v1/proyectos':             { recurso: 'proyectos',     accion: 'actualizar' },
+  'PATCH /api/v1/proyectos/ubicacion': { recurso: 'proyectos',     accion: 'editar_ubicacion' },
 
   'GET /api/v1/lotes':                 { recurso: 'lotes',         accion: 'leer' },
   'POST /api/v1/lotes':                { recurso: 'lotes',         accion: 'crear' },
   'PUT /api/v1/lotes':                 { recurso: 'lotes',         accion: 'actualizar' },
+  'PATCH /api/v1/lotes/geometria':     { recurso: 'lotes',         accion: 'editar_geometria' },
+  'POST /api/v1/lotes/geometria-batch': { recurso: 'lotes',        accion: 'editar_geometria' },
 
   'GET /api/v1/ventas':                { recurso: 'ventas',        accion: 'leer' },
   'POST /api/v1/ventas':               { recurso: 'ventas',        accion: 'crear' },
@@ -94,6 +97,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/cuotas/mis-cuotas/documentos': { recurso: 'mis_ventas', accion: 'leer' },
 
   'POST /api/v1/uploads/baucher':    { recurso: 'uploads',     accion: 'crear' },
+  'POST /api/v1/uploads/lote-foto':  { recurso: 'lotes',       accion: 'actualizar' },
   'GET /api/v1/roles':          { recurso: 'roles', accion: 'leer' },
   'GET /api/v1/roles/permisos': { recurso: 'roles', accion: 'leer' },
   'PUT /api/v1/roles/permisos': { recurso: 'roles', accion: 'actualizar' },
