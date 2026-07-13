@@ -18,6 +18,7 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/lotes':                { recurso: 'lotes',         accion: 'crear' },
   'PUT /api/v1/lotes':                 { recurso: 'lotes',         accion: 'actualizar' },
   'PATCH /api/v1/lotes/geometria':     { recurso: 'lotes',         accion: 'editar_geometria' },
+  'POST /api/v1/lotes/geometria-batch': { recurso: 'lotes',        accion: 'editar_geometria' },
 
   'GET /api/v1/ventas':                { recurso: 'ventas',        accion: 'leer' },
   'POST /api/v1/ventas':               { recurso: 'ventas',        accion: 'crear' },
