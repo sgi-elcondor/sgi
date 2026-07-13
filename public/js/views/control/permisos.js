@@ -3,7 +3,12 @@
   // ── Permission catalog ────────────────────────────────────────────────────────
   const PERMISSION_CATALOG = [
     { group: 'General', modules: [
-      { key: 'dashboard',  label: 'Panel de control',   icon: 'layout-dashboard', actions: [] },
+      { key: 'dashboard',  label: 'Panel de control',   icon: 'layout-dashboard', actions: [
+        { key: 'dashboard:ver_operacion',  label: 'Ver resumen de operacion diaria' },
+        { key: 'dashboard:ver_cartera',    label: 'Ver resumen de cartera' },
+        { key: 'dashboard:ver_comisiones', label: 'Ver resumen de comisiones' },
+        { key: 'dashboard:ver_juridico',   label: 'Ver alertas juridicas en el panel' },
+      ]},
     ]},
     { group: 'Operacion', modules: [
       { key: 'proyectos', label: 'Proyectos', icon: 'building-2', actions: [
@@ -16,14 +21,19 @@
         { key: 'lotes:crear',      label: 'Crear lote' },
         { key: 'lotes:actualizar', label: 'Editar lote' },
       ]},
+      { key: 'mapa-editor', label: 'Editor de Mapa', icon: 'pencil-ruler', actions: [
+        { key: 'proyectos:editar_ubicacion', label: 'Ajustar el centro del proyecto en el mapa' },
+        { key: 'lotes:editar_geometria',     label: 'Dibujar y ajustar el contorno de los lotes' },
+      ]},
       { key: 'compradores', label: 'Compradores', icon: 'users', actions: [
         { key: 'compradores:leer',       label: 'Ver compradores' },
         { key: 'compradores:crear',      label: 'Registrar comprador' },
         { key: 'compradores:actualizar', label: 'Editar comprador' },
       ]},
       { key: 'el-proyecto', label: 'El Proyecto', icon: 'map-pin', actions: [
-        { key: 'proyectos:leer', label: 'Ver proyectos' },
-        { key: 'lotes:leer',     label: 'Ver lotes' },
+        { key: 'proyectos:leer',   label: 'Ver proyectos' },
+        { key: 'lotes:leer',       label: 'Ver lotes' },
+        { key: 'mis_ventas:leer',  label: 'Ver mis ventas (resaltar mi lote en el mapa)' },
       ]},
       { key: 'ventas', label: 'Ventas', icon: 'briefcase', actions: [
         { key: 'ventas:leer',              label: 'Ver ventas' },
@@ -113,6 +123,7 @@
       { key: 'reportes', label: 'Reportes', icon: 'bar-chart-3', actions: [
         { key: 'reportes:leer',     label: 'Ver reportes operativos' },
         { key: 'reportes_dir:leer', label: 'Ver reportes directivos' },
+        { key: 'alertas_jur:leer',  label: 'Ver alertas juridicas' },
       ]},
       { key: 'alertas',   label: 'Alertas juridicas',  icon: 'triangle-alert', actions: [
         { key: 'alertas_jur:leer', label: 'Ver alertas' },

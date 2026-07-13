@@ -7,7 +7,7 @@ const authCache = require('../services/auth-cache.service');
 const MANAGED_RESOURCES = new Set();
 
 const VISTA_API_MAP = {
-  'dashboard':     ['mi_cuenta:leer'],
+  'dashboard':     ['mi_cuenta:leer', 'dashboard:ver_operacion', 'dashboard:ver_cartera', 'dashboard:ver_comisiones', 'dashboard:ver_juridico'],
   'proyectos':     ['proyectos:leer', 'proyectos:crear', 'proyectos:actualizar'],
   'lotes':         ['lotes:leer', 'lotes:crear', 'lotes:actualizar'],
   'compradores':   ['compradores:leer', 'compradores:crear', 'compradores:actualizar'],
@@ -35,7 +35,7 @@ const VISTA_API_MAP = {
   'mis-cuotas':    ['mis_cuotas:leer'],
   'mis-facturas':  ['mis_facturas:leer'],
   'mis-recibos':   ['mis_recibos:leer'],
-  'el-proyecto':   ['proyectos:leer', 'lotes:leer'],
+  'el-proyecto':   ['proyectos:leer', 'lotes:leer', 'mis_ventas:leer'],
   'mapa-editor':   ['proyectos:leer', 'proyectos:editar_ubicacion', 'lotes:leer', 'lotes:editar_geometria'],
 };
 
