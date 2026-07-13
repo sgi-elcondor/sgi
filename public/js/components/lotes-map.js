@@ -105,7 +105,11 @@
   }
 
   function baseMap(canvas) {
-    return L.map(canvas, { zoomControl: true, attributionControl: true, minZoom: 3, scrollWheelZoom: true });
+    // zoomControl starts disabled and is re-added at bottomright: topleft is where the
+    // filters panel (MAP-03) lives and the two were overlapping.
+    const map = L.map(canvas, { zoomControl: false, attributionControl: true, minZoom: 3, scrollWheelZoom: true });
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    return map;
   }
 
   // ------------------------------------------------------------------
