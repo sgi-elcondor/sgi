@@ -32,6 +32,27 @@
         { key: 'ventas:actualizar',        label: 'Actualizar venta' },
         { key: 'ventas:editar_financiero', label: 'Editar datos financieros' },
       ]},
+      { key: 'requerimientos', label: 'Requerimientos', icon: 'clipboard-list', actions: [
+        { key: 'requerimientos:leer',   label: 'Ver mis requerimientos' },
+        { key: 'requerimientos:crear',  label: 'Crear requerimientos' },
+      ]},
+      { key: 'aprobaciones', label: 'Aprobaciones', icon: 'clipboard-check', actions: [
+        { key: 'requerimientos:leer',              label: 'Ver aprobaciones' },
+        { key: 'requerimientos:aprobar_jefe',      label: 'Firmar como jefe de área' },
+        { key: 'requerimientos:aprobar_final',     label: 'Aprobación final (compras chicas)' },
+        { key: 'requerimientos:aprobar_dueno',     label: 'Firmar como dueño (compras grandes)' },
+        { key: 'requerimientos:aprobar_gerencia',  label: 'Co-firmar como gerencia (compras grandes)' },
+      ]},
+      { key: 'desembolsos', label: 'Desembolsos', icon: 'landmark', actions: [
+        { key: 'requerimientos:leer',        label: 'Ver desembolsos' },
+        { key: 'requerimientos:desembolsar', label: 'Registrar desembolsos' },
+        { key: 'uploads:crear',              label: 'Adjuntar comprobante' },
+      ]},
+      { key: 'recepciones', label: 'Recepciones', icon: 'package-check', actions: [
+        { key: 'recepciones:leer',  label: 'Ver recepciones' },
+        { key: 'recepciones:crear', label: 'Registrar recepciones' },
+        { key: 'uploads:crear',     label: 'Adjuntar remisiones' },
+      ]},
     ]},
     { group: 'Finanzas', modules: [
       { key: 'cuotas', label: 'Cuotas', icon: 'calendar', actions: [
@@ -97,6 +118,10 @@
         { key: 'alertas_jur:leer', label: 'Ver alertas' },
       ]},
       { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [] },
+      { key: 'respaldos', label: 'Respaldos', icon: 'database-backup', actions: [
+        { key: 'respaldos:leer',      label: 'Ver respaldos' },
+        { key: 'respaldos:restaurar', label: 'Restaurar un respaldo' },
+      ]},
       { key: 'personal',  label: 'Personal registrado', icon: 'users-round',    actions: [
         { key: 'usuarios:leer',      label: 'Ver usuarios' },
         { key: 'compradores:leer',   label: 'Ver compradores' },
@@ -110,6 +135,8 @@
       { key: 'roles', label: 'Permisos', icon: 'shield-check', actions: [
         { key: 'roles:leer',       label: 'Ver roles' },
         { key: 'roles:actualizar', label: 'Editar permisos' },
+        { key: 'config:leer',       label: 'Ver configuración del sistema' },
+        { key: 'config:actualizar', label: 'Editar configuración del sistema' },
       ]},
     ]},
     { group: 'Juridico', modules: [
@@ -401,6 +428,94 @@
     }
   }
 
+  // ── Config card (umbral de compra grande + otras claves editables) ────────────
+
+  function fmtCOP(n) {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return '—';
+    return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+  }
+
+  async function renderUmbralCard(vc) {
+    if (!AppState.can('config', 'leer')) return; // Hide the whole card
+    const puedeEditar = AppState.can('config', 'actualizar');
+
+    const mount = document.getElementById('perm-config-card');
+    if (!mount) return;
+
+    mount.innerHTML = `
+      <div class="perm-cfg-card">
+        <div class="perm-cfg-head">
+          <span class="perm-cfg-icon"><i data-lucide="sliders-horizontal"></i></span>
+          <div>
+            <h3 class="perm-cfg-title">Configuración del sistema</h3>
+            <p class="perm-cfg-sub">Umbral que decide cuándo una compra de requerimientos necesita doble firma (dueño + gerencia).</p>
+          </div>
+        </div>
+        <div class="perm-cfg-body">
+          <label class="perm-cfg-label" for="perm-cfg-umbral">Umbral de compra grande (COP)</label>
+          <div class="perm-cfg-row">
+            <input id="perm-cfg-umbral" type="text" inputmode="numeric"
+                   ${puedeEditar ? '' : 'disabled'}
+                   placeholder="5.000.000">
+            <button id="perm-cfg-save" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
+              <i data-lucide="save"></i> Guardar
+            </button>
+          </div>
+          <p id="perm-cfg-status" class="perm-cfg-status"></p>
+          <p class="perm-cfg-hint">Compras iguales o mayores a este monto pasan a la firma del dueño y la co-firma de gerencia (POL-02). Las compras por debajo mantienen la firma única.</p>
+        </div>
+      </div>`;
+
+    window.SGIUI?.hydrate();
+
+    const input   = document.getElementById('perm-cfg-umbral');
+    const btn     = document.getElementById('perm-cfg-save');
+    const status  = document.getElementById('perm-cfg-status');
+
+    // Cargar valor actual
+    try {
+      const { valor } = await API.get('/config/umbral_compra_grande');
+      input.value = Number(valor).toLocaleString('es-CO');
+      status.innerHTML = `<span class="perm-cfg-current">Valor actual: <strong>${fmtCOP(valor)}</strong></span>`;
+    } catch (e) {
+      status.innerHTML = `<span style="color:var(--danger)">No se pudo cargar: ${e.message}</span>`;
+    }
+
+    // Formato de miles al escribir
+    if (window.SGIHelpers?.applyMoneyInput) {
+      window.SGIHelpers.applyMoneyInput(input);
+    } else {
+      input.addEventListener('input', () => {
+        const digits = (input.value || '').replace(/[^0-9]/g, '');
+        input.value = digits ? Number(digits).toLocaleString('es-CO') : '';
+      });
+    }
+
+    btn?.addEventListener('click', async () => {
+      const digits = (input.value || '').replace(/[^0-9]/g, '');
+      const valor  = Number(digits);
+      if (!Number.isFinite(valor) || valor <= 0) {
+        status.innerHTML = '<span style="color:var(--danger)">Ingresa un monto mayor a cero.</span>';
+        return;
+      }
+      btn.disabled = true;
+      const orig   = btn.innerHTML;
+      btn.innerHTML = 'Guardando...';
+      try {
+        const resp = await API.patch('/config/umbral_compra_grande', { valor });
+        status.innerHTML = `<span class="perm-cfg-current">Actualizado: <strong>${fmtCOP(resp.valor)}</strong></span>`;
+        window.SGIUI?.toast(`Umbral actualizado a ${fmtCOP(resp.valor)}`, 'ok');
+      } catch (e) {
+        status.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+        window.SGIUI?.hydrate();
+      }
+    });
+  }
+
   // ── Main view ─────────────────────────────────────────────────────────────────
 
   window.rolesView = async function (container) {
@@ -412,6 +527,7 @@
       vc.innerHTML = `
         <section class="page-shell">
           ${window.SGIUI?.pageHeader({ kicker:'Administracion', title:'Permisos del sistema', subtitle:'Configura que pantallas y acciones puede realizar cada rol.' }) ?? ''}
+          <div id="perm-config-card"></div>
           <div class="perm-layout">
             <aside class="perm-sidebar">
               <div class="perm-sidebar-header"><i data-lucide="users-round"></i> Roles</div>
@@ -433,6 +549,7 @@
           </div>
         </section>`;
       window.SGIUI?.hydrate();
+      renderUmbralCard(vc); // Fire-and-forget; hidden if user lacks config:leer
       document.getElementById('perm-rol-list')?.addEventListener('click', e => {
         const btn = e.target.closest('.perm-rol-item');
         if (!btn) return;
@@ -513,6 +630,21 @@
     .perm-manual-row label{font-size:.78rem;font-weight:500;color:var(--text)}
     .perm-manual-row textarea{width:100%;padding:.55rem .75rem;font-size:.85rem;line-height:1.5;border:1px solid var(--border);border-radius:.45rem;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;min-height:2.5rem}
     .perm-manual-row textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+    .perm-cfg-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius,.5rem);padding:1rem 1.25rem;margin-bottom:1rem}
+    .perm-cfg-head{display:flex;gap:.75rem;align-items:flex-start;margin-bottom:.75rem}
+    .perm-cfg-icon{display:flex;align-items:center;justify-content:center;width:2.25rem;height:2.25rem;border-radius:.5rem;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);flex-shrink:0}
+    .perm-cfg-icon i{width:1.1rem;height:1.1rem}
+    .perm-cfg-title{font-size:1rem;font-weight:600;margin:0 0 .1rem}
+    .perm-cfg-sub{font-size:.8rem;color:var(--text-muted);margin:0}
+    .perm-cfg-body{display:flex;flex-direction:column;gap:.4rem}
+    .perm-cfg-label{font-size:.78rem;font-weight:500;color:var(--text)}
+    .perm-cfg-row{display:flex;gap:.5rem;align-items:center}
+    .perm-cfg-row input{flex:1;padding:.5rem .75rem;font-size:.9rem;border:1px solid var(--border);border-radius:.4rem;background:var(--surface);color:var(--text)}
+    .perm-cfg-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+    .perm-cfg-row input:disabled{background:var(--surface-2,var(--surface2));color:var(--text-muted);cursor:not-allowed}
+    .perm-cfg-status{font-size:.8rem;margin:.15rem 0 0;min-height:1.1rem}
+    .perm-cfg-current{color:var(--success,#16a34a)}
+    .perm-cfg-hint{font-size:.75rem;color:var(--text-muted);margin:.1rem 0 0;line-height:1.4}
   `;
   document.head.appendChild(style);
 

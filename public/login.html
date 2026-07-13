@@ -160,6 +160,32 @@
     <div class="success-box" id="rec-success"></div>
   </div>
 
+  <!-- PANEL 2FA -->
+  <div class="panel" id="panel-2fa">
+    <div style="margin-bottom:1.25rem;">
+      <p id="fa-intro" style="font-size:.92rem; color:var(--text-muted); line-height:1.6;">
+        Ingresa el código de 6 dígitos que enviamos a tu correo.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="fa-codigo">Código de verificación</label>
+      <input type="text" id="fa-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
+    </div>
+
+    <button class="btn btn-primary" id="btn-2fa">Verificar</button>
+
+    <div style="text-align:center; margin-top:.95rem;">
+      <button class="link-btn" id="btn-2fa-reenviar">Reenviar código</button>
+    </div>
+    <div style="text-align:center; margin-top:.5rem;">
+      <button class="link-btn" onclick="mostrarPanel('login')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver al inicio de sesión</button>
+    </div>
+
+    <div class="error-box" id="fa-error"></div>
+    <div class="success-box" id="fa-success"></div>
+  </div>
+
   <div class="card-footer">SGI v1.0 · El Cóndor</div>
 </div>
 
@@ -168,8 +194,11 @@
     loginEmail, loginGoogle,
     esperarAuthListo,
     registerEmail,
-    resetPassword
+    resetPassword,
+    verificar2FA,
+    reenviar2FA
   } from '/js/auth.js';
+  import { isPasswordPwned } from '/js/pwned-password.js';
 
   esperarAuthListo().then(user => {
     if (user) (window.top || window).location.href = '/app';
@@ -293,7 +322,7 @@
     document.getElementById('panel-' + panel).classList.add('active');
 
     const tabs = document.getElementById('tabs-principales');
-    if (panel === 'recuperar') {
+    if (panel === 'recuperar' || panel === '2fa') {
       tabs.style.display = 'none';
     } else {
       tabs.style.display = 'flex';
@@ -325,8 +354,20 @@
 
     try {
       // The backend verifies the password and enforces the lockout; on failure it throws an
-      // Error carrying the block state and remaining attempts.
-      await loginEmail(email, pwd);
+      // Error carrying the block state and remaining attempts. Sensitive roles resolve to
+      // { requiere2FA: true, ... } instead of opening a session right away (SEG-04).
+      const resultado = await loginEmail(email, pwd);
+      if (resultado.requiere2FA) {
+        _2faChallengeId = resultado.challengeId;
+        document.getElementById('fa-intro').textContent = resultado.primeraConfig
+          ? 'Tu cuenta necesita verificación en dos pasos. Te enviamos un código de 6 dígitos a tu correo para activarla.'
+          : 'Ingresa el código de 6 dígitos que enviamos a tu correo.';
+        document.getElementById('fa-codigo').value = '';
+        hideMessages('fa-error', 'fa-success');
+        mostrarPanel('2fa');
+        document.getElementById('fa-codigo').focus();
+        return;
+      }
       (window.top || window).location.href = '/app';
     } catch (err) {
       const el = document.getElementById('l-error');
@@ -348,6 +389,70 @@
 
   document.getElementById('l-password').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('btn-login').click();
+  });
+
+  // ── SEG-04: segundo paso (código de 6 dígitos) ──
+  let _2faChallengeId    = null;
+  let _2faReenvioEnFriar = false;
+
+  document.getElementById('fa-codigo').addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  document.getElementById('fa-codigo').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-2fa').click();
+  });
+
+  document.getElementById('btn-2fa').addEventListener('click', async () => {
+    hideMessages('fa-error', 'fa-success');
+    const codigo = document.getElementById('fa-codigo').value.trim();
+
+    if (!/^\d{6}$/.test(codigo)) {
+      const el = document.getElementById('fa-error');
+      el.textContent = 'Ingresa los 6 dígitos del código.';
+      el.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('btn-2fa');
+    setLoading(btn, true);
+
+    try {
+      await verificar2FA(_2faChallengeId, codigo);
+      (window.top || window).location.href = '/app';
+    } catch (err) {
+      const el = document.getElementById('fa-error');
+
+      if (err.bloqueado || err.code === 'CUENTA_BLOQUEADA_2FA') {
+        el.textContent = 'Demasiados códigos incorrectos. Intenta de nuevo en 30 minutos.';
+      } else if (['MAX_INTENTOS', 'CODIGO_EXPIRADO', 'CHALLENGE_INVALIDO'].includes(err.code)) {
+        el.textContent = (err.message || 'La verificación expiró.') + ' Vuelve a ingresar tu contraseña.';
+        setTimeout(() => mostrarPanel('login'), 2500);
+      } else {
+        el.textContent = err.message || 'Código incorrecto.';
+      }
+
+      el.style.display = 'block';
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+
+  document.getElementById('btn-2fa-reenviar').addEventListener('click', async () => {
+    if (_2faReenvioEnFriar) return;
+    hideMessages('fa-error', 'fa-success');
+
+    _2faReenvioEnFriar = true;
+    setTimeout(() => { _2faReenvioEnFriar = false; }, 15000);
+
+    try {
+      await reenviar2FA(_2faChallengeId);
+      showSuccess('fa-success', 'Te enviamos un nuevo código a tu correo.');
+    } catch (err) {
+      const el = document.getElementById('fa-error');
+      el.textContent = err.message || 'No se pudo reenviar el código.';
+      el.style.display = 'block';
+    }
   });
 
   document.getElementById('btn-google-login').addEventListener('click', async () => {
@@ -394,6 +499,14 @@
 
     const btn = document.getElementById('btn-registro');
     setLoading(btn, true);
+
+    if (await isPasswordPwned(pwd)) {
+      setLoading(btn, false);
+      const el = document.getElementById('r-error');
+      el.textContent = 'Esta contraseña apareció en filtraciones de datos conocidas. Por tu seguridad, elige otra.';
+      el.style.display = 'block';
+      return;
+    }
 
     try {
       await registerEmail(email, pwd);

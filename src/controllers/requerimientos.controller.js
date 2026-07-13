@@ -5,10 +5,28 @@ const emailService = require("../services/email.service");
 const events       = require("../services/events.service");
 const notif        = require("../services/notificaciones.service");
 const inventario   = require("../services/inventario.service");
+const config       = require("../services/config.service");
 
 const SCHEMA     = "condor";
 const CATEGORIAS = ["materiales", "herramientas", "equipos", "servicios", "otros"];
 const URGENCIAS  = ["baja", "media", "alta"];
+
+// POL-02: purchases above this threshold require dual sign (dueno + gerencia).
+// The value is read from condor.config_sistema.umbral_compra_grande (editable
+// by admin from the Permisos view). config.service falls back to 5.000.000 COP
+// if the key is missing (fresh install before the migration ran).
+async function _umbralCompraGrande() {
+  const raw = await config.get("umbral_compra_grande");
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 5_000_000;
+}
+
+// A requerimiento is 'large' when its total ≥ umbral. Both firms
+// (aprobado_dueno_por, aprobado_gerencia_por) are required in that case; small
+// purchases still use the legacy single 'aprobar-final' path.
+function _esCompraGrande(valorTotal, umbral) {
+  return Number(valorTotal || 0) >= Number(umbral || 0);
+}
 
 function validarCampos({ descripcion, categoria, urgencia, justificacion, items }) {
   if (!descripcion || !String(descripcion).trim()) {
@@ -243,6 +261,7 @@ function _puede(reqUsuario, accion) {
 // Any role that participates in the requerimiento flow may listen to the stream.
 const STREAM_PERMS = [
   "requerimientos:leer", "requerimientos:aprobar_jefe", "requerimientos:aprobar_final",
+  "requerimientos:aprobar_dueno", "requerimientos:aprobar_gerencia",
   "requerimientos:desembolsar", "recepciones:leer",
 ];
 
@@ -291,17 +310,23 @@ async function getContadores(req, res) {
 
     const out = {};
     const esAdmin = req.usuario.rol === "admin";
+    const puede = (accion) => esAdmin || req.usuario.permisos?.has(`requerimientos:${accion}`);
 
+    // Aprobaciones pendientes: se cuentan cuando el caller puede firmar en ese nivel.
+    // Los large-purchase pending (aprobado_jefe) son visibles para dueno/gerencia con
+    // los permisos correspondientes. `aprobar_final` los mostraba antes también, pero
+    // POL-02 ya no permite firmarlos por esa ruta, así que solo cuentan si el usuario
+    // tiene la firma de compra grande.
     let aprobaciones = 0;
-    if (esAdmin || req.usuario.permisos?.has("requerimientos:aprobar_jefe")) {
-      aprobaciones += await conteo(["pendiente_jefe"]);
-    }
-    if (esAdmin || req.usuario.permisos?.has("requerimientos:aprobar_final")) {
+    if (puede("aprobar_jefe"))     aprobaciones += await conteo(["pendiente_jefe"]);
+    if (puede("aprobar_final") || puede("aprobar_dueno") || puede("aprobar_gerencia")) {
+      // Sin filtro por umbral (contar el estado global). El backend valida en la firma
+      // real si aplica el nivel del usuario; el badge es aproximación amigable.
       aprobaciones += await conteo(["aprobado_jefe"]);
     }
     if (aprobaciones) out.aprobaciones = aprobaciones;
 
-    if (esAdmin || req.usuario.permisos?.has("requerimientos:desembolsar")) {
+    if (puede("desembolsar")) {
       const n = await conteo(["pendiente_tesoreria"]);
       if (n) out.desembolsos = n;
     }
@@ -340,28 +365,43 @@ function _notificar(emails, datos) {
   return Promise.allSettled(list.map(to => emailService.sendRequerimientoEstadoEmail(to, datos)));
 }
 
+// Fire-and-forget email helper (RN-28). SMTP calls (Gmail) can hang under
+// network issues, so we never `await` them inside the request handler — the
+// endpoint responds immediately and the emails go out in the background.
+// Failures are logged only; they never affect the persisted transition.
+function _emailsBackground(label, fn) {
+  Promise.resolve().then(fn).catch(e => {
+    console.error(`[requerimientos] Notificación background (${label}) falló:`, e.message);
+  });
+}
+
 // GET /api/v1/requerimientos/aprobaciones
-// Inbox for approvers: jefes see 'pendiente_jefe', final approvers see 'aprobado_jefe'.
+// Inbox for approvers. Includes POL-02 dual-sign metadata so the client can render
+// the correct action button (aprobar-final / aprobar-dueno / aprobar-gerencia).
 async function getAprobaciones(req, res) {
   try {
-    const puedeJefe  = _puede(req.usuario, "aprobar_jefe");
-    const puedeFinal = _puede(req.usuario, "aprobar_final");
-    if (!puedeJefe && !puedeFinal) {
+    const puedeJefe     = _puede(req.usuario, "aprobar_jefe");
+    const puedeFinal    = _puede(req.usuario, "aprobar_final");
+    const puedeDueno    = _puede(req.usuario, "aprobar_dueno");
+    const puedeGerencia = _puede(req.usuario, "aprobar_gerencia");
+    if (!puedeJefe && !puedeFinal && !puedeDueno && !puedeGerencia) {
       return res.status(403).json({ error: "No tienes permisos de aprobación" });
     }
 
     const estados = [];
-    if (puedeJefe)  estados.push("pendiente_jefe");
-    if (puedeFinal) estados.push("aprobado_jefe");
+    if (puedeJefe)                                                estados.push("pendiente_jefe");
+    if (puedeFinal || puedeDueno || puedeGerencia)                estados.push("aprobado_jefe");
 
     const { data, error } = await supabase.schema(SCHEMA)
       .from("requerimiento")
       .select(`
         id_requerimiento, numero, descripcion, fecha_solicitud, estado,
         valor_total, categoria, urgencia, justificacion,
-        fecha_aprobado_jefe,
+        fecha_aprobado_jefe, fecha_aprobado_dueno, fecha_aprobado_gerencia,
         solicitante:id_solicitante (nombres, apellidos, email),
-        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        aprobador_jefe:aprobado_jefe_por     (nombres, apellidos),
+        aprobador_dueno:aprobado_dueno_por    (id_usuario, nombres, apellidos),
+        aprobador_gerencia:aprobado_gerencia_por (id_usuario, nombres, apellidos),
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
@@ -370,16 +410,42 @@ async function getAprobaciones(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    return res.json((data || []).map(r => ({
-      ...r,
-      solicitante: `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
-      aprobador_jefe: r.aprobador_jefe
-        ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()
-        : null,
-      proyecto: r.proyecto?.nombre || null,
-      sigla:    r.proyecto?.sigla || null,
-      nivel:    r.estado === "pendiente_jefe" ? "jefe" : "final",
-    })));
+    const umbral = await _umbralCompraGrande();
+
+    return res.json((data || []).map(r => {
+      const grande = _esCompraGrande(r.valor_total, umbral);
+      const firmaDueno    = r.aprobador_dueno    ? `${r.aprobador_dueno.nombres || ""} ${r.aprobador_dueno.apellidos || ""}`.trim() : null;
+      const firmaGerencia = r.aprobador_gerencia ? `${r.aprobador_gerencia.nombres || ""} ${r.aprobador_gerencia.apellidos || ""}`.trim() : null;
+
+      // Nivel visible en el badge:
+      //   'jefe'     → pendiente_jefe
+      //   'final'    → aprobado_jefe + compra chica (single sign)
+      //   'dueno'    → aprobado_jefe + compra grande, falta firma del dueño (o solo falta esa)
+      //   'gerencia' → aprobado_jefe + compra grande, falta co-firma de gerencia (dueño ya firmó)
+      let nivel;
+      if (r.estado === "pendiente_jefe") nivel = "jefe";
+      else if (!grande)                  nivel = "final";
+      else if (!r.aprobador_dueno)       nivel = "dueno";
+      else                               nivel = "gerencia";
+
+      return {
+        ...r,
+        solicitante:    `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+        aprobador_jefe:     r.aprobador_jefe ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim() : null,
+        aprobador_dueno:    firmaDueno,
+        aprobador_dueno_id: r.aprobador_dueno?.id_usuario ?? null,
+        aprobador_gerencia:    firmaGerencia,
+        aprobador_gerencia_id: r.aprobador_gerencia?.id_usuario ?? null,
+        proyecto: r.proyecto?.nombre || null,
+        sigla:    r.proyecto?.sigla || null,
+        nivel,
+        es_compra_grande: grande,
+        umbral_actual:    umbral,
+        firmas_faltantes: r.estado === "aprobado_jefe" && grande
+          ? [!firmaDueno && "dueno", !firmaGerencia && "gerencia"].filter(Boolean)
+          : [],
+      };
+    }));
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -389,7 +455,8 @@ async function getAprobaciones(req, res) {
 // Decision history for approvers: everything that already passed (or failed) review.
 async function getHistorial(req, res) {
   try {
-    if (!_puede(req.usuario, "aprobar_jefe") && !_puede(req.usuario, "aprobar_final")) {
+    const acciones = ["aprobar_jefe", "aprobar_final", "aprobar_dueno", "aprobar_gerencia"];
+    if (!acciones.some(a => _puede(req.usuario, a))) {
       return res.status(403).json({ error: "No tienes permisos de aprobación" });
     }
 
@@ -398,10 +465,12 @@ async function getHistorial(req, res) {
       .select(`
         id_requerimiento, numero, descripcion, fecha_solicitud, estado,
         valor_total, categoria, urgencia, justificacion, motivo_rechazo,
-        fecha_aprobado_jefe, fecha_aprobado_final, fecha_desembolso,
+        fecha_aprobado_jefe, fecha_aprobado_final, fecha_aprobado_dueno, fecha_aprobado_gerencia, fecha_desembolso,
         solicitante:id_solicitante (nombres, apellidos, email),
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),
+        aprobador_dueno:aprobado_dueno_por (nombres, apellidos),
+        aprobador_gerencia:aprobado_gerencia_por (nombres, apellidos),
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
@@ -410,13 +479,19 @@ async function getHistorial(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
+    const umbral = await _umbralCompraGrande();
+    const nombre = u => u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() : null;
+
     return res.json((data || []).map(r => ({
       ...r,
-      solicitante: `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
-      aprobador_jefe:  r.aprobador_jefe  ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()  : null,
-      aprobador_final: r.aprobador_final ? `${r.aprobador_final.nombres || ""} ${r.aprobador_final.apellidos || ""}`.trim() : null,
+      solicitante:        `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+      aprobador_jefe:     nombre(r.aprobador_jefe),
+      aprobador_final:    nombre(r.aprobador_final),
+      aprobador_dueno:    nombre(r.aprobador_dueno),
+      aprobador_gerencia: nombre(r.aprobador_gerencia),
       proyecto: r.proyecto?.nombre || null,
       sigla:    r.proyecto?.sigla || null,
+      es_compra_grande: _esCompraGrande(r.valor_total, umbral),
     })));
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -426,7 +501,11 @@ async function getHistorial(req, res) {
 async function _getRequerimiento(id) {
   const { data } = await supabase.schema(SCHEMA)
     .from("requerimiento")
-    .select("id_requerimiento, numero, descripcion, estado, valor_total, urgencia, categoria, id_solicitante")
+    .select(`
+      id_requerimiento, numero, descripcion, estado, valor_total, urgencia, categoria, id_solicitante,
+      aprobado_dueno_por, fecha_aprobado_dueno,
+      aprobado_gerencia_por, fecha_aprobado_gerencia
+    `)
     .eq("id_requerimiento", id)
     .single();
   return data || null;
@@ -461,41 +540,361 @@ async function aprobarJefe(req, res) {
 
     _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "aprobado_jefe" });
 
-    notif.crear({
-      paraRoles:  ["gerencia"],
-      excepto:    req.usuario.id_usuario,
-      titulo:     `${r.numero} listo para tu aprobación final`,
-      mensaje:    r.descripcion,
-      vista:      "aprobaciones",
-      referencia: r.numero,
-    }).catch(() => {});
+    // POL-02: escalate the notification based on purchase size. Small purchases
+    // only need the dueño's single signature; large ones need dueño + gerencia
+    // to co-sign, so both roles get pinged with the correct instruction.
+    const umbral = await _umbralCompraGrande();
+    const grande = _esCompraGrande(r.valor_total, umbral);
+
+    if (grande) {
+      notif.crear({
+        paraRoles:  ["dueno"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} — compra grande, requiere tu firma como dueño`,
+        mensaje:    `${r.descripcion} · Se necesita tu firma y la co-firma de gerencia.`,
+        vista:      "aprobaciones",
+        referencia: r.numero,
+      }).catch(() => {});
+      notif.crear({
+        paraRoles:  ["gerencia"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} — compra grande, requiere tu co-firma como gerencia`,
+        mensaje:    `${r.descripcion} · Se necesita la firma del dueño y tu co-firma.`,
+        vista:      "aprobaciones",
+        referencia: r.numero,
+      }).catch(() => {});
+    } else {
+      notif.crear({
+        paraRoles:  ["dueno", "gerencia"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} listo para tu aprobación final`,
+        mensaje:    r.descripcion,
+        vista:      "aprobaciones",
+        referencia: r.numero,
+      }).catch(() => {});
+    }
+
     notif.crear({
       paraIds:    [r.id_solicitante],
       excepto:    req.usuario.id_usuario,
       titulo:     `${r.numero} aprobado por el jefe de área`,
-      mensaje:    "Sigue la aprobación final del dueño",
+      mensaje:    grande
+        ? "Sigue la aprobación del dueño y la co-firma de gerencia (compra grande)."
+        : "Sigue la aprobación final del dueño.",
       vista:      "requerimientos",
       referencia: r.numero,
     }).catch(() => {});
 
-    try {
-      const duenos = await _emailsDeRol("gerencia");
-      await _notificar(duenos, {
-        asunto:  `Requerimiento ${r.numero} listo para tu aprobación final — El Cóndor`,
-        titulo:  "Aprobación final pendiente",
-        mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Falta tu aprobación final para autorizar el desembolso.`,
-        numero:  r.numero,
-        valor_total: r.valor_total,
-      });
-    } catch (e) { console.error("[requerimientos] Notificación a gerencia falló:", e.message); }
+    _emailsBackground("aprobacion_jefe", async () => {
+      if (grande) {
+        const [duenos, gerentes] = await Promise.all([
+          _emailsDeRol("dueno"),
+          _emailsDeRol("gerencia"),
+        ]);
+        await Promise.all([
+          _notificar(duenos, {
+            asunto:  `Requerimiento ${r.numero} listo para tu firma como dueño — El Cóndor`,
+            titulo:  "Aprobación de dueño pendiente (compra grande)",
+            mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Como es una compra grande (≥ ${umbral.toLocaleString("es-CO")} COP), se requiere tu firma como dueño y la co-firma de gerencia para autorizar el desembolso.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+          _notificar(gerentes, {
+            asunto:  `Requerimiento ${r.numero} listo para tu co-firma como gerencia — El Cóndor`,
+            titulo:  "Co-firma de gerencia pendiente (compra grande)",
+            mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Como es una compra grande (≥ ${umbral.toLocaleString("es-CO")} COP), se requiere tu co-firma como gerencia y la firma del dueño para autorizar el desembolso.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+        ]);
+      } else {
+        const finales = [...await _emailsDeRol("dueno"), ...await _emailsDeRol("gerencia")];
+        await _notificar([...new Set(finales)], {
+          asunto:  `Requerimiento ${r.numero} listo para tu aprobación final — El Cóndor`,
+          titulo:  "Aprobación final pendiente",
+          mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Falta la aprobación final para autorizar el desembolso.`,
+          numero:  r.numero,
+          valor_total: r.valor_total,
+        });
+      }
+    });
 
-    return res.json({ ok: true, numero: r.numero, estado: "aprobado_jefe" });
+    return res.json({ ok: true, numero: r.numero, estado: "aprobado_jefe", es_compra_grande: grande });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/aprobar-dueno  (POL-02, compras grandes)
+// Firma del dueño en una compra grande. Cuando la co-firma de gerencia también
+// está puesta, la transición a `pendiente_tesoreria` se ejecuta en la misma
+// operación (guardada por `.is('aprobado_dueno_por', null)` para evitar dobles firmas).
+async function aprobarDueno(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const r = await _getRequerimiento(id);
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "aprobado_jefe") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; la firma del dueño requiere que el jefe lo haya aprobado primero.` });
+    }
+
+    const umbral = await _umbralCompraGrande();
+    if (!_esCompraGrande(r.valor_total, umbral)) {
+      return res.status(409).json({
+        error: `Esta no es una compra grande (< ${umbral.toLocaleString("es-CO")} COP). Fírmala con /aprobar-final.`,
+        code:  "NO_ES_COMPRA_GRANDE",
+      });
+    }
+    if (r.aprobado_dueno_por) {
+      return res.status(409).json({ error: "Esta compra ya fue firmada por el dueño." });
+    }
+    if (r.aprobado_gerencia_por === req.usuario.id_usuario) {
+      return res.status(409).json({ error: "No puedes firmar como dueño si ya co-firmaste como gerencia. Se requieren dos personas distintas." });
+    }
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const gerenciaFirmo = r.aprobado_gerencia_por != null;
+
+    const updates = {
+      aprobado_dueno_por:   req.usuario.id_usuario,
+      fecha_aprobado_dueno: hoy,
+    };
+    if (gerenciaFirmo) {
+      updates.estado                = "pendiente_tesoreria";
+      updates.aprobado_final_por    = req.usuario.id_usuario;
+      updates.fecha_aprobado_final  = hoy;
+    }
+
+    const { data: updated, error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update(updates)
+      .eq("id_requerimiento", id)
+      .eq("estado", "aprobado_jefe")
+      .is("aprobado_dueno_por", null)
+      .select("id_requerimiento");
+
+    if (eUpd || !updated?.length) {
+      return res.status(400).json({ error: eUpd?.message || "No se pudo firmar (el estado cambió)." });
+    }
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: gerenciaFirmo ? "estado" : "aprobado_dueno_por",
+      anterior: gerenciaFirmo ? "aprobado_jefe" : null,
+      nuevo:    gerenciaFirmo ? "pendiente_tesoreria" : String(req.usuario.id_usuario),
+      usuario:  req.usuario.email,
+      motivo:   gerenciaFirmo ? "aprobacion_dual_completa (dueno cerro)" : "firma_dueno (compra grande)",
+    });
+
+    const estadoNuevo = gerenciaFirmo ? "pendiente_tesoreria" : "aprobado_jefe";
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: estadoNuevo, firma: "dueno" });
+
+    if (gerenciaFirmo) {
+      // Transición completa: notificar tesorería y al solicitante.
+      notif.crear({
+        paraRoles:  ["tesorero"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} aprobado (doble firma) — gestionar desembolso`,
+        mensaje:    r.descripcion,
+        vista:      "desembolsos",
+        referencia: r.numero,
+      }).catch(() => {});
+      notif.crear({
+        paraIds:    [r.id_solicitante],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} recibió la doble firma`,
+        mensaje:    "Dueño y gerencia firmaron. Pasó a tesorería para el desembolso.",
+        vista:      "requerimientos",
+        referencia: r.numero,
+      }).catch(() => {});
+      _emailsBackground("doble_firma_completa_dueno", async () => {
+        const [tesoreros, solicitante] = await Promise.all([
+          _emailsDeRol("tesorero"),
+          _emailDeUsuario(r.id_solicitante),
+        ]);
+        await Promise.all([
+          _notificar(tesoreros, {
+            asunto:  `Requerimiento ${r.numero} aprobado (doble firma) — gestionar desembolso — El Cóndor`,
+            titulo:  "Nuevo requerimiento en tesorería",
+            mensaje: `El requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la doble firma dueño + gerencia y pasa a tesorería.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+          _notificar([solicitante], {
+            asunto:  `Tu requerimiento ${r.numero} fue aprobado (doble firma) — El Cóndor`,
+            titulo:  "¡Requerimiento aprobado!",
+            mensaje: `Tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la firma del dueño y la co-firma de gerencia. Pasó a tesorería para el desembolso.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+        ]);
+      });
+    } else {
+      // Solo falta gerencia — pingar únicamente a ese rol.
+      notif.crear({
+        paraRoles:  ["gerencia"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} — falta tu co-firma como gerencia`,
+        mensaje:    `El dueño ya firmó. Solo falta tu co-firma para autorizar el desembolso.`,
+        vista:      "aprobaciones",
+        referencia: r.numero,
+      }).catch(() => {});
+      _emailsBackground("cofirma_gerencia_pendiente", async () => {
+        const gerentes = await _emailsDeRol("gerencia");
+        await _notificar(gerentes, {
+          asunto:  `Requerimiento ${r.numero} — falta tu co-firma como gerencia — El Cóndor`,
+          titulo:  "Co-firma de gerencia pendiente",
+          mensaje: `El dueño firmó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Solo falta tu co-firma como gerencia para autorizar el desembolso.`,
+          numero:  r.numero,
+          valor_total: r.valor_total,
+        });
+      });
+    }
+
+    return res.json({
+      ok: true, numero: r.numero, estado: estadoNuevo, firma: "dueno",
+      requiere_cofirma: !gerenciaFirmo,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// PATCH /api/v1/requerimientos/:id/aprobar-gerencia  (POL-02, co-firma en compras grandes)
+async function aprobarGerencia(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const r = await _getRequerimiento(id);
+    if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+    if (r.estado !== "aprobado_jefe") {
+      return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; la co-firma de gerencia requiere que el jefe lo haya aprobado primero.` });
+    }
+
+    const umbral = await _umbralCompraGrande();
+    if (!_esCompraGrande(r.valor_total, umbral)) {
+      return res.status(409).json({
+        error: `Esta no es una compra grande (< ${umbral.toLocaleString("es-CO")} COP). No requiere co-firma de gerencia.`,
+        code:  "NO_ES_COMPRA_GRANDE",
+      });
+    }
+    if (r.aprobado_gerencia_por) {
+      return res.status(409).json({ error: "Esta compra ya fue co-firmada por gerencia." });
+    }
+    if (r.aprobado_dueno_por === req.usuario.id_usuario) {
+      return res.status(409).json({ error: "No puedes co-firmar como gerencia si ya firmaste como dueño. Se requieren dos personas distintas." });
+    }
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const duenoFirmo = r.aprobado_dueno_por != null;
+
+    const updates = {
+      aprobado_gerencia_por:   req.usuario.id_usuario,
+      fecha_aprobado_gerencia: hoy,
+    };
+    if (duenoFirmo) {
+      updates.estado               = "pendiente_tesoreria";
+      updates.aprobado_final_por   = req.usuario.id_usuario;
+      updates.fecha_aprobado_final = hoy;
+    }
+
+    const { data: updated, error: eUpd } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .update(updates)
+      .eq("id_requerimiento", id)
+      .eq("estado", "aprobado_jefe")
+      .is("aprobado_gerencia_por", null)
+      .select("id_requerimiento");
+
+    if (eUpd || !updated?.length) {
+      return res.status(400).json({ error: eUpd?.message || "No se pudo co-firmar (el estado cambió)." });
+    }
+
+    await auditoria.log({
+      tabla: "requerimiento", id, campo: duenoFirmo ? "estado" : "aprobado_gerencia_por",
+      anterior: duenoFirmo ? "aprobado_jefe" : null,
+      nuevo:    duenoFirmo ? "pendiente_tesoreria" : String(req.usuario.id_usuario),
+      usuario:  req.usuario.email,
+      motivo:   duenoFirmo ? "aprobacion_dual_completa (gerencia cerro)" : "cofirma_gerencia (compra grande)",
+    });
+
+    const estadoNuevo = duenoFirmo ? "pendiente_tesoreria" : "aprobado_jefe";
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: estadoNuevo, firma: "gerencia" });
+
+    if (duenoFirmo) {
+      notif.crear({
+        paraRoles:  ["tesorero"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} aprobado (doble firma) — gestionar desembolso`,
+        mensaje:    r.descripcion,
+        vista:      "desembolsos",
+        referencia: r.numero,
+      }).catch(() => {});
+      notif.crear({
+        paraIds:    [r.id_solicitante],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} recibió la doble firma`,
+        mensaje:    "Dueño y gerencia firmaron. Pasó a tesorería para el desembolso.",
+        vista:      "requerimientos",
+        referencia: r.numero,
+      }).catch(() => {});
+      _emailsBackground("doble_firma_completa_gerencia", async () => {
+        const [tesoreros, solicitante] = await Promise.all([
+          _emailsDeRol("tesorero"),
+          _emailDeUsuario(r.id_solicitante),
+        ]);
+        await Promise.all([
+          _notificar(tesoreros, {
+            asunto:  `Requerimiento ${r.numero} aprobado (doble firma) — gestionar desembolso — El Cóndor`,
+            titulo:  "Nuevo requerimiento en tesorería",
+            mensaje: `El requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la doble firma dueño + gerencia y pasa a tesorería.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+          _notificar([solicitante], {
+            asunto:  `Tu requerimiento ${r.numero} fue aprobado (doble firma) — El Cóndor`,
+            titulo:  "¡Requerimiento aprobado!",
+            mensaje: `Tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}) recibió la firma del dueño y la co-firma de gerencia. Pasó a tesorería para el desembolso.`,
+            numero:  r.numero,
+            valor_total: r.valor_total,
+          }),
+        ]);
+      });
+    } else {
+      notif.crear({
+        paraRoles:  ["dueno"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} — falta tu firma como dueño`,
+        mensaje:    `Gerencia ya co-firmó. Solo falta tu firma para autorizar el desembolso.`,
+        vista:      "aprobaciones",
+        referencia: r.numero,
+      }).catch(() => {});
+      _emailsBackground("firma_dueno_pendiente", async () => {
+        const duenos = await _emailsDeRol("dueno");
+        await _notificar(duenos, {
+          asunto:  `Requerimiento ${r.numero} — falta tu firma como dueño — El Cóndor`,
+          titulo:  "Firma de dueño pendiente",
+          mensaje: `Gerencia co-firmó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Solo falta tu firma como dueño para autorizar el desembolso.`,
+          numero:  r.numero,
+          valor_total: r.valor_total,
+        });
+      });
+    }
+
+    return res.json({
+      ok: true, numero: r.numero, estado: estadoNuevo, firma: "gerencia",
+      requiere_cofirma: !duenoFirmo,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 }
 
 // PATCH /api/v1/requerimientos/:id/aprobar-final  (REQ-03: aprobado_jefe → pendiente_tesoreria)
+// Small purchases only. Large purchases (valor_total ≥ umbral) require the dual-sign
+// endpoints /aprobar-dueno + /aprobar-gerencia (POL-02).
 async function aprobarFinal(req, res) {
   try {
     const id = Number(req.params.id);
@@ -505,6 +904,15 @@ async function aprobarFinal(req, res) {
     if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
     if (r.estado !== "aprobado_jefe") {
       return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; la aprobación final requiere que el jefe lo haya aprobado primero` });
+    }
+
+    const umbral = await _umbralCompraGrande();
+    if (_esCompraGrande(r.valor_total, umbral)) {
+      return res.status(409).json({
+        error:  `Esta es una compra grande (≥ ${umbral.toLocaleString("es-CO")} COP). Requiere firma del dueño y co-firma de gerencia por separado.`,
+        code:   "COMPRA_GRANDE_REQUIERE_DUAL_SIGN",
+        umbral,
+      });
     }
 
     const hoy = new Date().toISOString().slice(0, 10);
@@ -542,9 +950,11 @@ async function aprobarFinal(req, res) {
     }).catch(() => {});
 
     // REQ-03: tesorería takes over and the tesorero gets notified; the requester too.
-    try {
-      const tesoreros    = await _emailsDeRol("tesorero");
-      const solicitante  = await _emailDeUsuario(r.id_solicitante);
+    _emailsBackground("aprobacion_final", async () => {
+      const [tesoreros, solicitante] = await Promise.all([
+        _emailsDeRol("tesorero"),
+        _emailDeUsuario(r.id_solicitante),
+      ]);
       await _notificar(tesoreros, {
         asunto:  `Requerimiento ${r.numero} aprobado — gestionar desembolso — El Cóndor`,
         titulo:  "Nuevo requerimiento en tesorería",
@@ -559,7 +969,7 @@ async function aprobarFinal(req, res) {
         numero:  r.numero,
         valor_total: r.valor_total,
       });
-    } catch (e) { console.error("[requerimientos] Notificación de aprobación final falló:", e.message); }
+    });
 
     return res.json({ ok: true, numero: r.numero, estado: "pendiente_tesoreria" });
   } catch (err) {
@@ -583,14 +993,23 @@ async function rechazar(req, res) {
     const r = await _getRequerimiento(id);
     if (!r) return res.status(404).json({ error: "Requerimiento no encontrado" });
 
-    const permisoRequerido =
-      r.estado === "pendiente_jefe" ? "aprobar_jefe" :
-      r.estado === "aprobado_jefe"  ? "aprobar_final" : null;
-
-    if (!permisoRequerido) {
+    // El caller puede rechazar si tiene CUALQUIERA de los permisos válidos para el estado.
+    // Compras grandes en aprobado_jefe pueden ser rechazadas por dueño o gerencia (ambos son
+    // firmantes válidos); compras chicas siguen usando aprobar_final.
+    let permisosValidos;
+    if (r.estado === "pendiente_jefe") {
+      permisosValidos = ["aprobar_jefe"];
+    } else if (r.estado === "aprobado_jefe") {
+      const umbral = await _umbralCompraGrande();
+      permisosValidos = _esCompraGrande(r.valor_total, umbral)
+        ? ["aprobar_dueno", "aprobar_gerencia"]
+        : ["aprobar_final"];
+    } else {
       return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}' y no admite rechazo` });
     }
-    if (!_puede(req.usuario, permisoRequerido)) {
+
+    const puedeRechazar = permisosValidos.some(p => _puede(req.usuario, p));
+    if (!puedeRechazar) {
       return res.status(403).json({ error: "No tienes permiso para rechazar en este nivel" });
     }
 
@@ -974,10 +1393,12 @@ async function getMios(req, res) {
       .select(`
         id_requerimiento, numero, descripcion, fecha_solicitud, fecha_desembolso, estado,
         valor_total, categoria, urgencia, justificacion, id_proyecto,
-        fecha_aprobado_jefe, fecha_aprobado_final, motivo_rechazo,
+        fecha_aprobado_jefe, fecha_aprobado_final, fecha_aprobado_dueno, fecha_aprobado_gerencia, motivo_rechazo,
         fecha_entrega, entrega_receptor,
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),
+        aprobador_dueno:aprobado_dueno_por (nombres, apellidos),
+        aprobador_gerencia:aprobado_gerencia_por (nombres, apellidos),
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
@@ -986,12 +1407,18 @@ async function getMios(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
+    const umbral = await _umbralCompraGrande();
+    const nombre = u => u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() : null;
+
     return res.json((data || []).map(r => ({
       ...r,
-      aprobador_jefe:  r.aprobador_jefe  ? `${r.aprobador_jefe.nombres || ""} ${r.aprobador_jefe.apellidos || ""}`.trim()  : null,
-      aprobador_final: r.aprobador_final ? `${r.aprobador_final.nombres || ""} ${r.aprobador_final.apellidos || ""}`.trim() : null,
+      aprobador_jefe:     nombre(r.aprobador_jefe),
+      aprobador_final:    nombre(r.aprobador_final),
+      aprobador_dueno:    nombre(r.aprobador_dueno),
+      aprobador_gerencia: nombre(r.aprobador_gerencia),
       proyecto: r.proyecto?.nombre || null,
       sigla:    r.proyecto?.sigla || null,
+      es_compra_grande: _esCompraGrande(r.valor_total, umbral),
     })));
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -1000,7 +1427,7 @@ async function getMios(req, res) {
 
 module.exports = {
   create, getMios, cancelar,
-  getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, rechazar,
+  getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, aprobarDueno, aprobarGerencia, rechazar,
   getDesembolsos, desembolsar,
   getAutorizacion, entregar,
   stream, getContadores,

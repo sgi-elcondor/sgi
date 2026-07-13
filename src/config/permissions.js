@@ -128,7 +128,17 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/v1/requerimientos/entregar':         { recurso: 'recepciones',    accion: 'crear' },
   'PATCH /api/v1/requerimientos/aprobar-jefe':     { recurso: 'requerimientos', accion: 'aprobar_jefe' },
   'PATCH /api/v1/requerimientos/aprobar-final':    { recurso: 'requerimientos', accion: 'aprobar_final' },
+  'PATCH /api/v1/requerimientos/aprobar-dueno':    { recurso: 'requerimientos', accion: 'aprobar_dueno' },
+  'PATCH /api/v1/requerimientos/aprobar-gerencia': { recurso: 'requerimientos', accion: 'aprobar_gerencia' },
   'PATCH /api/v1/requerimientos/rechazar':         { recurso: 'requerimientos', accion: 'leer' },
+
+  'GET /api/v1/config':          { recurso: 'config', accion: 'leer' },
+  'PATCH /api/v1/config':        { recurso: 'config', accion: 'actualizar' },
+
+  'GET /api/v1/respaldos':                  { recurso: 'respaldos', accion: 'leer' },
+  'GET /api/v1/respaldos/descargar':        { recurso: 'respaldos', accion: 'leer' },
+  'GET /api/v1/respaldos/restauraciones':   { recurso: 'respaldos', accion: 'leer' },
+  'POST /api/v1/respaldos/restaurar':       { recurso: 'respaldos', accion: 'restaurar' },
 
 };
 

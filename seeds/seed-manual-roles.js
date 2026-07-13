@@ -66,11 +66,20 @@ const ROLES = {
     ].join('\n'),
   },
   gerencia: {
-    descripcion: 'Direccion de la empresa. Acceso de solo lectura a reportes y dashboards consolidados para tomar decisiones estrategicas.',
+    descripcion: 'Direccion de la empresa. Acceso de solo lectura a reportes y dashboards consolidados para tomar decisiones estrategicas. Co-firma las compras grandes de requerimientos junto con el dueño.',
     obligaciones: [
       'Revisar diariamente los indicadores de cartera, recaudo y comisiones.',
       'Validar la estrategia comercial con base en los reportes.',
       'Aprobar planes especiales que se salgan del flujo estandar.',
+      'Co-firmar las compras grandes de requerimientos junto con el dueño.',
+    ].join('\n'),
+  },
+  dueno: {
+    descripcion: 'Dueño del negocio. Aprueba las compras grandes de requerimientos junto con gerencia y define el umbral que las clasifica como grandes.',
+    obligaciones: [
+      'Revisar y firmar la aprobación de compras que superen el umbral configurado.',
+      'Coordinar con gerencia la aprobación conjunta de compras grandes.',
+      'Ajustar el umbral de compra grande desde la vista Permisos cuando el negocio lo requiera.',
     ].join('\n'),
   },
   juridico: {
@@ -183,6 +192,21 @@ const PERMISOS = {
   // Uploads
   'uploads:crear':                  'Subir archivos (comprobantes, fotos de perfil).',
 
+  // Requerimientos (flujo POL-02)
+  'requerimientos:leer':            'Ver los requerimientos.',
+  'requerimientos:crear':           'Crear requerimientos de materiales o servicios.',
+  'requerimientos:aprobar_jefe':    'Firmar la aprobación de jefe de área en un requerimiento.',
+  'requerimientos:aprobar_final':   'Firmar la aprobación final en compras chicas (bajo el umbral).',
+  'requerimientos:aprobar_dueno':   'Firmar como dueño la aprobación de una compra grande.',
+  'requerimientos:aprobar_gerencia':'Co-firmar como gerencia la aprobación de una compra grande.',
+  'requerimientos:desembolsar':     'Registrar el desembolso de un requerimiento aprobado.',
+  'recepciones:leer':               'Ver las recepciones de materiales.',
+  'recepciones:crear':              'Registrar recepciones de materiales.',
+
+  // Configuración del sistema
+  'config:leer':                    'Ver la configuración global del sistema (umbrales, políticas).',
+  'config:actualizar':              'Modificar la configuración global del sistema.',
+
   // Vistas (lado UI)
   'vista:dashboard':                'Ver el panel de control.',
   'vista:proyectos':                'Ver el modulo de proyectos.',
@@ -203,6 +227,9 @@ const PERMISOS = {
   'vista:personal':                 'Ver la distribucion de personal por rol.',
   'vista:gastos':                   'Ver el modulo de gastos operativos.',
   'vista:recepciones':              'Ver el modulo de recepciones de materiales.',
+  'vista:requerimientos':           'Ver el modulo de requerimientos.',
+  'vista:aprobaciones':             'Ver el modulo de aprobaciones de requerimientos.',
+  'vista:desembolsos':              'Ver el modulo de desembolsos.',
   'vista:bank-transactions':        'Ver el modulo de transacciones bancarias.',
   'vista:payment-validation':       'Ver el modulo de validacion de pagos.',
   'vista:el-proyecto':              'Ver el catalogo publico del proyecto.',

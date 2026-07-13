@@ -1,0 +1,155 @@
+name: Restauracion de respaldo (BCK-01)
+
+# Disparado unicamente por el backend (POST /api/v1/respaldos/:id/restaurar) via
+# la API de GitHub, tras verificar el step-up 2FA del admin. No se ejecuta por
+# cron ni por push/pull_request.
+on:
+  workflow_dispatch:
+    inputs:
+      id_respaldo:
+        required: true
+        type: string
+      alcance:
+        description: "'ALL' para restauracion total, o el nombre de una tabla de condor"
+        required: true
+        type: string
+      id_restauracion:
+        required: true
+        type: string
+      ubicacion:
+        required: true
+        type: string
+      ubicacion_r2:
+        required: false
+        type: string
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL:      ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      ALCANCE:               ${{ inputs.alcance }}
+      ID_RESPALDO:            ${{ inputs.id_respaldo }}
+      ID_RESTAURACION:        ${{ inputs.id_restauracion }}
+      UBICACION:              ${{ inputs.ubicacion }}
+      UBICACION_R2:           ${{ inputs.ubicacion_r2 }}
+    steps:
+      - name: Instalar postgresql-client 17 (debe igualar o superar la version del servidor)
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          # El runner ya trae postgresql-client 16 preinstalado en el PATH por
+          # defecto; forzamos que los binarios de la 17 tengan prioridad.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Validar el alcance recibido
+        run: |
+          set -euo pipefail
+          if [ "$ALCANCE" != "ALL" ] && ! [[ "$ALCANCE" =~ ^[a-z_]+$ ]]; then
+            echo "Alcance invalido: $ALCANCE"; exit 1
+          fi
+
+      - name: Descargar el dump desde Supabase Storage (con R2 como respaldo)
+        run: |
+          set -euo pipefail
+          if ! curl -sf "$SUPABASE_URL/storage/v1/object/respaldos/$UBICACION" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -o backup.dump; then
+            echo "Fallo la descarga desde Supabase Storage, intentando R2..."
+            aws s3 cp "s3://${{ secrets.R2_BUCKET }}/$UBICACION_R2" backup.dump \
+              --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+          fi
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+
+      - name: Verificar checksum
+        run: |
+          set -euo pipefail
+          ESPERADO=$(curl -sf "$SUPABASE_URL/rest/v1/respaldo?id_respaldo=eq.$ID_RESPALDO&select=checksum_sha256" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor" | tr -d '[]{}"' | cut -d: -f2)
+          REAL=$(sha256sum backup.dump | cut -d' ' -f1)
+          if [ -n "$ESPERADO" ] && [ "$ESPERADO" != "$REAL" ]; then
+            echo "Checksum no coincide: esperado=$ESPERADO real=$REAL"; exit 1
+          fi
+
+      - name: Restaurar (total)
+        if: inputs.alcance == 'ALL'
+        run: pg_restore --clean --if-exists --schema=condor --dbname="$SUPABASE_DB_URL" backup.dump
+
+      - name: Restaurar (una tabla)
+        if: inputs.alcance != 'ALL'
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -c "TRUNCATE TABLE condor.${ALCANCE} CASCADE;"
+          pg_restore --data-only --table="condor.${ALCANCE}" --dbname="$SUPABASE_DB_URL" backup.dump
+
+      - name: Marcar restauracion como completada
+        if: success()
+        run: |
+          curl -sf -X PATCH "$SUPABASE_URL/rest/v1/respaldo_restauracion?id_restauracion=eq.$ID_RESTAURACION" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Content-Profile: condor" \
+            -H "Prefer: return=minimal" \
+            -d "{\"estado\":\"completado\",\"finalizado_en\":\"$(date -u +%FT%TZ)\"}"
+
+      - name: Marcar restauracion como fallida
+        if: failure()
+        run: |
+          curl -sf -X PATCH "$SUPABASE_URL/rest/v1/respaldo_restauracion?id_restauracion=eq.$ID_RESTAURACION" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Content-Profile: condor" \
+            -H "Prefer: return=minimal" \
+            -d "{\"estado\":\"fallido\",\"finalizado_en\":\"$(date -u +%FT%TZ)\",\"detalle\":\"Revisar el run en GitHub Actions\"}" || true
+
+      - name: Notificar a los admins del fallo
+        if: failure()
+        run: |
+          set -uo pipefail
+          ROL_ID=$(curl -sf "$SUPABASE_URL/rest/v1/roles?select=id_rol&nombre=eq.admin" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor" | jq -r '.[0].id_rol // empty')
+
+          if [ -z "$ROL_ID" ]; then
+            echo "aviso: no se encontro el rol admin, no se notifica a nadie"
+            exit 0
+          fi
+
+          ADMIN_IDS=$(curl -sf "$SUPABASE_URL/rest/v1/usuarios?select=id_usuario&activo=eq.true&id_rol=eq.$ROL_ID" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Accept-Profile: condor" | jq -r '.[].id_usuario')
+
+          for ID in $ADMIN_IDS; do
+            curl -sf -X POST "$SUPABASE_URL/rest/v1/notificacion" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Content-Profile: condor" \
+              -H "Prefer: return=minimal" \
+              -d "{\"id_usuario\":$ID,\"titulo\":\"Fallo una restauracion de respaldo\",\"mensaje\":\"La restauracion #$ID_RESTAURACION (alcance: $ALCANCE) fallo. Revisa Actions en GitHub.\",\"vista\":\"respaldos\"}" \
+              || echo "  aviso: no se pudo notificar al usuario $ID"
+          done
+
+      - name: Apagar modo mantenimiento (solo restauracion total)
+        if: always() && inputs.alcance == 'ALL'
+        run: |
+          curl -sf -X PATCH "$SUPABASE_URL/rest/v1/config_sistema?clave=eq.modo_mantenimiento" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Content-Profile: condor" \
+            -H "Prefer: return=minimal" \
+            -d "{\"valor\":\"false\"}" || true
