@@ -17,6 +17,7 @@
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attribution: "Tiles &copy; Esri",
       maxZoom: 19,
+      subdomains: "abc", // unused (no {s} in this URL) but Leaflet's _getSubdomain() always reads options.subdomains.length
       label: "Satelital",
     },
   };
