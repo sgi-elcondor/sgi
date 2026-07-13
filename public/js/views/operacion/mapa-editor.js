@@ -23,7 +23,6 @@ async function _descargarPlantilla(proyecto, lotesDelProyecto) {
     { header: "Manzana",             key: "manzana",     width: 12 },
     { header: "N Lote",              key: "numero_lote", width: 10 },
     { header: "Area (m2)",           key: "area_m2",      width: 12 },
-    { header: "Estado",              key: "estado",       width: 14 },
     { header: "Coordenadas (lat,lng; lat,lng; ...)", key: "coordenadas", width: 60 },
   ];
   SX.styleHeader(ws.getRow(1));
@@ -35,7 +34,6 @@ async function _descargarPlantilla(proyecto, lotesDelProyecto) {
       manzana:     l.manzana || "",
       numero_lote: l.numero_lote || "",
       area_m2:     l.area_m2 || "",
-      estado:      l.estado || "",
       coordenadas: _geomToCoordenadasText(l.geom),
     });
     SX.styleBody(r, i % 2 !== 0);
@@ -97,7 +95,7 @@ async function _leerPlantilla(file) {
     filas.push({
       id_lote:     Number(idLote),
       codigo_lote: row.getCell(2).value ?? "",
-      coordenadas: String(row.getCell(7).value ?? ""),
+      coordenadas: String(row.getCell(6).value ?? ""),
     });
   });
   return filas;
