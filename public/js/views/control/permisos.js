@@ -160,7 +160,9 @@
 
   function rolIcon(nombre) {
     const MAP = { admin:'crown', gerencia:'briefcase-business', juridico:'scale',
-      comprador:'home', comisionista:'percent', asesor_comercial:'handshake', auxiliar_contable:'calculator' };
+      comprador:'home', comisionista:'percent', asesor_comercial:'handshake', auxiliar_contable:'calculator',
+      almacenista:'warehouse', usuario:'user', peticionario:'file-plus', jefe_area:'user-check',
+      tesorero:'landmark', dueno:'key-round', topografo:'pencil-ruler' };
     return MAP[nombre] || 'user-cog';
   }
 
