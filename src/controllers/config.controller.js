@@ -30,6 +30,13 @@ const EDITABLE_KEYS = {
   },
 };
 
+// SEG-09: /config/:clave has a non-numeric param, so the permission middleware
+// (which only strips numeric segments) never matches its ROUTE_PERMISSIONS key.
+// Authorization for those routes must therefore be enforced here.
+function _puedeConfig(req, accion) {
+  return req.usuario?.rol === "admin" || req.usuario?.permisos?.has(`config:${accion}`);
+}
+
 // GET /api/v1/config
 async function listar(req, res) {
   try {
@@ -43,6 +50,9 @@ async function listar(req, res) {
 // GET /api/v1/config/:clave
 async function get(req, res) {
   try {
+    if (!_puedeConfig(req, "leer")) {
+      return res.status(403).json({ error: "No tienes permiso para consultar la configuración", requerido: "config:leer" });
+    }
     const value = await configService.get(req.params.clave);
     if (value === null) return res.status(404).json({ error: "Clave no encontrada" });
     return res.json({ clave: req.params.clave, valor: value });
@@ -54,6 +64,9 @@ async function get(req, res) {
 // PATCH /api/v1/config/:clave  Body: { valor }
 async function actualizar(req, res) {
   try {
+    if (!_puedeConfig(req, "actualizar")) {
+      return res.status(403).json({ error: "No tienes permiso para modificar la configuración", requerido: "config:actualizar" });
+    }
     const clave = req.params.clave;
     const rule  = EDITABLE_KEYS[clave];
     if (!rule) return res.status(400).json({ error: `La clave '${clave}' no es editable desde la API.` });

@@ -41,6 +41,9 @@
         { key: 'ventas:solicitar',         label: 'Solicitar venta (asesor)' },
         { key: 'ventas:actualizar',        label: 'Actualizar venta' },
         { key: 'ventas:editar_financiero', label: 'Editar datos financieros' },
+        { key: 'lotes:leer',               label: 'Ver lotes (formulario de venta)' },
+        { key: 'compradores:leer',         label: 'Ver compradores (formulario de venta)' },
+        { key: 'comisionistas:leer',       label: 'Ver comisionistas (formulario de venta)' },
       ]},
       { key: 'requerimientos', label: 'Requerimientos', icon: 'clipboard-list', actions: [
         { key: 'requerimientos:leer',   label: 'Ver mis requerimientos' },
@@ -56,12 +59,19 @@
       { key: 'desembolsos', label: 'Desembolsos', icon: 'landmark', actions: [
         { key: 'requerimientos:leer',        label: 'Ver desembolsos' },
         { key: 'requerimientos:desembolsar', label: 'Registrar desembolsos' },
+        { key: 'empresas_aliadas:leer',      label: 'Vincular empresa aliada (proveedor)' },
         { key: 'uploads:crear',              label: 'Adjuntar comprobante' },
       ]},
       { key: 'recepciones', label: 'Recepciones', icon: 'package-check', actions: [
         { key: 'recepciones:leer',  label: 'Ver recepciones' },
         { key: 'recepciones:crear', label: 'Registrar recepciones' },
+        { key: 'requerimientos:leer', label: 'Ver trazabilidad de requerimientos' },
         { key: 'uploads:crear',     label: 'Adjuntar remisiones' },
+      ]},
+      { key: 'empresas-aliadas', label: 'Empresas Aliadas', icon: 'building-2', actions: [
+        { key: 'empresas_aliadas:leer',       label: 'Ver empresas e historial comercial' },
+        { key: 'empresas_aliadas:crear',      label: 'Registrar empresa aliada' },
+        { key: 'empresas_aliadas:actualizar', label: 'Editar o desactivar empresa' },
       ]},
     ]},
     { group: 'Finanzas', modules: [
@@ -96,6 +106,7 @@
         { key: 'gastos:leer',       label: 'Ver gastos' },
         { key: 'gastos:crear',      label: 'Registrar gasto' },
         { key: 'gastos:actualizar', label: 'Editar gasto' },
+        { key: 'empresas_aliadas:leer', label: 'Vincular empresa aliada (proveedor)' },
       ]},
       { key: 'bank-transactions', label: 'Transacciones bancarias', icon: 'landmark', actions: [
         { key: 'bank_transactions:leer',       label: 'Ver transacciones' },
@@ -128,7 +139,9 @@
       { key: 'alertas',   label: 'Alertas juridicas',  icon: 'triangle-alert', actions: [
         { key: 'alertas_jur:leer', label: 'Ver alertas' },
       ]},
-      { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [] },
+      { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [
+        { key: 'auditoria_log:leer', label: 'Ver bitacora de auditoria' },
+      ]},
       { key: 'respaldos', label: 'Respaldos', icon: 'database-backup', actions: [
         { key: 'respaldos:leer',      label: 'Ver respaldos' },
         { key: 'respaldos:restaurar', label: 'Restaurar un respaldo' },
