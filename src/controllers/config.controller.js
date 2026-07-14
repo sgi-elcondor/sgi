@@ -11,6 +11,10 @@ const EDITABLE_KEYS = {
     tipo: "number",
     validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
   },
+  umbral_caja_menor: {
+    tipo: "number",
+    validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
+  },
 };
 
 // GET /api/v1/config

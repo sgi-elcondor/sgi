@@ -28,6 +28,23 @@ function _esCompraGrande(valorTotal, umbral) {
   return Number(valorTotal || 0) >= Number(umbral || 0);
 }
 
+// POL-01: purchases strictly below this threshold are petty cash (caja menor).
+// They skip the final approval entirely — aprobar-jefe sends them straight to
+// pendiente_tesoreria so the dueño is not saturated with trivial buys. Read
+// from condor.config_sistema.umbral_caja_menor (editable by admin from the
+// Permisos view). Fallback 500.000 COP when the key is missing.
+async function _umbralCajaMenor() {
+  const raw = await config.get("umbral_caja_menor");
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : 500_000;
+}
+
+// Strictly below the threshold. The large-purchase rule wins if an admin ever
+// misconfigures caja menor above compra grande.
+function _esCajaMenor(valorTotal, umbralCaja, esGrande) {
+  return !esGrande && Number(valorTotal || 0) < Number(umbralCaja || 0);
+}
+
 function validarCampos({ descripcion, categoria, urgencia, justificacion, items }) {
   if (!descripcion || !String(descripcion).trim()) {
     return "La descripción del requerimiento es obligatoria";
@@ -143,7 +160,14 @@ async function create(req, res) {
       console.error("[requerimientos] No se pudo notificar a jefes:", e.message);
     }
 
-    return res.status(201).json(reqCreado);
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
+    const grande = _esCompraGrande(reqCreado.valor_total, umbral);
+
+    return res.status(201).json({
+      ...reqCreado,
+      es_compra_grande: grande,
+      es_caja_menor:    _esCajaMenor(reqCreado.valor_total, umbralCaja, grande),
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -410,7 +434,7 @@ async function getAprobaciones(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const umbral = await _umbralCompraGrande();
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
 
     return res.json((data || []).map(r => {
       const grande = _esCompraGrande(r.valor_total, umbral);
@@ -440,7 +464,9 @@ async function getAprobaciones(req, res) {
         sigla:    r.proyecto?.sigla || null,
         nivel,
         es_compra_grande: grande,
+        es_caja_menor:    _esCajaMenor(r.valor_total, umbralCaja, grande),
         umbral_actual:    umbral,
+        umbral_caja_menor: umbralCaja,
         firmas_faltantes: r.estado === "aprobado_jefe" && grande
           ? [!firmaDueno && "dueno", !firmaGerencia && "gerencia"].filter(Boolean)
           : [],
@@ -479,20 +505,24 @@ async function getHistorial(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const umbral = await _umbralCompraGrande();
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
     const nombre = u => u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() : null;
 
-    return res.json((data || []).map(r => ({
-      ...r,
-      solicitante:        `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
-      aprobador_jefe:     nombre(r.aprobador_jefe),
-      aprobador_final:    nombre(r.aprobador_final),
-      aprobador_dueno:    nombre(r.aprobador_dueno),
-      aprobador_gerencia: nombre(r.aprobador_gerencia),
-      proyecto: r.proyecto?.nombre || null,
-      sigla:    r.proyecto?.sigla || null,
-      es_compra_grande: _esCompraGrande(r.valor_total, umbral),
-    })));
+    return res.json((data || []).map(r => {
+      const grande = _esCompraGrande(r.valor_total, umbral);
+      return {
+        ...r,
+        solicitante:        `${r.solicitante?.nombres || ""} ${r.solicitante?.apellidos || ""}`.trim() || r.solicitante?.email || "—",
+        aprobador_jefe:     nombre(r.aprobador_jefe),
+        aprobador_final:    nombre(r.aprobador_final),
+        aprobador_dueno:    nombre(r.aprobador_dueno),
+        aprobador_gerencia: nombre(r.aprobador_gerencia),
+        proyecto: r.proyecto?.nombre || null,
+        sigla:    r.proyecto?.sigla || null,
+        es_compra_grande: grande,
+        es_caja_menor:    _esCajaMenor(r.valor_total, umbralCaja, grande),
+      };
+    }));
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -523,10 +553,18 @@ async function aprobarJefe(req, res) {
       return res.status(409).json({ error: `El requerimiento está en estado '${r.estado}'; solo se aprueban los pendientes de jefe` });
     }
 
+    // POL-01/POL-02: the destination depends on the purchase size. Petty cash
+    // (caja menor) skips the final approval and lands directly in tesorería;
+    // everything else waits for the single or dual final sign.
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
+    const grande    = _esCompraGrande(r.valor_total, umbral);
+    const cajaMenor = _esCajaMenor(r.valor_total, umbralCaja, grande);
+    const estadoNuevo = cajaMenor ? "pendiente_tesoreria" : "aprobado_jefe";
+
     const hoy = new Date().toISOString().slice(0, 10);
     const { error: eUpd } = await supabase.schema(SCHEMA)
       .from("requerimiento")
-      .update({ estado: "aprobado_jefe", aprobado_jefe_por: req.usuario.id_usuario, fecha_aprobado_jefe: hoy })
+      .update({ estado: estadoNuevo, aprobado_jefe_por: req.usuario.id_usuario, fecha_aprobado_jefe: hoy })
       .eq("id_requerimiento", id)
       .eq("estado", "pendiente_jefe");
 
@@ -534,18 +572,60 @@ async function aprobarJefe(req, res) {
 
     await auditoria.log({
       tabla: "requerimiento", id, campo: "estado",
-      anterior: "pendiente_jefe", nuevo: "aprobado_jefe",
-      usuario: req.usuario.email, motivo: "aprobacion_jefe",
+      anterior: "pendiente_jefe", nuevo: estadoNuevo,
+      usuario: req.usuario.email,
+      motivo: cajaMenor
+        ? `aprobacion_jefe_caja_menor (< $${umbralCaja.toLocaleString("es-CO")})`
+        : "aprobacion_jefe",
     });
 
-    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: "aprobado_jefe" });
+    _emitLive(req.usuario, { id_requerimiento: id, numero: r.numero, estado: estadoNuevo });
+
+    if (cajaMenor) {
+      notif.crear({
+        paraRoles:  ["tesorero"],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} aprobado (caja menor) — gestionar desembolso`,
+        mensaje:    r.descripcion,
+        vista:      "desembolsos",
+        referencia: r.numero,
+      }).catch(() => {});
+      notif.crear({
+        paraIds:    [r.id_solicitante],
+        excepto:    req.usuario.id_usuario,
+        titulo:     `${r.numero} aprobado por el jefe de área`,
+        mensaje:    "Por ser caja menor pasó directo a tesorería para el desembolso.",
+        vista:      "requerimientos",
+        referencia: r.numero,
+      }).catch(() => {});
+
+      _emailsBackground("aprobacion_jefe_caja_menor", async () => {
+        const [tesoreros, solicitante] = await Promise.all([
+          _emailsDeRol("tesorero"),
+          _emailDeUsuario(r.id_solicitante),
+        ]);
+        await _notificar(tesoreros, {
+          asunto:  `Requerimiento ${r.numero} aprobado (caja menor) — gestionar desembolso — El Cóndor`,
+          titulo:  "Nuevo requerimiento en tesorería (caja menor)",
+          mensaje: `El jefe de área aprobó el requerimiento <strong>${r.numero}</strong> (${r.descripcion}). Por ser una compra de caja menor (< $${umbralCaja.toLocaleString("es-CO")} COP) no requiere aprobación final y pasa directo a tesorería.`,
+          numero:  r.numero,
+          valor_total: r.valor_total,
+        });
+        await _notificar([solicitante], {
+          asunto:  `Tu requerimiento ${r.numero} fue aprobado — El Cóndor`,
+          titulo:  "¡Requerimiento aprobado!",
+          mensaje: `Tu requerimiento <strong>${r.numero}</strong> (${r.descripcion}) fue aprobado por el jefe de área. Por ser caja menor no necesita más aprobaciones y ya está en tesorería para el desembolso.`,
+          numero:  r.numero,
+          valor_total: r.valor_total,
+        });
+      });
+
+      return res.json({ ok: true, numero: r.numero, estado: estadoNuevo, es_caja_menor: true, es_compra_grande: false });
+    }
 
     // POL-02: escalate the notification based on purchase size. Small purchases
     // only need the dueño's single signature; large ones need dueño + gerencia
     // to co-sign, so both roles get pinged with the correct instruction.
-    const umbral = await _umbralCompraGrande();
-    const grande = _esCompraGrande(r.valor_total, umbral);
-
     if (grande) {
       notif.crear({
         paraRoles:  ["dueno"],
@@ -619,7 +699,7 @@ async function aprobarJefe(req, res) {
       }
     });
 
-    return res.json({ ok: true, numero: r.numero, estado: "aprobado_jefe", es_compra_grande: grande });
+    return res.json({ ok: true, numero: r.numero, estado: "aprobado_jefe", es_caja_menor: false, es_compra_grande: grande });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -1408,19 +1488,23 @@ async function getMios(req, res) {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    const umbral = await _umbralCompraGrande();
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
     const nombre = u => u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() : null;
 
-    return res.json((data || []).map(r => ({
-      ...r,
-      aprobador_jefe:     nombre(r.aprobador_jefe),
-      aprobador_final:    nombre(r.aprobador_final),
-      aprobador_dueno:    nombre(r.aprobador_dueno),
-      aprobador_gerencia: nombre(r.aprobador_gerencia),
-      proyecto: r.proyecto?.nombre || null,
-      sigla:    r.proyecto?.sigla || null,
-      es_compra_grande: _esCompraGrande(r.valor_total, umbral),
-    })));
+    return res.json((data || []).map(r => {
+      const grande = _esCompraGrande(r.valor_total, umbral);
+      return {
+        ...r,
+        aprobador_jefe:     nombre(r.aprobador_jefe),
+        aprobador_final:    nombre(r.aprobador_final),
+        aprobador_dueno:    nombre(r.aprobador_dueno),
+        aprobador_gerencia: nombre(r.aprobador_gerencia),
+        proyecto: r.proyecto?.nombre || null,
+        sigla:    r.proyecto?.sigla || null,
+        es_compra_grande: grande,
+        es_caja_menor:    _esCajaMenor(r.valor_total, umbralCaja, grande),
+      };
+    }));
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -1432,7 +1516,7 @@ function _nombreDe(u) {
   return u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() || null : null;
 }
 
-function _buildTrazabilidad(r, bitacora, esGrande, umbral) {
+function _buildTrazabilidad(r, bitacora, esGrande, umbral, esCajaMenor, umbralCaja) {
   const fmtItems = its => (its || [])
     .map(d => `${d.item?.descripcion || "ítem"} × ${Number(d.cantidad)}${d.item?.unidad ? " " + d.item.unidad : ""}`)
     .join(", ");
@@ -1518,6 +1602,16 @@ function _buildTrazabilidad(r, bitacora, esGrande, umbral) {
       responsable: _nombreDe(r.aprobador_gerencia),
       documento:   null,
       detalle:     null,
+    });
+  } else if (esCajaMenor && !r.fecha_aprobado_final) {
+    pasos.push({
+      paso:        "aprobacion_final",
+      label:       "Aprobación final no requerida (caja menor)",
+      estado:      "omitido",
+      fecha:       null,
+      responsable: null,
+      documento:   null,
+      detalle:     `Compras menores a $${Number(umbralCaja || 0).toLocaleString("es-CO")} pasan directo a tesorería con la sola aprobación del jefe`,
     });
   } else {
     pasos.push({
@@ -1649,8 +1743,9 @@ async function getTrazabilidad(req, res) {
       .in("valor_nuevo", ["rechazado", "cancelado"])
       .order("fecha_cambio", { ascending: false });
 
-    const umbral   = await _umbralCompraGrande();
-    const esGrande = _esCompraGrande(r.valor_total, umbral);
+    const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
+    const esGrande    = _esCompraGrande(r.valor_total, umbral);
+    const esCajaMenor = _esCajaMenor(r.valor_total, umbralCaja, esGrande);
 
     return res.json({
       id_requerimiento: r.id_requerimiento,
@@ -1664,7 +1759,8 @@ async function getTrazabilidad(req, res) {
       sigla:            r.proyecto?.sigla || null,
       solicitante:      _nombreDe(r.solicitante) || r.solicitante?.email || "—",
       es_compra_grande: esGrande,
-      timeline:         _buildTrazabilidad(r, bitacora, esGrande, umbral),
+      es_caja_menor:    esCajaMenor,
+      timeline:         _buildTrazabilidad(r, bitacora, esGrande, umbral, esCajaMenor, umbralCaja),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

@@ -841,3 +841,24 @@
 }
 
 .req-trace-docref svg { width: 0.8rem; height: 0.8rem; }
+
+/* ── POL-01: skipped step (caja menor omits the final approval) ──────────── */
+.req-flow-step.skipped .req-flow-dot,
+.req-trace-step.skipped .req-trace-dot {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.req-flow-step.skipped .req-flow-label,
+.req-trace-step.skipped .req-trace-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.req-mini-dot.skipped {
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+}

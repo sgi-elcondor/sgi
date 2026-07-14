@@ -73,13 +73,21 @@ let _highlightId    = null;
 const _filtros      = { q: "", est: "", urg: "" };
 
 // Mini version of the flow timeline: one dot per step at a glance inside the table.
+// POL-01: petty-cash purchases skip the "Dueño" step (index 2) entirely.
+function _skippedStepOf(r, flow) {
+  const row = (r && typeof r === "object") ? r : {};
+  return row.es_caja_menor && !row.fecha_aprobado_final && flow.failedAt !== 2 ? 2 : -1;
+}
+
 function miniFlowHTML(r) {
   const flow  = flowStateOf(r);
+  const skip  = _skippedStepOf(r, flow);
   const estado = typeof r === "string" ? r : r?.estado;
   const title  = ESTADO_LABEL[estado]?.label || estado;
   return `<div class="req-mini-flow" title="${title}">${FLOW_STEPS.map((s, i) => {
     let cls = "pending";
     if (flow.failedAt === i) cls = "failed";
+    else if (i === skip) cls = "skipped";
     else if (flow.done || i < flow.current) cls = "done";
     else if (i === flow.current) cls = "current";
     return `<span class="req-mini-dot ${cls}"></span>`;
@@ -319,16 +327,18 @@ window.requerimientosView = async function () {
 // ─────────────────────────────────────────────────────────────────────────────
 function timelineHTML(r) {
   const flow = flowStateOf(r);
+  const skip = _skippedStepOf(r, flow);
   return `
     <div class="req-flow">
       ${FLOW_STEPS.map((s, i) => {
         let cls = "pending";
         if (flow.failedAt === i) cls = "failed";
+        else if (i === skip) cls = "skipped";
         else if (flow.done || i < flow.current) cls = "done";
         else if (i === flow.current) cls = "current";
         return `
-          <div class="req-flow-step ${cls}">
-            <span class="req-flow-dot">${flow.failedAt === i ? icon("x") : icon(s.icon)}</span>
+          <div class="req-flow-step ${cls}" ${i === skip ? 'title="No requerida (caja menor)"' : ""}>
+            <span class="req-flow-dot">${flow.failedAt === i ? icon("x") : i === skip ? icon("minus") : icon(s.icon)}</span>
             <span class="req-flow-label">${s.label}</span>
           </div>`;
       }).join(`<span class="req-flow-line"></span>`)}
@@ -395,6 +405,8 @@ function _buildRequerimientoHTML(r) {
     duenoValue = partes.length
       ? partes.join(" | ")
       : (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
+  } else if (r.es_caja_menor && !r.aprobador_final) {
+    duenoValue = (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "No requerida (caja menor)";
   } else {
     duenoValue =
       r.aprobador_final ? `${r.aprobador_final} · ${fmtD(r.fecha_aprobado_final)}` :
@@ -569,7 +581,7 @@ function abrirDetalle(r) {
       </div>
 
       <div class="form-section">
-        <span class="form-section-label">Estado de la solicitud &nbsp;<span class="badge ${est.cls}">${est.label}</span></span>
+        <span class="form-section-label">Estado de la solicitud &nbsp;<span class="badge ${est.cls}">${est.label}</span>${r.es_caja_menor ? ` <span class="badge badge-info" title="Solo necesita aprobación del jefe; pasa directo a tesorería">${icon("coins")} Caja menor</span>` : ""}${r.es_compra_grande ? ` <span class="badge badge-warning">${icon("shield-alert")} Compra grande</span>` : ""}</span>
         ${timelineHTML(r)}
         ${(r.aprobador_jefe || r.aprobador_final || r.aprobador_dueno || r.aprobador_gerencia || r.fecha_entrega) ? `
           <div class="req-aprobaciones-info" style="flex-wrap:wrap;gap:.4rem 1rem">
@@ -647,8 +659,12 @@ function _fmtFechaHora(f) {
 }
 
 function _traceEventHTML(ev, isCurrent) {
-  const cls = ev.estado === "fallido" ? "failed" : ev.estado === "hecho" ? "done" : isCurrent ? "current" : "pending";
-  const iconName = ev.estado === "fallido" ? "x" : TRACE_ICONS[ev.paso] || "circle";
+  const cls =
+    ev.estado === "fallido" ? "failed" :
+    ev.estado === "omitido" ? "skipped" :
+    ev.estado === "hecho"   ? "done" :
+    isCurrent ? "current" : "pending";
+  const iconName = ev.estado === "fallido" ? "x" : ev.estado === "omitido" ? "minus" : TRACE_ICONS[ev.paso] || "circle";
   const doc = ev.documento
     ? ev.documento.url
       ? `<button class="btn btn-ghost btn-sm req-trace-doc" data-url="${esc(ev.documento.url)}">${icon("paperclip")} ${esc(ev.documento.label)}</button>`
@@ -685,7 +701,7 @@ async function abrirTrazabilidad(idRequerimiento) {
       <div class="rec-modal-summary">
         <div class="rec-summary-item"><span class="lbl">Solicitante</span><span class="val">${esc(t.solicitante)}</span></div>
         <div class="rec-summary-item"><span class="lbl">Proyecto</span><span class="val">${esc(t.proyecto || "—")}${t.sigla ? ` (${esc(t.sigla)})` : ""}</span></div>
-        <div class="rec-summary-item"><span class="lbl">Valor estimado</span><span class="val">${fmtMoney(t.valor_total)}${t.es_compra_grande ? ` <span class="badge badge-warning">Compra grande</span>` : ""}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Valor estimado</span><span class="val">${fmtMoney(t.valor_total)}${t.es_compra_grande ? ` <span class="badge badge-warning">Compra grande</span>` : ""}${t.es_caja_menor ? ` <span class="badge badge-info">Caja menor</span>` : ""}</span></div>
         <div class="rec-summary-item"><span class="lbl">Estado</span><span class="val"><span class="badge ${est.cls}">${est.label}</span></span></div>
       </div>
 
@@ -892,7 +908,12 @@ async function guardarRequerimiento() {
       descripcion, id_proyecto, categoria, urgencia, justificacion, items,
     });
     UI.closeModal();
-    UI.toast(`Requerimiento ${creado.numero} creado. Quedó pendiente de aprobación del jefe de área.`, "ok");
+    UI.toast(
+      creado.es_caja_menor
+        ? `Requerimiento ${creado.numero} creado (caja menor). Con la aprobación del jefe pasará directo a tesorería.`
+        : `Requerimiento ${creado.numero} creado. Quedó pendiente de aprobación del jefe de área.`,
+      "ok"
+    );
     _highlightId = creado.id_requerimiento;
     window.requerimientosView();
   } catch (e) {

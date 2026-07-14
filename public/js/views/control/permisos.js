@@ -449,6 +449,21 @@
     return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
   }
 
+  const CONFIG_UMBRALES = [
+    {
+      clave:       'umbral_compra_grande',
+      label:       'Umbral de compra grande (COP)',
+      placeholder: '5.000.000',
+      hint:        'Compras iguales o mayores a este monto pasan a la firma del dueño y la co-firma de gerencia (POL-02).',
+    },
+    {
+      clave:       'umbral_caja_menor',
+      label:       'Umbral de caja menor (COP)',
+      placeholder: '500.000',
+      hint:        'Compras por debajo de este monto solo necesitan la aprobación del jefe y pasan directo a tesorería (POL-01).',
+    },
+  ];
+
   async function renderUmbralCard(vc) {
     if (!AppState.can('config', 'leer')) return; // Hide the whole card
     const puedeEditar = AppState.can('config', 'actualizar');
@@ -462,40 +477,44 @@
           <span class="perm-cfg-icon"><i data-lucide="sliders-horizontal"></i></span>
           <div>
             <h3 class="perm-cfg-title">Configuración del sistema</h3>
-            <p class="perm-cfg-sub">Umbral que decide cuándo una compra de requerimientos necesita doble firma (dueño + gerencia).</p>
+            <p class="perm-cfg-sub">Umbrales que deciden el recorrido de aprobación de las compras de requerimientos.</p>
           </div>
         </div>
+        ${CONFIG_UMBRALES.map((c, i) => `
         <div class="perm-cfg-body">
-          <label class="perm-cfg-label" for="perm-cfg-umbral">Umbral de compra grande (COP)</label>
+          <label class="perm-cfg-label" for="perm-cfg-input-${i}">${c.label}</label>
           <div class="perm-cfg-row">
-            <input id="perm-cfg-umbral" type="text" inputmode="numeric"
+            <input id="perm-cfg-input-${i}" type="text" inputmode="numeric"
                    ${puedeEditar ? '' : 'disabled'}
-                   placeholder="5.000.000">
-            <button id="perm-cfg-save" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
+                   placeholder="${c.placeholder}">
+            <button id="perm-cfg-save-${i}" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
               <i data-lucide="save"></i> Guardar
             </button>
           </div>
-          <p id="perm-cfg-status" class="perm-cfg-status"></p>
-          <p class="perm-cfg-hint">Compras iguales o mayores a este monto pasan a la firma del dueño y la co-firma de gerencia (POL-02). Las compras por debajo mantienen la firma única.</p>
-        </div>
+          <p id="perm-cfg-status-${i}" class="perm-cfg-status"></p>
+          <p class="perm-cfg-hint">${c.hint}</p>
+        </div>`).join('')}
       </div>`;
 
     window.SGIUI?.hydrate();
 
-    const input   = document.getElementById('perm-cfg-umbral');
-    const btn     = document.getElementById('perm-cfg-save');
-    const status  = document.getElementById('perm-cfg-status');
+    CONFIG_UMBRALES.forEach((c, i) => initUmbralControl(c, i));
+  }
 
-    // Cargar valor actual
+  async function initUmbralControl(cfg, i) {
+    const input  = document.getElementById(`perm-cfg-input-${i}`);
+    const btn    = document.getElementById(`perm-cfg-save-${i}`);
+    const status = document.getElementById(`perm-cfg-status-${i}`);
+    if (!input || !status) return;
+
     try {
-      const { valor } = await API.get('/config/umbral_compra_grande');
+      const { valor } = await API.get(`/config/${cfg.clave}`);
       input.value = Number(valor).toLocaleString('es-CO');
       status.innerHTML = `<span class="perm-cfg-current">Valor actual: <strong>${fmtCOP(valor)}</strong></span>`;
     } catch (e) {
       status.innerHTML = `<span style="color:var(--danger)">No se pudo cargar: ${e.message}</span>`;
     }
 
-    // Formato de miles al escribir
     if (window.SGIHelpers?.applyMoneyInput) {
       window.SGIHelpers.applyMoneyInput(input);
     } else {
@@ -516,7 +535,7 @@
       const orig   = btn.innerHTML;
       btn.innerHTML = 'Guardando...';
       try {
-        const resp = await API.patch('/config/umbral_compra_grande', { valor });
+        const resp = await API.patch(`/config/${cfg.clave}`, { valor });
         status.innerHTML = `<span class="perm-cfg-current">Actualizado: <strong>${fmtCOP(resp.valor)}</strong></span>`;
         window.SGIUI?.toast(`Umbral actualizado a ${fmtCOP(resp.valor)}`, 'ok');
       } catch (e) {
