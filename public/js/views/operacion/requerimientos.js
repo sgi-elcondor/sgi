@@ -8,7 +8,8 @@ const ESTADO_LABEL = {
   rechazado:        { label: "Rechazado",         cls: "badge-danger"  },
   desembolsado:     { label: "Desembolsado",      cls: "badge-warning" },
   recibido_parcial: { label: "Recibido parcial",  cls: "badge-info"    },
-  en_inventario:    { label: "En inventario",     cls: "badge-success" },
+  en_inventario:    { label: "Listo para reclamar", cls: "badge-success" },
+  entregado:        { label: "Entregado",         cls: "badge-success" },
   cancelado:        { label: "Cancelado",         cls: "badge-danger"  },
 };
 
@@ -36,6 +37,7 @@ const FLOW_STEPS = [
   { label: "Tesorería",    icon: "landmark"      },
   { label: "Desembolso",   icon: "banknote"      },
   { label: "Recepción",    icon: "package-check" },
+  { label: "Entrega",      icon: "handshake"     },
 ];
 
 // Accepts the full row (to know which level rejected) or a plain estado string.
@@ -49,7 +51,8 @@ function flowStateOf(r) {
     case "pendiente_tesoreria": return { current: 3 };
     case "desembolsado":        return { current: 5 };
     case "recibido_parcial":    return { current: 5 };
-    case "en_inventario":       return { current: 6, done: true };
+    case "en_inventario":       return { current: 6 };
+    case "entregado":           return { current: 7, done: true };
     case "rechazado": {
       const at = row.fecha_aprobado_jefe ? 2 : 1;
       return { current: at, failedAt: at };
@@ -162,6 +165,8 @@ window.requerimientosView = async function () {
             <option value="pendiente_jefe">Pendiente de jefe</option>
             <option value="aprobado_jefe">Aprobado por jefe</option>
             <option value="pendiente_tesoreria">En tesorería</option>
+            <option value="en_inventario">Listo para reclamar</option>
+            <option value="entregado">Entregado</option>
             <option value="rechazado">Rechazado</option>
             <option value="cancelado">Cancelado</option>
           </select>
@@ -396,22 +401,28 @@ function _buildRequerimientoHTML(r) {
       (r.estado === "rechazado" && r.fecha_aprobado_jefe) ? "Rechazado" : "";
   }
 
+  const AVANZADOS = ["desembolsado", "recibido_parcial", "en_inventario", "entregado"];
+
   const tesoreriaValue =
     r.estado === "pendiente_tesoreria" ? "En gestión" :
-    ["desembolsado", "recibido_parcial", "en_inventario"].includes(r.estado) ? "Gestionado" : "";
+    AVANZADOS.includes(r.estado) ? "Gestionado" : "";
 
   const desembolsoValue =
-    ["desembolsado", "recibido_parcial", "en_inventario"].includes(r.estado)
+    AVANZADOS.includes(r.estado)
       ? (r.fecha_desembolso ? fmtD(r.fecha_desembolso) : "Realizado") : "";
 
   const recepcionValue =
-    r.estado === "en_inventario" ? "Completa" :
+    ["en_inventario", "entregado"].includes(r.estado) ? "Completa" :
     r.estado === "recibido_parcial" ? "Parcial" : "";
 
+  const entregaValue = r.fecha_entrega
+    ? `${r.entrega_receptor ? r.entrega_receptor + " · " : ""}${fmtD(r.fecha_entrega)}`
+    : (r.estado === "en_inventario" ? "Listo para reclamar" : "");
+
   const stamp =
-    r.estado === "rechazado"     ? { label: "Rechazado", variant: "danger" } :
-    r.estado === "cancelado"     ? { label: "Cancelado", variant: "danger" } :
-    r.estado === "en_inventario" ? { label: "Entregado", variant: "success" } : null;
+    r.estado === "rechazado" ? { label: "Rechazado", variant: "danger" } :
+    r.estado === "cancelado" ? { label: "Cancelado", variant: "danger" } :
+    r.estado === "entregado" ? { label: "Entregado", variant: "success" } : null;
 
   const waNumber = (SX.CONTACT && SX.CONTACT.whatsapp) || "573001234567";
   const waMsg    = `Hola, quiero informacion sobre el requerimiento de materiales ${r.numero} por un monto estimado de ${valorTxt}, solicitado por ${solicitante}.`;
@@ -439,8 +450,9 @@ function _buildRequerimientoHTML(r) {
       { label: "Tesorería",        value: tesoreriaValue },
       { label: "Desembolso",       value: desembolsoValue },
       { label: "Recepción",        value: recepcionValue },
-    ].map((t, i) => ({ ...t, current: i === Math.min(flow.failedAt ?? flow.current, 5) })),
-    traceSubtitle: "Cadena Requerimiento → Jefe → Dueño → Tesorería → Desembolso → Recepción",
+      { label: "Entrega",          value: entregaValue },
+    ].map((t, i) => ({ ...t, current: i === Math.min(flow.failedAt ?? flow.current, 6) })),
+    traceSubtitle: "Cadena Requerimiento → Jefe → Dueño → Tesorería → Desembolso → Recepción → Entrega",
     totalLabel: "Monto estimado total",
     totalValue: valorTxt,
     totalWords: valorWords,
@@ -512,6 +524,26 @@ function abrirModalCancelar(r) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// QR de retiro (INV-02): the peticionario shows this at the warehouse; scanning
+// it opens the SGI with the delivery authorization pre-loaded.
+// ─────────────────────────────────────────────────────────────────────────────
+function qrRetiroHTML(r) {
+  if (!window.SGIExport?.qrDataUri) return "";
+  const url = `${window.location.origin}/app#entrega=${encodeURIComponent(r.numero)}`;
+  const qr  = window.SGIExport.qrDataUri(url);
+  if (!qr) return "";
+  return `
+    <div class="req-qr-retiro">
+      <img src="${qr}" alt="QR de retiro ${r.numero}" />
+      <div>
+        <strong>QR de retiro</strong>
+        <p>Tu material está listo en bodega. Presenta este código al almacenista:
+        al escanearlo, la autorización de entrega se abre en su pantalla.</p>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Detalle (timeline + justificación + ítems)
 // ─────────────────────────────────────────────────────────────────────────────
 function abrirDetalle(r) {
@@ -539,7 +571,7 @@ function abrirDetalle(r) {
       <div class="form-section">
         <span class="form-section-label">Estado de la solicitud &nbsp;<span class="badge ${est.cls}">${est.label}</span></span>
         ${timelineHTML(r)}
-        ${(r.aprobador_jefe || r.aprobador_final || r.aprobador_dueno || r.aprobador_gerencia) ? `
+        ${(r.aprobador_jefe || r.aprobador_final || r.aprobador_dueno || r.aprobador_gerencia || r.fecha_entrega) ? `
           <div class="req-aprobaciones-info" style="flex-wrap:wrap;gap:.4rem 1rem">
             ${r.aprobador_jefe ? `<span>${icon("user-check")} Jefe: <strong>${r.aprobador_jefe}</strong> · ${fmtDate(r.fecha_aprobado_jefe)}</span>` : ""}
             ${r.es_compra_grande
@@ -548,12 +580,14 @@ function abrirDetalle(r) {
                 ${r.aprobador_gerencia ? `<span>${icon("shield-check")} Gerencia: <strong>${r.aprobador_gerencia}</strong> · ${fmtDate(r.fecha_aprobado_gerencia)}</span>` : ""}
               `
               : (r.aprobador_final ? `<span>${icon("shield-check")} Dueño: <strong>${r.aprobador_final}</strong> · ${fmtDate(r.fecha_aprobado_final)}</span>` : "")}
+            ${r.fecha_entrega ? `<span>${icon("handshake")} Entregado${r.entrega_receptor ? ` a <strong>${r.entrega_receptor}</strong>` : ""} · ${fmtDate(r.fecha_entrega)}</span>` : ""}
           </div>` : ""}
         ${r.motivo_rechazo ? `
           <div class="req-rechazo-box">
             ${icon("x-circle")}
             <div><strong>Motivo del rechazo:</strong> ${r.motivo_rechazo}</div>
           </div>` : ""}
+        ${r.estado === "en_inventario" ? qrRetiroHTML(r) : ""}
       </div>
 
       <div class="form-section">

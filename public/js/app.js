@@ -190,6 +190,15 @@ function navigate(viewKey, updateHash) {
 
 function getInitialView() {
   const hash = window.location.hash.replace("#", "").trim();
+
+  // Pickup-QR deep link (#entrega=REQ-...): the almacenista scans the
+  // peticionario's code and lands on the pre-loaded delivery authorization.
+  const entrega = hash.match(/^entrega=(.+)$/);
+  if (entrega && AppState.hasVista("recepciones")) {
+    window._entregaParam = decodeURIComponent(entrega[1]);
+    return "recepciones";
+  }
+
   if (VIEWS[hash] && AppState.hasVista(hash)) return hash;
   if (AppState.hasVista("dashboard")) return "dashboard";
   const firstVista = (window.currentUser?.vistas || []).find(v => VIEWS[v]);

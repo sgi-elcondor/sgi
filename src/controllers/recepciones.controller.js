@@ -43,7 +43,8 @@ exports.getHistorial = async (req, res) => {
     .from("requerimiento")
     .select(`
       id_requerimiento, numero, descripcion, fecha_solicitud, fecha_desembolso,
-      estado, valor_total, observaciones,
+      estado, valor_total, observaciones, fecha_entrega, entrega_receptor,
+      solicitante:id_solicitante ( nombres, apellidos, email ),
       proyecto:id_proyecto ( id_proyecto, nombre, sigla ),
       items:requerimiento_item (
         id_item, descripcion, unidad, cantidad_solicitada, precio_unitario,
@@ -51,7 +52,7 @@ exports.getHistorial = async (req, res) => {
       ),
       recepciones:recepcion ( id_recepcion, fecha, comprobante_url )
     `)
-    .in("estado", ["recibido_parcial", "en_inventario"])
+    .in("estado", ["recibido_parcial", "en_inventario", "entregado"])
     .order("id_requerimiento", { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
@@ -61,6 +62,11 @@ exports.getHistorial = async (req, res) => {
     const recs = (data[i].recepciones || []).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     n.entregas        = recs.length;
     n.ultima_entrega  = recs[0]?.fecha || null;
+    n.fecha_entrega    = data[i].fecha_entrega || null;
+    n.entrega_receptor = data[i].entrega_receptor || null;
+    n.solicitante = data[i].solicitante
+      ? (`${data[i].solicitante.nombres || ""} ${data[i].solicitante.apellidos || ""}`.trim() || data[i].solicitante.email)
+      : "—";
   });
 
   res.json(normalizados);

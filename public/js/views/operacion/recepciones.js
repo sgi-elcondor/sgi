@@ -4,6 +4,7 @@ const ESTADO_LABEL = {
   desembolsado:     { label: "Desembolsado",     cls: "badge-warning" },
   recibido_parcial: { label: "Recibido parcial", cls: "badge-info"    },
   en_inventario:    { label: "En inventario",    cls: "badge-success" },
+  entregado:        { label: "Entregado",        cls: "badge-success" },
   cancelado:        { label: "Cancelado",        cls: "badge-danger"  },
   pendiente:        { label: "Pendiente",        cls: "badge-muted"   },
 };
@@ -47,6 +48,17 @@ window.recepcionesView = async function () {
   _pendientes = _pendientes || [];
   _historial  = _historial || [];
 
+  // Deep link from a pickup QR (/app#entrega=REQ-...): jump straight to the
+  // Entregas tab with the authorization pre-loaded.
+  if (window._entregaParam) {
+    const numero = window._entregaParam;
+    window._entregaParam = null;
+    _tab = "entregas";
+    render(vc, canCreate);
+    buscarAutorizacion(numero);
+    return;
+  }
+
   render(vc, canCreate);
 };
 
@@ -64,6 +76,9 @@ function render(vc, canCreate) {
         <button class="req-tab ${_tab === "pendientes" ? "active" : ""}" data-tab="pendientes">
           ${icon("inbox")} Pendientes <span class="req-tab-count">${_pendientes.length}</span>
         </button>
+        <button class="req-tab ${_tab === "entregas" ? "active" : ""}" data-tab="entregas">
+          ${icon("handshake")} Entregas <span class="req-tab-count">${_historial.filter(r => r.estado === "en_inventario").length}</span>
+        </button>
         <button class="req-tab ${_tab === "registros" ? "active" : ""}" data-tab="registros">
           ${icon("history")} Registros <span class="req-tab-count">${_historial.length}</span>
         </button>
@@ -80,9 +95,178 @@ function render(vc, canCreate) {
   });
 
   if (_tab === "pendientes") renderPendientes(canCreate);
+  else if (_tab === "entregas") renderEntregas(canCreate);
   else renderRegistros();
 
   window.SGIUI?.hydrate();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 2: Entregas (INV-02) — autorización pre-cargada para entregar al peticionario
+// ─────────────────────────────────────────────────────────────────────────────
+function renderEntregas(canCreate) {
+  const cont = document.getElementById("rec-tab-content");
+  const listos = _historial.filter(r => r.estado === "en_inventario");
+  const valorListo = listos.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+
+  cont.innerHTML = `
+    <div class="req-kpi-row">
+      <div class="req-kpi success">
+        <span class="req-kpi-icon">${icon("handshake")}</span>
+        <div><span class="req-kpi-val">${listos.length}</span><span class="req-kpi-label">Listos para entregar</span></div>
+      </div>
+      <div class="req-kpi accent">
+        <span class="req-kpi-icon">${icon("coins")}</span>
+        <div><span class="req-kpi-val">${fmtMoney(valorListo)}</span><span class="req-kpi-label">Valor en bodega</span></div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-filters">
+        <input id="ent-numero" type="text" class="filter-input"
+          placeholder="Escanea el QR del peticionario o escribe el número (REQ-...)" style="flex:2;min-width:18rem">
+        <button class="btn btn-primary" id="ent-buscar">${icon("search")} Cargar autorización</button>
+      </div>
+
+      <table class="req-table">
+        <thead>
+          <tr>
+            <th>N° Requerimiento</th>
+            <th>Solicitante</th>
+            <th>Proyecto</th>
+            <th>Recepción completa</th>
+            <th>Valor</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ent-tbody"></tbody>
+      </table>
+    </div>`;
+
+  const tbody = document.getElementById("ent-tbody");
+
+  if (listos.length) {
+    tbody.innerHTML = listos.map(r => `
+      <tr class="req-row">
+        <td class="req-td-main">
+          <div class="rec-num">${r.numero}</div>
+          <div class="rec-desc">${r.descripcion || "—"}</div>
+        </td>
+        <td data-label="Solicitante">${r.solicitante || "—"}</td>
+        <td data-label="Proyecto">${r.proyecto}${r.sigla ? ` <span class="rec-sigla">(${r.sigla})</span>` : ""}</td>
+        <td data-label="Recepción completa">${fmtDate(r.ultima_entrega)}</td>
+        <td data-label="Valor" class="req-money">${fmtMoney(r.valor_total)}</td>
+        <td class="req-td-actions">
+          <div class="req-actions">
+            ${canCreate ? `<button class="btn btn-primary btn-sm btn-ent-abrir" data-numero="${r.numero}">Entregar</button>` : ""}
+          </div>
+        </td>
+      </tr>`).join("");
+  } else {
+    tbody.innerHTML = `
+      <tr><td colspan="6">
+        <div class="req-empty">
+          <div class="req-empty-icon req-empty-ok">${icon("check-circle")}</div>
+          <p class="req-empty-title">Nada por entregar</p>
+          <p class="req-empty-sub">Cuando un requerimiento complete su recepción, aparecerá aquí listo para que el peticionario lo reclame.</p>
+        </div>
+      </td></tr>`;
+  }
+
+  const buscar = () => {
+    const numero = document.getElementById("ent-numero").value.trim();
+    if (!numero) return UI.toast("Escribe o escanea el número del requerimiento.", "info");
+    buscarAutorizacion(numero);
+  };
+  document.getElementById("ent-buscar").addEventListener("click", buscar);
+  document.getElementById("ent-numero").addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+
+  tbody.addEventListener("click", e => {
+    const btn = e.target.closest(".btn-ent-abrir");
+    if (btn) buscarAutorizacion(btn.dataset.numero);
+  });
+
+  window.SGIUI?.hydrate();
+}
+
+async function buscarAutorizacion(numero) {
+  let a;
+  try {
+    a = await API.get(`/requerimientos/autorizacion?numero=${encodeURIComponent(numero)}`);
+  } catch (e) {
+    UI.toast(e.message || "No se encontró la autorización.", "error");
+    return;
+  }
+  abrirAutorizacion(a);
+}
+
+function abrirAutorizacion(a) {
+  const filas = (a.items || []).map(it => `
+    <tr>
+      <td>${it.descripcion}</td>
+      <td class="req-td-right">${fmtQty(it.cantidad_recibida)} ${it.unidad || ""}</td>
+    </tr>`).join("");
+
+  UI.openModal(`Autorización de entrega · ${a.numero}`, `
+    <div class="rec-modal">
+      <div class="ent-autorizado">
+        ${icon("badge-check")}
+        <div>
+          <strong>Autorizado para entrega</strong>
+          <p>Recepción completa e inventario disponible. Verifica la identidad de quien reclama y confirma.</p>
+        </div>
+      </div>
+
+      <div class="rec-modal-summary" style="margin-top:0.75rem">
+        <div class="rec-summary-item"><span class="lbl">Solicitante</span><span class="val">${a.solicitante}</span></div>
+        ${a.solicitante_documento ? `<div class="rec-summary-item"><span class="lbl">Documento</span><span class="val">${a.solicitante_documento}</span></div>` : ""}
+        ${a.solicitante_telefono ? `<div class="rec-summary-item"><span class="lbl">Teléfono</span><span class="val">${a.solicitante_telefono}</span></div>` : ""}
+        <div class="rec-summary-item"><span class="lbl">Proyecto</span><span class="val">${a.proyecto || "—"}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Descripción</span><span class="val">${a.descripcion || "—"}</span></div>
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-label">Material a entregar (cantidades recibidas)</span>
+        <table class="rec-items-table">
+          <thead><tr><th>Ítem</th><th class="req-td-right">Cantidad</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+
+      <div class="form-group form-group--full">
+        <label>¿Quién recibe? (opcional — si no es el solicitante)</label>
+        <input id="ent-receptor" type="text" placeholder="Nombre y/o cédula de quien retira" />
+      </div>
+
+      <div id="ent-error" class="form-error" style="display:none"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="UI.closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="ent-confirmar">${icon("handshake")} Confirmar entrega</button>
+    </div>
+  `);
+  window.SGIUI?.hydrate();
+
+  document.getElementById("ent-confirmar").addEventListener("click", async function () {
+    const errorEl = document.getElementById("ent-error");
+    errorEl.style.display = "none";
+    this.disabled = true;
+    this.textContent = "Entregando...";
+
+    try {
+      const receptor = document.getElementById("ent-receptor").value.trim();
+      await API.patch(`/requerimientos/${a.id_requerimiento}/entregar`, { receptor: receptor || null });
+      UI.closeModal();
+      UI.toast(`${a.numero} entregado. Stock descontado y peticionario notificado.`, "ok");
+      recepcionesView();
+    } catch (e) {
+      this.disabled = false;
+      this.innerHTML = `${icon("handshake")} Confirmar entrega`;
+      window.SGIUI?.hydrate();
+      errorEl.textContent = e.message || "No se pudo registrar la entrega.";
+      errorEl.style.display = "block";
+    }
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -252,6 +436,7 @@ function renderRegistros() {
           <option value="">Todo resultado</option>
           <option value="en_inventario">En inventario (completo)</option>
           <option value="recibido_parcial">Recibido parcial</option>
+          <option value="entregado">Entregado</option>
         </select>
         <button class="btn btn-ghost" id="hist-excel" title="Exportar registros a Excel">${icon("file-spreadsheet")} Excel</button>
       </div>
