@@ -180,6 +180,7 @@ app.use('/api/v1/gastos',         require('./routes/gastos.routes'));
 app.use('/api/v1/recepciones',    require('./routes/recepciones.routes'));
 app.use('/api/v1/requerimientos', require('./routes/requerimientos.routes'));
 app.use('/api/v1/notificaciones', require('./routes/notificaciones.routes'));
+app.use('/api/v1/inventario',     require('./routes/inventario.routes'));
 app.use('/api/v1/config',         require('./routes/config.routes'));
 app.use('/api/v1/respaldos',      require('./routes/respaldos.routes'));
 

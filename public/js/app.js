@@ -30,6 +30,7 @@ const VIEWS = {
   requerimientos:      { fn: "requerimientosView",     title: "Requerimientos" },
   aprobaciones:        { fn: "aprobacionesView",       title: "Aprobaciones" },
   desembolsos:         { fn: "desembolsosView",        title: "Desembolsos" },
+  inventario:          { fn: "inventarioView",         title: "Inventario" },
 };
 
 const TOPBAR_SUBTITLES = {
@@ -62,6 +63,7 @@ const TOPBAR_SUBTITLES = {
   requerimientos:      "Solicita materiales para tu área y consulta su estado",
   aprobaciones:        "Revisa y aprueba los requerimientos de materiales",
   desembolsos:         "Registra los pagos de requerimientos aprobados",
+  inventario:          "Stock de bodega por material y categoría",
 };
 
 window.currentUser    = null;

@@ -9,6 +9,7 @@
     aprobaciones:   "aprobacionesView",
     desembolsos:    "desembolsosView",
     recepciones:    "recepcionesView",
+    inventario:     "inventarioView",
   };
   const MODULE_PERMS = [
     ["requerimientos", "leer"],
