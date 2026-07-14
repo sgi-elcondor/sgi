@@ -610,11 +610,100 @@ function abrirDetalle(r) {
       </div>
     </div>
     <div class="form-actions">
+      <button class="btn btn-ghost" id="req-det-trace">${icon("route")} Trazabilidad</button>
       <button class="btn btn-ghost" id="req-det-pdf">${icon("file-text")} Ver PDF</button>
       <button class="btn btn-primary" onclick="UI.closeModal()">Cerrar</button>
     </div>
   `);
   document.getElementById("req-det-pdf")?.addEventListener("click", () => abrirRequerimientoPDF(r));
+  document.getElementById("req-det-trace")?.addEventListener("click", () => abrirTrazabilidad(r.id_requerimiento));
+  window.SGIUI?.hydrate();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trazabilidad completa del material (INV-04): modal compartido entre las
+// vistas requerimientos, aprobaciones, desembolsos y recepciones.
+// ─────────────────────────────────────────────────────────────────────────────
+const TRACE_ICONS = {
+  solicitud:        "file-plus",
+  aprobacion_jefe:  "user-check",
+  aprobacion_final: "shield-check",
+  firma_dueno:      "shield-check",
+  firma_gerencia:   "building-2",
+  desembolso:       "banknote",
+  recepcion:        "package-check",
+  entrega:          "handshake",
+  cancelacion:      "x",
+};
+
+function _fmtFechaHora(f) {
+  if (!f) return "Fecha pendiente";
+  const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(String(f));
+  const d = soloFecha ? new Date(f + "T12:00:00") : new Date(f);
+  if (Number.isNaN(d.getTime())) return String(f);
+  return soloFecha
+    ? d.toLocaleDateString("es-CO")
+    : d.toLocaleDateString("es-CO") + " " + d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
+function _traceEventHTML(ev, isCurrent) {
+  const cls = ev.estado === "fallido" ? "failed" : ev.estado === "hecho" ? "done" : isCurrent ? "current" : "pending";
+  const iconName = ev.estado === "fallido" ? "x" : TRACE_ICONS[ev.paso] || "circle";
+  const doc = ev.documento
+    ? ev.documento.url
+      ? `<button class="btn btn-ghost btn-sm req-trace-doc" data-url="${esc(ev.documento.url)}">${icon("paperclip")} ${esc(ev.documento.label)}</button>`
+      : `<span class="req-trace-docref">${icon("file-text")} ${esc(ev.documento.label)}</span>`
+    : "";
+  return `
+    <div class="req-trace-step ${cls}">
+      <span class="req-trace-dot">${icon(iconName)}</span>
+      <div class="req-trace-body">
+        <div class="req-trace-head">
+          <span class="req-trace-label">${esc(ev.label)}</span>
+          <span class="req-trace-fecha">${_fmtFechaHora(ev.fecha)}</span>
+        </div>
+        ${ev.responsable ? `<div class="req-trace-resp">${icon("user")} ${esc(ev.responsable)}</div>` : ""}
+        ${ev.detalle ? `<div class="req-trace-detalle">${esc(ev.detalle)}</div>` : ""}
+        ${doc}
+      </div>
+    </div>`;
+}
+
+async function abrirTrazabilidad(idRequerimiento) {
+  let t;
+  try {
+    t = await API.get(`/requerimientos/${idRequerimiento}/trazabilidad`);
+  } catch (e) {
+    return UI.toast(e.message || "No se pudo cargar la trazabilidad.", "error");
+  }
+
+  const est = ESTADO_LABEL[t.estado] || { label: t.estado, cls: "badge-muted" };
+  const idxActual = (t.timeline || []).findIndex(ev => ev.estado === "pendiente");
+
+  UI.openModal(`Trazabilidad · ${t.numero}`, `
+    <div class="rec-modal">
+      <div class="rec-modal-summary">
+        <div class="rec-summary-item"><span class="lbl">Solicitante</span><span class="val">${esc(t.solicitante)}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Proyecto</span><span class="val">${esc(t.proyecto || "—")}${t.sigla ? ` (${esc(t.sigla)})` : ""}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Valor estimado</span><span class="val">${fmtMoney(t.valor_total)}${t.es_compra_grande ? ` <span class="badge badge-warning">Compra grande</span>` : ""}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Estado</span><span class="val"><span class="badge ${est.cls}">${est.label}</span></span></div>
+      </div>
+
+      <div class="form-section">
+        <span class="form-section-label">Cadena del material</span>
+        <div class="req-trace">
+          ${(t.timeline || []).map((ev, i) => _traceEventHTML(ev, i === idxActual)).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="UI.closeModal()">Cerrar</button>
+    </div>
+  `);
+
+  document.querySelectorAll(".req-trace-doc").forEach(btn => {
+    btn.addEventListener("click", () => window.open(btn.dataset.url, "_blank"));
+  });
   window.SGIUI?.hydrate();
 }
 
@@ -820,6 +909,6 @@ function markLive(id) {
 }
 
 // Shared with the aprobaciones view and the live-updates client (loaded after this file).
-window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML, abrirRequerimientoPDF, markLive };
+window.SGIReq = { ESTADO_LABEL, URGENCIA_LABEL, CATEGORIAS, FLOW_STEPS, flowStateOf, timelineHTML, miniFlowHTML, esperaHTML, abrirRequerimientoPDF, abrirTrazabilidad, markLive };
 
 })();

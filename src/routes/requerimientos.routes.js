@@ -8,6 +8,7 @@ router.get("/aprobaciones",        ctrl.getAprobaciones);
 router.get("/historial",           ctrl.getHistorial);
 router.get("/desembolsos",         ctrl.getDesembolsos);
 router.get("/autorizacion",        ctrl.getAutorizacion);
+router.get("/:id/trazabilidad",    ctrl.getTrazabilidad);
 router.post("/",                   ctrl.create);
 router.patch("/:id/cancelar",      ctrl.cancelar);
 router.patch("/:id/aprobar-jefe",     ctrl.aprobarJefe);

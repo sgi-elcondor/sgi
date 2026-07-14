@@ -208,7 +208,7 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 | `pago_comision`        | Micropagos a comisionistas (numerados `MCOM-YYYYMM-NNNNN`).       |
 | `observacion_juridica` | Bitácora del módulo jurídico.                                     |
 | `gasto`                | Gastos operativos por proyecto y categoría.                       |
-| `requerimiento`        | Solicitudes de materiales/servicios. Consecutivo `REQ-<N>`. Estados: `pendiente_jefe` → `aprobado_jefe` → `pendiente_tesoreria` → `desembolsado` → `recibido_parcial` → `en_inventario`; ramas: `rechazado`, `cancelado`. Campos: `descripcion`, `id_proyecto`, `categoria` (materiales/herramientas/equipos/servicios/otros), `urgencia` (baja/media/alta), `justificacion`, `valor_total`, `id_solicitante`, `aprobado_jefe_por`+`fecha_aprobado_jefe`, `aprobado_final_por`+`fecha_aprobado_final`, **`aprobado_dueno_por`+`fecha_aprobado_dueno`, `aprobado_gerencia_por`+`fecha_aprobado_gerencia`** (POL-02, sólo compras grandes), `desembolsado_por`+`fecha_desembolso`+`valor_desembolsado`+`comprobante_desembolso_url`+`id_gasto`, `motivo_rechazo`. |
+| `requerimiento`        | Solicitudes de materiales/servicios. Consecutivo `REQ-<N>`. Estados: `pendiente_jefe` → `aprobado_jefe` → `pendiente_tesoreria` → `desembolsado` → `recibido_parcial` → `en_inventario` → `entregado`; ramas: `rechazado`, `cancelado`. Campos: `descripcion`, `id_proyecto`, `categoria` (materiales/herramientas/equipos/servicios/otros), `urgencia` (baja/media/alta), `justificacion`, `valor_total`, `id_solicitante`, `aprobado_jefe_por`+`fecha_aprobado_jefe`, `aprobado_final_por`+`fecha_aprobado_final`, **`aprobado_dueno_por`+`fecha_aprobado_dueno`, `aprobado_gerencia_por`+`fecha_aprobado_gerencia`** (POL-02, sólo compras grandes), `desembolsado_por`+`fecha_desembolso`+`valor_desembolsado`+`comprobante_desembolso_url`+`id_gasto`, `entregado_por`+`fecha_entrega`+`entrega_receptor` (INV-02), `motivo_rechazo`. |
 | `config_sistema`       | Key-value con tipo para configuración global (POL-02, POL-04). Clave PK, valor TEXT, tipo (`number|text|json`), descripcion, actualizado_por, updated_at. Actualmente contiene `umbral_compra_grande` (COP). |
 | `requerimiento_item`   | Detalle por ítem: `descripcion`, `unidad`, `cantidad_solicitada`, `precio_unitario`. |
 | `recepcion`            | Entrega registrada por el almacenista.                            |
@@ -285,6 +285,9 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 - `PATCH /:id/desembolsar` (REQ-04): valida comprobante, crea `gasto` auto (best-effort), pasa a `desembolsado`, notifica almacenistas + solicitante.
 - `GET /contadores` — pendientes por rol para badges del sidebar.
 - `GET /stream` — SSE tiempo real (REQ-07). El token va por `?token=` porque `EventSource` no envía Authorization.
+- `GET /autorizacion?numero=REQ-N` (INV-02) — autorización de entrega pre-cargada para el almacenista (sólo `en_inventario`).
+- `PATCH /:id/entregar` (INV-02) — Body: `{ receptor? }`. `en_inventario → entregado`; registra salidas de stock (best-effort), setea `fecha_entrega`/`entregado_por`/`entrega_receptor` y notifica al solicitante. Permiso: `recepciones:crear`.
+- `GET /:id/trazabilidad` (INV-04) — línea de tiempo completa del material: cada paso con fecha, responsable y documento (comprobantes de desembolso/recepción). Refleja firma única o doble firma (POL-02) según el monto; rechazos/cancelaciones toman responsable y motivo de `auditoria`. Roles elevados (aprobadores, tesorero, almacenista con `recepciones:leer`, `auditoria`, `gerencia`, `dueno`, `admin`) ven cualquier requerimiento; el solicitante sólo los suyos. La UI la muestra en el modal compartido `SGIReq.abrirTrazabilidad(id)` desde las vistas requerimientos, aprobaciones, desembolsos y recepciones.
 
 ### Recepciones (flujo INV-01)
 - `GET /pendientes` — requerimientos `desembolsado`/`recibido_parcial`.
@@ -422,11 +425,13 @@ Otras invariantes:
 5. **Desembolso (REQ-04)**: `PATCH /:id/desembolsar` con `comprobante_url` obligatorio y `valor` opcional (default `valor_total`). Crea `gasto` auto (best-effort; si `id_proyecto` falta, se devuelve `gasto_warning`), UPDATE guardado por estado. Notifica almacenistas + solicitante.
 6. **Recepción (INV-01)**: almacenista hace `POST /recepciones` con lista de `{ id_item, cantidad }`. Cada cantidad ≤ `pendiente`. Inserta cabecera + detalle; recalcula estado (`recibido_parcial` o `en_inventario`); llama `inventario.registrarEntradas` (best-effort, tabla `inventario_movimiento`). Notifica al solicitante.
 7. **Tiempo real (REQ-07)**: cada transición llama `events.emit({ tipo: 'requerimiento', numero, estado, ... })`. Clientes suscritos a `GET /requerimientos/stream` (SSE) reciben la señal y refetchean sus endpoints (los datos siguen validando permisos server-side en el refetch).
+8. **Entrega (INV-02)**: almacenista consulta la autorización (`GET /autorizacion?numero=`) y hace `PATCH /:id/entregar` → `entregado`. Registra salidas en `inventario_movimiento` (best-effort) y notifica al solicitante.
+9. **Trazabilidad (INV-04)**: `GET /:id/trazabilidad` reconstruye toda la cadena (paso, fecha, responsable, documento). Los responsables de cada paso salen de la fila; los de rechazo/cancelación, de `auditoria`.
 
 ### L. Inventario (INV-01)
 - **Ledger append-only**: `inventario_movimiento` guarda `tipo=entrada|salida`, `material` (normalizado NFD lowercase), `descripcion`, `categoria`, `unidad`, `cantidad`, `id_proyecto`, `id_requerimiento`, `id_recepcion`, `creado_por`.
 - **Stock derivado**: `inventarioService.stockActual({ idProyecto })` agrupa por `(material, unidad, id_proyecto)` y calcula `Σ entradas − Σ salidas` con última entrada/salida. Misma filosofía que RN-10 (saldo derivado).
-- Las salidas (INV-02, entrega al peticionario) aún no están implementadas; hay que insertarlas via el service con `tipo='salida'`.
+- Las salidas se registran en la entrega al peticionario (INV-02): `entregar` llama `inventario.registrarSalidas` con las cantidades recibidas (best-effort).
 
 ### M. Notificaciones in-app + SSE
 - **`notificacion` table** por usuario. `notificaciones.crear({ paraIds?, paraRoles?, excepto?, titulo, mensaje?, vista?, referencia? })` deduplica ids y hace fan-out. **Fire-and-forget**: si falla, loguea y retorna 0 — nunca aborta la operación de negocio (RN-28).

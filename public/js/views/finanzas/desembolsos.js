@@ -278,6 +278,7 @@ function renderHistorial() {
         <td class="req-td-actions">
           <div class="req-actions">
             ${r.comprobante_desembolso_url ? `<button class="btn btn-ghost btn-sm btn-des-comprobante" data-url="${r.comprobante_desembolso_url}" title="Ver comprobante">${icon("paperclip")}</button>` : ""}
+            <button class="btn btn-ghost btn-sm btn-des-trace" data-id="${r.id_requerimiento}" title="Trazabilidad">${icon("route")}</button>
             <button class="btn btn-ghost btn-sm btn-des-pdf" data-id="${r.id_requerimiento}" title="Ver PDF">${icon("file-text")}</button>
           </div>
         </td>
@@ -317,6 +318,8 @@ function renderHistorial() {
   tbody.addEventListener("click", e => {
     const comp = e.target.closest(".btn-des-comprobante");
     if (comp) { window.open(comp.dataset.url, "_blank"); return; }
+    const trace = e.target.closest(".btn-des-trace");
+    if (trace) { window.SGIReq?.abrirTrazabilidad?.(Number(trace.dataset.id)); return; }
     const pdf = e.target.closest(".btn-des-pdf");
     if (!pdf) return;
     const r = _desembolsados.find(x => String(x.id_requerimiento) === pdf.dataset.id);
