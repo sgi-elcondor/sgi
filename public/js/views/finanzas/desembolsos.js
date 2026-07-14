@@ -378,6 +378,12 @@ function abrirModalDesembolso(r) {
             <input id="des-fecha" type="date" value="${hoy}" />
           </div>
           <div class="form-group form-group--full">
+            <label>Empresa aliada (proveedor)</label>
+            <input id="des-empresa" type="text" list="des-empresa-list"
+              placeholder="Busca por razón social o NIT (opcional)" autocomplete="off" />
+            <datalist id="des-empresa-list"></datalist>
+          </div>
+          <div class="form-group form-group--full">
             <label>Comprobante del pago *</label>
             <input id="des-comprobante" type="file" accept="image/*,application/pdf" />
             <div id="des-comprobante-status" class="rec-baucher-status"></div>
@@ -406,10 +412,16 @@ function abrirModalDesembolso(r) {
     document.getElementById("des-total").textContent = fmtMoney(Number(this.value) || 0);
   });
 
-  document.getElementById("des-submit").addEventListener("click", () => guardarDesembolso(r));
+  let empresaCtl = null;
+  if (window.SGIEmpresas?.wireEmpresaAutocomplete) {
+    window.SGIEmpresas.wireEmpresaAutocomplete("des-empresa", "des-empresa-list", null)
+      .then(ctl => { empresaCtl = ctl; });
+  }
+
+  document.getElementById("des-submit").addEventListener("click", () => guardarDesembolso(r, () => empresaCtl?.getId?.() ?? null));
 }
 
-async function guardarDesembolso(r) {
+async function guardarDesembolso(r, getEmpresaId) {
   const errorEl = document.getElementById("des-error");
   errorEl.style.display = "none";
 
@@ -447,6 +459,7 @@ async function guardarDesembolso(r) {
 
     const resp = await API.patch(`/requerimientos/${r.id_requerimiento}/desembolsar`, {
       valor, fecha, comprobante_url: upData.url, observaciones: obs || null,
+      id_empresa: getEmpresaId ? getEmpresaId() : null,
     });
 
     UI.closeModal();

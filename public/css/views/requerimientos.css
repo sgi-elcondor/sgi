@@ -862,3 +862,6 @@
   background: transparent;
   border: 1px dashed var(--text-muted);
 }
+
+/* ── ALI-01: empresas aliadas (reuses the req-table system) ──────────────── */
+.emp-inactiva td { opacity: 0.55; }

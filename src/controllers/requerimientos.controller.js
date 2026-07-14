@@ -6,6 +6,7 @@ const events       = require("../services/events.service");
 const notif        = require("../services/notificaciones.service");
 const inventario   = require("../services/inventario.service");
 const config       = require("../services/config.service");
+const empresasSvc  = require("../services/empresas.service");
 
 const SCHEMA     = "condor";
 const CATEGORIAS = ["materiales", "herramientas", "equipos", "servicios", "otros"];
@@ -1150,6 +1151,7 @@ async function getDesembolsos(req, res) {
         fecha_aprobado_jefe, fecha_aprobado_final,
         fecha_desembolso, valor_desembolsado, comprobante_desembolso_url, id_gasto,
         fecha_entrega, entrega_receptor,
+        empresa:id_empresa (id_empresa, razon_social, nit),
         solicitante:id_solicitante (nombres, apellidos, email),
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),
@@ -1209,6 +1211,13 @@ async function desembolsar(req, res) {
     const fecha         = req.body?.fecha || new Date().toISOString().slice(0, 10);
     const observaciones = String(req.body?.observaciones || "").trim();
 
+    // ALI-02: optional link to the empresa aliada that received the payment.
+    let empresa = null;
+    if (req.body?.id_empresa) {
+      empresa = await empresasSvc.findActiva(req.body.id_empresa);
+      if (!empresa) return res.status(422).json({ error: "La empresa aliada indicada no existe o está inactiva" });
+    }
+
     // 1. Auto-create the gasto. Best-effort: a missing project (gasto requires one)
     //    must not block the treasury operation; the warning is surfaced to the UI.
     let idGasto = null;
@@ -1223,6 +1232,7 @@ async function desembolsar(req, res) {
         categoria:       r.categoria === "servicios" ? "servicios" : "otros",
         detalle_recurso: `Requerimiento ${r.numero} (${r.categoria})${observaciones ? " · " + observaciones : ""}`,
         comprobante_url: comprobanteUrl,
+        id_empresa:      empresa ? empresa.id_empresa : null,
       }])
       .select("id_gasto")
       .single();
@@ -1244,6 +1254,7 @@ async function desembolsar(req, res) {
         valor_desembolsado:         valor,
         comprobante_desembolso_url: comprobanteUrl,
         id_gasto:                   idGasto,
+        id_empresa:                 empresa ? empresa.id_empresa : null,
       })
       .eq("id_requerimiento", id)
       .eq("estado", "pendiente_tesoreria")
@@ -1636,7 +1647,7 @@ function _buildTrazabilidad(r, bitacora, esGrande, umbral, esCajaMenor, umbralCa
                    ? { tipo: "comprobante", label: "Comprobante del pago", url: r.comprobante_desembolso_url }
                    : null,
     detalle:     desembolsado
-                   ? `Pagado $${Number(r.valor_desembolsado || 0).toLocaleString("es-CO")}${r.id_gasto ? ` · gasto #${r.id_gasto}` : ""}`
+                   ? `Pagado $${Number(r.valor_desembolsado || 0).toLocaleString("es-CO")}${r.id_gasto ? ` · gasto #${r.id_gasto}` : ""}${r.empresa ? ` · proveedor: ${r.empresa.razon_social}` : ""}`
                    : null,
   });
 
@@ -1704,6 +1715,7 @@ async function getTrazabilidad(req, res) {
         fecha_aprobado_dueno, fecha_aprobado_gerencia,
         fecha_desembolso, fecha_entrega, entrega_receptor,
         valor_desembolsado, comprobante_desembolso_url,
+        empresa:id_empresa (razon_social, nit),
         solicitante:id_solicitante (nombres, apellidos, email),
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),

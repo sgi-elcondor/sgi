@@ -583,6 +583,13 @@ function _gastosFormHTML(gasto) {
         </div>
       </div>
       <div class="form-group" style="margin:0">
+        <label>Empresa aliada (proveedor)</label>
+        <input type="text" id="gasto_empresa" list="gasto_empresa_list"
+          placeholder="Busca por razon social o NIT (opcional)" autocomplete="off">
+        <datalist id="gasto_empresa_list"></datalist>
+        <small style="color:var(--text-muted);font-size:.72rem">Vincula el gasto al historial comercial de la empresa (ALI-02).</small>
+      </div>
+      <div class="form-group" style="margin:0">
         <label>Comprobante</label>
         ${_gastosUploadAreaHTML(gasto?.comprobante_url ?? null)}
       </div>
@@ -603,6 +610,14 @@ window._gastosMedioPagoToggle = function() {
   if (wrap) wrap.style.display = medio === "transferencia" ? "block" : "none";
 };
 
+let _gastosEmpresaCtl = null;
+
+async function _gastosWireEmpresa(gasto) {
+  _gastosEmpresaCtl = window.SGIEmpresas?.wireEmpresaAutocomplete
+    ? await window.SGIEmpresas.wireEmpresaAutocomplete("gasto_empresa", "gasto_empresa_list", gasto?.id_empresa)
+    : null;
+}
+
 window.gastosOpenCreate = function() {
   _gastosEditId         = null;
   _gastosComprobanteUrl = null;
@@ -610,6 +625,7 @@ window.gastosOpenCreate = function() {
   UI.openModal("Nuevo gasto operativo", _gastosFormHTML(null));
   SGIUI.hydrate();
   _gastosWireBaucher();
+  _gastosWireEmpresa(null);
   const valorEl = document.getElementById("gasto_valor");
   if (valorEl) MoneyInput.init(valorEl);
 };
@@ -623,6 +639,7 @@ window.gastosOpenEdit = function(id) {
   UI.openModal("Editar gasto", _gastosFormHTML(gasto));
   SGIUI.hydrate();
   _gastosWireBaucher();
+  _gastosWireEmpresa(gasto);
   const valorEl = document.getElementById("gasto_valor");
   if (valorEl) MoneyInput.init(valorEl);
 };
@@ -694,6 +711,7 @@ window._gastosSubmit = async function() {
     responsable_entrega:  resp_entrega || null,
     responsable_recibe:   resp_recibe  || null,
     comprobante_url:      comprobanteUrl || null,
+    id_empresa:           _gastosEmpresaCtl?.getId?.() ?? null,
   };
 
   try {
