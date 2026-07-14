@@ -10,10 +10,23 @@ const EDITABLE_KEYS = {
   umbral_compra_grande: {
     tipo: "number",
     validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
+    // POL-04: the three purchase tiers must never overlap.
+    validateRelated: async (v) => {
+      const caja = Number(await configService.get("umbral_caja_menor"));
+      return Number.isFinite(caja) && v <= caja
+        ? `Debe ser mayor que el tope de caja menor ($${caja.toLocaleString("es-CO")}); de lo contrario desaparecería la compra estándar.`
+        : null;
+    },
   },
   umbral_caja_menor: {
     tipo: "number",
     validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
+    validateRelated: async (v) => {
+      const grande = Number(await configService.get("umbral_compra_grande"));
+      return Number.isFinite(grande) && v >= grande
+        ? `Debe ser menor que el umbral de compra grande ($${grande.toLocaleString("es-CO")}); la doble firma nunca se salta.`
+        : null;
+    },
   },
 };
 
@@ -53,6 +66,9 @@ async function actualizar(req, res) {
     if (rule.tipo === "number") valor = Number(valor);
     const errValidacion = rule.validate ? rule.validate(valor) : null;
     if (errValidacion) return res.status(422).json({ error: errValidacion });
+
+    const errRelacion = rule.validateRelated ? await rule.validateRelated(valor) : null;
+    if (errRelacion) return res.status(422).json({ error: errRelacion });
 
     const previo = await configService.get(clave);
 

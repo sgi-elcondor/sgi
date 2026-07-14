@@ -1,0 +1,134 @@
+/* Permisos view — system config card (POL-02) + purchase policy tiers (POL-04) */
+
+.perm-cfg-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border, var(--border-color));
+  border-radius: 0.9rem;
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.perm-cfg-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.perm-cfg-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  background: rgba(var(--accent-rgb, 249, 115, 22), 0.12);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.perm-cfg-icon svg { width: 1.2rem; height: 1.2rem; }
+
+.perm-cfg-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.perm-cfg-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.perm-cfg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.perm-cfg-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.perm-cfg-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.perm-cfg-row input { flex: 1; min-width: 0; }
+
+.perm-cfg-status {
+  font-size: 0.78rem;
+  margin: 0.4rem 0 0;
+  min-height: 1.1rem;
+}
+
+.perm-cfg-current { color: var(--text-muted); }
+.perm-cfg-current strong { color: var(--success, #16a34a); }
+
+.perm-cfg-hint {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0.35rem 0 0;
+}
+
+/* ── POL-04: purchase tiers strip ────────────────────────────────────────── */
+.pol-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.pol-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border, var(--border-color));
+  border-left-width: 4px;
+  background: var(--bg-primary, transparent);
+}
+
+.pol-tier-caja   { border-left-color: var(--info, #2563eb); }
+.pol-tier-std    { border-left-color: var(--text-muted); }
+.pol-tier-grande { border-left-color: var(--warning, #e6a100); }
+
+.pol-tier-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pol-tier-name svg { width: 0.9rem; height: 0.9rem; }
+
+.pol-tier-caja .pol-tier-name   { color: var(--info, #2563eb); }
+.pol-tier-grande .pol-tier-name { color: var(--warning, #e6a100); }
+
+.pol-tier-range {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.pol-tier-flow {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 48rem) {
+  .pol-tiers,
+  .perm-cfg-grid { grid-template-columns: 1fr; }
+}
