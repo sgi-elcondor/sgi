@@ -27,6 +27,7 @@ const VISTA_API_MAP = {
   'personal':      ['usuarios:leer', 'compradores:leer', 'comisionistas:leer', 'reportes:leer'],
   'gastos':        ['gastos:leer', 'gastos:crear', 'gastos:actualizar', 'uploads:crear'],
   'recepciones':   ['recepciones:leer', 'recepciones:crear', 'requerimientos:leer', 'uploads:crear'],
+  'empresas-aliadas': ['empresas_aliadas:leer', 'empresas_aliadas:crear', 'empresas_aliadas:actualizar'],
   'requerimientos': ['requerimientos:leer', 'requerimientos:crear', 'proyectos:leer'],
   'aprobaciones':   ['requerimientos:leer', 'requerimientos:aprobar_jefe', 'requerimientos:aprobar_final', 'requerimientos:aprobar_dueno', 'requerimientos:aprobar_gerencia'],
   'desembolsos':    ['requerimientos:leer', 'requerimientos:desembolsar', 'uploads:crear'],

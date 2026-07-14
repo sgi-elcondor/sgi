@@ -1,18 +1,20 @@
-const supabase = require("../config/supabase");
+const supabase    = require("../config/supabase");
+const empresasSvc = require("../services/empresas.service");
 const SCHEMA = "condor";
 const CATEGORIAS = ["vehiculos", "nomina", "servicios", "otros"];
 
 exports.getAll = async (req, res) => {
-  const { id_proyecto, categoria, fecha_desde, fecha_hasta } = req.query;
+  const { id_proyecto, categoria, fecha_desde, fecha_hasta, id_empresa } = req.query;
 
   let q = supabase.schema(SCHEMA).from("gasto")
-    .select("*, proyecto:id_proyecto(nombre)")
+    .select("*, proyecto:id_proyecto(nombre), empresa:id_empresa(id_empresa, razon_social, nit)")
     .order("fecha", { ascending: false });
 
   if (id_proyecto) q = q.eq("id_proyecto", Number(id_proyecto));
   if (categoria)   q = q.eq("categoria", categoria);
   if (fecha_desde) q = q.gte("fecha", fecha_desde);
   if (fecha_hasta) q = q.lte("fecha", fecha_hasta);
+  if (id_empresa)  q = q.eq("id_empresa", Number(id_empresa));
 
   const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
@@ -48,7 +50,7 @@ exports.create = async (req, res) => {
   const {
     id_proyecto, fecha, descripcion, valor, categoria,
     detalle_recurso, medio_pago, cuenta_origen,
-    responsable_entrega, responsable_recibe, comprobante_url,
+    responsable_entrega, responsable_recibe, comprobante_url, id_empresa,
   } = req.body;
 
   if (!id_proyecto || !fecha || !descripcion || valor === undefined || !categoria) {
@@ -64,6 +66,13 @@ exports.create = async (req, res) => {
     return res.status(422).json({ error: "medio_pago invalido. Opciones: efectivo, transferencia" });
   }
 
+  // ALI-02: optional link to an empresa aliada (must exist and be active).
+  let empresa = null;
+  if (id_empresa) {
+    empresa = await empresasSvc.findActiva(id_empresa);
+    if (!empresa) return res.status(422).json({ error: "La empresa aliada indicada no existe o está inactiva" });
+  }
+
   const { data, error } = await supabase.schema(SCHEMA).from("gasto")
     .insert([{
       id_proyecto:         Number(id_proyecto),
@@ -77,8 +86,9 @@ exports.create = async (req, res) => {
       responsable_entrega: responsable_entrega?.trim() || null,
       responsable_recibe:  responsable_recibe?.trim()  || null,
       comprobante_url:     comprobante_url || null,
+      id_empresa:          empresa ? empresa.id_empresa : null,
     }])
-    .select()
+    .select("*, empresa:id_empresa(id_empresa, razon_social, nit)")
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
@@ -102,7 +112,7 @@ exports.update = async (req, res) => {
 
   const {
     fecha, descripcion, valor, categoria, detalle_recurso,
-    medio_pago, cuenta_origen, responsable_entrega, responsable_recibe, comprobante_url,
+    medio_pago, cuenta_origen, responsable_entrega, responsable_recibe, comprobante_url, id_empresa,
   } = req.body;
 
   if (categoria && !CATEGORIAS.includes(categoria)) {
@@ -125,6 +135,15 @@ exports.update = async (req, res) => {
   if (responsable_entrega !== undefined)  updates.responsable_entrega  = responsable_entrega?.trim() || null;
   if (responsable_recibe !== undefined)   updates.responsable_recibe   = responsable_recibe?.trim()  || null;
   if (comprobante_url !== undefined)      updates.comprobante_url      = comprobante_url || null;
+  if (id_empresa !== undefined) {
+    if (id_empresa) {
+      const empresa = await empresasSvc.findActiva(id_empresa);
+      if (!empresa) return res.status(422).json({ error: "La empresa aliada indicada no existe o está inactiva" });
+      updates.id_empresa = empresa.id_empresa;
+    } else {
+      updates.id_empresa = null;
+    }
+  }
 
   if (Object.keys(updates).length === 0) return res.status(200).json({ message: "Sin cambios" });
 

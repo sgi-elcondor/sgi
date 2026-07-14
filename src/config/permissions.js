@@ -140,6 +140,10 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/config':          { recurso: 'config', accion: 'leer' },
   'PATCH /api/v1/config':        { recurso: 'config', accion: 'actualizar' },
 
+  'GET /api/v1/empresas-aliadas':  { recurso: 'empresas_aliadas', accion: 'leer' },
+  'POST /api/v1/empresas-aliadas': { recurso: 'empresas_aliadas', accion: 'crear' },
+  'PUT /api/v1/empresas-aliadas':  { recurso: 'empresas_aliadas', accion: 'actualizar' },
+
   'GET /api/v1/respaldos':                  { recurso: 'respaldos', accion: 'leer' },
   'GET /api/v1/respaldos/descargar':        { recurso: 'respaldos', accion: 'leer' },
   'GET /api/v1/respaldos/restauraciones':   { recurso: 'respaldos', accion: 'leer' },
