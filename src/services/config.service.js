@@ -12,6 +12,7 @@ const _cache = new Map(); // clave -> { value, tipo, expiresAt }
 // migration.
 const DEFAULTS = {
   umbral_compra_grande: { valor: 5_000_000, tipo: "number" },
+  umbral_caja_menor:    { valor: 500_000, tipo: "number" },
   modo_mantenimiento:   { valor: false, tipo: "json" },
 };
 

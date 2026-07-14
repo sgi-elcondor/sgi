@@ -98,6 +98,15 @@ describe("config.service", () => {
     expect(v).toBe(config.DEFAULTS.umbral_compra_grande.valor);
   });
 
+  test("get() tiene fallback para umbral_caja_menor (POL-01, fresh install)", async () => {
+    mockRead({ data: null });
+
+    const v = await config.get("umbral_caja_menor");
+
+    expect(v).toBe(config.DEFAULTS.umbral_caja_menor.valor);
+    expect(v).toBeGreaterThan(0);
+  });
+
   test("get() de una clave desconocida sin default retorna null", async () => {
     mockRead({ data: null });
 

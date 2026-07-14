@@ -169,7 +169,9 @@ function renderPendientes(puedeJefe, puedeAlgunFinal) {
     const nItems = (r.items || []).length;
     const grandeBadge = r.es_compra_grande
       ? `<span class="badge badge-warning" title="Requiere firma del dueño y co-firma de gerencia" style="margin-left:.4rem">${icon("shield-alert")} Compra grande</span>`
-      : "";
+      : r.es_caja_menor
+        ? `<span class="badge badge-info" title="Con tu aprobación pasa directo a tesorería (no requiere aprobación final)" style="margin-left:.4rem">${icon("coins")} Caja menor</span>`
+        : "";
     return `
       <tr class="req-row ${r.urgencia === "alta" ? "req-row-alta" : ""}">
         <td class="req-td-main">
@@ -573,7 +575,7 @@ function abrirRevision(r) {
 
   // Etiquetas para el botón principal
   function labelBtnPrimary() {
-    if (puedoAprobarJefe)                             return "Aprobar";
+    if (puedoAprobarJefe)                             return r.es_caja_menor ? "Aprobar y enviar a tesorería (caja menor)" : "Aprobar";
     if (puedoFirmarFinal)                             return "Aprobar y enviar a tesorería";
     if (puedoFirmarDueno && puedoFirmarGerencia)      return "Firmar (elige rol abajo)";
     if (puedoFirmarDueno)                             return yaFirmoGeren ? "Firmar como dueño y enviar a tesorería" : "Firmar como dueño";
@@ -600,7 +602,7 @@ function abrirRevision(r) {
         <div class="rec-summary-item"><span class="lbl">Fecha</span><span class="val">${fmtDate(r.fecha_solicitud)}</span></div>
         <div class="rec-summary-item"><span class="lbl">Categoría</span><span class="val">${cat.label}</span></div>
         <div class="rec-summary-item"><span class="lbl">Urgencia</span><span class="val"><span class="badge ${urg.cls}">${urg.label}</span></span></div>
-        <div class="rec-summary-item"><span class="lbl">Nivel</span><span class="val"><span class="badge ${nivel.cls}">${nivel.label}</span>${esGrande ? ` <span class="badge badge-warning" style="margin-left:.3rem">${icon("shield-alert")} Compra grande</span>` : ""}</span></div>
+        <div class="rec-summary-item"><span class="lbl">Nivel</span><span class="val"><span class="badge ${nivel.cls}">${nivel.label}</span>${esGrande ? ` <span class="badge badge-warning" style="margin-left:.3rem">${icon("shield-alert")} Compra grande</span>` : ""}${r.es_caja_menor ? ` <span class="badge badge-info" style="margin-left:.3rem">${icon("coins")} Caja menor</span>` : ""}</span></div>
       </div>
 
       ${SGIReq.timelineHTML ? `<div class="form-section"><span class="form-section-label">Recorrido</span>${SGIReq.timelineHTML(r)}</div>` : ""}
@@ -681,7 +683,9 @@ function abrirRevision(r) {
     const ruta = rutaAprobacion();
     if (!ruta) return fallar("No tienes permiso para esta acción.");
     let msg;
-    if (ruta === "aprobar-jefe")           msg = `${r.numero} aprobado. Quedó pendiente de la aprobación final.`;
+    if (ruta === "aprobar-jefe")           msg = r.es_caja_menor
+      ? `${r.numero} aprobado. Por ser caja menor pasó directo a tesorería.`
+      : `${r.numero} aprobado. Quedó pendiente de la aprobación final.`;
     else if (ruta === "aprobar-final")     msg = `${r.numero} aprobado. Pasó a tesorería y se notificó al tesorero.`;
     else if (ruta === "aprobar-dueno")     msg = yaFirmoGeren ? `${r.numero} firmado por el dueño. Con las dos firmas, pasó a tesorería.` : `${r.numero} firmado por el dueño. Falta la co-firma de gerencia.`;
     else if (ruta === "aprobar-gerencia")  msg = yaFirmoDueno ? `${r.numero} co-firmado por gerencia. Con las dos firmas, pasó a tesorería.` : `${r.numero} co-firmado por gerencia. Falta la firma del dueño.`;

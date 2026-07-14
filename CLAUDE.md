@@ -209,7 +209,7 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 | `observacion_juridica` | Bitácora del módulo jurídico.                                     |
 | `gasto`                | Gastos operativos por proyecto y categoría.                       |
 | `requerimiento`        | Solicitudes de materiales/servicios. Consecutivo `REQ-<N>`. Estados: `pendiente_jefe` → `aprobado_jefe` → `pendiente_tesoreria` → `desembolsado` → `recibido_parcial` → `en_inventario` → `entregado`; ramas: `rechazado`, `cancelado`. Campos: `descripcion`, `id_proyecto`, `categoria` (materiales/herramientas/equipos/servicios/otros), `urgencia` (baja/media/alta), `justificacion`, `valor_total`, `id_solicitante`, `aprobado_jefe_por`+`fecha_aprobado_jefe`, `aprobado_final_por`+`fecha_aprobado_final`, **`aprobado_dueno_por`+`fecha_aprobado_dueno`, `aprobado_gerencia_por`+`fecha_aprobado_gerencia`** (POL-02, sólo compras grandes), `desembolsado_por`+`fecha_desembolso`+`valor_desembolsado`+`comprobante_desembolso_url`+`id_gasto`, `entregado_por`+`fecha_entrega`+`entrega_receptor` (INV-02), `motivo_rechazo`. |
-| `config_sistema`       | Key-value con tipo para configuración global (POL-02, POL-04). Clave PK, valor TEXT, tipo (`number|text|json`), descripcion, actualizado_por, updated_at. Actualmente contiene `umbral_compra_grande` (COP). |
+| `config_sistema`       | Key-value con tipo para configuración global (POL-02, POL-04). Clave PK, valor TEXT, tipo (`number|text|json`), descripcion, actualizado_por, updated_at. Actualmente contiene `umbral_compra_grande` y `umbral_caja_menor` (COP). |
 | `requerimiento_item`   | Detalle por ítem: `descripcion`, `unidad`, `cantidad_solicitada`, `precio_unitario`. |
 | `recepcion`            | Entrega registrada por el almacenista.                            |
 | `recepcion_item`       | Detalle de la recepción.                                          |
@@ -303,7 +303,7 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 ### Config (POL-02 / POL-04)
 - `GET /config` — lista todas las claves con valor tipado (para admin).
 - `GET /config/:clave` — devuelve `{ clave, valor }` tipado. Admin/dueño.
-- `PATCH /config/:clave` — Body: `{ valor }`. Sólo claves whitelisted en `config.controller.EDITABLE_KEYS` (hoy sólo `umbral_compra_grande`). Auditado.
+- `PATCH /config/:clave` — Body: `{ valor }`. Sólo claves whitelisted en `config.controller.EDITABLE_KEYS` (hoy `umbral_compra_grande` y `umbral_caja_menor`). Auditado.
 
 ### Otros
 - `uploads`: `POST /baucher` (8 MB, JPG/PNG/WEBP/GIF/PDF), `POST /avatar` (5 MB, JPG/PNG/WEBP, redimensionado a 400×400 WebP).
@@ -340,6 +340,7 @@ Detectadas en código (principalmente en `saldos.service`, `pagos.controller`, `
 | RN-27  | Una recepción no puede exceder la cantidad pendiente por ítem. Si todos los ítems quedan cubiertos ⇒ `en_inventario`; si no ⇒ `recibido_parcial`. Cada recepción append `entrada` en `inventario_movimiento` (best-effort). El stock jamás se almacena — se deriva. |
 | RN-28  | **Notificaciones fire-and-forget**. `notificaciones.service.crear()` nunca throwa: si falla la BD, se loguea y se retorna 0. Ninguna operación de negocio se aborta por fallo de notificación. Igual filosofía para SSE `events.emit()`. Emails son `Promise.allSettled` para no encadenar fallos. |
 | RN-29  | **POL-02: doble firma en compras grandes de requerimientos**. Cuando `requerimiento.valor_total ≥ umbral_compra_grande` (leído de `condor.config_sistema` por `config.service`, fallback 5.000.000 COP), la transición `aprobado_jefe → pendiente_tesoreria` requiere **dos firmas de personas distintas**: dueño (endpoint `/aprobar-dueno`, permiso `requerimientos:aprobar_dueno`) y gerencia (endpoint `/aprobar-gerencia`, permiso `requerimientos:aprobar_gerencia`). Anti-colusión: `aprobado_dueno_por !== aprobado_gerencia_por` enforced en cada endpoint. Compras chicas mantienen firma única vía `/aprobar-final`. El `estado` NO cambia hasta que ambas firmas están puestas — el requerimiento se queda en `aprobado_jefe` mientras espera; la transición se ejecuta atómicamente cuando la segunda firma se guarda (mismo UPDATE que registra la firma también setea `estado = pendiente_tesoreria` y `aprobado_final_por` = último firmante). Umbral editable por admin desde la vista `Permisos` (card "Configuración del sistema") sin redespliegue. |
+| RN-30  | **POL-01: caja menor con flujo simplificado**. Cuando `requerimiento.valor_total < umbral_caja_menor` (leído de `condor.config_sistema` por `config.service`, fallback 500.000 COP), `PATCH /:id/aprobar-jefe` transiciona **directo** `pendiente_jefe → pendiente_tesoreria` — la aprobación final se omite y no se llena `aprobado_final_por`. La clasificación es **derivada al leer** (igual que compra grande): no se persiste flag; si el umbral cambia, los requerimientos ya aprobados conservan su recorrido histórico (fechas/responsables en la fila) y la trazabilidad muestra el paso final como hecho u omitido según los datos reales. Si un admin configura `umbral_caja_menor ≥ umbral_compra_grande`, **la regla de compra grande gana** (la doble firma nunca se salta). Umbral editable desde la vista `Permisos` (card "Configuración del sistema"). |
 | §3.3   | Las fracciones de una cuota se cubren **greedy en orden** con el acumulado de recibos.                     |
 | §4.3   | Restructurar una cuota anula sus facturas `emitida`; bloquea si alguna está `parcialmente_pagada`.         |
 | §8.4   | Editar valores de cuotas mantiene la invariante **Σ cuotas = valor financiado** (`valor_total − permutas`). |
@@ -419,7 +420,7 @@ Otras invariantes:
 
 ### K. Flujo de requerimientos (REQ-01 → REQ-07)
 1. **Crear (REQ-01)**: peticionario hace `POST /requerimientos` con items. Nace en `pendiente_jefe`, se emite consecutivo `REQ-<N>`. Notifica a `jefe_area` por email + in-app + SSE.
-2. **Aprobación jefe (REQ-02)**: `PATCH /:id/aprobar-jefe` (guardado por `.eq('estado', 'pendiente_jefe')`) → `aprobado_jefe`. Notifica a `gerencia`.
+2. **Aprobación jefe (REQ-02 / POL-01)**: `PATCH /:id/aprobar-jefe` (guardado por `.eq('estado', 'pendiente_jefe')`). Si la compra es **caja menor** (`valor_total < umbral_caja_menor`) pasa **directo a `pendiente_tesoreria`** y notifica al tesorero + solicitante; si no, → `aprobado_jefe` y notifica a dueño/gerencia según el tamaño de la compra.
 3. **Aprobación final (REQ-03)**: `PATCH /:id/aprobar-final` → `pendiente_tesoreria`. Notifica a `tesorero`.
 4. **Rechazo**: `PATCH /:id/rechazar` con `motivo` (≥ 5 chars). Nivel inferido del estado; permiso validado dentro del controller. Notifica al solicitante.
 5. **Desembolso (REQ-04)**: `PATCH /:id/desembolsar` con `comprobante_url` obligatorio y `valor` opcional (default `valor_total`). Crea `gasto` auto (best-effort; si `id_proyecto` falta, se devuelve `gasto_warning`), UPDATE guardado por estado. Notifica almacenistas + solicitante.
