@@ -740,3 +740,35 @@
 .inv-row-agotado td {
   opacity: 0.55;
 }
+
+.inv-cat-row td {
+  padding: 0.55rem 1rem !important;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb, 249, 115, 22), 0.06);
+  border-top: 1px solid var(--border, var(--border-color));
+}
+
+.inv-cat-row svg,
+.inv-cat-row .sgi-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  vertical-align: -0.15rem;
+  margin-right: 0.25rem;
+}
+
+.inv-unidad {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border, var(--border-color));
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  vertical-align: middle;
+}

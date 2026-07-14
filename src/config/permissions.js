@@ -128,6 +128,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/requerimientos/historial':          { recurso: 'requerimientos', accion: 'leer' },
   'GET /api/v1/requerimientos/desembolsos':        { recurso: 'requerimientos', accion: 'desembolsar' },
   'GET /api/v1/inventario/stock':                  { recurso: 'inventario',     accion: 'leer' },
+  'GET /api/v1/inventario/movimientos':            { recurso: 'inventario',     accion: 'leer' },
   'PATCH /api/v1/requerimientos/desembolsar':      { recurso: 'requerimientos', accion: 'desembolsar' },
   'GET /api/v1/requerimientos/autorizacion':       { recurso: 'recepciones',    accion: 'leer' },
   'PATCH /api/v1/requerimientos/entregar':         { recurso: 'recepciones',    accion: 'crear' },
