@@ -26,7 +26,7 @@ const VISTA_API_MAP = {
   'juridico':      ['ventas:leer', 'compradores:leer', 'cuotas:leer', 'pagos:leer', 'alertas_jur:leer', 'observaciones_jur:leer', 'observaciones_jur:crear'],
   'personal':      ['usuarios:leer', 'compradores:leer', 'comisionistas:leer', 'reportes:leer'],
   'gastos':        ['gastos:leer', 'gastos:crear', 'gastos:actualizar', 'uploads:crear'],
-  'recepciones':   ['recepciones:leer', 'recepciones:crear', 'uploads:crear'],
+  'recepciones':   ['recepciones:leer', 'recepciones:crear', 'requerimientos:leer', 'uploads:crear'],
   'requerimientos': ['requerimientos:leer', 'requerimientos:crear', 'proyectos:leer'],
   'aprobaciones':   ['requerimientos:leer', 'requerimientos:aprobar_jefe', 'requerimientos:aprobar_final', 'requerimientos:aprobar_dueno', 'requerimientos:aprobar_gerencia'],
   'desembolsos':    ['requerimientos:leer', 'requerimientos:desembolsar', 'uploads:crear'],

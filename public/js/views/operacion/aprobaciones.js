@@ -503,11 +503,13 @@ function abrirDetalleHistorial(r) {
       </div>
     </div>
     <div class="form-actions">
+      <button class="btn btn-ghost" id="hist-det-trace">${icon("route")} Trazabilidad</button>
       <button class="btn btn-ghost" id="hist-det-pdf">${icon("file-text")} Ver PDF</button>
       <button class="btn btn-primary" onclick="UI.closeModal()">Cerrar</button>
     </div>
   `);
   document.getElementById("hist-det-pdf")?.addEventListener("click", () => window.SGIReq?.abrirRequerimientoPDF?.(r));
+  document.getElementById("hist-det-trace")?.addEventListener("click", () => window.SGIReq?.abrirTrazabilidad?.(r.id_requerimiento));
   window.SGIUI?.hydrate();
 }
 
@@ -634,11 +636,14 @@ function abrirRevision(r) {
     </div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="UI.closeModal()">Volver</button>
+      <button class="btn btn-ghost" id="apr-trace">${icon("route")} Trazabilidad</button>
       ${puedeRechazarAqui ? `<button class="btn btn-danger" id="apr-rechazar">Rechazar</button>` : ""}
       ${botonesFirma}
     </div>
   `);
   window.SGIUI?.hydrate();
+
+  document.getElementById("apr-trace")?.addEventListener("click", () => window.SGIReq?.abrirTrazabilidad?.(r.id_requerimiento));
 
   const errorEl = document.getElementById("apr-error");
   function fallar(msg) {

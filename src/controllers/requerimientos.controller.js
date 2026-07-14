@@ -474,7 +474,7 @@ async function getHistorial(req, res) {
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
-      .in("estado", ["aprobado_jefe", "pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario", "rechazado"])
+      .in("estado", ["aprobado_jefe", "pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario", "entregado", "rechazado"])
       .order("id_requerimiento", { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -1069,6 +1069,7 @@ async function getDesembolsos(req, res) {
         valor_total, categoria, urgencia, justificacion, id_proyecto,
         fecha_aprobado_jefe, fecha_aprobado_final,
         fecha_desembolso, valor_desembolsado, comprobante_desembolso_url, id_gasto,
+        fecha_entrega, entrega_receptor,
         solicitante:id_solicitante (nombres, apellidos, email),
         aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
         aprobador_final:aprobado_final_por (nombres, apellidos),
@@ -1076,7 +1077,7 @@ async function getDesembolsos(req, res) {
         proyecto:id_proyecto (nombre, sigla),
         items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario)
       `)
-      .in("estado", ["pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario"])
+      .in("estado", ["pendiente_tesoreria", "desembolsado", "recibido_parcial", "en_inventario", "entregado"])
       .order("fecha_aprobado_final", { ascending: true });
 
     if (error) return res.status(500).json({ error: error.message });
@@ -1425,11 +1426,256 @@ async function getMios(req, res) {
   }
 }
 
+// ── Trazabilidad completa (INV-04) ──────────────────────────────────────────
+
+function _nombreDe(u) {
+  return u ? `${u.nombres || ""} ${u.apellidos || ""}`.trim() || null : null;
+}
+
+function _buildTrazabilidad(r, bitacora, esGrande, umbral) {
+  const fmtItems = its => (its || [])
+    .map(d => `${d.item?.descripcion || "ítem"} × ${Number(d.cantidad)}${d.item?.unidad ? " " + d.item.unidad : ""}`)
+    .join(", ");
+
+  const rechazo     = (bitacora || []).find(b => b.valor_nuevo === "rechazado")  || null;
+  const cancelacion = (bitacora || []).find(b => b.valor_nuevo === "cancelado") || null;
+
+  const pasos = [];
+
+  pasos.push({
+    paso:        "solicitud",
+    label:       "Requerimiento creado",
+    estado:      "hecho",
+    fecha:       r.fecha_solicitud,
+    responsable: _nombreDe(r.solicitante) || r.solicitante?.email || null,
+    documento:   { tipo: "requerimiento", label: r.numero, url: null },
+    detalle:     `${(r.items || []).length} ítem(s) · ${r.categoria} · urgencia ${r.urgencia}`,
+  });
+
+  if (r.estado === "cancelado") {
+    pasos.push({
+      paso:        "cancelacion",
+      label:       "Cancelado por el solicitante",
+      estado:      "fallido",
+      fecha:       cancelacion?.fecha_cambio || null,
+      responsable: cancelacion?.usuario_db || null,
+      documento:   null,
+      detalle:     cancelacion?.motivo || null,
+    });
+    return pasos;
+  }
+
+  if (r.estado === "rechazado" && !r.fecha_aprobado_jefe) {
+    pasos.push({
+      paso:        "aprobacion_jefe",
+      label:       "Rechazado por el jefe de área",
+      estado:      "fallido",
+      fecha:       rechazo?.fecha_cambio || null,
+      responsable: rechazo?.usuario_db || null,
+      documento:   null,
+      detalle:     r.motivo_rechazo || rechazo?.motivo || null,
+    });
+    return pasos;
+  }
+  pasos.push({
+    paso:        "aprobacion_jefe",
+    label:       "Aprobación del jefe de área",
+    estado:      r.fecha_aprobado_jefe ? "hecho" : "pendiente",
+    fecha:       r.fecha_aprobado_jefe || null,
+    responsable: _nombreDe(r.aprobador_jefe),
+    documento:   null,
+    detalle:     null,
+  });
+
+  if (r.estado === "rechazado") {
+    pasos.push({
+      paso:        "aprobacion_final",
+      label:       esGrande ? "Rechazado en la doble firma" : "Rechazado en la aprobación final",
+      estado:      "fallido",
+      fecha:       rechazo?.fecha_cambio || null,
+      responsable: rechazo?.usuario_db || null,
+      documento:   null,
+      detalle:     r.motivo_rechazo || rechazo?.motivo || null,
+    });
+    return pasos;
+  }
+
+  if (esGrande) {
+    pasos.push({
+      paso:        "firma_dueno",
+      label:       `Firma del dueño (compra grande ≥ $${Number(umbral).toLocaleString("es-CO")})`,
+      estado:      r.fecha_aprobado_dueno ? "hecho" : "pendiente",
+      fecha:       r.fecha_aprobado_dueno || null,
+      responsable: _nombreDe(r.aprobador_dueno),
+      documento:   null,
+      detalle:     null,
+    });
+    pasos.push({
+      paso:        "firma_gerencia",
+      label:       "Co-firma de gerencia",
+      estado:      r.fecha_aprobado_gerencia ? "hecho" : "pendiente",
+      fecha:       r.fecha_aprobado_gerencia || null,
+      responsable: _nombreDe(r.aprobador_gerencia),
+      documento:   null,
+      detalle:     null,
+    });
+  } else {
+    pasos.push({
+      paso:        "aprobacion_final",
+      label:       "Aprobación final del dueño",
+      estado:      r.fecha_aprobado_final ? "hecho" : "pendiente",
+      fecha:       r.fecha_aprobado_final || null,
+      responsable: _nombreDe(r.aprobador_final),
+      documento:   null,
+      detalle:     null,
+    });
+  }
+
+  const desembolsado = !!r.fecha_desembolso;
+  pasos.push({
+    paso:        "desembolso",
+    label:       "Desembolso de tesorería",
+    estado:      desembolsado ? "hecho" : "pendiente",
+    fecha:       r.fecha_desembolso || null,
+    responsable: _nombreDe(r.desembolsador),
+    documento:   r.comprobante_desembolso_url
+                   ? { tipo: "comprobante", label: "Comprobante del pago", url: r.comprobante_desembolso_url }
+                   : null,
+    detalle:     desembolsado
+                   ? `Pagado $${Number(r.valor_desembolsado || 0).toLocaleString("es-CO")}${r.id_gasto ? ` · gasto #${r.id_gasto}` : ""}`
+                   : null,
+  });
+
+  const recepciones = (r.recepciones || [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  recepciones.forEach((rc, i) => {
+    pasos.push({
+      paso:        "recepcion",
+      label:       `Recepción ${i + 1} de ${recepciones.length}`,
+      estado:      "hecho",
+      fecha:       rc.fecha,
+      responsable: _nombreDe(rc.almacenista),
+      documento:   rc.comprobante_url
+                     ? { tipo: "comprobante", label: "Comprobante de entrega", url: rc.comprobante_url }
+                     : null,
+      detalle:     [fmtItems(rc.detalle), rc.observaciones].filter(Boolean).join(" · ") || null,
+    });
+  });
+
+  if (["desembolsado", "recibido_parcial"].includes(r.estado)) {
+    pasos.push({
+      paso:        "recepcion",
+      label:       recepciones.length ? "Recepción del material restante" : "Recepción del material",
+      estado:      "pendiente",
+      fecha:       null,
+      responsable: null,
+      documento:   null,
+      detalle:     null,
+    });
+  }
+
+  const entregadoHecho = r.estado === "entregado";
+  pasos.push({
+    paso:        "entrega",
+    label:       entregadoHecho ? "Entrega del material" : "Entrega al solicitante",
+    estado:      entregadoHecho ? "hecho" : "pendiente",
+    fecha:       r.fecha_entrega || null,
+    responsable: _nombreDe(r.entregador),
+    documento:   null,
+    detalle:     entregadoHecho
+                   ? (r.entrega_receptor ? `Recibido por ${r.entrega_receptor}` : "Entregado al solicitante")
+                   : null,
+  });
+
+  return pasos;
+}
+
+// GET /api/v1/requerimientos/:id/trazabilidad
+// Full chain of a material (INV-04): solicitud → aprobaciones (single or dual
+// sign per POL-02) → desembolso → recepciones → entrega. Elevated roles and
+// permissions see any requerimiento; plain requesters only their own.
+async function getTrazabilidad(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID de requerimiento inválido" });
+
+    const { data: r, error } = await supabase.schema(SCHEMA)
+      .from("requerimiento")
+      .select(`
+        id_requerimiento, numero, descripcion, estado, valor_total, categoria, urgencia,
+        justificacion, motivo_rechazo, id_solicitante, id_gasto,
+        fecha_solicitud, fecha_aprobado_jefe, fecha_aprobado_final,
+        fecha_aprobado_dueno, fecha_aprobado_gerencia,
+        fecha_desembolso, fecha_entrega, entrega_receptor,
+        valor_desembolsado, comprobante_desembolso_url,
+        solicitante:id_solicitante (nombres, apellidos, email),
+        aprobador_jefe:aprobado_jefe_por (nombres, apellidos),
+        aprobador_final:aprobado_final_por (nombres, apellidos),
+        aprobador_dueno:aprobado_dueno_por (nombres, apellidos),
+        aprobador_gerencia:aprobado_gerencia_por (nombres, apellidos),
+        desembolsador:desembolsado_por (nombres, apellidos),
+        entregador:entregado_por (nombres, apellidos),
+        proyecto:id_proyecto (nombre, sigla),
+        items:requerimiento_item (id_item, descripcion, unidad, cantidad_solicitada, precio_unitario),
+        recepciones:recepcion (
+          id_recepcion, fecha, observaciones, comprobante_url, created_at,
+          almacenista:id_almacenista (nombres, apellidos),
+          detalle:recepcion_item ( cantidad, item:id_item (descripcion, unidad) )
+        )
+      `)
+      .eq("id_requerimiento", id)
+      .single();
+
+    if (error || !r) return res.status(404).json({ error: "Requerimiento no encontrado" });
+
+    const elevado =
+      ["admin", "auditoria", "gerencia", "dueno"].includes(req.usuario.rol) ||
+      ["aprobar_jefe", "aprobar_final", "aprobar_dueno", "aprobar_gerencia", "desembolsar"]
+        .some(a => req.usuario.permisos?.has(`requerimientos:${a}`)) ||
+      req.usuario.permisos?.has("recepciones:leer");
+
+    if (!elevado && r.id_solicitante !== req.usuario.id_usuario) {
+      return res.status(403).json({ error: "Solo puedes consultar la trazabilidad de tus propios requerimientos" });
+    }
+
+    const { data: bitacora } = await supabase.schema(SCHEMA)
+      .from("auditoria")
+      .select("valor_nuevo, usuario_db, motivo, fecha_cambio")
+      .eq("tabla_afectada", "requerimiento")
+      .eq("id_registro", id)
+      .eq("campo", "estado")
+      .in("valor_nuevo", ["rechazado", "cancelado"])
+      .order("fecha_cambio", { ascending: false });
+
+    const umbral   = await _umbralCompraGrande();
+    const esGrande = _esCompraGrande(r.valor_total, umbral);
+
+    return res.json({
+      id_requerimiento: r.id_requerimiento,
+      numero:           r.numero,
+      descripcion:      r.descripcion,
+      estado:           r.estado,
+      valor_total:      Number(r.valor_total || 0),
+      categoria:        r.categoria,
+      urgencia:         r.urgencia,
+      proyecto:         r.proyecto?.nombre || null,
+      sigla:            r.proyecto?.sigla || null,
+      solicitante:      _nombreDe(r.solicitante) || r.solicitante?.email || "—",
+      es_compra_grande: esGrande,
+      timeline:         _buildTrazabilidad(r, bitacora, esGrande, umbral),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   create, getMios, cancelar,
   getAprobaciones, getHistorial, aprobarJefe, aprobarFinal, aprobarDueno, aprobarGerencia, rechazar,
   getDesembolsos, desembolsar,
-  getAutorizacion, entregar,
+  getAutorizacion, entregar, getTrazabilidad,
   stream, getContadores,
   CATEGORIAS, URGENCIAS,
 };

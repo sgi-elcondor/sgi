@@ -480,6 +480,7 @@ function renderRegistros() {
         <td class="req-td-actions">
           <div class="req-actions">
             <button class="btn btn-ghost btn-sm btn-hist-entregas" data-id="${r.id_requerimiento}">Ver entregas</button>
+            <button class="btn btn-ghost btn-sm btn-hist-trace" data-id="${r.id_requerimiento}" title="Trazabilidad">${icon("route")}</button>
             <button class="btn btn-ghost btn-sm btn-hist-acta" data-id="${r.id_requerimiento}" title="Acta de recepción (PDF)">${icon("file-text")}</button>
           </div>
         </td>
@@ -524,11 +525,12 @@ function renderRegistros() {
   document.getElementById("hist-estado").addEventListener("change", aplicarFiltros);
 
   tbody.addEventListener("click", e => {
-    const btn = e.target.closest(".btn-hist-entregas, .btn-hist-acta");
+    const btn = e.target.closest(".btn-hist-entregas, .btn-hist-acta, .btn-hist-trace");
     if (!btn) return;
     const r = _historial.find(x => String(x.id_requerimiento) === btn.dataset.id);
     if (!r) return;
     if (btn.classList.contains("btn-hist-acta")) abrirActaPDF(r);
+    else if (btn.classList.contains("btn-hist-trace")) window.SGIReq?.abrirTrazabilidad?.(r.id_requerimiento);
     else abrirEntregas(r);
   });
 
@@ -710,6 +712,7 @@ async function abrirEntregas(r) {
       </div>
     </div>
     <div class="form-actions">
+      <button class="btn btn-ghost" id="rec-det-trace">${icon("route")} Trazabilidad</button>
       <button class="btn btn-ghost" id="rec-det-acta">${icon("file-text")} Acta PDF</button>
       <button class="btn btn-primary" onclick="UI.closeModal()">Cerrar</button>
     </div>
@@ -720,6 +723,7 @@ async function abrirEntregas(r) {
     win.document.write(_buildActaRecepcionHTML(det));
     win.document.close();
   });
+  document.getElementById("rec-det-trace")?.addEventListener("click", () => window.SGIReq?.abrirTrazabilidad?.(det.id_requerimiento));
   window.SGIUI?.hydrate();
 }
 
