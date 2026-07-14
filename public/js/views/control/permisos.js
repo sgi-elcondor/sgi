@@ -449,20 +449,55 @@
     return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
   }
 
+  // POL-04: purchase policy tiers. `caja menor` and `compra grande` are the two
+  // editable caps; `compra estándar` is whatever falls between them.
   const CONFIG_UMBRALES = [
+    {
+      clave:       'umbral_caja_menor',
+      label:       'Tope de caja menor (COP)',
+      placeholder: '500.000',
+      hint:        'Compras por debajo de este monto solo necesitan la aprobación del jefe y pasan directo a tesorería (POL-01).',
+    },
     {
       clave:       'umbral_compra_grande',
       label:       'Umbral de compra grande (COP)',
       placeholder: '5.000.000',
-      hint:        'Compras iguales o mayores a este monto pasan a la firma del dueño y la co-firma de gerencia (POL-02).',
-    },
-    {
-      clave:       'umbral_caja_menor',
-      label:       'Umbral de caja menor (COP)',
-      placeholder: '500.000',
-      hint:        'Compras por debajo de este monto solo necesitan la aprobación del jefe y pasan directo a tesorería (POL-01).',
+      hint:        'Compras iguales o mayores a este monto exigen la firma del dueño y la co-firma de gerencia (POL-02).',
     },
   ];
+
+  const _umbralesActuales = {};
+
+  function tierStripHTML() {
+    const caja   = Number(_umbralesActuales.umbral_caja_menor);
+    const grande = Number(_umbralesActuales.umbral_compra_grande);
+    const hayDatos = Number.isFinite(caja) && Number.isFinite(grande);
+    return `
+      <div class="pol-tiers">
+        <div class="pol-tier pol-tier-caja">
+          <span class="pol-tier-name"><i data-lucide="coins"></i> Caja menor</span>
+          <span class="pol-tier-range">${hayDatos ? `&lt; ${fmtCOP(caja)}` : '—'}</span>
+          <span class="pol-tier-flow">Aprueba solo el jefe de área · directo a tesorería</span>
+        </div>
+        <div class="pol-tier pol-tier-std">
+          <span class="pol-tier-name"><i data-lucide="briefcase"></i> Compra estándar</span>
+          <span class="pol-tier-range">${hayDatos ? `${fmtCOP(caja)} – ${fmtCOP(grande - 1)}` : '—'}</span>
+          <span class="pol-tier-flow">Jefe de área + aprobación final del dueño</span>
+        </div>
+        <div class="pol-tier pol-tier-grande">
+          <span class="pol-tier-name"><i data-lucide="shield-alert"></i> Compra grande</span>
+          <span class="pol-tier-range">${hayDatos ? `≥ ${fmtCOP(grande)}` : '—'}</span>
+          <span class="pol-tier-flow">Jefe de área + doble firma (dueño y gerencia)</span>
+        </div>
+      </div>`;
+  }
+
+  function refreshTierStrip() {
+    const strip = document.getElementById('pol-tier-strip');
+    if (!strip) return;
+    strip.innerHTML = tierStripHTML();
+    window.SGIUI?.hydrate();
+  }
 
   async function renderUmbralCard(vc) {
     if (!AppState.can('config', 'leer')) return; // Hide the whole card
@@ -476,29 +511,33 @@
         <div class="perm-cfg-head">
           <span class="perm-cfg-icon"><i data-lucide="sliders-horizontal"></i></span>
           <div>
-            <h3 class="perm-cfg-title">Configuración del sistema</h3>
-            <p class="perm-cfg-sub">Umbrales que deciden el recorrido de aprobación de las compras de requerimientos.</p>
+            <h3 class="perm-cfg-title">Políticas de compras</h3>
+            <p class="perm-cfg-sub">Topes que definen el recorrido de aprobación de cada compra de requerimientos. Editables sin redespliegue.</p>
           </div>
         </div>
+        <div id="pol-tier-strip">${tierStripHTML()}</div>
+        <div class="perm-cfg-grid">
         ${CONFIG_UMBRALES.map((c, i) => `
-        <div class="perm-cfg-body">
-          <label class="perm-cfg-label" for="perm-cfg-input-${i}">${c.label}</label>
-          <div class="perm-cfg-row">
-            <input id="perm-cfg-input-${i}" type="text" inputmode="numeric"
-                   ${puedeEditar ? '' : 'disabled'}
-                   placeholder="${c.placeholder}">
-            <button id="perm-cfg-save-${i}" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
-              <i data-lucide="save"></i> Guardar
-            </button>
-          </div>
-          <p id="perm-cfg-status-${i}" class="perm-cfg-status"></p>
-          <p class="perm-cfg-hint">${c.hint}</p>
-        </div>`).join('')}
+          <div class="perm-cfg-body">
+            <label class="perm-cfg-label" for="perm-cfg-input-${i}">${c.label}</label>
+            <div class="perm-cfg-row">
+              <input id="perm-cfg-input-${i}" type="text" inputmode="numeric"
+                     ${puedeEditar ? '' : 'disabled'}
+                     placeholder="${c.placeholder}">
+              <button id="perm-cfg-save-${i}" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
+                <i data-lucide="save"></i> Guardar
+              </button>
+            </div>
+            <p id="perm-cfg-status-${i}" class="perm-cfg-status"></p>
+            <p class="perm-cfg-hint">${c.hint}</p>
+          </div>`).join('')}
+        </div>
       </div>`;
 
     window.SGIUI?.hydrate();
 
-    CONFIG_UMBRALES.forEach((c, i) => initUmbralControl(c, i));
+    await Promise.all(CONFIG_UMBRALES.map((c, i) => initUmbralControl(c, i)));
+    refreshTierStrip();
   }
 
   async function initUmbralControl(cfg, i) {
@@ -509,6 +548,7 @@
 
     try {
       const { valor } = await API.get(`/config/${cfg.clave}`);
+      _umbralesActuales[cfg.clave] = Number(valor);
       input.value = Number(valor).toLocaleString('es-CO');
       status.innerHTML = `<span class="perm-cfg-current">Valor actual: <strong>${fmtCOP(valor)}</strong></span>`;
     } catch (e) {
@@ -531,13 +571,30 @@
         status.innerHTML = '<span style="color:var(--danger)">Ingresa un monto mayor a cero.</span>';
         return;
       }
+
+      // Mirror of the backend cross-check (POL-04): fail fast with a clear hint.
+      const otraClave = cfg.clave === 'umbral_caja_menor' ? 'umbral_compra_grande' : 'umbral_caja_menor';
+      const otro      = Number(_umbralesActuales[otraClave]);
+      if (Number.isFinite(otro)) {
+        if (cfg.clave === 'umbral_caja_menor' && valor >= otro) {
+          status.innerHTML = `<span style="color:var(--danger)">Debe ser menor que el umbral de compra grande (${fmtCOP(otro)}).</span>`;
+          return;
+        }
+        if (cfg.clave === 'umbral_compra_grande' && valor <= otro) {
+          status.innerHTML = `<span style="color:var(--danger)">Debe ser mayor que el tope de caja menor (${fmtCOP(otro)}).</span>`;
+          return;
+        }
+      }
+
       btn.disabled = true;
       const orig   = btn.innerHTML;
       btn.innerHTML = 'Guardando...';
       try {
         const resp = await API.patch(`/config/${cfg.clave}`, { valor });
+        _umbralesActuales[cfg.clave] = Number(resp.valor);
         status.innerHTML = `<span class="perm-cfg-current">Actualizado: <strong>${fmtCOP(resp.valor)}</strong></span>`;
-        window.SGIUI?.toast(`Umbral actualizado a ${fmtCOP(resp.valor)}`, 'ok');
+        window.SGIUI?.toast(`Política actualizada: ${cfg.label.replace(' (COP)', '')} = ${fmtCOP(resp.valor)}`, 'ok');
+        refreshTierStrip();
       } catch (e) {
         status.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`;
       } finally {
