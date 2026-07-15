@@ -31,6 +31,7 @@ const VISTA_API_MAP = {
   'requerimientos': ['requerimientos:leer', 'requerimientos:crear', 'proyectos:leer'],
   'aprobaciones':   ['requerimientos:leer', 'requerimientos:aprobar_jefe', 'requerimientos:aprobar_final', 'requerimientos:aprobar_dueno', 'requerimientos:aprobar_gerencia'],
   'desembolsos':    ['requerimientos:leer', 'requerimientos:desembolsar', 'empresas_aliadas:leer', 'uploads:crear'],
+  'inventario':     ['inventario:leer'],
   'bank-transactions':  ['bank_transactions:leer', 'bank_transactions:crear', 'bank_transactions:actualizar', 'bank_transactions:eliminar'],
   'payment-validation': ['validacion_pagos:leer', 'validacion_pagos:crear'],
   'mis-cuotas':    ['mis_cuotas:leer'],

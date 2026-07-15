@@ -10,6 +10,7 @@ const SIDEBAR_GROUPS = [
     { view: "compradores", icon: "users",      label: "Compradores" },
     { view: "ventas",      icon: "briefcase",  label: "Ventas" },
     { view: "recepciones", icon: "package",    label: "Recepciones" },
+    { view: "inventario",  icon: "boxes",      label: "Inventario" },
     { view: "requerimientos", icon: "clipboard-list", label: "Requerimientos" },
     { view: "aprobaciones",   icon: "clipboard-check", label: "Aprobaciones" },
     { view: "empresas-aliadas", icon: "building-2", label: "Empresas Aliadas" },
