@@ -270,10 +270,103 @@ async function abrirKardex(s) {
       </div>
     </div>
     <div class="form-actions">
+      <button class="btn btn-ghost" id="kdx-pdf">${icon("file-text")} PDF del kardex</button>
       <button class="btn btn-primary" onclick="UI.closeModal()">Cerrar</button>
     </div>
   `);
+  document.getElementById("kdx-pdf")?.addEventListener("click", async function () {
+    this.disabled = true;
+    try { await exportKardexPDF(s, conSaldo); }
+    catch (e) { UI.toast(e.message || "No se pudo generar el PDF.", "error"); }
+    finally { this.disabled = false; }
+  });
   window.SGIUI?.hydrate();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF del kardex de un material (historial con saldo corrido)
+// ─────────────────────────────────────────────────────────────────────────────
+async function exportKardexPDF(s, conSaldo) {
+  if (window.SGILibs) await window.SGILibs.ensureExport();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const SX  = window.SGIExport.pdf;
+  const P   = SX.PALETTE;
+
+  let y = SX.brand(doc);
+  y = SX.title(doc, y + 2, {
+    title:    `Kardex · ${s.descripcion}`,
+    subtitle: `Historial de movimientos con saldo corrido — ${s.proyecto ? "Proyecto " + s.proyecto : "sin proyecto"} · Unidad: ${s.unidad || "und"}`,
+  });
+
+  // Compact summary line (same pattern as the physical inventory sheet).
+  const resumen = [
+    ["Movimientos", String(conSaldo.length)],
+    ["Stock actual", `${fmtQty(s.cantidad)} ${s.unidad || "und"}`],
+    ["Corte del sistema", new Date().toLocaleDateString("es-CO")],
+  ];
+  y += 4;
+  let x = SX.M_LEFT;
+  doc.setFontSize(8.5);
+  resumen.forEach(([label, value], i) => {
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...P.muted);
+    doc.text(`${label}: `, x, y);
+    x += doc.getTextWidth(`${label}: `);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...(label === "Stock actual" ? (s.cantidad > 0 ? P.success : P.danger) : P.dark));
+    doc.text(value, x, y);
+    x += doc.getTextWidth(value);
+    if (i < resumen.length - 1) {
+      doc.setTextColor(...P.divider);
+      doc.text("   ·   ", x, y);
+      x += doc.getTextWidth("   ·   ");
+    }
+  });
+  y += 3;
+  doc.setDrawColor(...P.border);
+  doc.setLineWidth(0.2);
+  doc.line(SX.M_LEFT, y, SX.pageWidth(doc) - SX.M_RIGHT, y);
+  y += 5;
+
+  const rowsMeta = conSaldo;
+  doc.autoTable({
+    startY: y,
+    head: [["Fecha", "Movimiento", "Cantidad", "Saldo", "Requerimiento", "Registró"]],
+    body: conSaldo.map(m => [
+      `${new Date(m.created_at).toLocaleDateString("es-CO")} ${new Date(m.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`,
+      m.tipo === "entrada" ? "Entrada" : "Salida",
+      `${m.tipo === "entrada" ? "+" : "−"}${fmtQty(m.cantidad)}`,
+      fmtQty(m.saldo),
+      m.requerimiento || "—",
+      m.registrado_por,
+    ]),
+    ...SX.tableTheme(),
+    columnStyles: {
+      0: { cellWidth: 34 },
+      1: { cellWidth: 26, halign: "center" },
+      2: { cellWidth: 24, halign: "right" },
+      3: { cellWidth: 22, halign: "right" },
+      4: { cellWidth: 38 },
+      5: { cellWidth: 38 },
+    },
+    didParseCell(data) {
+      if (data.section !== "body") return;
+      const m = rowsMeta[data.row.index];
+      if (!m) return;
+      if (data.column.index === 2) {
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.textColor = m.tipo === "entrada" ? P.success : P.danger;
+      }
+      if (data.column.index === 3) data.cell.styles.fontStyle = "bold";
+    },
+  });
+
+  SX.footer(doc);
+  const slug = s.material.replace(/[^a-z0-9]+/g, "_");
+  doc.save(`kardex_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  UI.toast("PDF del kardex descargado.", "ok");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,7 +374,7 @@ async function abrirKardex(s) {
 // color, campos de escritura para el conteo manual y bloque de firmas.
 // ─────────────────────────────────────────────────────────────────────────────
 async function exportStockPDF() {
-  if (!_stock.length) return UI.toast("No hay stock para exportar.", "info");
+  if (!_visibles.length) return UI.toast("No hay materiales en la vista actual para exportar.", "info");
   if (window.SGILibs) await window.SGILibs.ensureExport();
 
   const { jsPDF } = window.jspdf;
@@ -290,9 +383,13 @@ async function exportStockPDF() {
   const P   = SX.PALETTE;
   const SGIReq = window.SGIReq || {};
 
-  const conStock  = _stock.filter(s => s.cantidad > 0);
-  const orden     = (SGIReq.CATEGORIAS || []).map(c => c.value);
-  const ordenados = [..._stock].sort((a, b) =>
+  // Exports what is on screen: filtering by category/project lets the almacén
+  // print one counting sheet per operario.
+  const exportados = _visibles;
+  const conStock   = exportados.filter(s => s.cantidad > 0);
+  const filtros    = filtrosActivosTexto();
+  const orden      = (SGIReq.CATEGORIAS || []).map(c => c.value);
+  const ordenados  = [...exportados].sort((a, b) =>
     (orden.indexOf(a.categoria) - orden.indexOf(b.categoria)) ||
     a.descripcion.localeCompare(b.descripcion)
   );
@@ -300,15 +397,17 @@ async function exportStockPDF() {
   let y = SX.brand(doc);
   y = SX.title(doc, y + 2, {
     title:    "Inventario Físico de Bodega",
-    subtitle: "Camina la bodega anotando el conteo real de cada material y la diferencia contra el sistema.",
+    subtitle: filtros.length
+      ? `Filtros aplicados — ${filtros.join("  ·  ")}`
+      : "Camina la bodega anotando el conteo real de cada material y la diferencia contra el sistema.",
   });
 
   // Compact one-line summary instead of KPI cards: on a counting form, vertical
   // space belongs to the table rows.
   const resumen = [
     ["Con stock",  String(conStock.length)],
-    ["Agotados",   String(_stock.length - conStock.length)],
-    ["Categorías", String(new Set(_stock.map(s => s.categoria).filter(Boolean)).size)],
+    ["Agotados",   String(exportados.length - conStock.length)],
+    ["Categorías", String(new Set(exportados.map(s => s.categoria).filter(Boolean)).size)],
     ["Corte del sistema", new Date().toLocaleDateString("es-CO")],
   ];
   y += 4;
@@ -457,16 +556,34 @@ async function exportStockPDF() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Excel del stock
+// Exports: respetan los filtros activos (exportan lo que está en pantalla)
 // ─────────────────────────────────────────────────────────────────────────────
+function filtrosActivosTexto() {
+  const SGIReq = window.SGIReq || {};
+  const partes = [];
+  if (_f.cat) {
+    const cat = (SGIReq.CATEGORIAS || []).find(c => c.value === _f.cat);
+    partes.push(`Categoría: ${cat?.label || _f.cat}`);
+  }
+  if (_f.proy) {
+    const p = _stock.find(s => String(s.id_proyecto) === _f.proy);
+    partes.push(`Proyecto: ${p?.proyecto || _f.proy}`);
+  }
+  if (_f.q) partes.push(`Búsqueda: "${_f.q}"`);
+  if (_f.agotados) partes.push("Incluye agotados");
+  return partes;
+}
+
 async function exportStockExcel() {
-  if (!_stock.length) return UI.toast("No hay stock para exportar.", "info");
+  if (!_visibles.length) return UI.toast("No hay materiales en la vista actual para exportar.", "info");
   if (window.SGILibs) await window.SGILibs.ensureExport();
 
   const SX = window.SGIExport.xlsx;
   const wb = SX.setup();
 
-  const conStock = _stock.filter(s => s.cantidad > 0);
+  const exportados = _visibles;
+  const conStock   = exportados.filter(s => s.cantidad > 0);
+  const filtros    = filtrosActivosTexto();
   const ws = wb.addWorksheet("Stock", { tabColor: { argb: SX.C.primary } });
   ws.columns = [
     { key: "a", width: 36 }, { key: "b", width: 16 }, { key: "c", width: 14 },
@@ -476,21 +593,23 @@ async function exportStockExcel() {
 
   SX.masthead(ws, {
     title:     "Stock de Bodega",
-    subtitle:  "Existencias por material y categoría (entradas − salidas del libro de inventario)",
+    subtitle:  filtros.length
+      ? `Filtros aplicados — ${filtros.join("  ·  ")}`
+      : "Existencias por material y categoría (entradas − salidas del libro de inventario)",
     mergeCols: 7,
   });
 
   SX.kpiRow(ws, [
     { label: "Materiales con stock", value: conStock.length },
-    { label: "Agotados",             value: _stock.length - conStock.length },
-    { label: "Categorías",           value: new Set(_stock.map(s => s.categoria).filter(Boolean)).size },
+    { label: "Agotados",             value: exportados.length - conStock.length },
+    { label: "Categorías",           value: new Set(exportados.map(s => s.categoria).filter(Boolean)).size },
   ]);
 
   SX.sectionHeader(ws, "Existencias", { mergeCols: 7 });
   const head = ws.addRow(["Material", "Categoría", "Stock", "Unidad", "Proyecto", "Última entrada", "Última salida"]);
   SX.styleHeader(head);
 
-  _stock.forEach((s, i) => {
+  exportados.forEach((s, i) => {
     const row = ws.addRow([
       s.descripcion,
       s.categoria || "—",
