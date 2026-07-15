@@ -41,6 +41,9 @@
         { key: 'ventas:solicitar',         label: 'Solicitar venta (asesor)' },
         { key: 'ventas:actualizar',        label: 'Actualizar venta' },
         { key: 'ventas:editar_financiero', label: 'Editar datos financieros' },
+        { key: 'lotes:leer',               label: 'Ver lotes (formulario de venta)' },
+        { key: 'compradores:leer',         label: 'Ver compradores (formulario de venta)' },
+        { key: 'comisionistas:leer',       label: 'Ver comisionistas (formulario de venta)' },
       ]},
       { key: 'requerimientos', label: 'Requerimientos', icon: 'clipboard-list', actions: [
         { key: 'requerimientos:leer',   label: 'Ver mis requerimientos' },
@@ -56,12 +59,19 @@
       { key: 'desembolsos', label: 'Desembolsos', icon: 'landmark', actions: [
         { key: 'requerimientos:leer',        label: 'Ver desembolsos' },
         { key: 'requerimientos:desembolsar', label: 'Registrar desembolsos' },
+        { key: 'empresas_aliadas:leer',      label: 'Vincular empresa aliada (proveedor)' },
         { key: 'uploads:crear',              label: 'Adjuntar comprobante' },
       ]},
       { key: 'recepciones', label: 'Recepciones', icon: 'package-check', actions: [
         { key: 'recepciones:leer',  label: 'Ver recepciones' },
         { key: 'recepciones:crear', label: 'Registrar recepciones' },
+        { key: 'requerimientos:leer', label: 'Ver trazabilidad de requerimientos' },
         { key: 'uploads:crear',     label: 'Adjuntar remisiones' },
+      ]},
+      { key: 'empresas-aliadas', label: 'Empresas Aliadas', icon: 'building-2', actions: [
+        { key: 'empresas_aliadas:leer',       label: 'Ver empresas e historial comercial' },
+        { key: 'empresas_aliadas:crear',      label: 'Registrar empresa aliada' },
+        { key: 'empresas_aliadas:actualizar', label: 'Editar o desactivar empresa' },
       ]},
     ]},
     { group: 'Finanzas', modules: [
@@ -96,6 +106,7 @@
         { key: 'gastos:leer',       label: 'Ver gastos' },
         { key: 'gastos:crear',      label: 'Registrar gasto' },
         { key: 'gastos:actualizar', label: 'Editar gasto' },
+        { key: 'empresas_aliadas:leer', label: 'Vincular empresa aliada (proveedor)' },
       ]},
       { key: 'bank-transactions', label: 'Transacciones bancarias', icon: 'landmark', actions: [
         { key: 'bank_transactions:leer',       label: 'Ver transacciones' },
@@ -128,7 +139,9 @@
       { key: 'alertas',   label: 'Alertas juridicas',  icon: 'triangle-alert', actions: [
         { key: 'alertas_jur:leer', label: 'Ver alertas' },
       ]},
-      { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [] },
+      { key: 'auditoria', label: 'Auditoria',           icon: 'shield',         actions: [
+        { key: 'auditoria_log:leer', label: 'Ver bitacora de auditoria' },
+      ]},
       { key: 'respaldos', label: 'Respaldos', icon: 'database-backup', actions: [
         { key: 'respaldos:leer',      label: 'Ver respaldos' },
         { key: 'respaldos:restaurar', label: 'Restaurar un respaldo' },
@@ -449,6 +462,56 @@
     return num.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
   }
 
+  // POL-04: purchase policy tiers. `caja menor` and `compra grande` are the two
+  // editable caps; `compra estándar` is whatever falls between them.
+  const CONFIG_UMBRALES = [
+    {
+      clave:       'umbral_caja_menor',
+      label:       'Tope de caja menor (COP)',
+      placeholder: '500.000',
+      hint:        'Compras por debajo de este monto solo necesitan la aprobación del jefe y pasan directo a tesorería (POL-01).',
+    },
+    {
+      clave:       'umbral_compra_grande',
+      label:       'Umbral de compra grande (COP)',
+      placeholder: '5.000.000',
+      hint:        'Compras iguales o mayores a este monto exigen la firma del dueño y la co-firma de gerencia (POL-02).',
+    },
+  ];
+
+  const _umbralesActuales = {};
+
+  function tierStripHTML() {
+    const caja   = Number(_umbralesActuales.umbral_caja_menor);
+    const grande = Number(_umbralesActuales.umbral_compra_grande);
+    const hayDatos = Number.isFinite(caja) && Number.isFinite(grande);
+    return `
+      <div class="pol-tiers">
+        <div class="pol-tier pol-tier-caja">
+          <span class="pol-tier-name"><i data-lucide="coins"></i> Caja menor</span>
+          <span class="pol-tier-range">${hayDatos ? `&lt; ${fmtCOP(caja)}` : '—'}</span>
+          <span class="pol-tier-flow">Aprueba solo el jefe de área · directo a tesorería</span>
+        </div>
+        <div class="pol-tier pol-tier-std">
+          <span class="pol-tier-name"><i data-lucide="briefcase"></i> Compra estándar</span>
+          <span class="pol-tier-range">${hayDatos ? `${fmtCOP(caja)} – ${fmtCOP(grande - 1)}` : '—'}</span>
+          <span class="pol-tier-flow">Jefe de área + aprobación final del dueño</span>
+        </div>
+        <div class="pol-tier pol-tier-grande">
+          <span class="pol-tier-name"><i data-lucide="shield-alert"></i> Compra grande</span>
+          <span class="pol-tier-range">${hayDatos ? `≥ ${fmtCOP(grande)}` : '—'}</span>
+          <span class="pol-tier-flow">Jefe de área + doble firma (dueño y gerencia)</span>
+        </div>
+      </div>`;
+  }
+
+  function refreshTierStrip() {
+    const strip = document.getElementById('pol-tier-strip');
+    if (!strip) return;
+    strip.innerHTML = tierStripHTML();
+    window.SGIUI?.hydrate();
+  }
+
   async function renderUmbralCard(vc) {
     if (!AppState.can('config', 'leer')) return; // Hide the whole card
     const puedeEditar = AppState.can('config', 'actualizar');
@@ -461,41 +524,50 @@
         <div class="perm-cfg-head">
           <span class="perm-cfg-icon"><i data-lucide="sliders-horizontal"></i></span>
           <div>
-            <h3 class="perm-cfg-title">Configuración del sistema</h3>
-            <p class="perm-cfg-sub">Umbral que decide cuándo una compra de requerimientos necesita doble firma (dueño + gerencia).</p>
+            <h3 class="perm-cfg-title">Políticas de compras</h3>
+            <p class="perm-cfg-sub">Topes que definen el recorrido de aprobación de cada compra de requerimientos. Editables sin redespliegue.</p>
           </div>
         </div>
-        <div class="perm-cfg-body">
-          <label class="perm-cfg-label" for="perm-cfg-umbral">Umbral de compra grande (COP)</label>
-          <div class="perm-cfg-row">
-            <input id="perm-cfg-umbral" type="text" inputmode="numeric"
-                   ${puedeEditar ? '' : 'disabled'}
-                   placeholder="5.000.000">
-            <button id="perm-cfg-save" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
-              <i data-lucide="save"></i> Guardar
-            </button>
-          </div>
-          <p id="perm-cfg-status" class="perm-cfg-status"></p>
-          <p class="perm-cfg-hint">Compras iguales o mayores a este monto pasan a la firma del dueño y la co-firma de gerencia (POL-02). Las compras por debajo mantienen la firma única.</p>
+        <div id="pol-tier-strip">${tierStripHTML()}</div>
+        <div class="perm-cfg-grid">
+        ${CONFIG_UMBRALES.map((c, i) => `
+          <div class="perm-cfg-body">
+            <label class="perm-cfg-label" for="perm-cfg-input-${i}">${c.label}</label>
+            <div class="perm-cfg-row">
+              <input id="perm-cfg-input-${i}" type="text" inputmode="numeric"
+                     ${puedeEditar ? '' : 'disabled'}
+                     placeholder="${c.placeholder}">
+              <button id="perm-cfg-save-${i}" class="btn btn-primary btn-sm" ${puedeEditar ? '' : 'disabled'}>
+                <i data-lucide="save"></i> Guardar
+              </button>
+            </div>
+            <p id="perm-cfg-status-${i}" class="perm-cfg-status"></p>
+            <p class="perm-cfg-hint">${c.hint}</p>
+          </div>`).join('')}
         </div>
       </div>`;
 
     window.SGIUI?.hydrate();
 
-    const input   = document.getElementById('perm-cfg-umbral');
-    const btn     = document.getElementById('perm-cfg-save');
-    const status  = document.getElementById('perm-cfg-status');
+    await Promise.all(CONFIG_UMBRALES.map((c, i) => initUmbralControl(c, i)));
+    refreshTierStrip();
+  }
 
-    // Cargar valor actual
+  async function initUmbralControl(cfg, i) {
+    const input  = document.getElementById(`perm-cfg-input-${i}`);
+    const btn    = document.getElementById(`perm-cfg-save-${i}`);
+    const status = document.getElementById(`perm-cfg-status-${i}`);
+    if (!input || !status) return;
+
     try {
-      const { valor } = await API.get('/config/umbral_compra_grande');
+      const { valor } = await API.get(`/config/${cfg.clave}`);
+      _umbralesActuales[cfg.clave] = Number(valor);
       input.value = Number(valor).toLocaleString('es-CO');
       status.innerHTML = `<span class="perm-cfg-current">Valor actual: <strong>${fmtCOP(valor)}</strong></span>`;
     } catch (e) {
       status.innerHTML = `<span style="color:var(--danger)">No se pudo cargar: ${e.message}</span>`;
     }
 
-    // Formato de miles al escribir
     if (window.SGIHelpers?.applyMoneyInput) {
       window.SGIHelpers.applyMoneyInput(input);
     } else {
@@ -512,13 +584,30 @@
         status.innerHTML = '<span style="color:var(--danger)">Ingresa un monto mayor a cero.</span>';
         return;
       }
+
+      // Mirror of the backend cross-check (POL-04): fail fast with a clear hint.
+      const otraClave = cfg.clave === 'umbral_caja_menor' ? 'umbral_compra_grande' : 'umbral_caja_menor';
+      const otro      = Number(_umbralesActuales[otraClave]);
+      if (Number.isFinite(otro)) {
+        if (cfg.clave === 'umbral_caja_menor' && valor >= otro) {
+          status.innerHTML = `<span style="color:var(--danger)">Debe ser menor que el umbral de compra grande (${fmtCOP(otro)}).</span>`;
+          return;
+        }
+        if (cfg.clave === 'umbral_compra_grande' && valor <= otro) {
+          status.innerHTML = `<span style="color:var(--danger)">Debe ser mayor que el tope de caja menor (${fmtCOP(otro)}).</span>`;
+          return;
+        }
+      }
+
       btn.disabled = true;
       const orig   = btn.innerHTML;
       btn.innerHTML = 'Guardando...';
       try {
-        const resp = await API.patch('/config/umbral_compra_grande', { valor });
+        const resp = await API.patch(`/config/${cfg.clave}`, { valor });
+        _umbralesActuales[cfg.clave] = Number(resp.valor);
         status.innerHTML = `<span class="perm-cfg-current">Actualizado: <strong>${fmtCOP(resp.valor)}</strong></span>`;
-        window.SGIUI?.toast(`Umbral actualizado a ${fmtCOP(resp.valor)}`, 'ok');
+        window.SGIUI?.toast(`Política actualizada: ${cfg.label.replace(' (COP)', '')} = ${fmtCOP(resp.valor)}`, 'ok');
+        refreshTierStrip();
       } catch (e) {
         status.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`;
       } finally {

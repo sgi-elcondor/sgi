@@ -10,8 +10,32 @@ const EDITABLE_KEYS = {
   umbral_compra_grande: {
     tipo: "number",
     validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
+    // POL-04: the three purchase tiers must never overlap.
+    validateRelated: async (v) => {
+      const caja = Number(await configService.get("umbral_caja_menor"));
+      return Number.isFinite(caja) && v <= caja
+        ? `Debe ser mayor que el tope de caja menor ($${caja.toLocaleString("es-CO")}); de lo contrario desaparecería la compra estándar.`
+        : null;
+    },
+  },
+  umbral_caja_menor: {
+    tipo: "number",
+    validate: (v) => Number.isFinite(v) && v > 0 ? null : "Debe ser un número positivo.",
+    validateRelated: async (v) => {
+      const grande = Number(await configService.get("umbral_compra_grande"));
+      return Number.isFinite(grande) && v >= grande
+        ? `Debe ser menor que el umbral de compra grande ($${grande.toLocaleString("es-CO")}); la doble firma nunca se salta.`
+        : null;
+    },
   },
 };
+
+// SEG-09: /config/:clave has a non-numeric param, so the permission middleware
+// (which only strips numeric segments) never matches its ROUTE_PERMISSIONS key.
+// Authorization for those routes must therefore be enforced here.
+function _puedeConfig(req, accion) {
+  return req.usuario?.rol === "admin" || req.usuario?.permisos?.has(`config:${accion}`);
+}
 
 // GET /api/v1/config
 async function listar(req, res) {
@@ -26,6 +50,9 @@ async function listar(req, res) {
 // GET /api/v1/config/:clave
 async function get(req, res) {
   try {
+    if (!_puedeConfig(req, "leer")) {
+      return res.status(403).json({ error: "No tienes permiso para consultar la configuración", requerido: "config:leer" });
+    }
     const value = await configService.get(req.params.clave);
     if (value === null) return res.status(404).json({ error: "Clave no encontrada" });
     return res.json({ clave: req.params.clave, valor: value });
@@ -37,6 +64,9 @@ async function get(req, res) {
 // PATCH /api/v1/config/:clave  Body: { valor }
 async function actualizar(req, res) {
   try {
+    if (!_puedeConfig(req, "actualizar")) {
+      return res.status(403).json({ error: "No tienes permiso para modificar la configuración", requerido: "config:actualizar" });
+    }
     const clave = req.params.clave;
     const rule  = EDITABLE_KEYS[clave];
     if (!rule) return res.status(400).json({ error: `La clave '${clave}' no es editable desde la API.` });
@@ -49,6 +79,9 @@ async function actualizar(req, res) {
     if (rule.tipo === "number") valor = Number(valor);
     const errValidacion = rule.validate ? rule.validate(valor) : null;
     if (errValidacion) return res.status(422).json({ error: errValidacion });
+
+    const errRelacion = rule.validateRelated ? await rule.validateRelated(valor) : null;
+    if (errRelacion) return res.status(422).json({ error: errRelacion });
 
     const previo = await configService.get(clave);
 

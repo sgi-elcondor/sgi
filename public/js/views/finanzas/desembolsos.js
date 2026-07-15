@@ -278,6 +278,7 @@ function renderHistorial() {
         <td class="req-td-actions">
           <div class="req-actions">
             ${r.comprobante_desembolso_url ? `<button class="btn btn-ghost btn-sm btn-des-comprobante" data-url="${r.comprobante_desembolso_url}" title="Ver comprobante">${icon("paperclip")}</button>` : ""}
+            <button class="btn btn-ghost btn-sm btn-des-trace" data-id="${r.id_requerimiento}" title="Trazabilidad">${icon("route")}</button>
             <button class="btn btn-ghost btn-sm btn-des-pdf" data-id="${r.id_requerimiento}" title="Ver PDF">${icon("file-text")}</button>
           </div>
         </td>
@@ -317,6 +318,8 @@ function renderHistorial() {
   tbody.addEventListener("click", e => {
     const comp = e.target.closest(".btn-des-comprobante");
     if (comp) { window.open(comp.dataset.url, "_blank"); return; }
+    const trace = e.target.closest(".btn-des-trace");
+    if (trace) { window.SGIReq?.abrirTrazabilidad?.(Number(trace.dataset.id)); return; }
     const pdf = e.target.closest(".btn-des-pdf");
     if (!pdf) return;
     const r = _desembolsados.find(x => String(x.id_requerimiento) === pdf.dataset.id);
@@ -375,6 +378,12 @@ function abrirModalDesembolso(r) {
             <input id="des-fecha" type="date" value="${hoy}" />
           </div>
           <div class="form-group form-group--full">
+            <label>Empresa aliada (proveedor)</label>
+            <input id="des-empresa" type="text" list="des-empresa-list"
+              placeholder="Busca por razón social o NIT (opcional)" autocomplete="off" />
+            <datalist id="des-empresa-list"></datalist>
+          </div>
+          <div class="form-group form-group--full">
             <label>Comprobante del pago *</label>
             <input id="des-comprobante" type="file" accept="image/*,application/pdf" />
             <div id="des-comprobante-status" class="rec-baucher-status"></div>
@@ -403,10 +412,16 @@ function abrirModalDesembolso(r) {
     document.getElementById("des-total").textContent = fmtMoney(Number(this.value) || 0);
   });
 
-  document.getElementById("des-submit").addEventListener("click", () => guardarDesembolso(r));
+  let empresaCtl = null;
+  if (window.SGIEmpresas?.wireEmpresaAutocomplete) {
+    window.SGIEmpresas.wireEmpresaAutocomplete("des-empresa", "des-empresa-list", null)
+      .then(ctl => { empresaCtl = ctl; });
+  }
+
+  document.getElementById("des-submit").addEventListener("click", () => guardarDesembolso(r, () => empresaCtl?.getId?.() ?? null));
 }
 
-async function guardarDesembolso(r) {
+async function guardarDesembolso(r, getEmpresaId) {
   const errorEl = document.getElementById("des-error");
   errorEl.style.display = "none";
 
@@ -444,6 +459,7 @@ async function guardarDesembolso(r) {
 
     const resp = await API.patch(`/requerimientos/${r.id_requerimiento}/desembolsar`, {
       valor, fecha, comprobante_url: upData.url, observaciones: obs || null,
+      id_empresa: getEmpresaId ? getEmpresaId() : null,
     });
 
     UI.closeModal();

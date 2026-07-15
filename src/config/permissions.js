@@ -131,6 +131,7 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/inventario/movimientos':            { recurso: 'inventario',     accion: 'leer' },
   'PATCH /api/v1/requerimientos/desembolsar':      { recurso: 'requerimientos', accion: 'desembolsar' },
   'GET /api/v1/requerimientos/autorizacion':       { recurso: 'recepciones',    accion: 'leer' },
+  'GET /api/v1/requerimientos/trazabilidad':       { recurso: 'requerimientos', accion: 'leer' },
   'PATCH /api/v1/requerimientos/entregar':         { recurso: 'recepciones',    accion: 'crear' },
   'PATCH /api/v1/requerimientos/aprobar-jefe':     { recurso: 'requerimientos', accion: 'aprobar_jefe' },
   'PATCH /api/v1/requerimientos/aprobar-final':    { recurso: 'requerimientos', accion: 'aprobar_final' },
@@ -141,10 +142,25 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/config':          { recurso: 'config', accion: 'leer' },
   'PATCH /api/v1/config':        { recurso: 'config', accion: 'actualizar' },
 
+  'GET /api/v1/empresas-aliadas':  { recurso: 'empresas_aliadas', accion: 'leer' },
+  'POST /api/v1/empresas-aliadas': { recurso: 'empresas_aliadas', accion: 'crear' },
+  'PUT /api/v1/empresas-aliadas':  { recurso: 'empresas_aliadas', accion: 'actualizar' },
+
   'GET /api/v1/respaldos':                  { recurso: 'respaldos', accion: 'leer' },
   'GET /api/v1/respaldos/descargar':        { recurso: 'respaldos', accion: 'leer' },
   'GET /api/v1/respaldos/restauraciones':   { recurso: 'respaldos', accion: 'leer' },
   'POST /api/v1/respaldos/restaurar':       { recurso: 'respaldos', accion: 'restaurar' },
+
+  // SEG-09: rutas que estaban montadas sin entrada (solo exigían token)
+  'GET /api/v1/lotes/disponibles':           { recurso: 'lotes',         accion: 'leer' },
+  'GET /api/v1/ventas/estado-financiero':    { recurso: 'dashboard',     accion: 'ver_operacion' },
+  'GET /api/v1/ventas/reportes/financiero':  { recurso: 'reportes',      accion: 'leer' },
+  'GET /api/v1/facturas/cuotas-sin-factura': { recurso: 'facturas',      accion: 'leer' },
+  'POST /api/v1/facturas/generar-pendientes': { recurso: 'facturas',     accion: 'crear' },
+  'GET /api/v1/reportes/cartera':            { recurso: 'reportes',      accion: 'leer' },
+  'GET /api/v1/reportes/recaudo':            { recurso: 'reportes',      accion: 'leer' },
+  'GET /api/v1/reportes/auditoria':          { recurso: 'auditoria_log', accion: 'leer' },
+  'POST /api/v1/reportes/mora-sync':         { recurso: 'reportes',      accion: 'mora_sync' },
 
 };
 
