@@ -153,13 +153,10 @@ async function create(req, res) {
       referencia: reqCreado.numero,
     }).catch(() => {});
 
-    // Notify jefes de área. Best-effort: the requerimiento is already saved,
-    // so an email failure must never fail the request.
-    try {
-      await notificarJefes(reqCreado, req.usuario, items.length);
-    } catch (e) {
-      console.error("[requerimientos] No se pudo notificar a jefes:", e.message);
-    }
+    // Notify jefes de área. Fire-and-forget (RN-28): the requerimiento is already
+    // saved and the response must never wait on SMTP.
+    const itemsCount = items.length;
+    _emailsBackground("nuevo_requerimiento", () => notificarJefes(reqCreado, req.usuario, itemsCount));
 
     const [umbral, umbralCaja] = await Promise.all([_umbralCompraGrande(), _umbralCajaMenor()]);
     const grande = _esCompraGrande(reqCreado.valor_total, umbral);
@@ -1119,7 +1116,7 @@ async function rechazar(req, res) {
       referencia: r.numero,
     }).catch(() => {});
 
-    try {
+    _emailsBackground("rechazo", async () => {
       const solicitante = await _emailDeUsuario(r.id_solicitante);
       await _notificar([solicitante], {
         asunto:  `Tu requerimiento ${r.numero} fue rechazado — El Cóndor`,
@@ -1129,7 +1126,7 @@ async function rechazar(req, res) {
         valor_total: r.valor_total,
         motivo,
       });
-    } catch (e) { console.error("[requerimientos] Notificación de rechazo falló:", e.message); }
+    });
 
     return res.json({ ok: true, numero: r.numero, estado: "rechazado" });
   } catch (err) {
@@ -1302,7 +1299,7 @@ async function desembolsar(req, res) {
       referencia: r.numero,
     }).catch(() => {});
 
-    try {
+    _emailsBackground("desembolso", async () => {
       const almacenistas = await _emailsDeRol("almacenista");
       const solicitante  = await _emailDeUsuario(r.id_solicitante);
       await _notificar(almacenistas, {
@@ -1319,7 +1316,7 @@ async function desembolsar(req, res) {
         numero:  r.numero,
         valor_total: valor,
       });
-    } catch (e) { console.error("[requerimientos] Notificación de desembolso falló:", e.message); }
+    });
 
     return res.json({ ok: true, numero: r.numero, estado: "desembolsado", id_gasto: idGasto, gasto_warning: gastoWarning });
   } catch (err) {
@@ -1461,7 +1458,7 @@ async function entregar(req, res) {
       referencia: r.numero,
     }).catch(() => {});
 
-    try {
+    _emailsBackground("entrega", async () => {
       const solicitante = await _emailDeUsuario(r.id_solicitante);
       await _notificar([solicitante], {
         asunto:  `Tu requerimiento ${r.numero} fue entregado — El Cóndor`,
@@ -1469,7 +1466,7 @@ async function entregar(req, res) {
         mensaje: `El almacenista entregó el material de tu requerimiento <strong>${r.numero}</strong> (${r.descripcion})${receptor ? ` a <strong>${receptor}</strong>` : ""}. Con esto el proceso queda completo.`,
         numero:  r.numero,
       });
-    } catch (e) { console.error("[requerimientos] Notificación de entrega falló:", e.message); }
+    });
 
     return res.json({ ok: true, numero: r.numero, estado: "entregado" });
   } catch (err) {

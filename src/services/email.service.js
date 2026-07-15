@@ -1,14 +1,52 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
-  port:   587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Gmail SMTP from a PaaS (Railway) can hang or be blocked on one egress port while the
+// other works. Two transports are kept — STARTTLS on 587 and implicit TLS on 465 — and
+// every send tries the primary first and retries once over the alternate on connection
+// failures. Short timeouts guarantee a blocked port fails in seconds instead of holding
+// the caller for the nodemailer defaults (minutes).
+const SMTP_TIMEOUTS = {
+  connectionTimeout: 10000,
+  greetingTimeout:   10000,
+  socketTimeout:     20000,
+};
+
+function crearTransporte(port) {
+  return nodemailer.createTransport({
+    host:   'smtp.gmail.com',
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    ...SMTP_TIMEOUTS,
+  });
+}
+
+const PUERTO_PRIMARIO = Number(process.env.SMTP_PORT) || 587;
+const PUERTO_ALTERNO  = PUERTO_PRIMARIO === 465 ? 587 : 465;
+
+const transportePrimario = crearTransporte(PUERTO_PRIMARIO);
+const transporteAlterno  = crearTransporte(PUERTO_ALTERNO);
+
+async function _send(mail) {
+  try {
+    const info = await transportePrimario.sendMail(mail);
+    console.log(`[email] enviado a ${mail.to} (puerto ${PUERTO_PRIMARIO}): ${mail.subject}`);
+    return info;
+  } catch (e1) {
+    console.error(`[email] fallo puerto ${PUERTO_PRIMARIO} (${e1.code || e1.message}) — reintentando por ${PUERTO_ALTERNO}`);
+    try {
+      const info = await transporteAlterno.sendMail(mail);
+      console.log(`[email] enviado a ${mail.to} (puerto ${PUERTO_ALTERNO}): ${mail.subject}`);
+      return info;
+    } catch (e2) {
+      console.error(`[email] fallo definitivo a ${mail.to}: ${e2.code || ''} ${e2.message}`);
+      throw e2;
+    }
+  }
+}
 
 // Escapes values interpolated into the HTML email bodies. The data is internal (DB / Firebase),
 // but escaping keeps a stray '<', '&' or quote in a name/proyecto/lote from corrupting the markup.
@@ -19,7 +57,7 @@ function esc(v) {
 }
 
 async function sendPasswordResetEmail(to, resetLink) {
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: 'Restablece tu contraseña — El Cóndor',
@@ -87,7 +125,7 @@ async function sendCompraConfirmacionEmail(to, datos) {
   const loteTxt  = esc(codigo_lote || '—');
   const cuotasTxt = total_cuotas ? `${total_cuotas} cuotas` : 'plan de pago disponible';
 
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: '¡Compra confirmada! Tu cuenta ahora es de comprador — El Cóndor',
@@ -178,7 +216,7 @@ async function sendRequerimientoNuevoEmail(to, datos) {
   const urg    = URGENCIA_STYLE[urgencia] || URGENCIA_STYLE.media;
   const portal = 'https://sgi.somoselcondor.com';
 
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: `Nuevo requerimiento ${numero} pendiente de tu revisión — El Cóndor`,
@@ -241,7 +279,7 @@ async function sendRequerimientoEstadoEmail(to, datos) {
       <tr><td style="padding:0 18px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#7f1d1d;line-height:1.5;">${motivo}</td></tr>
     </table>` : '';
 
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: asunto,
@@ -299,7 +337,7 @@ async function sendLogin2FACodigo(to, { codigo, expiraMinutos, esPrimeraConfigur
     ? 'Tu cuenta tiene un rol con acceso a información sensible, así que a partir de ahora cada inicio de sesión te va a pedir este código adicional. Ingrésalo para activar la verificación en dos pasos y continuar.'
     : 'Ingresa este código para completar tu inicio de sesión.';
 
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: esPrimeraConfiguracion ? 'Activa tu verificación en dos pasos — El Cóndor' : `Tu código de verificación es ${codigo} — El Cóndor`,
@@ -345,7 +383,7 @@ async function sendLogin2FACodigo(to, { codigo, expiraMinutos, esPrimeraConfigur
 // Applies to every role — cheap signal that costs nothing on a normal day and gives a user a
 // chance to react if it wasn't them, even on roles that don't have 2FA (SEG-04).
 async function sendNuevoLoginEmail(to, { ip, fecha, userAgent }) {
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: 'Nuevo inicio de sesión en tu cuenta — El Cóndor',
@@ -397,7 +435,7 @@ async function sendNuevoLoginEmail(to, { ip, fecha, userAgent }) {
 // write (assigning the admin role, deactivating/reactivating an account). Reuses the same
 // email-OTP mechanism as SEG-04 login, just with copy that names the specific action.
 async function sendStepUpCodigo(to, { codigo, expiraMinutos, accion }) {
-  await transporter.sendMail({
+  await _send({
     from:    `"El Cóndor · SGI" <${process.env.SMTP_USER}>`,
     to,
     subject: `Confirma esta acción: ${codigo} — El Cóndor`,
