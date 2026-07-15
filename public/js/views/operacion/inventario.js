@@ -6,8 +6,9 @@ const icon     = (name) => window.SGIUI?.icon(name) ?? "";
 const fmtQty   = n => Number(n || 0).toLocaleString("es-CO", { maximumFractionDigits: 2 });
 const fmtFecha = ts => ts ? new Date(ts).toLocaleDateString("es-CO") : "—";
 
-let _stock = [];
-const _f   = { q: "", cat: "", proy: "", agotados: false };
+let _stock    = [];
+let _visibles = [];
+const _f      = { q: "", cat: "", proy: "", agotados: false };
 
 window.inventarioView = async function () {
   const vc = document.getElementById("viewContainer");
@@ -119,8 +120,6 @@ window.inventarioView = async function () {
         </td>
       </tr>`;
   }
-
-  let _visibles = [];
 
   function aplicarFiltros() {
     const q    = (document.getElementById("inv-buscar").value || "").trim();
