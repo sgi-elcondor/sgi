@@ -1,5 +1,7 @@
-﻿// Mapa: mÃ©todo HTTP + ruta completa desde raÃ­z â†’ { recurso, accion }
-// Usar req.originalUrl (no req.path) en el middleware para que coincidan con /api/v1/...
+﻿// Map: HTTP method + full path from root -> { recurso, accion }
+// The middleware builds the key from req.originalUrl (not req.path) so it keeps
+// the /api/v1 prefix, and strips numeric segments only: a route with a
+// non-numeric param never matches here and must authorize in its controller.
 const ROUTE_PERMISSIONS = {
   'GET /api/v1/usuarios':              { recurso: 'usuarios',      accion: 'leer' },
   'POST /api/v1/usuarios':             { recurso: 'usuarios',      accion: 'crear' },

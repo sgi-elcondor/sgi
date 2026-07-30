@@ -127,7 +127,7 @@ app.use('/dist', express.static(path.join(__dirname, "..", "public", "dist"), {
 
 app.use(express.static(path.join(__dirname, "..", "public"), { extensions: ['html'] }));
 
-// Servir favicon.ico sin requerir token â€” evita 401
+// Serve favicon.ico without a token to avoid a 401 on the browser's automatic request.
 app.get('/favicon.ico', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'src', 'img', 'favicon.svg'));
 });
@@ -184,7 +184,8 @@ app.use('/api/v1/config',         require('./routes/config.routes'));
 app.use('/api/v1/respaldos',      require('./routes/respaldos.routes'));
 app.use('/api/v1/empresas-aliadas', require('./routes/empresas_aliadas.routes'));
 
-// â”€â”€ Protege ruta wildcard y sirve index.html para frontend con token vÃ¡lido â€”------
+// SPA wildcard: any other path serves the app shell; auth happens client-side
+// and every /api/v1 call is validated by the middlewares above.
 app.get("*", (req, res) => {
   res.sendFile(APP_INDEX);
 });
