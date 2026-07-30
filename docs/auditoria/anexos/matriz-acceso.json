@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T00:29:25.233Z",
+  "generated_at": "2026-07-30T00:44:28.374Z",
   "roles": [
     {
       "rol": "admin",
@@ -480,45 +480,6 @@
       ]
     },
     {
-      "rol": "asesor_comercial",
-      "acceso_total": false,
-      "permisos": [
-        "auditoria_log:leer",
-        "comisionistas:leer",
-        "compradores:actualizar",
-        "compradores:crear",
-        "compradores:leer",
-        "dashboard:ver_operacion",
-        "lotes:leer",
-        "mi_cuenta:leer",
-        "proyectos:leer",
-        "uploads:avatar",
-        "ventas:crear",
-        "ventas:leer",
-        "ventas:solicitar",
-        "vista:compradores",
-        "vista:dashboard",
-        "vista:lotes",
-        "vista:proyectos",
-        "vista:ventas"
-      ],
-      "permisos_total": 18,
-      "vistas_alcanzables": [
-        "dashboard",
-        "proyectos",
-        "lotes",
-        "compradores",
-        "ventas",
-        "comisionistas",
-        "auditoria",
-        "juridico",
-        "personal",
-        "requerimientos",
-        "el-proyecto",
-        "mapa-editor"
-      ]
-    },
-    {
       "rol": "comprador",
       "acceso_total": false,
       "permisos": [
@@ -554,6 +515,43 @@
         "mis-cuotas",
         "mis-facturas",
         "mis-recibos",
+        "el-proyecto",
+        "mapa-editor"
+      ]
+    },
+    {
+      "rol": "asesor_comercial",
+      "acceso_total": false,
+      "permisos": [
+        "comisionistas:leer",
+        "compradores:actualizar",
+        "compradores:crear",
+        "compradores:leer",
+        "dashboard:ver_operacion",
+        "lotes:leer",
+        "mi_cuenta:leer",
+        "proyectos:leer",
+        "uploads:avatar",
+        "ventas:crear",
+        "ventas:leer",
+        "ventas:solicitar",
+        "vista:compradores",
+        "vista:dashboard",
+        "vista:lotes",
+        "vista:proyectos",
+        "vista:ventas"
+      ],
+      "permisos_total": 17,
+      "vistas_alcanzables": [
+        "dashboard",
+        "proyectos",
+        "lotes",
+        "compradores",
+        "ventas",
+        "comisionistas",
+        "juridico",
+        "personal",
+        "requerimientos",
         "el-proyecto",
         "mapa-editor"
       ]

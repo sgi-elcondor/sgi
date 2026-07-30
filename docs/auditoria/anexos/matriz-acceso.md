@@ -1,6 +1,6 @@
 # Anexo F · Matriz de acceso efectiva (rol × vistas × permisos)
 
-_Derivada de condor.rol_permiso el 2026-07-30T00:29:25.234Z._
+_Derivada de condor.rol_permiso el 2026-07-30T00:44:28.376Z._
 
 | Rol | Permisos | Vistas alcanzables |
 |---|---|---|
@@ -9,8 +9,8 @@ _Derivada de condor.rol_permiso el 2026-07-30T00:29:25.234Z._
 | gerencia | 65 | proyectos, lotes, compradores, ventas, cuotas, pagos, comisionistas, facturas, recibos, reportes, auditoria, usuarios, roles, juridico, personal, gastos, recepciones, empresas-aliadas, requerimientos, aprobaciones, desembolsos, el-proyecto, mapa-editor |
 | auxiliar_contable | 64 | dashboard, proyectos, lotes, compradores, ventas, cuotas, pagos, comisionistas, facturas, recibos, reportes, auditoria, usuarios, juridico, personal, gastos, recepciones, empresas-aliadas, requerimientos, desembolsos, bank-transactions, payment-validation, el-proyecto, mapa-editor |
 | juridico | 22 | dashboard, proyectos, lotes, compradores, ventas, cuotas, pagos, reportes, juridico, personal, requerimientos, el-proyecto, mapa-editor |
-| asesor_comercial | 18 | dashboard, proyectos, lotes, compradores, ventas, comisionistas, auditoria, juridico, personal, requerimientos, el-proyecto, mapa-editor |
 | comprador | 17 | proyectos, lotes, ventas, pagos, recibos, gastos, recepciones, requerimientos, desembolsos, mis-cuotas, mis-facturas, mis-recibos, el-proyecto, mapa-editor |
+| asesor_comercial | 17 | dashboard, proyectos, lotes, compradores, ventas, comisionistas, juridico, personal, requerimientos, el-proyecto, mapa-editor |
 | comisionista | 11 | dashboard, proyectos, lotes, ventas, requerimientos, el-proyecto, mapa-editor |
 | almacenista | 8 | pagos, gastos, recepciones, requerimientos, aprobaciones, desembolsos |
 | topografo | 6 | proyectos, lotes, ventas, requerimientos, el-proyecto, mapa-editor |
@@ -46,15 +46,15 @@ _Derivada de condor.rol_permiso el 2026-07-30T00:29:25.234Z._
 - **Vistas:** dashboard, proyectos, lotes, compradores, ventas, cuotas, pagos, reportes, juridico, personal, requerimientos, el-proyecto, mapa-editor
 - **Permisos (22):** alertas_jur:leer, compradores:leer, cuotas:leer, dashboard:ver_juridico, lotes:actualizar, lotes:leer, mi_cuenta:leer, notificaciones_jur:generar, notificaciones_jur:leer, notificaciones_jur:reenviar, observaciones_jur:crear, observaciones_jur:leer, pagos:leer, proyectos:actualizar, proyectos:leer, uploads:avatar, ventas:leer, vista:dashboard, vista:juridico, vista:lotes, vista:proyectos, vista:ventas
 
-### asesor_comercial
-
-- **Vistas:** dashboard, proyectos, lotes, compradores, ventas, comisionistas, auditoria, juridico, personal, requerimientos, el-proyecto, mapa-editor
-- **Permisos (18):** auditoria_log:leer, comisionistas:leer, compradores:actualizar, compradores:crear, compradores:leer, dashboard:ver_operacion, lotes:leer, mi_cuenta:leer, proyectos:leer, uploads:avatar, ventas:crear, ventas:leer, ventas:solicitar, vista:compradores, vista:dashboard, vista:lotes, vista:proyectos, vista:ventas
-
 ### comprador
 
 - **Vistas:** proyectos, lotes, ventas, pagos, recibos, gastos, recepciones, requerimientos, desembolsos, mis-cuotas, mis-facturas, mis-recibos, el-proyecto, mapa-editor
 - **Permisos (17):** lotes:leer, mis_cuotas:leer, mis_facturas:crear, mis_facturas:leer, mis_pagos:crear, mis_pagos:leer, mis_recibos:leer, mis_ventas:leer, proyectos:leer, recibos:crear, recibos:leer, uploads:crear, vista:dashboard, vista:el-proyecto, vista:mis-cuotas, vista:mis-facturas, vista:mis-recibos
+
+### asesor_comercial
+
+- **Vistas:** dashboard, proyectos, lotes, compradores, ventas, comisionistas, juridico, personal, requerimientos, el-proyecto, mapa-editor
+- **Permisos (17):** comisionistas:leer, compradores:actualizar, compradores:crear, compradores:leer, dashboard:ver_operacion, lotes:leer, mi_cuenta:leer, proyectos:leer, uploads:avatar, ventas:crear, ventas:leer, ventas:solicitar, vista:compradores, vista:dashboard, vista:lotes, vista:proyectos, vista:ventas
 
 ### comisionista
 

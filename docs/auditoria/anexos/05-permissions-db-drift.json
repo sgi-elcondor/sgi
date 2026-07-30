@@ -1,7 +1,7 @@
 {
   "script": "05-permissions-db-drift",
   "title": "Anexo E · Modelo de autorización: código vs. base de datos",
-  "generated_at": "2026-07-30T00:29:25.234Z",
+  "generated_at": "2026-07-30T00:44:28.377Z",
   "counts": {
     "P0": 0,
     "P1": 0,
@@ -113,7 +113,7 @@
   ],
   "stats": {
     "permisos_en_bd": 118,
-    "concesiones": 391,
+    "concesiones": 390,
     "roles_en_bd": 14,
     "permisos_exigidos_por_rutas": 79,
     "permisos_en_vista_api_map": 77,
