@@ -55,7 +55,7 @@ Hay dos tipos de URL públicas (sin token): la landing `/` (`public/proyectos.ht
 | Build producción | esbuild 0.28 (concat de classic scripts + bundle de módulos ESM + hash) |
 | Dev experience   | nodemon + livereload (en `NODE_ENV !== 'production'`)         |
 | Tests            | Jest 30 (`testEnvironment: node`)                             |
-| Otros            | compression, cors, multer (memoria, baucher 8 MB / avatar 5 MB), streamifier, jsonwebtoken, dotenv |
+| Otros            | compression, cors, multer (memoria, baucher 8 MB / avatar 5 MB), streamifier, dotenv |
 
 Scripts npm:
 - `npm run dev` — nodemon sobre `src/index.js` (con livereload).
@@ -221,7 +221,11 @@ build.mjs                          # esbuild: concat classic + bundle ESM + hash
 | `auditoria`            | Bitácora de cambios sensibles.                                    |
 
 ### Vistas SQL leídas por el backend
-`v_aux_panel_operaciones_diarias`, `vw_cartera_consolidada`, `vw_alertas_juridicas`, `vw_dir_cartera_resumen_hoy`, `vw_dir_recaudo_facturacion_historico`, `vw_dir_comisiones_resumen`, `vw_cartera_juridica`, `vw_auditoria_basica_operaciones`, `vw_comisiones_causadas`.
+`v_aux_panel_operaciones_diarias`, `vw_cartera_consolidada`, `vw_alertas_juridicas`, `vw_dir_cartera_resumen_hoy`, `vw_dir_recaudo_facturacion_historico`, `vw_dir_comisiones_resumen`, `vw_cartera_juridica`, `vw_auditoria_basica_operaciones`.
+
+> **`vw_comisiones_causadas` no la lee el backend** (ninguna consulta la referencia). Existen además en `condor` cuatro vistas y dos tablas que ningún código toca: `vw_auditoria_juridica`, `vw_dir_auditoria`, `vw_dir_recaudo_facturacion_hoy`, `vw_disponibilidad_comercial`, `whatsapp_conversacion`, `whatsapp_mensaje`. Ver `docs/auditoria/anexos/04-db-vs-code.md`.
+>
+> **Ojo con los RPC:** `actualizar_mora()` vive en `condor` y se invoca con `.schema('condor')`, pero `next_consecutivo_condor()` vive en **`public`** y se invoca **sin** `.schema()`. Es la única excepción a la regla 3; cambiarla rompe todas las numeraciones.
 
 ### RPC de Supabase invocados
 - `next_consecutivo_condor(p_prefijo, p_periodo)` — secuencias centralizadas.
@@ -476,7 +480,7 @@ Otras invariantes:
 - `APP_URL` *(opcional; usado por `sendCompraConfirmacionEmail` para construir el link al portal del comprador. Default: `https://sgi.somoselcondor.com`).*
 - `PORT` (default 3000), `NODE_ENV` (`production` activa el index hasheado y desactiva livereload).
 
-> **No existe `.env.example`** en el repo; el `.env` real está fuera de `git` (verificado).
+> El repo **sí incluye `.env.example`**; el `.env` real está fuera de `git` (verificado). `SMTP_USER`/`SMTP_PASS` y `APP_URL` pueden faltar en un `.env` local: el envío de correo falla de forma no fatal, pero conviene saberlo al probar flujos que notifican por email.
 
 ---
 
@@ -506,7 +510,7 @@ Otras invariantes:
 - **Tema**: `applyTheme('light'|'dark'|'system')`. Estado en `localStorage.sgi_theme`.
 - **Iconos**: `<i data-lucide="nombre">` y `window.SGIUI.hydrate()` para refrescar tras inyectar HTML.
 - **Globales expuestos**: `navigate`, `applyTheme`, `humanizeRole`, `setActiveNav`, `setViewTitle`, `currentUser`, `currentViewKey`, `_firebaseAuth`, `_authReady`, `SGIUI`, `SGISearch`, `SGIHelpers`, `SGILive` (SSE), `SGINotif` (campanita).
-- **Tiempo real**: para reaccionar a cambios en requerimientos, escuchar `document.addEventListener('sgi:requerimiento', e => {...})`. `SGILive.init()` se llama una sola vez desde `iniciarApp` en `app.js`.
+- **Tiempo real**: `SGILive` (en `components/live-updates.js`) **no emite CustomEvents**. Mantiene el mapa `LIVE_VIEWS` (hoy: `requerimientos`, `aprobaciones`, `desembolsos`, `recepciones`) y, al llegar un evento SSE, invoca directamente `window[<vistaView>]()` con debounce de 400 ms, refresca los badges del sidebar y muestra un toast si el cambio lo hizo otro usuario. Para que una vista nueva reaccione en vivo hay que **añadirla a `LIVE_VIEWS`**. `SGILive.init()` se llama una sola vez desde `iniciarApp` en `app.js`. Si SSE falla 6 veces, degrada a polling cada 30 s.
 
 ### CSS
 
@@ -543,20 +547,20 @@ main          ← merge al cerrar Sprint
 
 ## Roles del sistema
 
-Catálogo definido en `condor.roles`. El backend identifica además `asesor_comercial` (alias de `asesor` para el endpoint público) y `auditoria`.
+Catálogo definido en `condor.roles`: **14 roles reales** (verificado contra BD el 2026-07-29). El nombre almacenado es `asesor_comercial`; `asesor` es sólo el alias que usa el endpoint público. **No existe un rol `auditoria`**: la supervisión se ejerce con el permiso `auditoria_log:leer`, otorgado a `admin`, `dueno`, `gerencia` y `auxiliar_contable`.
 
 | Rol                   | Acceso principal                                                       |
 | --------------------- | ---------------------------------------------------------------------- |
 | `admin`               | Bypass total (no necesita entradas en `rol_permiso`).                  |
 | `usuario`             | **Rol por defecto** auto-asignado en el primer login/registro Firebase. Requiere email verificado (RN-25). Catálogo público. Se promociona a `comprador` al concretar venta (RN-23). |
 | `auxiliar_contable`   | Operación completa: ventas, pagos, recibos, facturas, ajustes.         |
-| `asesor` / `asesor_comercial` | Crea ventas como `pendiente_autorizacion`.                     |
+| `asesor_comercial`    | Crea ventas como `pendiente_autorizacion`. Alias público: `asesor`.     |
+| `topografo`           | Edición cartográfica: geometría de lotes y ubicación de proyectos (MAP-*). |
 | `gerencia`            | Reportes consolidados + **aprobación final de requerimientos** (REQ-03) en compras chicas + **co-firma de compras grandes** (POL-02, permiso `requerimientos:aprobar_gerencia`). |
 | `dueno`               | Dueño del negocio (POL-02). Perfil **supervisor**: lectura amplia de todo lo que involucra dinero (cartera, gastos, banco, comisiones), operación (proyectos, lotes, ventas, compradores), auditoría, personal, jurídico, reportes directivos y portal comprador. Escritura estratégica mínima: firma compras chicas (`aprobar_final`) y grandes (`aprobar_dueno`), crea sus propios requerimientos, ajusta el `umbral_compra_grande` desde Permisos (`config:actualizar`), sube archivos. **No opera el día a día** (no crea ventas, no acepta pagos, no registra gastos/desembolsos/recepciones, no edita usuarios ni permisos). |
 | `juridico`            | Sólo `ventas` en `pre_mora` o `en_mora`; observaciones jurídicas.      |
 | `comisionista`        | Sus propias comisiones y micropagos.                                   |
 | `comprador`           | `mis-ventas`, `mis-cuotas`, `mis-facturas`, `mis-pagos`, `mis-recibos`.|
-| `auditoria`           | Supervisa trazabilidad (vistas y reportes auditados).                  |
 | `peticionario`        | Crea requerimientos de materiales/servicios (REQ-01). Ve `mis-requerimientos`. |
 | `jefe_area`           | Aprobación de primer nivel (REQ-02): `pendiente_jefe → aprobado_jefe`. |
 | `tesorero`            | Desembolso (REQ-04): registra el pago, sube comprobante y crea `gasto` automático. |
