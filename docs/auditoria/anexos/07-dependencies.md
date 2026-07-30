@@ -1,6 +1,6 @@
 # Anexo H · Vulnerabilidades en dependencias de producción
 
-_Generado por `tools/audit/07-dependencies.js` el 2026-07-30T01:54:48.242Z._
+_Generado por `tools/audit/07-dependencies.js` el 2026-07-30T02:03:07.264Z._
 
 **Resumen:** P0=0 · P1=0 · P2=8 · INFO=0
 

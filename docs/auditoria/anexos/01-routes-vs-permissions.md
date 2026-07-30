@@ -1,6 +1,6 @@
 # Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS
 
-_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T01:54:41.611Z._
+_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T02:03:03.157Z._
 
 **Resumen:** P0=0 · P1=0 · P2=6 · INFO=17
 

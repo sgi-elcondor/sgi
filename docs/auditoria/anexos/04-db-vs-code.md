@@ -1,6 +1,6 @@
 # Anexo D · Consultas del backend vs. esquema real de la base de datos
 
-_Generado por `tools/audit/04-db-vs-code.js` el 2026-07-30T01:54:44.109Z._
+_Generado por `tools/audit/04-db-vs-code.js` el 2026-07-30T02:03:04.496Z._
 
 **Resumen:** P0=0 · P1=0 · P2=0 · INFO=6
 
