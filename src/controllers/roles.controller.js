@@ -18,7 +18,6 @@ const VISTA_API_MAP = {
   'facturas':      ['facturas:leer', 'facturas:crear', 'facturas:actualizar'],
   'recibos':       ['recibos:leer', 'recibos:crear'],
   'reportes':      ['reportes:leer', 'reportes_dir:leer', 'alertas_jur:leer'],
-  'alertas':       ['alertas_jur:leer'],
   'auditoria':     ['auditoria_log:leer'],
   'respaldos':     ['respaldos:leer', 'respaldos:restaurar'],
   'usuarios':      ['usuarios:leer', 'usuarios:crear', 'usuarios:actualizar'],
