@@ -3,7 +3,7 @@
 const { insert, query } = require('./lib/batch');
 const { pick, randInt, maybe, shuffle } = require('./lib/rng');
 const { fullName, cedula, phone, email, city } = require('./lib/names');
-const { v4: uuid } = require('uuid');
+const { randomUUID: uuid } = require('crypto');
 
 const COMPRADORES_DEF = [
   // [gender, tipo_persona, profile]
