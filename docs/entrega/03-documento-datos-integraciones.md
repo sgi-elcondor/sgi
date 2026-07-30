@@ -4,23 +4,37 @@
 
 **Versión 1.0 — Entrega final**
 
+Preparado para **El Cóndor S. A. S.**
+
+Elaborado por el equipo de desarrollo del SGI:
 Juan Manuel Candela Toro, Jabes Esteban Monroy Becerra,
 Juan David Barco Ruiz y Juan Manuel Díaz Gómez
-
-Universidad Nacional de Colombia
-
-Ingeniería de Software
-
-[Nombre del docente]
 
 29 de julio de 2026
 
 ---
 
-> **Nota sobre el formato.** Este documento sigue las normas APA en su séptima
-> edición (American Psychological Association, 2020). El diccionario de datos se
-> entrega como anexo generado automáticamente desde el esquema vigente, decisión
-> metodológica que se justifica en la sección correspondiente.
+### Control del documento
+
+| Campo | Valor |
+|---|---|
+| Código | SGI-DOC-DAT-01 |
+| Versión | 1.0 |
+| Fecha de emisión | 29 de julio de 2026 |
+| Estado | Emitido para entrega |
+| Clasificación | **Confidencial.** Describe la estructura de datos y las dependencias de credenciales |
+| Elaborado por | Equipo de desarrollo del SGI |
+| Revisado por | Product Owner (J. E. Monroy Becerra) |
+| Aprobado por | Pendiente de aceptación del área de TI |
+| Documentos relacionados | SGI-DOC-FUN-01, SGI-DOC-ARQ-01 |
+
+---
+
+> **Nota sobre el formato.** Este documento aplica las convenciones de la séptima
+> edición del manual de estilo APA (American Psychological Association, 2020) para
+> tablas, figuras, citas y referencias. El diccionario de datos se entrega como
+> anexo generado automáticamente desde el esquema vigente, decisión metodológica
+> que se justifica en la sección correspondiente.
 
 ---
 

@@ -4,26 +4,40 @@
 
 **Versión 1.0 — Entrega final**
 
+Preparado para **El Cóndor S. A. S.**
+
+Elaborado por el equipo de desarrollo del SGI:
 Juan Manuel Candela Toro, Jabes Esteban Monroy Becerra,
 Juan David Barco Ruiz y Juan Manuel Díaz Gómez
-
-Universidad Nacional de Colombia
-
-Ingeniería de Software
-
-[Nombre del docente]
 
 29 de julio de 2026
 
 ---
 
-> **Nota sobre el formato.** Este documento sigue las normas APA en su séptima
-> edición (American Psychological Association, 2020). La descripción
-> arquitectónica se organiza en vistas, conforme al enfoque que normaliza la
-> ISO/IEC/IEEE 42010 (International Organization for Standardization, 2011) y que
-> populariza el modelo C4 (Brown, 2018). Los diagramas se expresan en sintaxis
-> Mermaid y van acompañados de su interpretación en prosa, de modo que el
-> documento se comprende también sin renderizarlos.
+### Control del documento
+
+| Campo | Valor |
+|---|---|
+| Código | SGI-DOC-ARQ-01 |
+| Versión | 1.0 |
+| Fecha de emisión | 29 de julio de 2026 |
+| Estado | Emitido para entrega |
+| Clasificación | Uso interno de El Cóndor S. A. S. |
+| Elaborado por | Equipo de desarrollo del SGI |
+| Revisado por | Scrum Master (J. M. Candela Toro) |
+| Aprobado por | Pendiente de aceptación del área de TI |
+| Documentos relacionados | SGI-DOC-FUN-01, SGI-DOC-DAT-01 |
+
+---
+
+> **Nota sobre el formato.** Este documento aplica las convenciones de la séptima
+> edición del manual de estilo APA (American Psychological Association, 2020) para
+> tablas, figuras, citas y referencias. La descripción arquitectónica se organiza
+> en vistas, conforme al enfoque que normaliza la ISO/IEC/IEEE 42010
+> (International Organization for Standardization, 2011) y que populariza el
+> modelo C4 (Brown, 2018). Los diagramas se expresan en sintaxis Mermaid y van
+> acompañados de su interpretación en prosa, de modo que el documento se comprende
+> también sin renderizarlos.
 
 ---
 
@@ -67,8 +81,8 @@ arquitectura es el conjunto de decisiones que resulta costoso revertir; en
 consecuencia, el valor de este documento no está en enumerar tecnologías sino en
 explicar por qué se eligieron y qué se rompe si se cambian.
 
-El documento se dirige al equipo de desarrollo entrante, al equipo de
-infraestructura que operará el despliegue y al evaluador académico. Presupone
+El documento se dirige al equipo de desarrollo entrante, al área de TI que operará
+el despliegue y a quien deba auditar técnicamente la solución. Presupone
 familiaridad con desarrollo web y con bases de datos relacionales, pero no con
 este sistema en particular.
 

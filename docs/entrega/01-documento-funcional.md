@@ -4,24 +4,37 @@
 
 **Versión 1.0 — Entrega final**
 
+Preparado para **El Cóndor S. A. S.**
+
+Elaborado por el equipo de desarrollo del SGI:
 Juan Manuel Candela Toro, Jabes Esteban Monroy Becerra,
 Juan David Barco Ruiz y Juan Manuel Díaz Gómez
-
-Universidad Nacional de Colombia
-
-Ingeniería de Software
-
-[Nombre del docente]
 
 29 de julio de 2026
 
 ---
 
-> **Nota sobre el formato.** Este documento sigue las normas APA en su séptima
-> edición (American Psychological Association, 2020) para la jerarquía de títulos,
+### Control del documento
+
+| Campo | Valor |
+|---|---|
+| Código | SGI-DOC-FUN-01 |
+| Versión | 1.0 |
+| Fecha de emisión | 29 de julio de 2026 |
+| Estado | Emitido para entrega |
+| Clasificación | Uso interno de El Cóndor S. A. S. |
+| Elaborado por | Equipo de desarrollo del SGI |
+| Revisado por | Product Owner (J. E. Monroy Becerra) |
+| Aprobado por | Pendiente de aceptación del área usuaria |
+| Documentos relacionados | SGI-DOC-ARQ-01, SGI-DOC-DAT-01 |
+
+---
+
+> **Nota sobre el formato.** Este documento aplica las convenciones de la séptima
+> edición del manual de estilo APA (American Psychological Association, 2020) para
 > la numeración y titulación de tablas y figuras, las citas en el texto y la lista
-> de referencias. Los campos entre corchetes deben completarse con los datos
-> definitivos de la asignatura antes de la entrega formal.
+> de referencias, con el fin de que toda fuente técnica invocada sea verificable
+> por el lector.
 
 ---
 
@@ -93,7 +106,7 @@ funcional.
 | Product Owner y área usuaria | Validar que lo construido corresponde a lo solicitado |
 | Equipo de desarrollo entrante | Comprender el comportamiento esperado antes de modificar código |
 | Control interno y auditoría | Identificar qué operaciones dejan rastro y bajo qué reglas |
-| Docente evaluador | Verificar la completitud y trazabilidad de la especificación |
+| Dirección de El Cóndor S. A. S. | Verificar que el alcance entregado corresponde a lo acordado |
 
 ### Convenciones
 
