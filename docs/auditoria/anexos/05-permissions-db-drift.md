@@ -1,20 +1,21 @@
 # Anexo E · Modelo de autorización: código vs. base de datos
 
-_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T00:50:26.452Z._
+_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T01:09:42.936Z._
 
-**Resumen:** P0=0 · P1=0 · P2=8 · INFO=1
+**Resumen:** P0=0 · P1=0 · P2=9 · INFO=1
 
 | ID | Sev | Categoría | Hallazgo | Ubicación |
 |---|---|---|---|---|
 | AUD-PD001 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: uploads:avatar | condor.permisos |
 | AUD-PD002 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: mis_facturas:crear | condor.permisos |
-| AUD-PD003 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar | condor.permisos |
-| AUD-PD004 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer | condor.permisos |
-| AUD-PD005 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar | condor.permisos |
-| AUD-PD006 | P2 | permiso-muerto | Permiso de visibilidad de una vista que ya no existe: vista:inventario | condor.permisos |
-| AUD-PD007 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer | condor.permisos |
-| AUD-PD008 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | condor.permisos |
-| AUD-PD009 | INFO | rol-inexistente | Nombre de rol usado en código que no existe en condor.roles: auditoria | src/controllers/requerimientos.controller.js:1740 |
+| AUD-PD003 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar | condor.permisos |
+| AUD-PD004 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar | condor.permisos |
+| AUD-PD005 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer | condor.permisos |
+| AUD-PD006 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar | condor.permisos |
+| AUD-PD007 | P2 | permiso-muerto | Permiso de visibilidad de una vista que ya no existe: vista:inventario | condor.permisos |
+| AUD-PD008 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer | condor.permisos |
+| AUD-PD009 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | condor.permisos |
+| AUD-PD010 | INFO | rol-inexistente | Nombre de rol usado en código que no existe en condor.roles: auditoria | src/controllers/requerimientos.controller.js:1740 |
 
 ## Detalle
 
@@ -30,43 +31,49 @@ _Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T00:50:26.45
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: comprador (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD003 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar
+### AUD-PD003 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar
+
+- **Ubicación:** `condor.permisos`
+- **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: dueno (concesiones sin efecto).
+- **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
+
+### AUD-PD004 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD004 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer
+### AUD-PD005 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD005 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar
+### AUD-PD006 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD006 · P2 · Permiso de visibilidad de una vista que ya no existe: vista:inventario
+### AUD-PD007 · P2 · Permiso de visibilidad de una vista que ya no existe: vista:inventario
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** `inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.
 - **Acción propuesta:** Eliminar el permiso y sus concesiones, o registrar la vista si debía existir.
 
-### AUD-PD007 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer
+### AUD-PD008 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD008 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar
+### AUD-PD009 · P2 · Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: almacenista (concesiones sin efecto).
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD009 · INFO · Nombre de rol usado en código que no existe en condor.roles: auditoria
+### AUD-PD010 · INFO · Nombre de rol usado en código que no existe en condor.roles: auditoria
 
 - **Ubicación:** `src/controllers/requerimientos.controller.js:1740`
 - **Detalle:** Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).

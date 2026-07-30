@@ -15,5 +15,21 @@
 
   "log-de-depuracion|1 console.log/debugger en src/index.js": "Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración.",
   "log-de-depuracion|1 console.log/debugger en src/services/comisiones.service.js": "Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción.",
-  "log-de-depuracion|1 console.log/debugger en src/services/mora.service.js": "Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job."
+  "log-de-depuracion|1 console.log/debugger en src/services/mora.service.js": "Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job.",
+
+  "bd-sin-uso|Objeto de BD que el backend nunca consulta: consecutivos": "NO ELIMINAR. Es el estado del RPC next_consecutivo_condor (8 filas: prefijo, periodo, ultimo_numero). Ningún .from() la referencia porque sólo la lee y escribe la función en BD. Borrarla rompe TODAS las numeraciones del sistema: recibos RC-, pagos PAG-, micropagos MCOM-, facturas FV- y códigos de venta.",
+
+  "bd-sin-uso|Objeto de BD que el backend nunca consulta: vw_auditoria_juridica": "Vista disponible y no consumida (4.709 filas derivadas). Se conserva: una vista no consume almacenamiento ni puede desincronizarse. Documentada como disponible en el Documento de Datos.",
+  "bd-sin-uso|Objeto de BD que el backend nunca consulta: vw_dir_auditoria": "Vista disponible y no consumida (19.485 filas derivadas). Se conserva por el mismo motivo.",
+  "bd-sin-uso|Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy": "Vista disponible y no consumida. El backend usa vw_dir_recaudo_facturacion_historico. Se conserva.",
+  "bd-sin-uso|Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial": "Vista disponible y no consumida (34 lotes). El catálogo público se arma desde lote/proyecto. Se conserva.",
+
+  "bd-esquema-inconsistente|RPC que vive en public y no en condor: next_consecutivo_condor()": "Excepción conocida y documentada en CLAUDE.md: la función vive en public y se invoca sin .schema(). Mover la función o añadir el .schema() rompería todas las numeraciones. Se deja como está y se documenta.",
+
+  "permiso-muerto|Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar": "Falso positivo estructural: /config/:clave tiene un param no numérico, así que no puede tener entrada en ROUTE_PERMISSIONS (nunca coincidiría). El permiso SÍ se evalúa, dentro de config.controller.js:67 vía _puedeConfig(req, 'actualizar'). Es el coste de visibilidad de autorizar en el controller.",
+
+  "permiso-muerto|Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar": "Verificado: la ruta PATCH /requerimientos/:id/entregar exige `recepciones:crear` (permissions.js:126) y el handler entregar() no valida nada por su cuenta. El permiso está otorgado a almacenista pero no concede nada; almacenista sí tiene recepciones:crear, así que INV-02 funciona. Concesión decorativa: se conserva para no tocar permisos en la ventana de entrega.",
+
+  "permiso-muerto|Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer": "El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva.",
+  "permiso-muerto|Permiso de visibilidad de una vista que ya no existe: vista:inventario": "Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva."
 }

@@ -1,16 +1,71 @@
 {
   "script": "03-views-consistency",
   "title": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
-  "generated_at": "2026-07-30T00:50:23.984Z",
+  "generated_at": "2026-07-30T01:11:26.034Z",
   "counts": {
     "P0": 0,
     "P1": 0,
     "P2": 0,
-    "INFO": 1
+    "INFO": 6
   },
   "findings": [
     {
       "id": "AUD-VW001",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mi_cuenta:leer (vista dashboard)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    },
+    {
+      "id": "AUD-VW002",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: ventas:actualizar (vista ventas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    },
+    {
+      "id": "AUD-VW003",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: cuotas:actualizar (vista cuotas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    },
+    {
+      "id": "AUD-VW004",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: facturas:actualizar (vista facturas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    },
+    {
+      "id": "AUD-VW005",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: reportes_dir:leer (vista reportes)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    },
+    {
+      "id": "AUD-VW006",
       "severity": "INFO",
       "category": "permisos-ui",
       "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mis_cuotas:leer (vista mis-cuotas)",

@@ -1,11 +1,11 @@
 {
   "script": "05-permissions-db-drift",
   "title": "Anexo E · Modelo de autorización: código vs. base de datos",
-  "generated_at": "2026-07-30T00:50:26.452Z",
+  "generated_at": "2026-07-30T01:09:42.936Z",
   "counts": {
     "P0": 0,
     "P1": 0,
-    "P2": 8,
+    "P2": 9,
     "INFO": 1
   },
   "findings": [
@@ -35,18 +35,18 @@
       "id": "AUD-PD003",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar",
       "where": [
         "condor.permisos"
       ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: dueno (concesiones sin efecto).",
       "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
     },
     {
       "id": "AUD-PD004",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
       "where": [
         "condor.permisos"
       ],
@@ -57,7 +57,7 @@
       "id": "AUD-PD005",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
       "where": [
         "condor.permisos"
       ],
@@ -68,6 +68,17 @@
       "id": "AUD-PD006",
       "severity": "P2",
       "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD007",
+      "severity": "P2",
+      "category": "permiso-muerto",
       "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
       "where": [
         "condor.permisos"
@@ -76,7 +87,7 @@
       "action": "Eliminar el permiso y sus concesiones, o registrar la vista si debía existir."
     },
     {
-      "id": "AUD-PD007",
+      "id": "AUD-PD008",
       "severity": "P2",
       "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
@@ -87,7 +98,7 @@
       "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
     },
     {
-      "id": "AUD-PD008",
+      "id": "AUD-PD009",
       "severity": "P2",
       "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
@@ -98,7 +109,7 @@
       "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
     },
     {
-      "id": "AUD-PD009",
+      "id": "AUD-PD010",
       "severity": "INFO",
       "category": "rol-inexistente",
       "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
@@ -115,7 +126,7 @@
     "permisos_en_bd": 118,
     "concesiones": 390,
     "roles_en_bd": 14,
-    "permisos_exigidos_por_rutas": 79,
+    "permisos_exigidos_por_rutas": 73,
     "permisos_en_vista_api_map": 77,
     "vistas_en_vista_api_map": 30
   },

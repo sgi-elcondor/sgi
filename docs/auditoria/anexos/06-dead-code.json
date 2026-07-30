@@ -1,29 +1,14 @@
 {
   "script": "06-dead-code",
   "title": "Anexo G · Código, archivos y dependencias sin uso",
-  "generated_at": "2026-07-30T00:50:26.539Z",
+  "generated_at": "2026-07-30T01:09:43.013Z",
   "counts": {
     "P0": 0,
     "P1": 0,
-    "P2": 1,
+    "P2": 0,
     "INFO": 3
   },
   "findings": [
-    {
-      "id": "AUD-DC004",
-      "severity": "P2",
-      "category": "script-ad-hoc",
-      "summary": "5 scripts de mantenimiento puntual en seeds/",
-      "where": [
-        "seeds/backfill_codigo_venta.js",
-        "seeds/diag-cuotas-comprador.js",
-        "seeds/gen-bank-tx-comprador.js",
-        "seeds/reset-comprador.js",
-        "seeds/reset-pagos-comprador.js"
-      ],
-      "detail": "Utilidades de diagnóstico/corrección contra datos de desarrollo. No forman parte del producto y ejecutarlas contra producción es peligroso.",
-      "action": "Mover a `tools/dev/` (fuera del runner de seeds) o eliminar antes de la entrega."
-    },
     {
       "id": "AUD-DC001",
       "severity": "INFO",

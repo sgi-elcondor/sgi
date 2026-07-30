@@ -1,11 +1,11 @@
 {
   "script": "01-routes-vs-permissions",
   "title": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-  "generated_at": "2026-07-30T00:50:23.877Z",
+  "generated_at": "2026-07-30T01:11:25.930Z",
   "counts": {
     "P0": 0,
     "P1": 0,
-    "P2": 16,
+    "P2": 6,
     "INFO": 17
   },
   "findings": [
@@ -80,116 +80,6 @@
       ],
       "detail": "Rutas afectadas: /api/v1/comisionistas/comisiones , /api/v1/comisionistas/:id/comisiones. Comparten el permiso `comisionistas:leer`; no se pueden autorizar por separado.",
       "action": "Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller."
-    },
-    {
-      "id": "AUD-RP020",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/usuarios",
-      "where": [
-        "src/config/permissions.js:9"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PATCH /api/v1/usuarios` (permiso `usuarios:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP021",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/ventas",
-      "where": [
-        "src/config/permissions.js:27"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/ventas` (permiso `ventas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP022",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/cuotas",
-      "where": [
-        "src/config/permissions.js:31"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/cuotas` (permiso `cuotas:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP023",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/cuotas",
-      "where": [
-        "src/config/permissions.js:36"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/cuotas` (permiso `cuotas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP024",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/facturas",
-      "where": [
-        "src/config/permissions.js:50"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/facturas` (permiso `facturas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP025",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes",
-      "where": [
-        "src/config/permissions.js:70"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes` (permiso `reportes:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP026",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/dir",
-      "where": [
-        "src/config/permissions.js:71"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes/dir` (permiso `reportes_dir:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP027",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/jur",
-      "where": [
-        "src/config/permissions.js:72"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes/jur` (permiso `alertas_jur:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP028",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/mi-cuenta",
-      "where": [
-        "src/config/permissions.js:86"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/mi-cuenta` (permiso `mi_cuenta:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
-    },
-    {
-      "id": "AUD-RP029",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/config",
-      "where": [
-        "src/config/permissions.js:143"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PATCH /api/v1/config` (permiso `config:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma."
     },
     {
       "id": "AUD-RP001",
@@ -358,7 +248,7 @@
       "action": "Ninguna; documentar que lista y detalle comparten permiso."
     },
     {
-      "id": "AUD-RP030",
+      "id": "AUD-RP020",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -369,7 +259,7 @@
       "action": "Revisión manual."
     },
     {
-      "id": "AUD-RP031",
+      "id": "AUD-RP021",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -380,7 +270,7 @@
       "action": "Revisión manual."
     },
     {
-      "id": "AUD-RP032",
+      "id": "AUD-RP022",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -391,7 +281,7 @@
       "action": "Revisión manual."
     },
     {
-      "id": "AUD-RP033",
+      "id": "AUD-RP023",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -409,7 +299,7 @@
     "routes_public_by_mount": 15,
     "inline_routes": 5,
     "prehooks": 1,
-    "permission_entries": 129,
+    "permission_entries": 119,
     "permission_entries_used": 119
   },
   "inventory": [

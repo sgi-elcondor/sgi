@@ -1,8 +1,8 @@
 # Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS
 
-_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T00:50:23.877Z._
+_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T01:11:25.930Z._
 
-**Resumen:** P0=0 · P1=0 · P2=16 · INFO=17
+**Resumen:** P0=0 · P1=0 · P2=6 · INFO=17
 
 | ID | Sev | Categoría | Hallazgo | Ubicación |
 |---|---|---|---|---|
@@ -12,16 +12,6 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T00:50:23.8
 | AUD-RP010 | P2 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave | src/routes/config.routes.js:5<br>src/controllers/config.controller.js:51 |
 | AUD-RP011 | P2 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: PATCH /api/v1/config/:clave | src/routes/config.routes.js:6<br>src/controllers/config.controller.js:65 |
 | AUD-RP018 | P2 | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/comisionistas/comisiones | src/routes/comisionistas.routes.js:4<br>src/routes/comisionistas.routes.js:5 |
-| AUD-RP020 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/usuarios | src/config/permissions.js:9 |
-| AUD-RP021 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/ventas | src/config/permissions.js:27 |
-| AUD-RP022 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/cuotas | src/config/permissions.js:31 |
-| AUD-RP023 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/cuotas | src/config/permissions.js:36 |
-| AUD-RP024 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/facturas | src/config/permissions.js:50 |
-| AUD-RP025 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes | src/config/permissions.js:70 |
-| AUD-RP026 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/dir | src/config/permissions.js:71 |
-| AUD-RP027 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/jur | src/config/permissions.js:72 |
-| AUD-RP028 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/mi-cuenta | src/config/permissions.js:86 |
-| AUD-RP029 | P2 | config-muerta | Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/config | src/config/permissions.js:143 |
 | AUD-RP001 | INFO | authn | Router público por diseño: /api/v1/auth | src/index.js:135 |
 | AUD-RP002 | INFO | authn | Router público por diseño: /api/v1/public | src/index.js:138 |
 | AUD-RP005 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: POST /api/v1/uploads/avatar | src/routes/uploads.routes.js:19<br>src/controllers/uploads.controller.js:4 |
@@ -35,10 +25,10 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T00:50:23.8
 | AUD-RP016 | INFO | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos/mis-pagos | src/routes/pagos.routes.js:4<br>src/routes/pagos.routes.js:5 |
 | AUD-RP017 | INFO | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos | src/routes/pagos.routes.js:8<br>src/routes/pagos.routes.js:15 |
 | AUD-RP019 | INFO | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/empresas-aliadas | src/routes/empresas_aliadas.routes.js:4<br>src/routes/empresas_aliadas.routes.js:5 |
-| AUD-RP030 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:74 |
-| AUD-RP031 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:86 |
-| AUD-RP032 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:106 |
-| AUD-RP033 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:123 |
+| AUD-RP020 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:74 |
+| AUD-RP021 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:86 |
+| AUD-RP022 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:106 |
+| AUD-RP023 | INFO | cobertura-auditoria | Línea de ruta/mount no interpretable por el auditor | src/index.js:123 |
 
 ## Detalle
 
@@ -77,66 +67,6 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T00:50:23.8
 - **Ubicación:** `src/routes/comisionistas.routes.js:4`, `src/routes/comisionistas.routes.js:5`
 - **Detalle:** Rutas afectadas: /api/v1/comisionistas/comisiones , /api/v1/comisionistas/:id/comisiones. Comparten el permiso `comisionistas:leer`; no se pueden autorizar por separado.
 - **Acción propuesta:** Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller.
-
-### AUD-RP020 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/usuarios
-
-- **Ubicación:** `src/config/permissions.js:9`
-- **Detalle:** Ninguna ruta montada produce la clave `PATCH /api/v1/usuarios` (permiso `usuarios:actualizar`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP021 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/ventas
-
-- **Ubicación:** `src/config/permissions.js:27`
-- **Detalle:** Ninguna ruta montada produce la clave `PUT /api/v1/ventas` (permiso `ventas:actualizar`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP022 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/cuotas
-
-- **Ubicación:** `src/config/permissions.js:31`
-- **Detalle:** Ninguna ruta montada produce la clave `GET /api/v1/cuotas` (permiso `cuotas:leer`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP023 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/cuotas
-
-- **Ubicación:** `src/config/permissions.js:36`
-- **Detalle:** Ninguna ruta montada produce la clave `PUT /api/v1/cuotas` (permiso `cuotas:actualizar`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP024 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/facturas
-
-- **Ubicación:** `src/config/permissions.js:50`
-- **Detalle:** Ninguna ruta montada produce la clave `PUT /api/v1/facturas` (permiso `facturas:actualizar`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP025 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes
-
-- **Ubicación:** `src/config/permissions.js:70`
-- **Detalle:** Ninguna ruta montada produce la clave `GET /api/v1/reportes` (permiso `reportes:leer`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP026 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/dir
-
-- **Ubicación:** `src/config/permissions.js:71`
-- **Detalle:** Ninguna ruta montada produce la clave `GET /api/v1/reportes/dir` (permiso `reportes_dir:leer`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP027 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/jur
-
-- **Ubicación:** `src/config/permissions.js:72`
-- **Detalle:** Ninguna ruta montada produce la clave `GET /api/v1/reportes/jur` (permiso `alertas_jur:leer`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP028 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/mi-cuenta
-
-- **Ubicación:** `src/config/permissions.js:86`
-- **Detalle:** Ninguna ruta montada produce la clave `GET /api/v1/mi-cuenta` (permiso `mi_cuenta:leer`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
-
-### AUD-RP029 · P2 · Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/config
-
-- **Ubicación:** `src/config/permissions.js:143`
-- **Detalle:** Ninguna ruta montada produce la clave `PATCH /api/v1/config` (permiso `config:actualizar`).
-- **Acción propuesta:** Eliminar la entrada o corregir la clave si la ruta cambió de forma.
 
 ### AUD-RP001 · INFO · Router público por diseño: /api/v1/auth
 
@@ -222,25 +152,25 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T00:50:23.8
 - **Detalle:** Rutas afectadas: /api/v1/empresas-aliadas , /api/v1/empresas-aliadas/:id. Comparten el permiso `empresas_aliadas:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.
 - **Acción propuesta:** Ninguna; documentar que lista y detalle comparten permiso.
 
-### AUD-RP030 · INFO · Línea de ruta/mount no interpretable por el auditor
+### AUD-RP020 · INFO · Línea de ruta/mount no interpretable por el auditor
 
 - **Ubicación:** `src/index.js:74`
 - **Detalle:** `app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.
 - **Acción propuesta:** Revisión manual.
 
-### AUD-RP031 · INFO · Línea de ruta/mount no interpretable por el auditor
+### AUD-RP021 · INFO · Línea de ruta/mount no interpretable por el auditor
 
 - **Ubicación:** `src/index.js:86`
 - **Detalle:** `app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.
 - **Acción propuesta:** Revisión manual.
 
-### AUD-RP032 · INFO · Línea de ruta/mount no interpretable por el auditor
+### AUD-RP022 · INFO · Línea de ruta/mount no interpretable por el auditor
 
 - **Ubicación:** `src/index.js:106`
 - **Detalle:** `app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.
 - **Acción propuesta:** Revisión manual.
 
-### AUD-RP033 · INFO · Línea de ruta/mount no interpretable por el auditor
+### AUD-RP023 · INFO · Línea de ruta/mount no interpretable por el auditor
 
 - **Ubicación:** `src/index.js:123`
 - **Detalle:** `app.use('/dist', express.static(path.join(__dirname, "..", "public", "dist"), {` — revisar a mano; no entró en el cruce automático.

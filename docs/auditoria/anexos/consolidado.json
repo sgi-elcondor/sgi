@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-30T00:50:28.874Z",
+  "generated_at": "2026-07-30T01:09:45.570Z",
   "totals": {
     "P0": 0,
     "P1": 0,
-    "P2": 59,
-    "INFO": 24
+    "P2": 43,
+    "INFO": 35
   },
   "findings": [
     {
@@ -88,136 +88,6 @@
       ],
       "detail": "Rutas afectadas: /api/v1/comisionistas/comisiones , /api/v1/comisionistas/:id/comisiones. Comparten el permiso `comisionistas:leer`; no se pueden autorizar por separado.",
       "action": "Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP020",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/usuarios",
-      "where": [
-        "src/config/permissions.js:9"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PATCH /api/v1/usuarios` (permiso `usuarios:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP021",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/ventas",
-      "where": [
-        "src/config/permissions.js:27"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/ventas` (permiso `ventas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP022",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/cuotas",
-      "where": [
-        "src/config/permissions.js:31"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/cuotas` (permiso `cuotas:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP023",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/cuotas",
-      "where": [
-        "src/config/permissions.js:36"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/cuotas` (permiso `cuotas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP024",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PUT /api/v1/facturas",
-      "where": [
-        "src/config/permissions.js:50"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PUT /api/v1/facturas` (permiso `facturas:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP025",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes",
-      "where": [
-        "src/config/permissions.js:70"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes` (permiso `reportes:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP026",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/dir",
-      "where": [
-        "src/config/permissions.js:71"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes/dir` (permiso `reportes_dir:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP027",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/reportes/jur",
-      "where": [
-        "src/config/permissions.js:72"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/reportes/jur` (permiso `alertas_jur:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP028",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: GET /api/v1/mi-cuenta",
-      "where": [
-        "src/config/permissions.js:86"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `GET /api/v1/mi-cuenta` (permiso `mi_cuenta:leer`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
-      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-      "script": "01-routes-vs-permissions"
-    },
-    {
-      "id": "AUD-RP029",
-      "severity": "P2",
-      "category": "config-muerta",
-      "summary": "Entrada de ROUTE_PERMISSIONS sin ruta viva: PATCH /api/v1/config",
-      "where": [
-        "src/config/permissions.js:143"
-      ],
-      "detail": "Ninguna ruta montada produce la clave `PATCH /api/v1/config` (permiso `config:actualizar`).",
-      "action": "Eliminar la entrada o corregir la clave si la ruta cambió de forma.",
       "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
       "script": "01-routes-vs-permissions"
     },
@@ -414,7 +284,7 @@
       "script": "01-routes-vs-permissions"
     },
     {
-      "id": "AUD-RP030",
+      "id": "AUD-RP020",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -427,7 +297,7 @@
       "script": "01-routes-vs-permissions"
     },
     {
-      "id": "AUD-RP031",
+      "id": "AUD-RP021",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -440,7 +310,7 @@
       "script": "01-routes-vs-permissions"
     },
     {
-      "id": "AUD-RP032",
+      "id": "AUD-RP022",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -453,7 +323,7 @@
       "script": "01-routes-vs-permissions"
     },
     {
-      "id": "AUD-RP033",
+      "id": "AUD-RP023",
       "severity": "INFO",
       "category": "cobertura-auditoria",
       "summary": "Línea de ruta/mount no interpretable por el auditor",
@@ -729,7 +599,7 @@
       "id": "AUD-VW001",
       "severity": "INFO",
       "category": "permisos-ui",
-      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mis_cuotas:leer (vista mis-cuotas)",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mi_cuenta:leer (vista dashboard)",
       "where": [
         "src/controllers/roles.controller.js"
       ],
@@ -739,82 +609,69 @@
       "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB001",
-      "severity": "P2",
-      "category": "bd-esquema-inconsistente",
-      "summary": "RPC que vive en public y no en condor: next_consecutivo_condor()",
+      "id": "AUD-VW002",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: ventas:actualizar (vista ventas)",
       "where": [
-        "src/controllers/facturas.controller.js:14"
+        "src/controllers/roles.controller.js"
       ],
-      "detail": "Funciona, pero rompe la regla del proyecto de direccionar siempre `condor` explícitamente: esta función es la excepción y no está documentada como tal. Los demás RPC (fn_excedente_pago, actualizar_mora) sí viven en `condor`.",
-      "action": "Documentar la excepción, o mover la función a `condor` y añadir `.schema('condor')` en los 5 puntos de llamada.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB002",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: consecutivos",
+      "id": "AUD-VW003",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: cuotas:actualizar (vista cuotas)",
       "where": [
-        "condor.consecutivos"
+        "src/controllers/roles.controller.js"
       ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('consecutivos')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB003",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_auditoria_juridica",
+      "id": "AUD-VW004",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: facturas:actualizar (vista facturas)",
       "where": [
-        "condor.vw_auditoria_juridica"
+        "src/controllers/roles.controller.js"
       ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_auditoria_juridica')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB004",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_auditoria",
+      "id": "AUD-VW005",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: reportes_dir:leer (vista reportes)",
       "where": [
-        "condor.vw_dir_auditoria"
+        "src/controllers/roles.controller.js"
       ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_auditoria')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB005",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy",
+      "id": "AUD-VW006",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mis_cuotas:leer (vista mis-cuotas)",
       "where": [
-        "condor.vw_dir_recaudo_facturacion_hoy"
+        "src/controllers/roles.controller.js"
       ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_recaudo_facturacion_hoy')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB006",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial",
-      "where": [
-        "condor.vw_disponibilidad_comercial"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_disponibilidad_comercial')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
     },
     {
       "id": "AUD-DB007",
@@ -839,6 +696,96 @@
       ],
       "detail": "Expuesto en el esquema pero sin ningún `.from('whatsapp_mensaje')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
       "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB001",
+      "severity": "INFO",
+      "category": "bd-esquema-inconsistente",
+      "summary": "RPC que vive en public y no en condor: next_consecutivo_condor()",
+      "where": [
+        "src/controllers/facturas.controller.js:14"
+      ],
+      "detail": "Funciona, pero rompe la regla del proyecto de direccionar siempre `condor` explícitamente: esta función es la excepción y no está documentada como tal. Los demás RPC (fn_excedente_pago, actualizar_mora) sí viven en `condor`.",
+      "action": "Documentar la excepción, o mover la función a `condor` y añadir `.schema('condor')` en los 5 puntos de llamada.",
+      "accepted": "Excepción conocida y documentada en CLAUDE.md: la función vive en public y se invoca sin .schema(). Mover la función o añadir el .schema() rompería todas las numeraciones. Se deja como está y se documenta.",
+      "original_severity": "P2",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB002",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: consecutivos",
+      "where": [
+        "condor.consecutivos"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('consecutivos')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "NO ELIMINAR. Es el estado del RPC next_consecutivo_condor (8 filas: prefijo, periodo, ultimo_numero). Ningún .from() la referencia porque sólo la lee y escribe la función en BD. Borrarla rompe TODAS las numeraciones del sistema: recibos RC-, pagos PAG-, micropagos MCOM-, facturas FV- y códigos de venta.",
+      "original_severity": "P2",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB003",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_auditoria_juridica",
+      "where": [
+        "condor.vw_auditoria_juridica"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_auditoria_juridica')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (4.709 filas derivadas). Se conserva: una vista no consume almacenamiento ni puede desincronizarse. Documentada como disponible en el Documento de Datos.",
+      "original_severity": "P2",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB004",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_auditoria",
+      "where": [
+        "condor.vw_dir_auditoria"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_auditoria')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (19.485 filas derivadas). Se conserva por el mismo motivo.",
+      "original_severity": "P2",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB005",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy",
+      "where": [
+        "condor.vw_dir_recaudo_facturacion_hoy"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_recaudo_facturacion_hoy')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida. El backend usa vw_dir_recaudo_facturacion_historico. Se conserva.",
+      "original_severity": "P2",
+      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+      "script": "04-db-vs-code"
+    },
+    {
+      "id": "AUD-DB006",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial",
+      "where": [
+        "condor.vw_disponibilidad_comercial"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_disponibilidad_comercial')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (34 lotes). El catálogo público se arma desde lote/proyecto. Se conserva.",
+      "original_severity": "P2",
       "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
       "script": "04-db-vs-code"
     },
@@ -872,11 +819,11 @@
       "id": "AUD-PD003",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar",
       "where": [
         "condor.permisos"
       ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: dueno (concesiones sin efecto).",
       "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
       "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
       "script": "05-permissions-db-drift"
@@ -885,7 +832,7 @@
       "id": "AUD-PD004",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
       "where": [
         "condor.permisos"
       ],
@@ -898,7 +845,7 @@
       "id": "AUD-PD005",
       "severity": "P2",
       "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
       "where": [
         "condor.permisos"
       ],
@@ -911,6 +858,19 @@
       "id": "AUD-PD006",
       "severity": "P2",
       "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
+      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
+      "script": "05-permissions-db-drift"
+    },
+    {
+      "id": "AUD-PD007",
+      "severity": "P2",
+      "category": "permiso-muerto",
       "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
       "where": [
         "condor.permisos"
@@ -921,7 +881,7 @@
       "script": "05-permissions-db-drift"
     },
     {
-      "id": "AUD-PD007",
+      "id": "AUD-PD008",
       "severity": "P2",
       "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
@@ -934,7 +894,7 @@
       "script": "05-permissions-db-drift"
     },
     {
-      "id": "AUD-PD008",
+      "id": "AUD-PD009",
       "severity": "P2",
       "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
@@ -947,7 +907,7 @@
       "script": "05-permissions-db-drift"
     },
     {
-      "id": "AUD-PD009",
+      "id": "AUD-PD010",
       "severity": "INFO",
       "category": "rol-inexistente",
       "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
@@ -960,23 +920,6 @@
       "original_severity": "P1",
       "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
       "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-DC004",
-      "severity": "P2",
-      "category": "script-ad-hoc",
-      "summary": "5 scripts de mantenimiento puntual en seeds/",
-      "where": [
-        "seeds/backfill_codigo_venta.js",
-        "seeds/diag-cuotas-comprador.js",
-        "seeds/gen-bank-tx-comprador.js",
-        "seeds/reset-comprador.js",
-        "seeds/reset-pagos-comprador.js"
-      ],
-      "detail": "Utilidades de diagnóstico/corrección contra datos de desarrollo. No forman parte del producto y ejecutarlas contra producción es peligroso.",
-      "action": "Mover a `tools/dev/` (fuera del runner de seeds) o eliminar antes de la entrega.",
-      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
-      "script": "06-dead-code"
     },
     {
       "id": "AUD-DC001",
