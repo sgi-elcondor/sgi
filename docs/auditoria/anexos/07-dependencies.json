@@ -1,0 +1,117 @@
+{
+  "script": "07-dependencies",
+  "title": "Anexo H · Vulnerabilidades en dependencias de producción",
+  "generated_at": "2026-07-30T00:29:26.350Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 8,
+    "INFO": 0
+  },
+  "findings": [
+    {
+      "id": "AUD-DEP001",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: @google-cloud/firestore",
+      "where": [
+        "package.json",
+        "node_modules/@google-cloud/firestore"
+      ],
+      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP002",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: @google-cloud/storage",
+      "where": [
+        "package.json",
+        "node_modules/@google-cloud/storage"
+      ],
+      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP003",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: firebase-admin",
+      "where": [
+        "package.json",
+        "node_modules/firebase-admin"
+      ],
+      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP004",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: gaxios",
+      "where": [
+        "package.json",
+        "node_modules/gaxios"
+      ],
+      "detail": "uuid. Rango vulnerable: 6.4.0 - 6.7.1. Hay corrección sin cambio de versión mayor: `npm audit fix`.",
+      "action": "Ejecutar `npm audit fix`, correr `npm test` y `npm run build`, y re-auditar."
+    },
+    {
+      "id": "AUD-DEP005",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: google-gax",
+      "where": [
+        "package.json",
+        "node_modules/google-gax"
+      ],
+      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP006",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: retry-request",
+      "where": [
+        "package.json",
+        "node_modules/retry-request"
+      ],
+      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP007",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: teeny-request",
+      "where": [
+        "package.json",
+        "node_modules/teeny-request"
+      ],
+      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    },
+    {
+      "id": "AUD-DEP008",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: uuid",
+      "where": [
+        "package.json",
+        "node_modules/uuid"
+      ],
+      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado."
+    }
+  ],
+  "stats": {
+    "production_only": true,
+    "critical": 0,
+    "high": 0,
+    "moderate": 8,
+    "low": 0,
+    "total_dependencies": 186
+  }
+}

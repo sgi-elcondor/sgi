@@ -1,0 +1,126 @@
+{
+  "script": "05-permissions-db-drift",
+  "title": "Anexo E · Modelo de autorización: código vs. base de datos",
+  "generated_at": "2026-07-30T00:29:25.234Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 8,
+    "INFO": 1
+  },
+  "findings": [
+    {
+      "id": "AUD-PD001",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: uploads:avatar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico, comisionista, asesor_comercial, auxiliar_contable (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD002",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: mis_facturas:crear",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: comprador (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD003",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD004",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD005",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD006",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "`inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.",
+      "action": "Eliminar el permiso y sus concesiones, o registrar la vista si debía existir."
+    },
+    {
+      "id": "AUD-PD007",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD008",
+      "severity": "P2",
+      "category": "permiso-muerto",
+      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
+      "where": [
+        "condor.permisos"
+      ],
+      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: almacenista (concesiones sin efecto).",
+      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones."
+    },
+    {
+      "id": "AUD-PD009",
+      "severity": "INFO",
+      "category": "rol-inexistente",
+      "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
+      "where": [
+        "src/controllers/requerimientos.controller.js:1740"
+      ],
+      "detail": "Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).",
+      "action": "Corregir el literal o crear el rol.",
+      "accepted": "DECISIÓN DE ENTREGA (2026-07-29): no se crea el rol. Impacto verificado = nulo: sólo aparece en role-promotion.service.js:15 (lista de roles protegidos, guarda defensiva inofensiva) y en la trazabilidad INV-04 de requerimientos.controller.js, que ya admite admin/gerencia/dueno. La supervisión está cubierta: auditoria_log:leer lo tienen admin, dueno, gerencia y auxiliar_contable. Se corrigió CLAUDE.md, que lo listaba como rol existente.",
+      "original_severity": "P1"
+    }
+  ],
+  "stats": {
+    "permisos_en_bd": 118,
+    "concesiones": 391,
+    "roles_en_bd": 14,
+    "permisos_exigidos_por_rutas": 79,
+    "permisos_en_vista_api_map": 77,
+    "vistas_en_vista_api_map": 30
+  },
+  "matrix_files": [
+    "docs/auditoria/anexos/matriz-acceso.md",
+    "docs/auditoria/anexos/matriz-acceso.json"
+  ]
+}

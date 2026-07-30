@@ -1,0 +1,78 @@
+{
+  "script": "06-dead-code",
+  "title": "Anexo G · Código, archivos y dependencias sin uso",
+  "generated_at": "2026-07-30T00:29:25.312Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 1,
+    "INFO": 3
+  },
+  "findings": [
+    {
+      "id": "AUD-DC004",
+      "severity": "P2",
+      "category": "script-ad-hoc",
+      "summary": "5 scripts de mantenimiento puntual en seeds/",
+      "where": [
+        "seeds/backfill_codigo_venta.js",
+        "seeds/diag-cuotas-comprador.js",
+        "seeds/gen-bank-tx-comprador.js",
+        "seeds/reset-comprador.js",
+        "seeds/reset-pagos-comprador.js"
+      ],
+      "detail": "Utilidades de diagnóstico/corrección contra datos de desarrollo. No forman parte del producto y ejecutarlas contra producción es peligroso.",
+      "action": "Mover a `tools/dev/` (fuera del runner de seeds) o eliminar antes de la entrega."
+    },
+    {
+      "id": "AUD-DC001",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/index.js",
+      "where": [
+        "src/index.js:196"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DC002",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/comisiones.service.js",
+      "where": [
+        "src/services/comisiones.service.js:68"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DC003",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/mora.service.js",
+      "where": [
+        "src/services/mora.service.js:7"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job.",
+      "original_severity": "P2"
+    }
+  ],
+  "stats": {
+    "src_files": 76,
+    "public_js_files": 54,
+    "css_files": 37,
+    "img_files": 5,
+    "deps": 10,
+    "dev_deps": 5,
+    "debug_lines": 3,
+    "mojibake_lines": 0,
+    "todos": 0
+  }
+}

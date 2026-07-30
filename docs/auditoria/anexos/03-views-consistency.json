@@ -1,0 +1,64 @@
+{
+  "script": "03-views-consistency",
+  "title": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+  "generated_at": "2026-07-30T00:29:23.910Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "INFO": 1
+  },
+  "findings": [
+    {
+      "id": "AUD-VW001",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mis_cuotas:leer (vista mis-cuotas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa."
+    }
+  ],
+  "stats": {
+    "views": 30,
+    "sidebar_items": 30,
+    "vista_api_map": 30,
+    "classic_entries": 50,
+    "html_scripts": 53,
+    "view_fns_defined": 46
+  },
+  "views": [
+    "dashboard",
+    "proyectos",
+    "lotes",
+    "compradores",
+    "ventas",
+    "cuotas",
+    "pagos",
+    "comisionistas",
+    "facturas",
+    "recibos",
+    "reportes",
+    "auditoria",
+    "respaldos",
+    "juridico",
+    "personal",
+    "usuarios",
+    "roles",
+    "el-proyecto",
+    "mapa-editor",
+    "mis-cuotas",
+    "mis-facturas",
+    "mis-recibos",
+    "bank-transactions",
+    "payment-validation",
+    "gastos",
+    "recepciones",
+    "requerimientos",
+    "aprobaciones",
+    "desembolsos",
+    "empresas-aliadas"
+  ]
+}
