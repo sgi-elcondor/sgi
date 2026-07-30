@@ -1,13 +1,11 @@
 # Anexo D · Consultas del backend vs. esquema real de la base de datos
 
-_Generado por `tools/audit/04-db-vs-code.js` el 2026-07-30T01:09:42.274Z._
+_Generado por `tools/audit/04-db-vs-code.js` el 2026-07-30T01:30:50.349Z._
 
-**Resumen:** P0=0 · P1=0 · P2=2 · INFO=6
+**Resumen:** P0=0 · P1=0 · P2=0 · INFO=6
 
 | ID | Sev | Categoría | Hallazgo | Ubicación |
 |---|---|---|---|---|
-| AUD-DB007 | P2 | bd-sin-uso | Objeto de BD que el backend nunca consulta: whatsapp_conversacion | condor.whatsapp_conversacion |
-| AUD-DB008 | P2 | bd-sin-uso | Objeto de BD que el backend nunca consulta: whatsapp_mensaje | condor.whatsapp_mensaje |
 | AUD-DB001 | INFO | bd-esquema-inconsistente | RPC que vive en public y no en condor: next_consecutivo_condor() | src/controllers/facturas.controller.js:14 |
 | AUD-DB002 | INFO | bd-sin-uso | Objeto de BD que el backend nunca consulta: consecutivos | condor.consecutivos |
 | AUD-DB003 | INFO | bd-sin-uso | Objeto de BD que el backend nunca consulta: vw_auditoria_juridica | condor.vw_auditoria_juridica |
@@ -16,18 +14,6 @@ _Generado por `tools/audit/04-db-vs-code.js` el 2026-07-30T01:09:42.274Z._
 | AUD-DB006 | INFO | bd-sin-uso | Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial | condor.vw_disponibilidad_comercial |
 
 ## Detalle
-
-### AUD-DB007 · P2 · Objeto de BD que el backend nunca consulta: whatsapp_conversacion
-
-- **Ubicación:** `condor.whatsapp_conversacion`
-- **Detalle:** Expuesto en el esquema pero sin ningún `.from('whatsapp_conversacion')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.
-- **Acción propuesta:** Confirmar si sigue siendo necesario; documentarlo o retirarlo.
-
-### AUD-DB008 · P2 · Objeto de BD que el backend nunca consulta: whatsapp_mensaje
-
-- **Ubicación:** `condor.whatsapp_mensaje`
-- **Detalle:** Expuesto en el esquema pero sin ningún `.from('whatsapp_mensaje')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.
-- **Acción propuesta:** Confirmar si sigue siendo necesario; documentarlo o retirarlo.
 
 ### AUD-DB001 · INFO · RPC que vive en public y no en condor: next_consecutivo_condor()
 

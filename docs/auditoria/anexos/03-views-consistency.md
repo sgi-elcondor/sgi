@@ -1,6 +1,6 @@
 # Anexo C · Consistencia de vistas (registro, navegación, permisos, build)
 
-_Generado por `tools/audit/03-views-consistency.js` el 2026-07-30T01:11:26.034Z._
+_Generado por `tools/audit/03-views-consistency.js` el 2026-07-30T01:33:05.710Z._
 
 **Resumen:** P0=0 · P1=0 · P2=0 · INFO=6
 

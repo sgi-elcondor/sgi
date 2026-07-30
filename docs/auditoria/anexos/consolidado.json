@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-30T01:09:45.570Z",
+  "generated_at": "2026-07-30T01:33:07.833Z",
   "totals": {
     "P0": 0,
     "P1": 0,
-    "P2": 43,
-    "INFO": 35
+    "P2": 32,
+    "INFO": 28
   },
   "findings": [
     {
@@ -674,254 +674,6 @@
       "script": "03-views-consistency"
     },
     {
-      "id": "AUD-DB007",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: whatsapp_conversacion",
-      "where": [
-        "condor.whatsapp_conversacion"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('whatsapp_conversacion')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB008",
-      "severity": "P2",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: whatsapp_mensaje",
-      "where": [
-        "condor.whatsapp_mensaje"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('whatsapp_mensaje')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB001",
-      "severity": "INFO",
-      "category": "bd-esquema-inconsistente",
-      "summary": "RPC que vive en public y no en condor: next_consecutivo_condor()",
-      "where": [
-        "src/controllers/facturas.controller.js:14"
-      ],
-      "detail": "Funciona, pero rompe la regla del proyecto de direccionar siempre `condor` explícitamente: esta función es la excepción y no está documentada como tal. Los demás RPC (fn_excedente_pago, actualizar_mora) sí viven en `condor`.",
-      "action": "Documentar la excepción, o mover la función a `condor` y añadir `.schema('condor')` en los 5 puntos de llamada.",
-      "accepted": "Excepción conocida y documentada en CLAUDE.md: la función vive en public y se invoca sin .schema(). Mover la función o añadir el .schema() rompería todas las numeraciones. Se deja como está y se documenta.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB002",
-      "severity": "INFO",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: consecutivos",
-      "where": [
-        "condor.consecutivos"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('consecutivos')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "accepted": "NO ELIMINAR. Es el estado del RPC next_consecutivo_condor (8 filas: prefijo, periodo, ultimo_numero). Ningún .from() la referencia porque sólo la lee y escribe la función en BD. Borrarla rompe TODAS las numeraciones del sistema: recibos RC-, pagos PAG-, micropagos MCOM-, facturas FV- y códigos de venta.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB003",
-      "severity": "INFO",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_auditoria_juridica",
-      "where": [
-        "condor.vw_auditoria_juridica"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_auditoria_juridica')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "accepted": "Vista disponible y no consumida (4.709 filas derivadas). Se conserva: una vista no consume almacenamiento ni puede desincronizarse. Documentada como disponible en el Documento de Datos.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB004",
-      "severity": "INFO",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_auditoria",
-      "where": [
-        "condor.vw_dir_auditoria"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_auditoria')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "accepted": "Vista disponible y no consumida (19.485 filas derivadas). Se conserva por el mismo motivo.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB005",
-      "severity": "INFO",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy",
-      "where": [
-        "condor.vw_dir_recaudo_facturacion_hoy"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_recaudo_facturacion_hoy')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "accepted": "Vista disponible y no consumida. El backend usa vw_dir_recaudo_facturacion_historico. Se conserva.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-DB006",
-      "severity": "INFO",
-      "category": "bd-sin-uso",
-      "summary": "Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial",
-      "where": [
-        "condor.vw_disponibilidad_comercial"
-      ],
-      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_disponibilidad_comercial')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
-      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
-      "accepted": "Vista disponible y no consumida (34 lotes). El catálogo público se arma desde lote/proyecto. Se conserva.",
-      "original_severity": "P2",
-      "anexo": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
-      "script": "04-db-vs-code"
-    },
-    {
-      "id": "AUD-PD001",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: uploads:avatar",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico, comisionista, asesor_comercial, auxiliar_contable (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD002",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: mis_facturas:crear",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: comprador (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD003",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: dueno (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD004",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:generar",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD005",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD006",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: juridico (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD007",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "`inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.",
-      "action": "Eliminar el permiso y sus concesiones, o registrar la vista si debía existir.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD008",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD009",
-      "severity": "P2",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: almacenista (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD010",
-      "severity": "INFO",
-      "category": "rol-inexistente",
-      "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
-      "where": [
-        "src/controllers/requerimientos.controller.js:1740"
-      ],
-      "detail": "Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).",
-      "action": "Corregir el literal o crear el rol.",
-      "accepted": "DECISIÓN DE ENTREGA (2026-07-29): no se crea el rol. Impacto verificado = nulo: sólo aparece en role-promotion.service.js:15 (lista de roles protegidos, guarda defensiva inofensiva) y en la trazabilidad INV-04 de requerimientos.controller.js, que ya admite admin/gerencia/dueno. La supervisión está cubierta: auditoria_log:leer lo tienen admin, dueno, gerencia y auxiliar_contable. Se corrigió CLAUDE.md, que lo listaba como rol existente.",
-      "original_severity": "P1",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
       "id": "AUD-DC001",
       "severity": "INFO",
       "category": "log-de-depuracion",
@@ -975,7 +727,7 @@
         "package.json",
         "node_modules/@google-cloud/firestore"
       ],
-      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -989,7 +741,7 @@
         "package.json",
         "node_modules/@google-cloud/storage"
       ],
-      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1003,7 +755,7 @@
         "package.json",
         "node_modules/firebase-admin"
       ],
-      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1031,7 +783,7 @@
         "package.json",
         "node_modules/google-gax"
       ],
-      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1045,7 +797,7 @@
         "package.json",
         "node_modules/retry-request"
       ],
-      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1059,7 +811,7 @@
         "package.json",
         "node_modules/teeny-request"
       ],
-      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1073,7 +825,7 @@
         "package.json",
         "node_modules/uuid"
       ],
-      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
