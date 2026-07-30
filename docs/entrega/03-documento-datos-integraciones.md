@@ -670,5 +670,7 @@ legible por máquina del esquema, incluidas las relaciones declaradas. Disponibl
 `docs/auditoria/anexos/04-db-vs-code.md`.
 
 **Apéndice D. Correcciones de datos aplicadas durante la auditoría.** Guiones SQL
-versionados con su verificación y reversión. Disponibles en
-`docs/auditoria/fixes/`.
+con su verificación previa y su reversión comentada, incorporados a la convención de
+esquema del proyecto: `migrations/aud_01_permisos_faltantes.sql`,
+`migrations/aud_02_privilegio_asesor_auditoria.sql` y
+`migrations/aud_03_retirar_tablas_whatsapp.sql`.

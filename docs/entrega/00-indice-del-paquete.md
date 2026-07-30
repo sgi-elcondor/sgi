@@ -67,7 +67,7 @@ documento estático.
 | [Matriz de acceso](../auditoria/anexos/matriz-acceso.md) | 14 roles con sus permisos y vistas | `npm run audit` |
 | [Verificaciones de consistencia](../auditoria/fase2-verificaciones.md) | Seis comprobaciones manuales con su veredicto | Documento estático |
 | [Inventario de rutas](../auditoria/anexos/01-routes-vs-permissions.md) | 151 rutas con su permiso exigido | `npm run audit` |
-| [Guiones de esquema](../auditoria/fixes/) | Cambios de base de datos con verificación y reversión | Documento estático |
+| [Guiones de esquema](../../migrations/) | Cambios de base de datos con verificación y reversión | Documento estático |
 
 *Nota.* La regeneración de los anexos que dependen de la base de datos exige las
 credenciales de conexión. Sin ellas, `npm run audit:offline` produce los cinco

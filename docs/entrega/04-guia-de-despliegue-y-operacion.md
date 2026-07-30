@@ -130,27 +130,37 @@ omite los dos cruces que la requieren.
 
 ### Paso 2. Migraciones de base de datos
 
-**El proyecto no incluye herramienta de migraciones.** Los cambios de esquema se
-aplican como guiones SQL versionados en `docs/auditoria/fixes/`, en orden numérico,
-desde el editor SQL del panel de la base de datos.
+Los cambios de esquema viven en el directorio `migrations/`, con la convención de
+nombre `<épica>_<descripción>.sql`, y se aplican manualmente desde el editor SQL del
+panel de la base de datos. El directorio contiene diecinueve guiones que cubren la
+evolución del esquema desde la unificación inicial de usuarios hasta las
+correcciones de esta entrega.
+
+**Importante:** el proyecto **no usa una herramienta de migraciones**. El directorio
+es una convención de organización, no un mecanismo que registre qué se aplicó, en
+qué orden ni si ya se ejecutó. En consecuencia, el registro de aplicaciones es
+manual y constituye la única traza disponible; conviene anotar fecha y responsable
+de cada ejecución. La sección de mejoras recomendadas propone subsanarlo.
 
 **Tabla 3**
 
-*Guiones de esquema aplicados en esta entrega*
+*Guiones de esquema añadidos en esta entrega*
 
 | Guion | Efecto | Estado |
 |---|---|---|
-| `001-permisos-faltantes.sql` | Crea `cuotas:eliminar` y `reportes:mora_sync` y sus concesiones | Aplicado |
-| `002-privilegio-asesor-auditoria.sql` | Retira `auditoria_log:leer` al rol comercial | Aplicado |
-| `003-retirar-tablas-whatsapp.sql` | Traslada las tablas de mensajería no implementada a `condor_backup` | Aplicado |
+| `migrations/aud_01_permisos_faltantes.sql` | Crea `cuotas:eliminar` y `reportes:mora_sync` y sus concesiones | Aplicado |
+| `migrations/aud_02_privilegio_asesor_auditoria.sql` | Retira `auditoria_log:leer` al rol comercial | Aplicado |
+| `migrations/aud_03_retirar_tablas_whatsapp.sql` | Traslada las tablas de mensajería no implementada a `condor_backup` | Aplicado |
 
-*Nota.* Los tres guiones son idempotentes y contienen su propia reversión
-comentada. En un entorno nuevo deben ejecutarse en orden; en el entorno productivo
-actual ya están aplicados y volver a ejecutarlos no produce efecto.
+*Nota.* Los tres son idempotentes y contienen su propia reversión comentada, de modo
+que volver a ejecutarlos no produce efecto. En un entorno nuevo deben aplicarse
+después de los guiones de las épicas que los preceden.
 
-Registre cada aplicación con fecha y responsable. La ausencia de herramienta de
-migraciones convierte ese registro en la única traza de qué se aplicó y cuándo, y
-se recomienda subsanarlo según la sección de mejoras recomendadas.
+> **Al montar un entorno desde cero,** aplique todo el contenido de `migrations/`
+> respetando el orden de dependencia: primero la unificación de usuarios y la
+> recreación de vistas, luego los guiones por épica, y al final los tres de
+> auditoría. El nombre de archivo no codifica el orden, por lo que este paso exige
+> revisar el encabezado de cada guion.
 
 ### Paso 3. Configuración de la plataforma
 
@@ -198,6 +208,33 @@ dependencia, de modo que la primera que falle señala la capa del problema.
 *Nota.* La comprobación 8 verifica indirectamente que la instancia es única y que
 el canal de eventos opera: si el indicador no se activa, el cliente degradó a
 consulta periódica y los avisos llegarán con retraso de hasta treinta segundos.
+
+### Evidencia de validación de esta lista
+
+La lista no se redactó de memoria: se ejecutó contra la construcción de producción
+antes de emitir este documento, el 30 de julio de 2026, arrancando el proceso con
+`NODE_ENV=production` y simulando la terminación TLS del proxy mediante la cabecera
+`X-Forwarded-Proto`.
+
+**Tabla 5**
+
+*Resultado de la validación de las comprobaciones automatizables*
+
+| Comprobación | Resultado obtenido |
+|---|---|
+| Petición sin cabecera de protocolo reenviado | 301 hacia `https://`, como exige el punto 4 |
+| Raíz del dominio con proxy TLS simulado | 200, sirviendo el contenedor con artefactos empaquetados |
+| `GET /api/v1/public/proyectos` | 200 con carga útil de datos |
+| `GET /api/v1/firebase-config` | 200 con la configuración pública |
+| `GET /api/v1/ventas` sin credenciales | **401**, como corresponde a una ruta protegida |
+| Cabeceras de seguridad | Las seis presentes: política de contenido, transporte estricto, antimarco, antisniff, referente y permisos |
+| Registro de arranque | Aparece el resultado del recálculo de mora |
+
+*Nota.* Las comprobaciones 6, 7, 9 y 10 de la Tabla 4 requieren credenciales de
+usuario y servicios externos, por lo que se verifican manualmente en el entorno de
+destino. La quinta fila de esta tabla es la más relevante desde el punto de vista de
+seguridad: confirma que la cadena de autorización rechaza el acceso sin credenciales
+y no depende de que el cliente oculte la vista.
 
 ---
 
