@@ -1,6 +1,6 @@
 # Informe consolidado de auditoría — SGI El Cóndor
 
-_Generado por `npm run audit` el 2026-07-30T00:29:26.351Z._
+_Generado por `npm run audit` el 2026-07-30T00:50:28.874Z._
 
 ## Resumen
 

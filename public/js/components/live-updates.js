@@ -4,16 +4,26 @@
 (function () {
 
   const STREAM_URL   = "/api/v1/requerimientos/stream";
+  // Views refreshed when a requerimiento moves. Besides the four flow views, a
+  // desembolso creates a gasto and links an empresa aliada, so those two would
+  // otherwise show stale data until a manual reload.
   const LIVE_VIEWS   = {
-    requerimientos: "requerimientosView",
-    aprobaciones:   "aprobacionesView",
-    desembolsos:    "desembolsosView",
-    recepciones:    "recepcionesView",
+    requerimientos:     "requerimientosView",
+    aprobaciones:       "aprobacionesView",
+    desembolsos:        "desembolsosView",
+    recepciones:        "recepcionesView",
+    gastos:             "gastosView",
+    "empresas-aliadas": "empresasAliadasView",
   };
+  // Must stay aligned with STREAM_PERMS in requerimientos.controller.js: the
+  // backend accepts the stream for any of these, and a role that the backend
+  // admits but this list omits would never open the connection.
   const MODULE_PERMS = [
     ["requerimientos", "leer"],
     ["requerimientos", "aprobar_jefe"],
     ["requerimientos", "aprobar_final"],
+    ["requerimientos", "aprobar_dueno"],
+    ["requerimientos", "aprobar_gerencia"],
     ["requerimientos", "desembolsar"],
     ["recepciones", "leer"],
   ];
@@ -35,9 +45,19 @@
   // ── Refresh de la vista activa (silencioso, con debounce para ráfagas) ────
   function refreshCurrentView() {
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => {
+    refreshTimer = setTimeout(function tick() {
       const fnName = LIVE_VIEWS[window.currentViewKey];
-      if (fnName && typeof window[fnName] === "function") window[fnName]();
+      if (!fnName || typeof window[fnName] !== "function") return;
+
+      // Re-rendering the view while a modal is open would wipe the form the user
+      // is filling. Postpone instead of dropping the refresh, so the view still
+      // converges once the modal closes.
+      if (document.getElementById("modalOverlay")?.classList.contains("open")) {
+        refreshTimer = setTimeout(tick, 2000);
+        return;
+      }
+
+      window[fnName]();
     }, 400);
   }
 
