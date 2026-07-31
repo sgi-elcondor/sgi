@@ -14,7 +14,14 @@
     "audit:offline": "node tools/audit/run-all.js --offline"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup-env.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/setup-env.js"
+    ]
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

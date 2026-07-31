@@ -1,6 +1,6 @@
 # Anexo G · Código, archivos y dependencias sin uso
 
-_Generado por `tools/audit/06-dead-code.js` el 2026-07-31T06:03:42.130Z._
+_Generado por `tools/audit/06-dead-code.js` el 2026-07-31T06:33:21.797Z._
 
 **Resumen:** P0=0 · P1=0 · P2=0 · INFO=4
 
