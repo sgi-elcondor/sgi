@@ -1,6 +1,6 @@
 # Anexo F · Matriz de acceso efectiva (rol × vistas × permisos)
 
-_Derivada de condor.rol_permiso el 2026-07-31T06:03:42.053Z._
+_Derivada de condor.rol_permiso el 2026-07-31T06:41:25.034Z._
 
 | Rol | Permisos | Vistas alcanzables |
 |---|---|---|

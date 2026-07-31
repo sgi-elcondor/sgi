@@ -10,3 +10,8 @@ db/
 .claude/
 CLAUDE.md
 AI_CONTEXT.md
+
+# Salida de una corrida parcial de la auditoria (npm run audit:offline, CI).
+# El informe autoritativo es informe-hallazgos.md y ese si se versiona.
+docs/auditoria/informe-hallazgos-parcial.md
+docs/auditoria/anexos/consolidado-parcial.json
