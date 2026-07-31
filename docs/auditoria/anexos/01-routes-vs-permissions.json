@@ -1,0 +1,1531 @@
+{
+  "script": "01-routes-vs-permissions",
+  "title": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+  "generated_at": "2026-07-31T06:33:21.585Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 6,
+    "INFO": 17
+  },
+  "findings": [
+    {
+      "id": "AUD-RP003",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: PATCH /api/v1/ventas/:id/cancelar",
+      "where": [
+        "src/routes/ventas.routes.js:13",
+        "src/controllers/ventas.controller.js:714"
+      ],
+      "detail": "Clave calculada `PATCH /api/v1/ventas/cancelar` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/ventas.controller.js:714` (chequeo de req.usuario.rol, lista de roles hardcodeada + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS."
+    },
+    {
+      "id": "AUD-RP004",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: DELETE /api/v1/ventas/:id",
+      "where": [
+        "src/routes/ventas.routes.js:14",
+        "src/controllers/ventas.controller.js:654"
+      ],
+      "detail": "Clave calculada `DELETE /api/v1/ventas` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/ventas.controller.js:654` (chequeo de req.usuario.rol, lista de roles hardcodeada + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS."
+    },
+    {
+      "id": "AUD-RP006",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: GET /api/v1/requerimientos/stream",
+      "where": [
+        "src/routes/requerimientos.routes.js:5",
+        "src/controllers/requerimientos.controller.js:297"
+      ],
+      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:297` (helper _puede*() + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS."
+    },
+    {
+      "id": "AUD-RP010",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave",
+      "where": [
+        "src/routes/config.routes.js:5",
+        "src/controllers/config.controller.js:51"
+      ],
+      "detail": "El middleware sólo elimina segmentos numéricos (`/\\d+/g`). Con :clave la clave en runtime es `GET /api/v1/config/<valor>`, que no existe en el mapa. Mitigado en el controller `src/controllers/config.controller.js:51` (helper _puede*() + respuesta 403).",
+      "action": "Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS."
+    },
+    {
+      "id": "AUD-RP011",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Param no numérico ⇒ el permiso central nunca se evalúa: PATCH /api/v1/config/:clave",
+      "where": [
+        "src/routes/config.routes.js:6",
+        "src/controllers/config.controller.js:65"
+      ],
+      "detail": "El middleware sólo elimina segmentos numéricos (`/\\d+/g`). Con :clave la clave en runtime es `PATCH /api/v1/config/<valor>`, que no existe en el mapa. Mitigado en el controller `src/controllers/config.controller.js:65` (helper _puede*() + respuesta 403).",
+      "action": "Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS."
+    },
+    {
+      "id": "AUD-RP018",
+      "severity": "P2",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/comisionistas/comisiones",
+      "where": [
+        "src/routes/comisionistas.routes.js:4",
+        "src/routes/comisionistas.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/comisionistas/comisiones , /api/v1/comisionistas/:id/comisiones. Comparten el permiso `comisionistas:leer`; no se pueden autorizar por separado.",
+      "action": "Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller."
+    },
+    {
+      "id": "AUD-RP001",
+      "severity": "INFO",
+      "category": "authn",
+      "summary": "Router público por diseño: /api/v1/auth",
+      "where": [
+        "src/index.js:135"
+      ],
+      "detail": "Montado en la línea 135, antes del guard de la línea 162. Superficie pública documentada.",
+      "action": "Ninguna; documentar en el Documento Técnico.",
+      "accepted": "Superficie pública documentada (login, registro, reset, verificación). Cada ruta sensible del router aplica verificarToken o rateLimit explícitamente.",
+      "original_severity": "INFO"
+    },
+    {
+      "id": "AUD-RP002",
+      "severity": "INFO",
+      "category": "authn",
+      "summary": "Router público por diseño: /api/v1/public",
+      "where": [
+        "src/index.js:138"
+      ],
+      "detail": "Montado en la línea 138, antes del guard de la línea 162. Superficie pública documentada.",
+      "action": "Ninguna; documentar en el Documento Técnico.",
+      "accepted": "Catálogo público de la landing (proyectos, lotes, asesores) con Cache-Control 60 s.",
+      "original_severity": "INFO"
+    },
+    {
+      "id": "AUD-RP005",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: POST /api/v1/uploads/avatar",
+      "where": [
+        "src/routes/uploads.routes.js:19",
+        "src/controllers/uploads.controller.js:4"
+      ],
+      "detail": "Clave calculada `POST /api/v1/uploads/avatar` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/uploads.controller.js:4` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Endpoint de auto-servicio: sube el avatar del propio usuario autenticado. Sin identificador ajeno en el payload.",
+      "original_severity": "INFO"
+    },
+    {
+      "id": "AUD-RP007",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores",
+      "where": [
+        "src/routes/requerimientos.routes.js:6",
+        "src/controllers/requerimientos.controller.js:323"
+      ],
+      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:323` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
+      "action": "Registrar `'GET /api/v1/requerimientos/contadores': { recurso, accion }` en src/config/permissions.js.",
+      "accepted": "Verificado en requerimientos.controller.js:326-360: cada contador se calcula sólo si el caller tiene el permiso del nivel correspondiente (helper `puede()`), devolviendo 0 si no. No expone datos de terceros; no requiere 403 porque un usuario sin permisos recibe contadores vacíos.",
+      "original_severity": "P1"
+    },
+    {
+      "id": "AUD-RP008",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/notificaciones",
+      "where": [
+        "src/routes/notificaciones.routes.js:4",
+        "src/controllers/notificaciones.controller.js:4"
+      ],
+      "detail": "Clave calculada `GET /api/v1/notificaciones` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/notificaciones.controller.js:4` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Auto-servicio: notificaciones.controller filtra por req.usuario.id_usuario.",
+      "original_severity": "INFO"
+    },
+    {
+      "id": "AUD-RP009",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: PATCH /api/v1/notificaciones/leidas",
+      "where": [
+        "src/routes/notificaciones.routes.js:5",
+        "src/controllers/notificaciones.controller.js:17"
+      ],
+      "detail": "Clave calculada `PATCH /api/v1/notificaciones/leidas` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/notificaciones.controller.js:17` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Auto-servicio: marca leídas sólo las notificaciones del propio usuario.",
+      "original_severity": "INFO"
+    },
+    {
+      "id": "AUD-RP012",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/proyectos",
+      "where": [
+        "src/routes/proyectos.routes.js:3",
+        "src/routes/proyectos.routes.js:4"
+      ],
+      "detail": "Rutas afectadas: /api/v1/proyectos , /api/v1/proyectos/:id. Comparten el permiso `proyectos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP013",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/lotes",
+      "where": [
+        "src/routes/lotes.routes.js:3",
+        "src/routes/lotes.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/lotes , /api/v1/lotes/:id. Comparten el permiso `lotes:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP014",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/compradores",
+      "where": [
+        "src/routes/compradores.routes.js:5",
+        "src/routes/compradores.routes.js:6"
+      ],
+      "detail": "Rutas afectadas: /api/v1/compradores , /api/v1/compradores/:id. Comparten el permiso `compradores:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP015",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/ventas",
+      "where": [
+        "src/routes/ventas.routes.js:8",
+        "src/routes/ventas.routes.js:9"
+      ],
+      "detail": "Rutas afectadas: /api/v1/ventas , /api/v1/ventas/:id. Comparten el permiso `ventas:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP016",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos/mis-pagos",
+      "where": [
+        "src/routes/pagos.routes.js:4",
+        "src/routes/pagos.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/pagos/mis-pagos , /api/v1/pagos/mis-pagos/:id. Comparten el permiso `mis_pagos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP017",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos",
+      "where": [
+        "src/routes/pagos.routes.js:8",
+        "src/routes/pagos.routes.js:15"
+      ],
+      "detail": "Rutas afectadas: /api/v1/pagos , /api/v1/pagos/:id. Comparten el permiso `pagos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP019",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/empresas-aliadas",
+      "where": [
+        "src/routes/empresas_aliadas.routes.js:4",
+        "src/routes/empresas_aliadas.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/empresas-aliadas , /api/v1/empresas-aliadas/:id. Comparten el permiso `empresas_aliadas:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso."
+    },
+    {
+      "id": "AUD-RP020",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:74"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual."
+    },
+    {
+      "id": "AUD-RP021",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:86"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual."
+    },
+    {
+      "id": "AUD-RP022",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:106"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual."
+    },
+    {
+      "id": "AUD-RP023",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:123"
+      ],
+      "detail": "`app.use('/dist', express.static(path.join(__dirname, \"..\", \"public\", \"dist\"), {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual."
+    }
+  ],
+  "stats": {
+    "mounts": 25,
+    "routes_total": 153,
+    "routes_guarded": 138,
+    "routes_public_by_mount": 15,
+    "inline_routes": 5,
+    "prehooks": 1,
+    "permission_entries": 121,
+    "permission_entries_used": 121
+  },
+  "inventory": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/reset-password-email",
+      "key": "POST /api/v1/auth/reset-password-email",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/vincular",
+      "key": "POST /api/v1/auth/vincular",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "key": "POST /api/v1/auth/login",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login/2fa/verificar",
+      "key": "POST /api/v1/auth/login/2fa/verificar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:15"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login/2fa/reenviar",
+      "key": "POST /api/v1/auth/login/2fa/reenviar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:16"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/step-up/solicitar",
+      "key": "POST /api/v1/auth/step-up/solicitar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:19"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/perfil",
+      "key": "GET /api/v1/auth/perfil",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:21"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/mi-rol",
+      "key": "GET /api/v1/auth/mi-rol",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:22"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/auth/perfil",
+      "key": "PUT /api/v1/auth/perfil",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:23"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/auth/avatar",
+      "key": "PUT /api/v1/auth/avatar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:24"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/completar-perfil",
+      "key": "POST /api/v1/auth/completar-perfil",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:25"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/usuarios",
+      "key": "POST /api/v1/auth/usuarios",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/auth.routes.js:26"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/proyectos",
+      "key": "GET /api/v1/public/proyectos",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/public.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/lotes",
+      "key": "GET /api/v1/public/lotes",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/public.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/asesores",
+      "key": "GET /api/v1/public/asesores",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/public.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proyectos",
+      "key": "GET /api/v1/proyectos",
+      "matchable": true,
+      "permiso": "proyectos:leer",
+      "file": "src/routes/proyectos.routes.js:3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proyectos/:id",
+      "key": "GET /api/v1/proyectos",
+      "matchable": true,
+      "permiso": "proyectos:leer",
+      "file": "src/routes/proyectos.routes.js:4"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/proyectos",
+      "key": "POST /api/v1/proyectos",
+      "matchable": true,
+      "permiso": "proyectos:crear",
+      "file": "src/routes/proyectos.routes.js:5"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/proyectos/:id",
+      "key": "PUT /api/v1/proyectos",
+      "matchable": true,
+      "permiso": "proyectos:actualizar",
+      "file": "src/routes/proyectos.routes.js:6"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/proyectos/:id/ubicacion",
+      "key": "PATCH /api/v1/proyectos/ubicacion",
+      "matchable": true,
+      "permiso": "proyectos:editar_ubicacion",
+      "file": "src/routes/proyectos.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lotes",
+      "key": "GET /api/v1/lotes",
+      "matchable": true,
+      "permiso": "lotes:leer",
+      "file": "src/routes/lotes.routes.js:3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lotes/disponibles",
+      "key": "GET /api/v1/lotes/disponibles",
+      "matchable": true,
+      "permiso": "lotes:leer",
+      "file": "src/routes/lotes.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lotes/:id",
+      "key": "GET /api/v1/lotes",
+      "matchable": true,
+      "permiso": "lotes:leer",
+      "file": "src/routes/lotes.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/lotes",
+      "key": "POST /api/v1/lotes",
+      "matchable": true,
+      "permiso": "lotes:crear",
+      "file": "src/routes/lotes.routes.js:6"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/lotes/:id",
+      "key": "PUT /api/v1/lotes",
+      "matchable": true,
+      "permiso": "lotes:actualizar",
+      "file": "src/routes/lotes.routes.js:7"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/lotes/:id/geometria",
+      "key": "PATCH /api/v1/lotes/geometria",
+      "matchable": true,
+      "permiso": "lotes:editar_geometria",
+      "file": "src/routes/lotes.routes.js:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/lotes/geometria-batch",
+      "key": "POST /api/v1/lotes/geometria-batch",
+      "matchable": true,
+      "permiso": "lotes:editar_geometria",
+      "file": "src/routes/lotes.routes.js:9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/compradores/buscar-usuario",
+      "key": "GET /api/v1/compradores/buscar-usuario",
+      "matchable": true,
+      "permiso": "compradores:leer",
+      "file": "src/routes/compradores.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/compradores",
+      "key": "GET /api/v1/compradores",
+      "matchable": true,
+      "permiso": "compradores:leer",
+      "file": "src/routes/compradores.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/compradores/:id",
+      "key": "GET /api/v1/compradores",
+      "matchable": true,
+      "permiso": "compradores:leer",
+      "file": "src/routes/compradores.routes.js:6"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/compradores",
+      "key": "POST /api/v1/compradores",
+      "matchable": true,
+      "permiso": "compradores:crear",
+      "file": "src/routes/compradores.routes.js:7"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/compradores/:id",
+      "key": "PUT /api/v1/compradores",
+      "matchable": true,
+      "permiso": "compradores:actualizar",
+      "file": "src/routes/compradores.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ventas/estado-financiero",
+      "key": "GET /api/v1/ventas/estado-financiero",
+      "matchable": true,
+      "permiso": "dashboard:ver_operacion",
+      "file": "src/routes/ventas.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ventas/reportes/financiero",
+      "key": "GET /api/v1/ventas/reportes/financiero",
+      "matchable": true,
+      "permiso": "reportes:leer",
+      "file": "src/routes/ventas.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ventas/mis-ventas",
+      "key": "GET /api/v1/ventas/mis-ventas",
+      "matchable": true,
+      "permiso": "mis_ventas:leer",
+      "file": "src/routes/ventas.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ventas",
+      "key": "GET /api/v1/ventas",
+      "matchable": true,
+      "permiso": "ventas:leer",
+      "file": "src/routes/ventas.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ventas/:id",
+      "key": "GET /api/v1/ventas",
+      "matchable": true,
+      "permiso": "ventas:leer",
+      "file": "src/routes/ventas.routes.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ventas",
+      "key": "POST /api/v1/ventas",
+      "matchable": true,
+      "permiso": "ventas:crear",
+      "file": "src/routes/ventas.routes.js:10"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ventas/solicitud",
+      "key": "POST /api/v1/ventas/solicitud",
+      "matchable": true,
+      "permiso": "ventas:solicitar",
+      "file": "src/routes/ventas.routes.js:11"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/ventas/:id/financiero",
+      "key": "PATCH /api/v1/ventas/financiero",
+      "matchable": true,
+      "permiso": "ventas:editar_financiero",
+      "file": "src/routes/ventas.routes.js:12"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/ventas/:id/cancelar",
+      "key": "PATCH /api/v1/ventas/cancelar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/ventas.routes.js:13"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/ventas/:id",
+      "key": "DELETE /api/v1/ventas",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/ventas.routes.js:14"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cuotas/pendientes",
+      "key": "GET /api/v1/cuotas/pendientes",
+      "matchable": true,
+      "permiso": "cuotas:leer",
+      "file": "src/routes/cuotas.routes.js:3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cuotas/vencidas",
+      "key": "GET /api/v1/cuotas/vencidas",
+      "matchable": true,
+      "permiso": "cuotas:leer",
+      "file": "src/routes/cuotas.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cuotas/mis-cuotas/:idCuota/documentos",
+      "key": "GET /api/v1/cuotas/mis-cuotas/documentos",
+      "matchable": true,
+      "permiso": "mis_ventas:leer",
+      "file": "src/routes/cuotas.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cuotas/venta/:idVenta",
+      "key": "GET /api/v1/cuotas/venta",
+      "matchable": true,
+      "permiso": "cuotas:leer",
+      "file": "src/routes/cuotas.routes.js:6"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cuotas/venta/:idVenta/valores",
+      "key": "PATCH /api/v1/cuotas/venta/valores",
+      "matchable": true,
+      "permiso": "cuotas:editar_valores",
+      "file": "src/routes/cuotas.routes.js:7"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/cuotas/venta/:idVenta/plan",
+      "key": "PUT /api/v1/cuotas/venta/plan",
+      "matchable": true,
+      "permiso": "cuotas:editar_valores",
+      "file": "src/routes/cuotas.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cuotas/:id/fracciones",
+      "key": "GET /api/v1/cuotas/fracciones",
+      "matchable": true,
+      "permiso": "cuotas:leer",
+      "file": "src/routes/cuotas.routes.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cuotas/:id/fracciones",
+      "key": "POST /api/v1/cuotas/fracciones",
+      "matchable": true,
+      "permiso": "cuotas:editar_valores",
+      "file": "src/routes/cuotas.routes.js:10"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cuotas/:id/fracciones",
+      "key": "DELETE /api/v1/cuotas/fracciones",
+      "matchable": true,
+      "permiso": "cuotas:editar_valores",
+      "file": "src/routes/cuotas.routes.js:11"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cuotas/:id",
+      "key": "DELETE /api/v1/cuotas",
+      "matchable": true,
+      "permiso": "cuotas:eliminar",
+      "file": "src/routes/cuotas.routes.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cuotas",
+      "key": "POST /api/v1/cuotas",
+      "matchable": true,
+      "permiso": "cuotas:crear",
+      "file": "src/routes/cuotas.routes.js:13"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/cuotas/:id/valores",
+      "key": "PATCH /api/v1/cuotas/valores",
+      "matchable": true,
+      "permiso": "cuotas:editar_valores",
+      "file": "src/routes/cuotas.routes.js:14"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pagos/mis-pagos",
+      "key": "GET /api/v1/pagos/mis-pagos",
+      "matchable": true,
+      "permiso": "mis_pagos:leer",
+      "file": "src/routes/pagos.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pagos/mis-pagos/:id",
+      "key": "GET /api/v1/pagos/mis-pagos",
+      "matchable": true,
+      "permiso": "mis_pagos:leer",
+      "file": "src/routes/pagos.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pagos/comprador",
+      "key": "POST /api/v1/pagos/comprador",
+      "matchable": true,
+      "permiso": "mis_pagos:crear",
+      "file": "src/routes/pagos.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pagos",
+      "key": "GET /api/v1/pagos",
+      "matchable": true,
+      "permiso": "pagos:leer",
+      "file": "src/routes/pagos.routes.js:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pagos",
+      "key": "POST /api/v1/pagos",
+      "matchable": true,
+      "permiso": "pagos:crear",
+      "file": "src/routes/pagos.routes.js:9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pagos/contrast",
+      "key": "GET /api/v1/pagos/contrast",
+      "matchable": true,
+      "permiso": "validacion_pagos:leer",
+      "file": "src/routes/pagos.routes.js:11"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pagos/accept-batch",
+      "key": "PATCH /api/v1/pagos/accept-batch",
+      "matchable": true,
+      "permiso": "validacion_pagos:crear",
+      "file": "src/routes/pagos.routes.js:12"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pagos/reject-batch",
+      "key": "PATCH /api/v1/pagos/reject-batch",
+      "matchable": true,
+      "permiso": "validacion_pagos:crear",
+      "file": "src/routes/pagos.routes.js:13"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pagos/:id",
+      "key": "GET /api/v1/pagos",
+      "matchable": true,
+      "permiso": "pagos:leer",
+      "file": "src/routes/pagos.routes.js:15"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/comisionistas/comisiones",
+      "key": "GET /api/v1/comisionistas/comisiones",
+      "matchable": true,
+      "permiso": "comisionistas:leer",
+      "file": "src/routes/comisionistas.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/comisionistas/:id/comisiones",
+      "key": "GET /api/v1/comisionistas/comisiones",
+      "matchable": true,
+      "permiso": "comisionistas:leer",
+      "file": "src/routes/comisionistas.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/comisionistas/ventas/:ventaId/micropago",
+      "key": "POST /api/v1/comisionistas/ventas/micropago",
+      "matchable": true,
+      "permiso": "comisionistas:actualizar",
+      "file": "src/routes/comisionistas.routes.js:6"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/comisionistas/ventas/:ventaId/pagada",
+      "key": "PATCH /api/v1/comisionistas/ventas/pagada",
+      "matchable": true,
+      "permiso": "comisionistas:actualizar",
+      "file": "src/routes/comisionistas.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/comisionistas",
+      "key": "GET /api/v1/comisionistas",
+      "matchable": true,
+      "permiso": "comisionistas:leer",
+      "file": "src/routes/comisionistas.routes.js:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/comisionistas",
+      "key": "POST /api/v1/comisionistas",
+      "matchable": true,
+      "permiso": "comisionistas:crear",
+      "file": "src/routes/comisionistas.routes.js:9"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/comisionistas/:id",
+      "key": "PUT /api/v1/comisionistas",
+      "matchable": true,
+      "permiso": "comisionistas:actualizar",
+      "file": "src/routes/comisionistas.routes.js:10"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/facturas/mis-facturas",
+      "key": "GET /api/v1/facturas/mis-facturas",
+      "matchable": true,
+      "permiso": "mis_facturas:leer",
+      "file": "src/routes/facturas.routes.js:3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/facturas/cuotas-sin-factura",
+      "key": "GET /api/v1/facturas/cuotas-sin-factura",
+      "matchable": true,
+      "permiso": "facturas:leer",
+      "file": "src/routes/facturas.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/facturas/solicitudes",
+      "key": "GET /api/v1/facturas/solicitudes",
+      "matchable": true,
+      "permiso": "facturas:leer",
+      "file": "src/routes/facturas.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/facturas/generar-pendientes",
+      "key": "POST /api/v1/facturas/generar-pendientes",
+      "matchable": true,
+      "permiso": "facturas:crear",
+      "file": "src/routes/facturas.routes.js:6"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/facturas/solicitar",
+      "key": "POST /api/v1/facturas/solicitar",
+      "matchable": true,
+      "permiso": "mis_facturas:leer",
+      "file": "src/routes/facturas.routes.js:7"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/facturas/solicitudes/:id",
+      "key": "PATCH /api/v1/facturas/solicitudes",
+      "matchable": true,
+      "permiso": "facturas:crear",
+      "file": "src/routes/facturas.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/facturas",
+      "key": "GET /api/v1/facturas",
+      "matchable": true,
+      "permiso": "facturas:leer",
+      "file": "src/routes/facturas.routes.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/facturas",
+      "key": "POST /api/v1/facturas",
+      "matchable": true,
+      "permiso": "facturas:crear",
+      "file": "src/routes/facturas.routes.js:10"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/facturas/:id/anular",
+      "key": "PATCH /api/v1/facturas/anular",
+      "matchable": true,
+      "permiso": "facturas:crear",
+      "file": "src/routes/facturas.routes.js:11"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recibos/mis-recibos",
+      "key": "GET /api/v1/recibos/mis-recibos",
+      "matchable": true,
+      "permiso": "mis_recibos:leer",
+      "file": "src/routes/recibos.routes.js:3"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/recibos/generar-pendientes",
+      "key": "POST /api/v1/recibos/generar-pendientes",
+      "matchable": true,
+      "permiso": "recibos:crear",
+      "file": "src/routes/recibos.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recibos",
+      "key": "GET /api/v1/recibos",
+      "matchable": true,
+      "permiso": "recibos:leer",
+      "file": "src/routes/recibos.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/panel",
+      "key": "GET /api/v1/reportes/panel",
+      "matchable": true,
+      "permiso": "dashboard:ver_operacion",
+      "file": "src/routes/reportes.routes.js:3"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/cartera",
+      "key": "GET /api/v1/reportes/cartera",
+      "matchable": true,
+      "permiso": "reportes:leer",
+      "file": "src/routes/reportes.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/cartera-hoy",
+      "key": "GET /api/v1/reportes/cartera-hoy",
+      "matchable": true,
+      "permiso": "dashboard:ver_cartera",
+      "file": "src/routes/reportes.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/alertas",
+      "key": "GET /api/v1/reportes/alertas",
+      "matchable": true,
+      "permiso": "dashboard:ver_juridico",
+      "file": "src/routes/reportes.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/recaudo",
+      "key": "GET /api/v1/reportes/recaudo",
+      "matchable": true,
+      "permiso": "reportes:leer",
+      "file": "src/routes/reportes.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/comisiones",
+      "key": "GET /api/v1/reportes/comisiones",
+      "matchable": true,
+      "permiso": "dashboard:ver_comisiones",
+      "file": "src/routes/reportes.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/comisiones-gerencia",
+      "key": "GET /api/v1/reportes/comisiones-gerencia",
+      "matchable": true,
+      "permiso": "reportes:leer",
+      "file": "src/routes/reportes.routes.js:9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/juridico",
+      "key": "GET /api/v1/reportes/juridico",
+      "matchable": true,
+      "permiso": "alertas_jur:leer",
+      "file": "src/routes/reportes.routes.js:10"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/auditoria",
+      "key": "GET /api/v1/reportes/auditoria",
+      "matchable": true,
+      "permiso": "auditoria_log:leer",
+      "file": "src/routes/reportes.routes.js:11"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reportes/proyeccion-ingresos",
+      "key": "GET /api/v1/reportes/proyeccion-ingresos",
+      "matchable": true,
+      "permiso": "reportes:leer",
+      "file": "src/routes/reportes.routes.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/reportes/mora-sync",
+      "key": "POST /api/v1/reportes/mora-sync",
+      "matchable": true,
+      "permiso": "reportes:mora_sync",
+      "file": "src/routes/reportes.routes.js:13"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usuarios",
+      "key": "GET /api/v1/usuarios",
+      "matchable": true,
+      "permiso": "usuarios:leer",
+      "file": "src/routes/usuarios.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usuarios/roles",
+      "key": "GET /api/v1/usuarios/roles",
+      "matchable": true,
+      "permiso": "usuarios:leer",
+      "file": "src/routes/usuarios.routes.js:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/usuarios",
+      "key": "POST /api/v1/usuarios",
+      "matchable": true,
+      "permiso": "usuarios:crear",
+      "file": "src/routes/usuarios.routes.js:9"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/usuarios/:id",
+      "key": "PUT /api/v1/usuarios",
+      "matchable": true,
+      "permiso": "usuarios:actualizar",
+      "file": "src/routes/usuarios.routes.js:10"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/usuarios/:id/desactivar",
+      "key": "PATCH /api/v1/usuarios/desactivar",
+      "matchable": true,
+      "permiso": "usuarios:actualizar",
+      "file": "src/routes/usuarios.routes.js:11"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/usuarios/:id/desbloquear",
+      "key": "PATCH /api/v1/usuarios/desbloquear",
+      "matchable": true,
+      "permiso": "usuarios:actualizar",
+      "file": "src/routes/usuarios.routes.js:12"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/roles",
+      "key": "GET /api/v1/roles",
+      "matchable": true,
+      "permiso": "roles:leer",
+      "file": "src/routes/roles.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/roles/:id/permisos",
+      "key": "GET /api/v1/roles/permisos",
+      "matchable": true,
+      "permiso": "roles:leer",
+      "file": "src/routes/roles.routes.js:5"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/roles/:id/permisos",
+      "key": "PUT /api/v1/roles/permisos",
+      "matchable": true,
+      "permiso": "roles:actualizar",
+      "file": "src/routes/roles.routes.js:6"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/roles/:id/manual",
+      "key": "PATCH /api/v1/roles/manual",
+      "matchable": true,
+      "permiso": "roles:actualizar",
+      "file": "src/routes/roles.routes.js:7"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/uploads/baucher",
+      "key": "POST /api/v1/uploads/baucher",
+      "matchable": true,
+      "permiso": "uploads:crear",
+      "file": "src/routes/uploads.routes.js:18"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/uploads/avatar",
+      "key": "POST /api/v1/uploads/avatar",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/uploads.routes.js:19"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/uploads/lote-foto",
+      "key": "POST /api/v1/uploads/lote-foto",
+      "matchable": true,
+      "permiso": "lotes:actualizar",
+      "file": "src/routes/uploads.routes.js:20"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bank-transactions",
+      "key": "GET /api/v1/bank-transactions",
+      "matchable": true,
+      "permiso": "bank_transactions:leer",
+      "file": "src/routes/bank_transactions.routes.js:4"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/bank-transactions/batch",
+      "key": "POST /api/v1/bank-transactions/batch",
+      "matchable": true,
+      "permiso": "bank_transactions:crear",
+      "file": "src/routes/bank_transactions.routes.js:5"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/bank-transactions/:id",
+      "key": "PUT /api/v1/bank-transactions",
+      "matchable": true,
+      "permiso": "bank_transactions:actualizar",
+      "file": "src/routes/bank_transactions.routes.js:6"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/bank-transactions/:id",
+      "key": "DELETE /api/v1/bank-transactions",
+      "matchable": true,
+      "permiso": "bank_transactions:eliminar",
+      "file": "src/routes/bank_transactions.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/juridico/cartera",
+      "key": "GET /api/v1/juridico/cartera",
+      "matchable": true,
+      "permiso": "alertas_jur:leer",
+      "file": "src/routes/juridico.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/juridico/:id_venta/observaciones",
+      "key": "GET /api/v1/juridico/observaciones",
+      "matchable": true,
+      "permiso": "observaciones_jur:leer",
+      "file": "src/routes/juridico.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/juridico/observaciones",
+      "key": "POST /api/v1/juridico/observaciones",
+      "matchable": true,
+      "permiso": "observaciones_jur:crear",
+      "file": "src/routes/juridico.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/gastos/resumen",
+      "key": "GET /api/v1/gastos/resumen",
+      "matchable": true,
+      "permiso": "gastos:leer",
+      "file": "src/routes/gastos.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/gastos",
+      "key": "GET /api/v1/gastos",
+      "matchable": true,
+      "permiso": "gastos:leer",
+      "file": "src/routes/gastos.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/gastos",
+      "key": "POST /api/v1/gastos",
+      "matchable": true,
+      "permiso": "gastos:crear",
+      "file": "src/routes/gastos.routes.js:6"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/gastos/:id",
+      "key": "PUT /api/v1/gastos",
+      "matchable": true,
+      "permiso": "gastos:actualizar",
+      "file": "src/routes/gastos.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recepciones/pendientes",
+      "key": "GET /api/v1/recepciones/pendientes",
+      "matchable": true,
+      "permiso": "recepciones:leer",
+      "file": "src/routes/recepciones.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recepciones/historial",
+      "key": "GET /api/v1/recepciones/historial",
+      "matchable": true,
+      "permiso": "recepciones:leer",
+      "file": "src/routes/recepciones.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/recepciones/:idRequerimiento",
+      "key": "GET /api/v1/recepciones",
+      "matchable": true,
+      "permiso": "recepciones:leer",
+      "file": "src/routes/recepciones.routes.js:6"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/recepciones",
+      "key": "POST /api/v1/recepciones",
+      "matchable": true,
+      "permiso": "recepciones:crear",
+      "file": "src/routes/recepciones.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/mis-requerimientos",
+      "key": "GET /api/v1/requerimientos/mis-requerimientos",
+      "matchable": true,
+      "permiso": "requerimientos:leer",
+      "file": "src/routes/requerimientos.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/stream",
+      "key": "GET /api/v1/requerimientos/stream",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/requerimientos.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/contadores",
+      "key": "GET /api/v1/requerimientos/contadores",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/requerimientos.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/aprobaciones",
+      "key": "GET /api/v1/requerimientos/aprobaciones",
+      "matchable": true,
+      "permiso": "requerimientos:leer",
+      "file": "src/routes/requerimientos.routes.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/historial",
+      "key": "GET /api/v1/requerimientos/historial",
+      "matchable": true,
+      "permiso": "requerimientos:leer",
+      "file": "src/routes/requerimientos.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/desembolsos",
+      "key": "GET /api/v1/requerimientos/desembolsos",
+      "matchable": true,
+      "permiso": "requerimientos:desembolsar",
+      "file": "src/routes/requerimientos.routes.js:9"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/autorizacion",
+      "key": "GET /api/v1/requerimientos/autorizacion",
+      "matchable": true,
+      "permiso": "recepciones:leer",
+      "file": "src/routes/requerimientos.routes.js:10"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requerimientos/:id/trazabilidad",
+      "key": "GET /api/v1/requerimientos/trazabilidad",
+      "matchable": true,
+      "permiso": "requerimientos:leer",
+      "file": "src/routes/requerimientos.routes.js:11"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requerimientos",
+      "key": "POST /api/v1/requerimientos",
+      "matchable": true,
+      "permiso": "requerimientos:crear",
+      "file": "src/routes/requerimientos.routes.js:12"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/cancelar",
+      "key": "PATCH /api/v1/requerimientos/cancelar",
+      "matchable": true,
+      "permiso": "requerimientos:crear",
+      "file": "src/routes/requerimientos.routes.js:13"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/aprobar-jefe",
+      "key": "PATCH /api/v1/requerimientos/aprobar-jefe",
+      "matchable": true,
+      "permiso": "requerimientos:aprobar_jefe",
+      "file": "src/routes/requerimientos.routes.js:14"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/aprobar-final",
+      "key": "PATCH /api/v1/requerimientos/aprobar-final",
+      "matchable": true,
+      "permiso": "requerimientos:aprobar_final",
+      "file": "src/routes/requerimientos.routes.js:15"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/aprobar-dueno",
+      "key": "PATCH /api/v1/requerimientos/aprobar-dueno",
+      "matchable": true,
+      "permiso": "requerimientos:aprobar_dueno",
+      "file": "src/routes/requerimientos.routes.js:16"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/aprobar-gerencia",
+      "key": "PATCH /api/v1/requerimientos/aprobar-gerencia",
+      "matchable": true,
+      "permiso": "requerimientos:aprobar_gerencia",
+      "file": "src/routes/requerimientos.routes.js:17"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/rechazar",
+      "key": "PATCH /api/v1/requerimientos/rechazar",
+      "matchable": true,
+      "permiso": "requerimientos:leer",
+      "file": "src/routes/requerimientos.routes.js:18"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/desembolsar",
+      "key": "PATCH /api/v1/requerimientos/desembolsar",
+      "matchable": true,
+      "permiso": "requerimientos:desembolsar",
+      "file": "src/routes/requerimientos.routes.js:19"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/requerimientos/:id/entregar",
+      "key": "PATCH /api/v1/requerimientos/entregar",
+      "matchable": true,
+      "permiso": "recepciones:crear",
+      "file": "src/routes/requerimientos.routes.js:20"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notificaciones",
+      "key": "GET /api/v1/notificaciones",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/notificaciones.routes.js:4"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/notificaciones/leidas",
+      "key": "PATCH /api/v1/notificaciones/leidas",
+      "matchable": true,
+      "permiso": null,
+      "file": "src/routes/notificaciones.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventario/stock",
+      "key": "GET /api/v1/inventario/stock",
+      "matchable": true,
+      "permiso": "inventario:leer",
+      "file": "src/routes/inventario.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventario/movimientos",
+      "key": "GET /api/v1/inventario/movimientos",
+      "matchable": true,
+      "permiso": "inventario:leer",
+      "file": "src/routes/inventario.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/config",
+      "key": "GET /api/v1/config",
+      "matchable": true,
+      "permiso": "config:leer",
+      "file": "src/routes/config.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/config/:clave",
+      "key": "GET /api/v1/config/:clave",
+      "matchable": false,
+      "permiso": null,
+      "file": "src/routes/config.routes.js:5"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/config/:clave",
+      "key": "PATCH /api/v1/config/:clave",
+      "matchable": false,
+      "permiso": null,
+      "file": "src/routes/config.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/respaldos/restauraciones/:id",
+      "key": "GET /api/v1/respaldos/restauraciones",
+      "matchable": true,
+      "permiso": "respaldos:leer",
+      "file": "src/routes/respaldos.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/respaldos/:id/descargar",
+      "key": "GET /api/v1/respaldos/descargar",
+      "matchable": true,
+      "permiso": "respaldos:leer",
+      "file": "src/routes/respaldos.routes.js:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/respaldos",
+      "key": "GET /api/v1/respaldos",
+      "matchable": true,
+      "permiso": "respaldos:leer",
+      "file": "src/routes/respaldos.routes.js:7"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/respaldos/:id/restaurar",
+      "key": "POST /api/v1/respaldos/restaurar",
+      "matchable": true,
+      "permiso": "respaldos:restaurar",
+      "file": "src/routes/respaldos.routes.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/empresas-aliadas",
+      "key": "GET /api/v1/empresas-aliadas",
+      "matchable": true,
+      "permiso": "empresas_aliadas:leer",
+      "file": "src/routes/empresas_aliadas.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/empresas-aliadas/:id",
+      "key": "GET /api/v1/empresas-aliadas",
+      "matchable": true,
+      "permiso": "empresas_aliadas:leer",
+      "file": "src/routes/empresas_aliadas.routes.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/empresas-aliadas",
+      "key": "POST /api/v1/empresas-aliadas",
+      "matchable": true,
+      "permiso": "empresas_aliadas:crear",
+      "file": "src/routes/empresas_aliadas.routes.js:6"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/empresas-aliadas/:id",
+      "key": "PUT /api/v1/empresas-aliadas",
+      "matchable": true,
+      "permiso": "empresas_aliadas:actualizar",
+      "file": "src/routes/empresas_aliadas.routes.js:7"
+    }
+  ]
+}

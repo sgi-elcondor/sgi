@@ -1,0 +1,109 @@
+{
+  "script": "04-db-vs-code",
+  "title": "Anexo D · Consultas del backend vs. esquema real de la base de datos",
+  "generated_at": "2026-07-31T06:03:41.446Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "INFO": 6
+  },
+  "findings": [
+    {
+      "id": "AUD-DB001",
+      "severity": "INFO",
+      "category": "bd-esquema-inconsistente",
+      "summary": "RPC que vive en public y no en condor: next_consecutivo_condor()",
+      "where": [
+        "src/controllers/facturas.controller.js:14"
+      ],
+      "detail": "Funciona, pero rompe la regla del proyecto de direccionar siempre `condor` explícitamente: esta función es la excepción y no está documentada como tal. Los demás RPC (fn_excedente_pago, actualizar_mora) sí viven en `condor`.",
+      "action": "Documentar la excepción, o mover la función a `condor` y añadir `.schema('condor')` en los 5 puntos de llamada.",
+      "accepted": "Excepción conocida y documentada en CLAUDE.md: la función vive en public y se invoca sin .schema(). Mover la función o añadir el .schema() rompería todas las numeraciones. Se deja como está y se documenta.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DB002",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: consecutivos",
+      "where": [
+        "condor.consecutivos"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('consecutivos')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "NO ELIMINAR. Es el estado del RPC next_consecutivo_condor (8 filas: prefijo, periodo, ultimo_numero). Ningún .from() la referencia porque sólo la lee y escribe la función en BD. Borrarla rompe TODAS las numeraciones del sistema: recibos RC-, pagos PAG-, micropagos MCOM-, facturas FV- y códigos de venta.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DB003",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_auditoria_juridica",
+      "where": [
+        "condor.vw_auditoria_juridica"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_auditoria_juridica')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (4.709 filas derivadas). Se conserva: una vista no consume almacenamiento ni puede desincronizarse. Documentada como disponible en el Documento de Datos.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DB004",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_auditoria",
+      "where": [
+        "condor.vw_dir_auditoria"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_auditoria')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (19.485 filas derivadas). Se conserva por el mismo motivo.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DB005",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy",
+      "where": [
+        "condor.vw_dir_recaudo_facturacion_hoy"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_dir_recaudo_facturacion_hoy')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida. El backend usa vw_dir_recaudo_facturacion_historico. Se conserva.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DB006",
+      "severity": "INFO",
+      "category": "bd-sin-uso",
+      "summary": "Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial",
+      "where": [
+        "condor.vw_disponibilidad_comercial"
+      ],
+      "detail": "Expuesto en el esquema pero sin ningún `.from('vw_disponibilidad_comercial')` en src/. Puede ser histórico, de respaldo, o usado sólo por vistas SQL/triggers.",
+      "action": "Confirmar si sigue siendo necesario; documentarlo o retirarlo.",
+      "accepted": "Vista disponible y no consumida (34 lotes). El catálogo público se arma desde lote/proyecto. Se conserva.",
+      "original_severity": "P2"
+    }
+  ],
+  "stats": {
+    "db_objects": 47,
+    "db_rpcs": 2,
+    "public_rpcs": 1,
+    "queries_scanned": 374,
+    "tables_referenced": 42,
+    "rpc_calls_scanned": 6
+  },
+  "unused_columns": [
+    {
+      "table": "respaldo",
+      "columns": [
+        "checksum_sha256",
+        "detalle"
+      ]
+    }
+  ],
+  "catalog_file": "docs/auditoria/anexos/db-catalog.json"
+}

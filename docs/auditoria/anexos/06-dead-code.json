@@ -1,0 +1,76 @@
+{
+  "script": "06-dead-code",
+  "title": "Anexo G · Código, archivos y dependencias sin uso",
+  "generated_at": "2026-07-31T06:33:21.797Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "INFO": 4
+  },
+  "findings": [
+    {
+      "id": "AUD-DC001",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/index.js",
+      "where": [
+        "src/index.js:197"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DC002",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/comisiones.service.js",
+      "where": [
+        "src/services/comisiones.service.js:68"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DC003",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "2 console.log/debugger en src/services/email.service.js",
+      "where": [
+        "src/services/email.service.js:36,42"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116.",
+      "original_severity": "P2"
+    },
+    {
+      "id": "AUD-DC004",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/mora.service.js",
+      "where": [
+        "src/services/mora.service.js:7"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job.",
+      "original_severity": "P2"
+    }
+  ],
+  "stats": {
+    "src_files": 78,
+    "public_js_files": 55,
+    "css_files": 37,
+    "img_files": 5,
+    "deps": 10,
+    "dev_deps": 5,
+    "debug_lines": 5,
+    "mojibake_lines": 0,
+    "todos": 0
+  }
+}

@@ -1,0 +1,3664 @@
+{
+  "generated_at": "2026-07-31T06:03:41.445Z",
+  "schema": "condor",
+  "tables": {
+    "inventario_movimiento": {
+      "columns": [
+        {
+          "name": "id_movimiento",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "material",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "unidad",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cantidad",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_proyecto",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `proyecto.id_proyecto`.<fk table='proyecto' column='id_proyecto'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "proyecto",
+            "column": "id_proyecto"
+          }
+        },
+        {
+          "name": "id_requerimiento",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `requerimiento.id_requerimiento`.<fk table='requerimiento' column='id_requerimiento'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "requerimiento",
+            "column": "id_requerimiento"
+          }
+        },
+        {
+          "name": "id_recepcion",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `recepcion.id_recepcion`.<fk table='recepcion' column='id_recepcion'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "recepcion",
+            "column": "id_recepcion"
+          }
+        },
+        {
+          "name": "creado_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_movimiento",
+        "tipo",
+        "material",
+        "descripcion",
+        "cantidad",
+        "created_at"
+      ]
+    },
+    "vw_auditoria_juridica": {
+      "columns": [
+        {
+          "name": "tabla_afectada",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_registro",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo_operacion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "campo_modificado",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_anterior",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_nuevo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "usuario",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_evento",
+          "type": "timestamp without time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "cuota": {
+      "columns": [
+        {
+          "name": "id_cuota",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "numero_cuota",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_vencimiento",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_cuota",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "es_extraordinaria",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_cuota",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_cuota",
+        "id_venta",
+        "numero_cuota",
+        "fecha_vencimiento",
+        "valor_cuota",
+        "es_extraordinaria",
+        "estado"
+      ]
+    },
+    "recepcion_item": {
+      "columns": [
+        {
+          "name": "id_recepcion_item",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_recepcion",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `recepcion.id_recepcion`.<fk table='recepcion' column='id_recepcion'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "recepcion",
+            "column": "id_recepcion"
+          }
+        },
+        {
+          "name": "id_item",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `requerimiento_item.id_item`.<fk table='requerimiento_item' column='id_item'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "requerimiento_item",
+            "column": "id_item"
+          }
+        },
+        {
+          "name": "cantidad",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_recepcion_item",
+        "id_recepcion",
+        "id_item",
+        "cantidad"
+      ]
+    },
+    "requerimiento_item": {
+      "columns": [
+        {
+          "name": "id_item",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_requerimiento",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `requerimiento.id_requerimiento`.<fk table='requerimiento' column='id_requerimiento'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "requerimiento",
+            "column": "id_requerimiento"
+          }
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "unidad",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cantidad_solicitada",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "precio_unitario",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_item",
+        "id_requerimiento",
+        "descripcion",
+        "unidad",
+        "cantidad_solicitada"
+      ]
+    },
+    "vw_dir_auditoria": {
+      "columns": [
+        {
+          "name": "id_auditoria",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "tabla_afectada",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_registro",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "campo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_anterior",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_nuevo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "operacion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "usuario",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "factura": {
+      "columns": [
+        {
+          "name": "id_factura",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "numero_factura",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_emision",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_facturado",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_factura",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_factura",
+        "numero_factura",
+        "fecha_emision",
+        "valor_facturado",
+        "estado"
+      ]
+    },
+    "venta_comisionista": {
+      "columns": [
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_comision",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_ganada",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_pagada",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_comision",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "pagada",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_pagado",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "causada",
+          "type": "boolean",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_causada",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        }
+      ],
+      "required": [
+        "id_venta",
+        "estado",
+        "pagada"
+      ]
+    },
+    "rol_permiso": {
+      "columns": [
+        {
+          "name": "id_rol",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `roles.id_rol`.<fk table='roles' column='id_rol'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "roles",
+            "column": "id_rol"
+          }
+        },
+        {
+          "name": "id_permiso",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `permisos.id_permiso`.<fk table='permisos' column='id_permiso'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "permisos",
+            "column": "id_permiso"
+          }
+        }
+      ],
+      "required": [
+        "id_rol",
+        "id_permiso"
+      ]
+    },
+    "bank_transaction": {
+      "columns": [
+        {
+          "name": "id_transaction",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "bank",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "transaction_date",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "reference",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "amount",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_pago",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `pago.id_pago`.<fk table='pago' column='id_pago'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "pago",
+            "column": "id_pago"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_transaction",
+        "bank",
+        "transaction_date",
+        "description",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "vw_dir_cartera_resumen_hoy": {
+      "columns": [
+        {
+          "name": "fecha_corte",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "capital_financiado_total",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "capital_pagado_total",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "capital_pendiente_total",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "capital_en_mora",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ratio_mora",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "vw_dir_comisiones_resumen": {
+      "columns": [
+        {
+          "name": "fecha_corte",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comisiones_causadas",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comisiones_pagadas",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comisiones_pendientes",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "notificacion": {
+      "columns": [
+        {
+          "name": "id_notificacion",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "mensaje",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "vista",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "referencia",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "leida",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_notificacion",
+        "id_usuario",
+        "titulo",
+        "leida",
+        "created_at"
+      ]
+    },
+    "cuota_fraccion": {
+      "columns": [
+        {
+          "name": "id_fraccion",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_cuota",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `cuota.id_cuota`.<fk table='cuota' column='id_cuota'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "cuota",
+            "column": "id_cuota"
+          }
+        },
+        {
+          "name": "numero_fraccion",
+          "type": "smallint",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_fraccion",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_propuesta",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "notas",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_fraccion",
+        "id_cuota",
+        "numero_fraccion",
+        "valor_fraccion"
+      ]
+    },
+    "proyecto": {
+      "columns": [
+        {
+          "name": "id_proyecto",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "nombre",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ubicacion",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_proyecto",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_creacion",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "sigla",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "lat",
+          "type": "double precision",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "lng",
+          "type": "double precision",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_proyecto",
+        "nombre",
+        "estado",
+        "fecha_creacion"
+      ]
+    },
+    "venta": {
+      "columns": [
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_lote",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `lote.id_lote`.<fk table='lote' column='id_lote'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "lote",
+            "column": "id_lote"
+          }
+        },
+        {
+          "name": "fecha_venta",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_total",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cuota_inicial",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_venta",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "total_permutas",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "detalle_permutas",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "escriturado",
+          "type": "boolean",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_escritura",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "codigo_venta",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_venta",
+        "id_lote",
+        "fecha_venta",
+        "valor_total",
+        "cuota_inicial",
+        "estado"
+      ]
+    },
+    "respaldo_restauracion": {
+      "columns": [
+        {
+          "name": "id_restauracion",
+          "type": "bigint",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_respaldo",
+          "type": "bigint",
+          "description": "Note:\nThis is a Foreign Key to `respaldo.id_respaldo`.<fk table='respaldo' column='id_respaldo'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "respaldo",
+            "column": "id_respaldo"
+          }
+        },
+        {
+          "name": "alcance",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "solicitado_por",
+          "type": "bigint",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "solicitado_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "finalizado_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "detalle",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_restauracion",
+        "alcance",
+        "estado",
+        "solicitado_en"
+      ]
+    },
+    "vw_dir_recaudo_facturacion_historico": {
+      "columns": [
+        {
+          "name": "periodo",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "total_facturado",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "total_recaudado",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "diferencia",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "indice_cumplimiento",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "vw_cartera_juridica": {
+      "columns": [
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_venta",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_total",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "proyecto",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "codigo_lote",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comprador",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "dias_mora",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "saldo",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "usuarios": {
+      "columns": [
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "firebase_uid",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_rol",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `roles.id_rol`.<fk table='roles' column='id_rol'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "roles",
+            "column": "id_rol"
+          }
+        },
+        {
+          "name": "activo",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_creacion",
+          "type": "timestamp without time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "photo_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo_documento",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "documento",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "nombres",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "apellidos",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo_persona",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "telefono",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "intentos_fallidos",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "bloqueado_hasta",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "dosfa_configurado_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "dosfa_intentos_fallidos",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "dosfa_bloqueado_hasta",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "sesion_revocada_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ultima_ip_login",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ultimo_login_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_usuario",
+        "email",
+        "id_rol",
+        "activo",
+        "fecha_creacion",
+        "intentos_fallidos",
+        "dosfa_intentos_fallidos"
+      ]
+    },
+    "cuota_pago": {
+      "columns": [
+        {
+          "name": "id_cuota",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `cuota.id_cuota`.<fk table='cuota' column='id_cuota'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "cuota",
+            "column": "id_cuota"
+          }
+        },
+        {
+          "name": "id_pago",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `pago.id_pago`.<fk table='pago' column='id_pago'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "pago",
+            "column": "id_pago"
+          }
+        },
+        {
+          "name": "valor_aplicado",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_cuota",
+        "id_pago",
+        "valor_aplicado"
+      ]
+    },
+    "permisos": {
+      "columns": [
+        {
+          "name": "id_permiso",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "recurso",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "accion",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_permiso",
+        "recurso",
+        "accion"
+      ]
+    },
+    "solicitud_factura": {
+      "columns": [
+        {
+          "name": "id_solicitud",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_cuota",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `cuota.id_cuota`.<fk table='cuota' column='id_cuota'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "cuota",
+            "column": "id_cuota"
+          }
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "nota",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_solicitud",
+        "id_cuota",
+        "id_usuario",
+        "estado",
+        "created_at"
+      ]
+    },
+    "cuota_factura": {
+      "columns": [
+        {
+          "name": "id_cuota",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `cuota.id_cuota`.<fk table='cuota' column='id_cuota'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "cuota",
+            "column": "id_cuota"
+          }
+        },
+        {
+          "name": "id_factura",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `factura.id_factura`.<fk table='factura' column='id_factura'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "factura",
+            "column": "id_factura"
+          }
+        },
+        {
+          "name": "id_fraccion",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `cuota_fraccion.id_fraccion`.<fk table='cuota_fraccion' column='id_fraccion'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "cuota_fraccion",
+            "column": "id_fraccion"
+          }
+        }
+      ],
+      "required": [
+        "id_cuota",
+        "id_factura"
+      ]
+    },
+    "requerimiento": {
+      "columns": [
+        {
+          "name": "id_requerimiento",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_proyecto",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `proyecto.id_proyecto`.<fk table='proyecto' column='id_proyecto'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "proyecto",
+            "column": "id_proyecto"
+          }
+        },
+        {
+          "name": "fecha_solicitud",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_desembolso",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_requerimiento",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_total",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_solicitante",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "urgencia",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "justificacion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "aprobado_jefe_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "fecha_aprobado_jefe",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "aprobado_final_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "fecha_aprobado_final",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "motivo_rechazo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "desembolsado_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "valor_desembolsado",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comprobante_desembolso_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_gasto",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `gasto.id_gasto`.<fk table='gasto' column='id_gasto'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "gasto",
+            "column": "id_gasto"
+          }
+        },
+        {
+          "name": "fecha_entrega",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "entregado_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "entrega_receptor",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "aprobado_dueno_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "fecha_aprobado_dueno",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "aprobado_gerencia_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "fecha_aprobado_gerencia",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "entregado_a",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "entrega_observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "acta_entrega_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_empresa",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `empresa_aliada.id_empresa`.<fk table='empresa_aliada' column='id_empresa'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "empresa_aliada",
+            "column": "id_empresa"
+          }
+        }
+      ],
+      "required": [
+        "id_requerimiento",
+        "numero",
+        "estado",
+        "created_at"
+      ]
+    },
+    "vw_dir_recaudo_facturacion_hoy": {
+      "columns": [
+        {
+          "name": "fecha_corte",
+          "type": "date",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "total_facturado",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "total_recaudado",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "diferencia",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "indice_cumplimiento",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "lote": {
+      "columns": [
+        {
+          "name": "id_lote",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_proyecto",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `proyecto.id_proyecto`.<fk table='proyecto' column='id_proyecto'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "proyecto",
+            "column": "id_proyecto"
+          }
+        },
+        {
+          "name": "codigo_lote",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "area_m2",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "precio_base",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_lote",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "manzana",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "numero_lote",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "dimensiones",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "geom",
+          "type": "jsonb",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "foto_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_lote",
+        "id_proyecto",
+        "codigo_lote",
+        "precio_base",
+        "estado",
+        "manzana",
+        "numero_lote",
+        "dimensiones"
+      ]
+    },
+    "respaldo": {
+      "columns": [
+        {
+          "name": "id_respaldo",
+          "type": "bigint",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "fecha",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "alcance",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tamano_bytes",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ubicacion",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ubicacion_r2",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "checksum_sha256",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "origen",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "detalle",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_respaldo",
+        "fecha",
+        "tipo",
+        "ubicacion",
+        "estado",
+        "origen"
+      ]
+    },
+    "consecutivos": {
+      "columns": [
+        {
+          "name": "prefijo",
+          "type": "text",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "periodo",
+          "type": "text",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "ultimo_numero",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "prefijo",
+        "periodo",
+        "ultimo_numero"
+      ]
+    },
+    "vw_cartera_consolidada": {
+      "columns": [
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "condor.estado_venta",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_total",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "proyecto",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "codigo_lote",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comprador",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "saldo_pendiente",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "recibo": {
+      "columns": [
+        {
+          "name": "id_recibo",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "numero_recibo",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_emision",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "emitido_por",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_recibo",
+        "numero_recibo",
+        "fecha_emision"
+      ]
+    },
+    "recepcion": {
+      "columns": [
+        {
+          "name": "id_recepcion",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_requerimiento",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `requerimiento.id_requerimiento`.<fk table='requerimiento' column='id_requerimiento'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "requerimiento",
+            "column": "id_requerimiento"
+          }
+        },
+        {
+          "name": "fecha",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "observaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comprobante_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_almacenista",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_recepcion",
+        "id_requerimiento",
+        "fecha",
+        "created_at"
+      ]
+    },
+    "config_sistema": {
+      "columns": [
+        {
+          "name": "clave",
+          "type": "text",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "valor",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "actualizado_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "clave",
+        "valor",
+        "tipo",
+        "updated_at"
+      ]
+    },
+    "empresa_aliada": {
+      "columns": [
+        {
+          "name": "id_empresa",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "razon_social",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "nit",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "rup",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "codigos_actividad",
+          "type": "text[]",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "contacto_nombre",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "contacto_email",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "contacto_telefono",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "direccion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "ciudad",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "notas",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "activo",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "creado_por",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_empresa",
+        "razon_social",
+        "nit",
+        "rup",
+        "codigos_actividad",
+        "tipo",
+        "activo",
+        "created_at"
+      ]
+    },
+    "auditoria": {
+      "columns": [
+        {
+          "name": "id_auditoria",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "tabla_afectada",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_registro",
+          "type": "bigint",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "campo",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_anterior",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_nuevo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "usuario_db",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_cambio",
+          "type": "timestamp without time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_auditoria",
+        "tabla_afectada",
+        "id_registro",
+        "campo",
+        "usuario_db",
+        "fecha_cambio"
+      ]
+    },
+    "v_aux_panel_operaciones_diarias": {
+      "columns": [
+        {
+          "name": "ventas_activas",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "recaudo_mes",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cuotas_vencidas",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cuotas_en_mora",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "pago": {
+      "columns": [
+        {
+          "name": "id_pago",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "fecha_pago",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_pago",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "metodo_pago",
+          "type": "condor.metodo_pago",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "referencia",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo_excedente",
+          "type": "condor.tipo_excedente_enum",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "url_baucher",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "numero_cuenta_origen",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "tipo_pago",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "id_cuota_propuesta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `cuota.id_cuota`.<fk table='cuota' column='id_cuota'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "cuota",
+            "column": "id_cuota"
+          }
+        },
+        {
+          "name": "numero_pago",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        }
+      ],
+      "required": [
+        "id_pago",
+        "fecha_pago",
+        "valor_pago",
+        "metodo_pago",
+        "tipo_excedente",
+        "estado",
+        "tipo_pago"
+      ]
+    },
+    "vw_alertas_juridicas": {
+      "columns": [
+        {
+          "name": "tipo_alerta",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_lote",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_detectada",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "nivel_riesgo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "roles": {
+      "columns": [
+        {
+          "name": "id_rol",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "nombre",
+          "type": "character varying",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "obligaciones",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "requiere_2fa",
+          "type": "boolean",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_rol",
+        "nombre",
+        "requiere_2fa"
+      ]
+    },
+    "login_2fa": {
+      "columns": [
+        {
+          "name": "id_challenge",
+          "type": "uuid",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        },
+        {
+          "name": "codigo_hash",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "intentos",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "reenvios",
+          "type": "integer",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "expira_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "consumido_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_challenge",
+        "id_usuario",
+        "codigo_hash",
+        "intentos",
+        "reenvios",
+        "expira_en",
+        "creado_en"
+      ]
+    },
+    "gasto": {
+      "columns": [
+        {
+          "name": "id_gasto",
+          "type": "bigint",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_proyecto",
+          "type": "bigint",
+          "description": "Note:\nThis is a Foreign Key to `proyecto.id_proyecto`.<fk table='proyecto' column='id_proyecto'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "proyecto",
+            "column": "id_proyecto"
+          }
+        },
+        {
+          "name": "fecha",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "categoria",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "detalle_recurso",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "comprobante_url",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "medio_pago",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "cuenta_origen",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "responsable_entrega",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "responsable_recibe",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_empresa",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `empresa_aliada.id_empresa`.<fk table='empresa_aliada' column='id_empresa'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "empresa_aliada",
+            "column": "id_empresa"
+          }
+        }
+      ],
+      "required": [
+        "id_gasto",
+        "id_proyecto",
+        "fecha",
+        "descripcion",
+        "valor",
+        "categoria",
+        "created_at",
+        "medio_pago"
+      ]
+    },
+    "observacion_juridica": {
+      "columns": [
+        {
+          "name": "id_observacion",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "descripcion",
+          "type": "text",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "estado_proceso",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "usuario_db",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_registro",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": [
+        "id_observacion",
+        "id_venta",
+        "descripcion"
+      ]
+    },
+    "recibo_pago": {
+      "columns": [
+        {
+          "name": "id_recibo",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `recibo.id_recibo`.<fk table='recibo' column='id_recibo'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "recibo",
+            "column": "id_recibo"
+          }
+        },
+        {
+          "name": "id_pago",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `pago.id_pago`.<fk table='pago' column='id_pago'/>",
+          "required": true,
+          "pk": true,
+          "fk": {
+            "table": "pago",
+            "column": "id_pago"
+          }
+        }
+      ],
+      "required": [
+        "id_recibo",
+        "id_pago"
+      ]
+    },
+    "vw_disponibilidad_comercial": {
+      "columns": [
+        {
+          "name": "id_proyecto",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "proyecto",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_lote",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "manzana",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "numero_lote",
+          "type": "character varying",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "area_m2",
+          "type": "numeric",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "precio_lista",
+          "type": "integer",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "disponible",
+          "type": "boolean",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "vw_auditoria_basica_operaciones": {
+      "columns": [
+        {
+          "name": "id_auditoria",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": false,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "tabla_afectada",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "operacion",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_registro",
+          "type": "bigint",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "campo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_anterior",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "valor_nuevo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "usuario",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha_cambio",
+          "type": "timestamp without time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        }
+      ],
+      "required": []
+    },
+    "pago_comision": {
+      "columns": [
+        {
+          "name": "id_pago_comision",
+          "type": "integer",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "required": true,
+          "pk": true,
+          "fk": null
+        },
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "valor",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "fecha",
+          "type": "date",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "nota",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "registrado_por",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "numero_pago",
+          "type": "text",
+          "description": "",
+          "required": false,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_recibo",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `recibo.id_recibo`.<fk table='recibo' column='id_recibo'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "recibo",
+            "column": "id_recibo"
+          }
+        }
+      ],
+      "required": [
+        "id_pago_comision",
+        "id_venta",
+        "valor",
+        "fecha"
+      ]
+    },
+    "venta_comprador": {
+      "columns": [
+        {
+          "name": "id_venta",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `venta.id_venta`.<fk table='venta' column='id_venta'/>",
+          "required": true,
+          "pk": false,
+          "fk": {
+            "table": "venta",
+            "column": "id_venta"
+          }
+        },
+        {
+          "name": "porcentaje",
+          "type": "numeric",
+          "description": "",
+          "required": true,
+          "pk": false,
+          "fk": null
+        },
+        {
+          "name": "id_usuario",
+          "type": "integer",
+          "description": "Note:\nThis is a Foreign Key to `usuarios.id_usuario`.<fk table='usuarios' column='id_usuario'/>",
+          "required": false,
+          "pk": false,
+          "fk": {
+            "table": "usuarios",
+            "column": "id_usuario"
+          }
+        }
+      ],
+      "required": [
+        "id_venta",
+        "porcentaje"
+      ]
+    }
+  },
+  "rpcs": [
+    "fn_excedente_pago",
+    "actualizar_mora"
+  ],
+  "public_rpcs": [
+    "next_consecutivo_condor"
+  ]
+}

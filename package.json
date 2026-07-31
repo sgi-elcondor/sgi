@@ -9,10 +9,19 @@
     "dev": "nodemon src/index.js",
     "build": "node build.mjs",
     "build:watch": "node build.mjs --watch",
-    "test": "jest"
+    "test": "jest",
+    "audit": "node tools/audit/run-all.js",
+    "audit:offline": "node tools/audit/run-all.js --offline"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup-env.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/setup-env.js"
+    ]
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
@@ -22,9 +31,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "firebase-admin": "^13.8.0",
-    "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
-    "nodemailer": "^8.0.9",
+    "nodemailer": "^9.0.3",
     "streamifier": "^0.1.1"
   },
   "devDependencies": {

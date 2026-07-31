@@ -1,0 +1,375 @@
+{
+  "script": "02-frontend-vs-backend",
+  "title": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+  "generated_at": "2026-07-31T06:33:21.661Z",
+  "counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 18,
+    "INFO": 2
+  },
+  "findings": [
+    {
+      "id": "AUD-FB001",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/auth/usuarios",
+      "where": [
+        "src/routes/auth.routes.js:26"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB002",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/proyectos/:id",
+      "where": [
+        "src/routes/proyectos.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB003",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/compradores/:id",
+      "where": [
+        "src/routes/compradores.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB004",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/ventas/reportes/financiero",
+      "where": [
+        "src/routes/ventas.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB005",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: PATCH /api/v1/ventas/:id/financiero",
+      "where": [
+        "src/routes/ventas.routes.js:12"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB006",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/cuotas/venta/:idVenta",
+      "where": [
+        "src/routes/cuotas.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB007",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/cuotas",
+      "where": [
+        "src/routes/cuotas.routes.js:13"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB008",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: PATCH /api/v1/cuotas/:id/valores",
+      "where": [
+        "src/routes/cuotas.routes.js:14"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB009",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/pagos/mis-pagos/:id",
+      "where": [
+        "src/routes/pagos.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB010",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/pagos/:id",
+      "where": [
+        "src/routes/pagos.routes.js:15"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB011",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/facturas/generar-pendientes",
+      "where": [
+        "src/routes/facturas.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB012",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/reportes/juridico",
+      "where": [
+        "src/routes/reportes.routes.js:10"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB013",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/reportes/mora-sync",
+      "where": [
+        "src/routes/reportes.routes.js:13"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB014",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/roles/:id/permisos",
+      "where": [
+        "src/routes/roles.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB015",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/uploads/lote-foto",
+      "where": [
+        "src/routes/uploads.routes.js:20"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB016",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/gastos/resumen",
+      "where": [
+        "src/routes/gastos.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB017",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/requerimientos/stream",
+      "where": [
+        "src/routes/requerimientos.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB018",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/config",
+      "where": [
+        "src/routes/config.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos."
+    },
+    {
+      "id": "AUD-FB019",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Llamada a la API construida dinámicamente (no verificable estáticamente)",
+      "where": [
+        "public/js/views/finanzas/pagos.js:321"
+      ],
+      "detail": "`try { p = await API.get(endpoint); }`",
+      "action": "Revisión manual del endpoint destino."
+    },
+    {
+      "id": "AUD-FB020",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Llamada a la API construida dinámicamente (no verificable estáticamente)",
+      "where": [
+        "public/js/views/finanzas/pagos.js:491"
+      ],
+      "detail": "`try { p = await API.get(endpoint); }`",
+      "action": "Revisión manual del endpoint destino."
+    }
+  ],
+  "stats": {
+    "calls_found": 195,
+    "dynamic_calls": 2,
+    "routes_total": 153,
+    "routes_consumed": 133,
+    "routes_unconsumed": 20
+  },
+  "consumed": [
+    "DELETE /api/v1/bank-transactions/:id",
+    "DELETE /api/v1/cuotas/:id",
+    "DELETE /api/v1/cuotas/:id/fracciones",
+    "DELETE /api/v1/ventas/:id",
+    "GET /api/v1/auth/mi-rol",
+    "GET /api/v1/auth/perfil",
+    "GET /api/v1/bank-transactions",
+    "GET /api/v1/comisionistas",
+    "GET /api/v1/comisionistas/:id/comisiones",
+    "GET /api/v1/comisionistas/comisiones",
+    "GET /api/v1/compradores",
+    "GET /api/v1/compradores/buscar-usuario",
+    "GET /api/v1/config/:clave",
+    "GET /api/v1/cuotas/:id/fracciones",
+    "GET /api/v1/cuotas/mis-cuotas/:idCuota/documentos",
+    "GET /api/v1/cuotas/pendientes",
+    "GET /api/v1/cuotas/vencidas",
+    "GET /api/v1/empresas-aliadas",
+    "GET /api/v1/empresas-aliadas/:id",
+    "GET /api/v1/facturas",
+    "GET /api/v1/facturas/cuotas-sin-factura",
+    "GET /api/v1/facturas/mis-facturas",
+    "GET /api/v1/facturas/solicitudes",
+    "GET /api/v1/firebase-config",
+    "GET /api/v1/gastos",
+    "GET /api/v1/inventario/movimientos",
+    "GET /api/v1/inventario/stock",
+    "GET /api/v1/juridico/:id_venta/observaciones",
+    "GET /api/v1/juridico/cartera",
+    "GET /api/v1/lotes",
+    "GET /api/v1/lotes/:id",
+    "GET /api/v1/lotes/disponibles",
+    "GET /api/v1/notificaciones",
+    "GET /api/v1/pagos",
+    "GET /api/v1/pagos/contrast",
+    "GET /api/v1/pagos/mis-pagos",
+    "GET /api/v1/proyectos",
+    "GET /api/v1/recepciones/:idRequerimiento",
+    "GET /api/v1/recepciones/historial",
+    "GET /api/v1/recepciones/pendientes",
+    "GET /api/v1/recibos",
+    "GET /api/v1/recibos/mis-recibos",
+    "GET /api/v1/reportes/alertas",
+    "GET /api/v1/reportes/auditoria",
+    "GET /api/v1/reportes/cartera",
+    "GET /api/v1/reportes/cartera-hoy",
+    "GET /api/v1/reportes/comisiones",
+    "GET /api/v1/reportes/comisiones-gerencia",
+    "GET /api/v1/reportes/panel",
+    "GET /api/v1/reportes/proyeccion-ingresos",
+    "GET /api/v1/reportes/recaudo",
+    "GET /api/v1/requerimientos/:id/trazabilidad",
+    "GET /api/v1/requerimientos/aprobaciones",
+    "GET /api/v1/requerimientos/autorizacion",
+    "GET /api/v1/requerimientos/contadores",
+    "GET /api/v1/requerimientos/desembolsos",
+    "GET /api/v1/requerimientos/historial",
+    "GET /api/v1/requerimientos/mis-requerimientos",
+    "GET /api/v1/respaldos",
+    "GET /api/v1/respaldos/:id/descargar",
+    "GET /api/v1/respaldos/restauraciones/:id",
+    "GET /api/v1/roles",
+    "GET /api/v1/usuarios",
+    "GET /api/v1/usuarios/roles",
+    "GET /api/v1/ventas",
+    "GET /api/v1/ventas/:id",
+    "GET /api/v1/ventas/estado-financiero",
+    "GET /api/v1/ventas/mis-ventas",
+    "PATCH /api/v1/comisionistas/ventas/:ventaId/pagada",
+    "PATCH /api/v1/config/:clave",
+    "PATCH /api/v1/cuotas/venta/:idVenta/valores",
+    "PATCH /api/v1/facturas/:id/anular",
+    "PATCH /api/v1/facturas/solicitudes/:id",
+    "PATCH /api/v1/lotes/:id/geometria",
+    "PATCH /api/v1/notificaciones/leidas",
+    "PATCH /api/v1/pagos/accept-batch",
+    "PATCH /api/v1/pagos/reject-batch",
+    "PATCH /api/v1/proyectos/:id/ubicacion",
+    "PATCH /api/v1/requerimientos/:id/aprobar-dueno",
+    "PATCH /api/v1/requerimientos/:id/aprobar-final",
+    "PATCH /api/v1/requerimientos/:id/aprobar-gerencia",
+    "PATCH /api/v1/requerimientos/:id/aprobar-jefe",
+    "PATCH /api/v1/requerimientos/:id/cancelar",
+    "PATCH /api/v1/requerimientos/:id/desembolsar",
+    "PATCH /api/v1/requerimientos/:id/entregar",
+    "PATCH /api/v1/requerimientos/:id/rechazar",
+    "PATCH /api/v1/roles/:id/manual",
+    "PATCH /api/v1/usuarios/:id/desactivar",
+    "PATCH /api/v1/usuarios/:id/desbloquear",
+    "PATCH /api/v1/ventas/:id/cancelar",
+    "POST /api/v1/auth/completar-perfil",
+    "POST /api/v1/auth/login",
+    "POST /api/v1/auth/login/2fa/reenviar",
+    "POST /api/v1/auth/login/2fa/verificar",
+    "POST /api/v1/auth/reset-password-email",
+    "POST /api/v1/auth/step-up/solicitar",
+    "POST /api/v1/auth/vincular",
+    "POST /api/v1/bank-transactions/batch",
+    "POST /api/v1/comisionistas",
+    "POST /api/v1/comisionistas/ventas/:ventaId/micropago",
+    "POST /api/v1/compradores",
+    "POST /api/v1/cuotas/:id/fracciones",
+    "POST /api/v1/empresas-aliadas",
+    "POST /api/v1/facturas",
+    "POST /api/v1/facturas/solicitar",
+    "POST /api/v1/gastos",
+    "POST /api/v1/juridico/observaciones",
+    "POST /api/v1/lotes",
+    "POST /api/v1/lotes/geometria-batch",
+    "POST /api/v1/pagos",
+    "POST /api/v1/pagos/comprador",
+    "POST /api/v1/proyectos",
+    "POST /api/v1/recepciones",
+    "POST /api/v1/recibos/generar-pendientes",
+    "POST /api/v1/requerimientos",
+    "POST /api/v1/respaldos/:id/restaurar",
+    "POST /api/v1/uploads/avatar",
+    "POST /api/v1/uploads/baucher",
+    "POST /api/v1/usuarios",
+    "POST /api/v1/ventas",
+    "POST /api/v1/ventas/solicitud",
+    "PUT /api/v1/auth/avatar",
+    "PUT /api/v1/auth/perfil",
+    "PUT /api/v1/bank-transactions/:id",
+    "PUT /api/v1/comisionistas/:id",
+    "PUT /api/v1/compradores/:id",
+    "PUT /api/v1/cuotas/venta/:idVenta/plan",
+    "PUT /api/v1/empresas-aliadas/:id",
+    "PUT /api/v1/gastos/:id",
+    "PUT /api/v1/lotes/:id",
+    "PUT /api/v1/proyectos/:id",
+    "PUT /api/v1/roles/:id/permisos",
+    "PUT /api/v1/usuarios/:id"
+  ]
+}

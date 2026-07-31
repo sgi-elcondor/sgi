@@ -1,0 +1,45 @@
+name: CI
+
+# Verificación de integración en cada push y PR: pruebas, build de producción y
+# la auditoría estática de entrega. Los dos cruces que necesitan la base de datos
+# (código↔esquema y drift de permisos) se omiten aquí con --offline, porque
+# requieren credenciales de Supabase; se corren en local con `npm run audit`.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` instala exactamente el lockfile: detecta dependencias importadas
+      # pero no declaradas, que en local pasan desapercibidas por transitividad.
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas unitarias
+        run: npm test
+
+      # Comprueba que la lista CLASSIC de build.mjs siga alineada con los scripts
+      # reales: un archivo nuevo que falte ahí funciona en dev y rompe producción.
+      - name: Build de producción
+        run: npm run build
+
+      - name: Auditoría de entrega (cruces estáticos)
+        run: npm run audit:offline
+
+      # Informativo: falla el paso sólo si aparece una vulnerabilidad alta o
+      # crítica en dependencias de producción, no en herramientas de desarrollo.
+      - name: Vulnerabilidades en dependencias de producción
+        run: npm audit --omit=dev --audit-level=high

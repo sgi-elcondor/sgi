@@ -1,0 +1,849 @@
+{
+  "generated_at": "2026-07-31T06:33:24.658Z",
+  "totals": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 32,
+    "INFO": 29
+  },
+  "findings": [
+    {
+      "id": "AUD-RP003",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: PATCH /api/v1/ventas/:id/cancelar",
+      "where": [
+        "src/routes/ventas.routes.js:13",
+        "src/controllers/ventas.controller.js:714"
+      ],
+      "detail": "Clave calculada `PATCH /api/v1/ventas/cancelar` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/ventas.controller.js:714` (chequeo de req.usuario.rol, lista de roles hardcodeada + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP004",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: DELETE /api/v1/ventas/:id",
+      "where": [
+        "src/routes/ventas.routes.js:14",
+        "src/controllers/ventas.controller.js:654"
+      ],
+      "detail": "Clave calculada `DELETE /api/v1/ventas` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/ventas.controller.js:654` (chequeo de req.usuario.rol, lista de roles hardcodeada + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP006",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Autorización fuera del mapa central: GET /api/v1/requerimientos/stream",
+      "where": [
+        "src/routes/requerimientos.routes.js:5",
+        "src/controllers/requerimientos.controller.js:297"
+      ],
+      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:297` (helper _puede*() + respuesta 403).",
+      "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP010",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave",
+      "where": [
+        "src/routes/config.routes.js:5",
+        "src/controllers/config.controller.js:51"
+      ],
+      "detail": "El middleware sólo elimina segmentos numéricos (`/\\d+/g`). Con :clave la clave en runtime es `GET /api/v1/config/<valor>`, que no existe en el mapa. Mitigado en el controller `src/controllers/config.controller.js:51` (helper _puede*() + respuesta 403).",
+      "action": "Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP011",
+      "severity": "P2",
+      "category": "authz-descentralizada",
+      "summary": "Param no numérico ⇒ el permiso central nunca se evalúa: PATCH /api/v1/config/:clave",
+      "where": [
+        "src/routes/config.routes.js:6",
+        "src/controllers/config.controller.js:65"
+      ],
+      "detail": "El middleware sólo elimina segmentos numéricos (`/\\d+/g`). Con :clave la clave en runtime es `PATCH /api/v1/config/<valor>`, que no existe en el mapa. Mitigado en el controller `src/controllers/config.controller.js:65` (helper _puede*() + respuesta 403).",
+      "action": "Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP018",
+      "severity": "P2",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/comisionistas/comisiones",
+      "where": [
+        "src/routes/comisionistas.routes.js:4",
+        "src/routes/comisionistas.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/comisionistas/comisiones , /api/v1/comisionistas/:id/comisiones. Comparten el permiso `comisionistas:leer`; no se pueden autorizar por separado.",
+      "action": "Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP001",
+      "severity": "INFO",
+      "category": "authn",
+      "summary": "Router público por diseño: /api/v1/auth",
+      "where": [
+        "src/index.js:135"
+      ],
+      "detail": "Montado en la línea 135, antes del guard de la línea 162. Superficie pública documentada.",
+      "action": "Ninguna; documentar en el Documento Técnico.",
+      "accepted": "Superficie pública documentada (login, registro, reset, verificación). Cada ruta sensible del router aplica verificarToken o rateLimit explícitamente.",
+      "original_severity": "INFO",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP002",
+      "severity": "INFO",
+      "category": "authn",
+      "summary": "Router público por diseño: /api/v1/public",
+      "where": [
+        "src/index.js:138"
+      ],
+      "detail": "Montado en la línea 138, antes del guard de la línea 162. Superficie pública documentada.",
+      "action": "Ninguna; documentar en el Documento Técnico.",
+      "accepted": "Catálogo público de la landing (proyectos, lotes, asesores) con Cache-Control 60 s.",
+      "original_severity": "INFO",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP005",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: POST /api/v1/uploads/avatar",
+      "where": [
+        "src/routes/uploads.routes.js:19",
+        "src/controllers/uploads.controller.js:4"
+      ],
+      "detail": "Clave calculada `POST /api/v1/uploads/avatar` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/uploads.controller.js:4` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Endpoint de auto-servicio: sube el avatar del propio usuario autenticado. Sin identificador ajeno en el payload.",
+      "original_severity": "INFO",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP007",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores",
+      "where": [
+        "src/routes/requerimientos.routes.js:6",
+        "src/controllers/requerimientos.controller.js:323"
+      ],
+      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:323` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
+      "action": "Registrar `'GET /api/v1/requerimientos/contadores': { recurso, accion }` en src/config/permissions.js.",
+      "accepted": "Verificado en requerimientos.controller.js:326-360: cada contador se calcula sólo si el caller tiene el permiso del nivel correspondiente (helper `puede()`), devolviendo 0 si no. No expone datos de terceros; no requiere 403 porque un usuario sin permisos recibe contadores vacíos.",
+      "original_severity": "P1",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP008",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/notificaciones",
+      "where": [
+        "src/routes/notificaciones.routes.js:4",
+        "src/controllers/notificaciones.controller.js:4"
+      ],
+      "detail": "Clave calculada `GET /api/v1/notificaciones` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/notificaciones.controller.js:4` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Auto-servicio: notificaciones.controller filtra por req.usuario.id_usuario.",
+      "original_severity": "INFO",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP009",
+      "severity": "INFO",
+      "category": "authz",
+      "summary": "Sin entrada en ROUTE_PERMISSIONS: PATCH /api/v1/notificaciones/leidas",
+      "where": [
+        "src/routes/notificaciones.routes.js:5",
+        "src/controllers/notificaciones.controller.js:17"
+      ],
+      "detail": "Clave calculada `PATCH /api/v1/notificaciones/leidas` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/notificaciones.controller.js:17` no contiene ninguna validación de rol/permiso. Parece endpoint de auto-servicio; verificar el filtro por req.usuario.",
+      "action": "Confirmar el filtro por req.usuario en el controller y documentarlo como endpoint de auto-servicio.",
+      "accepted": "Auto-servicio: marca leídas sólo las notificaciones del propio usuario.",
+      "original_severity": "INFO",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP012",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/proyectos",
+      "where": [
+        "src/routes/proyectos.routes.js:3",
+        "src/routes/proyectos.routes.js:4"
+      ],
+      "detail": "Rutas afectadas: /api/v1/proyectos , /api/v1/proyectos/:id. Comparten el permiso `proyectos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP013",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/lotes",
+      "where": [
+        "src/routes/lotes.routes.js:3",
+        "src/routes/lotes.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/lotes , /api/v1/lotes/:id. Comparten el permiso `lotes:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP014",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/compradores",
+      "where": [
+        "src/routes/compradores.routes.js:5",
+        "src/routes/compradores.routes.js:6"
+      ],
+      "detail": "Rutas afectadas: /api/v1/compradores , /api/v1/compradores/:id. Comparten el permiso `compradores:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP015",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/ventas",
+      "where": [
+        "src/routes/ventas.routes.js:8",
+        "src/routes/ventas.routes.js:9"
+      ],
+      "detail": "Rutas afectadas: /api/v1/ventas , /api/v1/ventas/:id. Comparten el permiso `ventas:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP016",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos/mis-pagos",
+      "where": [
+        "src/routes/pagos.routes.js:4",
+        "src/routes/pagos.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/pagos/mis-pagos , /api/v1/pagos/mis-pagos/:id. Comparten el permiso `mis_pagos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP017",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/pagos",
+      "where": [
+        "src/routes/pagos.routes.js:8",
+        "src/routes/pagos.routes.js:15"
+      ],
+      "detail": "Rutas afectadas: /api/v1/pagos , /api/v1/pagos/:id. Comparten el permiso `pagos:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP019",
+      "severity": "INFO",
+      "category": "granularidad-permisos",
+      "summary": "Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/empresas-aliadas",
+      "where": [
+        "src/routes/empresas_aliadas.routes.js:4",
+        "src/routes/empresas_aliadas.routes.js:5"
+      ],
+      "detail": "Rutas afectadas: /api/v1/empresas-aliadas , /api/v1/empresas-aliadas/:id. Comparten el permiso `empresas_aliadas:leer`; no se pueden autorizar por separado. Patrón lista+detalle del mismo recurso: aceptable.",
+      "action": "Ninguna; documentar que lista y detalle comparten permiso.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP020",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:74"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP021",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:86"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP022",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:106"
+      ],
+      "detail": "`app.use((req, res, next) => {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-RP023",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Línea de ruta/mount no interpretable por el auditor",
+      "where": [
+        "src/index.js:123"
+      ],
+      "detail": "`app.use('/dist', express.static(path.join(__dirname, \"..\", \"public\", \"dist\"), {` — revisar a mano; no entró en el cruce automático.",
+      "action": "Revisión manual.",
+      "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
+      "script": "01-routes-vs-permissions"
+    },
+    {
+      "id": "AUD-FB001",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/auth/usuarios",
+      "where": [
+        "src/routes/auth.routes.js:26"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB002",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/proyectos/:id",
+      "where": [
+        "src/routes/proyectos.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB003",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/compradores/:id",
+      "where": [
+        "src/routes/compradores.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB004",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/ventas/reportes/financiero",
+      "where": [
+        "src/routes/ventas.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB005",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: PATCH /api/v1/ventas/:id/financiero",
+      "where": [
+        "src/routes/ventas.routes.js:12"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB006",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/cuotas/venta/:idVenta",
+      "where": [
+        "src/routes/cuotas.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB007",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/cuotas",
+      "where": [
+        "src/routes/cuotas.routes.js:13"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB008",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: PATCH /api/v1/cuotas/:id/valores",
+      "where": [
+        "src/routes/cuotas.routes.js:14"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB009",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/pagos/mis-pagos/:id",
+      "where": [
+        "src/routes/pagos.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB010",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/pagos/:id",
+      "where": [
+        "src/routes/pagos.routes.js:15"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB011",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/facturas/generar-pendientes",
+      "where": [
+        "src/routes/facturas.routes.js:6"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB012",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/reportes/juridico",
+      "where": [
+        "src/routes/reportes.routes.js:10"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB013",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/reportes/mora-sync",
+      "where": [
+        "src/routes/reportes.routes.js:13"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB014",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/roles/:id/permisos",
+      "where": [
+        "src/routes/roles.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB015",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: POST /api/v1/uploads/lote-foto",
+      "where": [
+        "src/routes/uploads.routes.js:20"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB016",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/gastos/resumen",
+      "where": [
+        "src/routes/gastos.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB017",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/requerimientos/stream",
+      "where": [
+        "src/routes/requerimientos.routes.js:5"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB018",
+      "severity": "P2",
+      "category": "endpoint-sin-consumidor",
+      "summary": "Endpoint que la SPA nunca llama: GET /api/v1/config",
+      "where": [
+        "src/routes/config.routes.js:4"
+      ],
+      "detail": "No se encontró ninguna llamada estática desde public/js. Puede ser superficie muerta, consumida dinámicamente, o de uso externo/manual.",
+      "action": "Confirmar si algún consumidor externo lo usa; si no, eliminar la ruta, su handler y su entrada de permisos.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB019",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Llamada a la API construida dinámicamente (no verificable estáticamente)",
+      "where": [
+        "public/js/views/finanzas/pagos.js:321"
+      ],
+      "detail": "`try { p = await API.get(endpoint); }`",
+      "action": "Revisión manual del endpoint destino.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-FB020",
+      "severity": "INFO",
+      "category": "cobertura-auditoria",
+      "summary": "Llamada a la API construida dinámicamente (no verificable estáticamente)",
+      "where": [
+        "public/js/views/finanzas/pagos.js:491"
+      ],
+      "detail": "`try { p = await API.get(endpoint); }`",
+      "action": "Revisión manual del endpoint destino.",
+      "anexo": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
+      "script": "02-frontend-vs-backend"
+    },
+    {
+      "id": "AUD-VW001",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mi_cuenta:leer (vista dashboard)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-VW002",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: ventas:actualizar (vista ventas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-VW003",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: cuotas:actualizar (vista cuotas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-VW004",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: facturas:actualizar (vista facturas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-VW005",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: reportes_dir:leer (vista reportes)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-VW006",
+      "severity": "INFO",
+      "category": "permisos-ui",
+      "summary": "Permiso de VISTA_API_MAP que ninguna ruta exige: mis_cuotas:leer (vista mis-cuotas)",
+      "where": [
+        "src/controllers/roles.controller.js"
+      ],
+      "detail": "No aparece como requisito de ninguna entrada de ROUTE_PERMISSIONS. Puede existir sólo para gating de UI, o ser un permiso obsoleto. Se confirma contra la tabla `permisos` en el anexo de drift de permisos.",
+      "action": "Confirmar contra BD; si no existe, eliminarlo del mapa.",
+      "anexo": "Anexo C · Consistencia de vistas (registro, navegación, permisos, build)",
+      "script": "03-views-consistency"
+    },
+    {
+      "id": "AUD-DC001",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/index.js",
+      "where": [
+        "src/index.js:197"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración.",
+      "original_severity": "P2",
+      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
+      "script": "06-dead-code"
+    },
+    {
+      "id": "AUD-DC002",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/comisiones.service.js",
+      "where": [
+        "src/services/comisiones.service.js:68"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción.",
+      "original_severity": "P2",
+      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
+      "script": "06-dead-code"
+    },
+    {
+      "id": "AUD-DC003",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "2 console.log/debugger en src/services/email.service.js",
+      "where": [
+        "src/services/email.service.js:36,42"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116.",
+      "original_severity": "P2",
+      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
+      "script": "06-dead-code"
+    },
+    {
+      "id": "AUD-DC004",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
+      "summary": "1 console.log/debugger en src/services/mora.service.js",
+      "where": [
+        "src/services/mora.service.js:7"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job.",
+      "original_severity": "P2",
+      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
+      "script": "06-dead-code"
+    },
+    {
+      "id": "AUD-DEP001",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: @google-cloud/firestore",
+      "where": [
+        "package.json",
+        "node_modules/@google-cloud/firestore"
+      ],
+      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP002",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: @google-cloud/storage",
+      "where": [
+        "package.json",
+        "node_modules/@google-cloud/storage"
+      ],
+      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP003",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: firebase-admin",
+      "where": [
+        "package.json",
+        "node_modules/firebase-admin"
+      ],
+      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP004",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: gaxios",
+      "where": [
+        "package.json",
+        "node_modules/gaxios"
+      ],
+      "detail": "uuid. Rango vulnerable: 6.4.0 - 6.7.1. Hay corrección sin cambio de versión mayor: `npm audit fix`.",
+      "action": "Ejecutar `npm audit fix`, correr `npm test` y `npm run build`, y re-auditar.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP005",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: google-gax",
+      "where": [
+        "package.json",
+        "node_modules/google-gax"
+      ],
+      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP006",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: retry-request",
+      "where": [
+        "package.json",
+        "node_modules/retry-request"
+      ],
+      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP007",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: teeny-request",
+      "where": [
+        "package.json",
+        "node_modules/teeny-request"
+      ],
+      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    },
+    {
+      "id": "AUD-DEP008",
+      "severity": "P2",
+      "category": "vulnerabilidad-dependencia",
+      "summary": "MODERATE en dependencia de producción: uuid",
+      "where": [
+        "package.json",
+        "node_modules/uuid"
+      ],
+      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "action": "Planificar la actualización con prueba del flujo afectado.",
+      "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
+      "script": "07-dependencies"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
-﻿// Mapa: mÃ©todo HTTP + ruta completa desde raÃ­z â†’ { recurso, accion }
-// Usar req.originalUrl (no req.path) en el middleware para que coincidan con /api/v1/...
+﻿// Map: HTTP method + full path from root -> { recurso, accion }
+// The middleware builds the key from req.originalUrl (not req.path) so it keeps
+// the /api/v1 prefix, and strips numeric segments only: a route with a
+// non-numeric param never matches here and must authorize in its controller.
 const ROUTE_PERMISSIONS = {
   'GET /api/v1/usuarios':              { recurso: 'usuarios',      accion: 'leer' },
   'POST /api/v1/usuarios':             { recurso: 'usuarios',      accion: 'crear' },
   'PUT /api/v1/usuarios':              { recurso: 'usuarios',      accion: 'actualizar' },
-  'PATCH /api/v1/usuarios':            { recurso: 'usuarios',      accion: 'actualizar' },
   'GET /api/v1/usuarios/roles':        { recurso: 'usuarios',      accion: 'leer' },
   'PATCH /api/v1/usuarios/desactivar':   { recurso: 'usuarios',      accion: 'actualizar' },
   'PATCH /api/v1/usuarios/desbloquear': { recurso: 'usuarios',      accion: 'actualizar' },
@@ -22,16 +23,13 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/v1/ventas':                { recurso: 'ventas',        accion: 'leer' },
   'POST /api/v1/ventas':               { recurso: 'ventas',        accion: 'crear' },
-  'PUT /api/v1/ventas':                { recurso: 'ventas',        accion: 'actualizar' },
   'POST /api/v1/ventas/solicitud':     { recurso: 'ventas',        accion: 'solicitar' },
   'PATCH /api/v1/ventas/financiero':   { recurso: 'ventas',        accion: 'editar_financiero' },
 
-  'GET /api/v1/cuotas':                { recurso: 'cuotas',        accion: 'leer' },
   'GET /api/v1/cuotas/pendientes':     { recurso: 'cuotas',        accion: 'leer' },
   'GET /api/v1/cuotas/vencidas':       { recurso: 'cuotas',        accion: 'leer' },
   'GET /api/v1/cuotas/venta':          { recurso: 'cuotas',        accion: 'leer' },
   'POST /api/v1/cuotas':               { recurso: 'cuotas',        accion: 'crear' },
-  'PUT /api/v1/cuotas':                { recurso: 'cuotas',        accion: 'actualizar' },
   'PATCH /api/v1/cuotas/valores':      { recurso: 'cuotas',        accion: 'editar_valores' },
   'PATCH /api/v1/cuotas/venta/valores': { recurso: 'cuotas',       accion: 'editar_valores' },
   'PUT /api/v1/cuotas/venta/plan':      { recurso: 'cuotas',       accion: 'editar_valores' },
@@ -45,7 +43,6 @@ const ROUTE_PERMISSIONS = {
 
   'GET /api/v1/facturas':              { recurso: 'facturas',      accion: 'leer' },
   'POST /api/v1/facturas':             { recurso: 'facturas',      accion: 'crear' },
-  'PUT /api/v1/facturas':              { recurso: 'facturas',      accion: 'actualizar' },
   'GET /api/v1/facturas/solicitudes':  { recurso: 'facturas',      accion: 'leer' },
   'PATCH /api/v1/facturas/solicitudes': { recurso: 'facturas',     accion: 'crear' },
   'PATCH /api/v1/facturas/anular':     { recurso: 'facturas',      accion: 'crear' },
@@ -65,9 +62,6 @@ const ROUTE_PERMISSIONS = {
   'POST /api/v1/comisionistas/ventas/micropago':      { recurso: 'comisionistas', accion: 'actualizar' },
   'PATCH /api/v1/comisionistas/ventas/pagada':        { recurso: 'comisionistas', accion: 'actualizar' },
 
-  'GET /api/v1/reportes':                   { recurso: 'reportes',     accion: 'leer' },
-  'GET /api/v1/reportes/dir':               { recurso: 'reportes_dir', accion: 'leer' },
-  'GET /api/v1/reportes/jur':               { recurso: 'alertas_jur',  accion: 'leer' },
   'GET /api/v1/reportes/juridico':          { recurso: 'alertas_jur',  accion: 'leer' },
   'GET /api/v1/reportes/comisiones-gerencia':   { recurso: 'reportes',     accion: 'leer' },
   'GET /api/v1/reportes/proyeccion-ingresos':   { recurso: 'reportes',     accion: 'leer' },
@@ -81,7 +75,6 @@ const ROUTE_PERMISSIONS = {
   'GET /api/v1/juridico/observaciones':      { recurso: 'observaciones_jur', accion: 'leer' },
   'POST /api/v1/juridico/observaciones':     { recurso: 'observaciones_jur', accion: 'crear' },
 
-  'GET /api/v1/mi-cuenta':             { recurso: 'mi_cuenta',     accion: 'leer' },
 
 
   'GET /api/v1/ventas/mis-ventas':   { recurso: 'mis_ventas',  accion: 'leer' },
@@ -140,7 +133,9 @@ const ROUTE_PERMISSIONS = {
   'PATCH /api/v1/requerimientos/rechazar':         { recurso: 'requerimientos', accion: 'leer' },
 
   'GET /api/v1/config':          { recurso: 'config', accion: 'leer' },
-  'PATCH /api/v1/config':        { recurso: 'config', accion: 'actualizar' },
+  // No entries for /config/:clave on purpose: `:clave` is not numeric, so the
+  // middleware can never build a key that matches this map. Both GET and PATCH
+  // authorize inside config.controller.js (_puedeConfig).
 
   'GET /api/v1/empresas-aliadas':  { recurso: 'empresas_aliadas', accion: 'leer' },
   'POST /api/v1/empresas-aliadas': { recurso: 'empresas_aliadas', accion: 'crear' },
