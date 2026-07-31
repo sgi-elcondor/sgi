@@ -42,7 +42,7 @@ la administración de accesos.
 | Jurídico | Cartera en pre-mora y mora con bitácora de observaciones |
 | Portal del comprador | Ventas, cuotas, facturas, pagos y recibos propios |
 | Requerimientos | Flujo de siete estados con aprobación según monto, desembolso y gasto automático |
-| Inventario | Recepciones parciales o totales, existencias derivadas y entrega con autorización |
+| Inventario | Recepciones parciales o totales, existencias derivadas, entrega con autorización, consulta de stock por categoría y kardex por material |
 | Empresas aliadas | Catálogo de proveedores con validación tributaria e historial comercial |
 | Políticas de compra | Umbrales de caja menor y compra grande configurables sin redespliegue |
 | Reportes | Cartera, recaudo histórico, proyección de ingresos, comisiones y auditoría |
@@ -50,7 +50,7 @@ la administración de accesos.
 | Administración | Usuarios, roles, permisos por vista y manual de rol consultable |
 | Respaldos | Respaldo diario con retención de 30 días, restauración y alertas ante fallo |
 
-*Nota.* El sistema expone 30 vistas de usuario y 151 puntos de acceso a su interfaz
+*Nota.* El sistema expone 31 vistas de usuario y 153 puntos de acceso a su interfaz
 de programación, con 14 roles diferenciados.
 
 ---

@@ -1,20 +1,21 @@
 # Anexo G · Código, archivos y dependencias sin uso
 
-_Generado por `tools/audit/06-dead-code.js` el 2026-07-30T05:45:23.346Z._
+_Generado por `tools/audit/06-dead-code.js` el 2026-07-31T06:03:42.130Z._
 
-**Resumen:** P0=0 · P1=0 · P2=0 · INFO=3
+**Resumen:** P0=0 · P1=0 · P2=0 · INFO=4
 
 | ID | Sev | Categoría | Hallazgo | Ubicación |
 |---|---|---|---|---|
-| AUD-DC001 | INFO | log-de-depuracion | 1 console.log/debugger en src/index.js | src/index.js:196 |
+| AUD-DC001 | INFO | log-de-depuracion | 1 console.log/debugger en src/index.js | src/index.js:197 |
 | AUD-DC002 | INFO | log-de-depuracion | 1 console.log/debugger en src/services/comisiones.service.js | src/services/comisiones.service.js:68 |
-| AUD-DC003 | INFO | log-de-depuracion | 1 console.log/debugger en src/services/mora.service.js | src/services/mora.service.js:7 |
+| AUD-DC003 | INFO | log-de-depuracion | 2 console.log/debugger en src/services/email.service.js | src/services/email.service.js:36,42 |
+| AUD-DC004 | INFO | log-de-depuracion | 1 console.log/debugger en src/services/mora.service.js | src/services/mora.service.js:7 |
 
 ## Detalle
 
 ### AUD-DC001 · INFO · 1 console.log/debugger en src/index.js
 
-- **Ubicación:** `src/index.js:196`
+- **Ubicación:** `src/index.js:197`
 - **Detalle:** Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).
 - **Aceptado tras verificación** (severidad original P2): Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración.
 - **Acción propuesta:** Eliminar, o degradar a console.error/warn si es diagnóstico real.
@@ -26,7 +27,14 @@ _Generado por `tools/audit/06-dead-code.js` el 2026-07-30T05:45:23.346Z._
 - **Aceptado tras verificación** (severidad original P2): Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción.
 - **Acción propuesta:** Eliminar, o degradar a console.error/warn si es diagnóstico real.
 
-### AUD-DC003 · INFO · 1 console.log/debugger en src/services/mora.service.js
+### AUD-DC003 · INFO · 2 console.log/debugger en src/services/email.service.js
+
+- **Ubicación:** `src/services/email.service.js:36,42`
+- **Detalle:** Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).
+- **Aceptado tras verificación** (severidad original P2): Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116.
+- **Acción propuesta:** Eliminar, o degradar a console.error/warn si es diagnóstico real.
+
+### AUD-DC004 · INFO · 1 console.log/debugger en src/services/mora.service.js
 
 - **Ubicación:** `src/services/mora.service.js:7`
 - **Detalle:** Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).

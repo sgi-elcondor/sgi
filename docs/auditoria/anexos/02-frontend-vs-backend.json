@@ -1,7 +1,7 @@
 {
   "script": "02-frontend-vs-backend",
   "title": "Anexo B · Endpoints consumidos por la SPA vs. rutas montadas",
-  "generated_at": "2026-07-30T05:45:20.875Z",
+  "generated_at": "2026-07-31T06:03:40.246Z",
   "counts": {
     "P0": 0,
     "P1": 0,
@@ -231,10 +231,10 @@
     }
   ],
   "stats": {
-    "calls_found": 193,
+    "calls_found": 195,
     "dynamic_calls": 2,
-    "routes_total": 151,
-    "routes_consumed": 131,
+    "routes_total": 153,
+    "routes_consumed": 133,
     "routes_unconsumed": 20
   },
   "consumed": [
@@ -263,6 +263,8 @@
     "GET /api/v1/facturas/solicitudes",
     "GET /api/v1/firebase-config",
     "GET /api/v1/gastos",
+    "GET /api/v1/inventario/movimientos",
+    "GET /api/v1/inventario/stock",
     "GET /api/v1/juridico/:id_venta/observaciones",
     "GET /api/v1/juridico/cartera",
     "GET /api/v1/lotes",

@@ -666,7 +666,7 @@ legible por máquina del esquema, incluidas las relaciones declaradas. Disponibl
 `docs/auditoria/anexos/db-catalog.json`.
 
 **Apéndice C. Cruce de consultas contra el esquema.** Resultado de contrastar las
-372 consultas del backend con los 47 objetos del esquema. Disponible en
+374 consultas del backend con los 47 objetos del esquema. Disponible en
 `docs/auditoria/anexos/04-db-vs-code.md`.
 
 **Apéndice D. Correcciones de datos aplicadas durante la auditoría.** Guiones SQL

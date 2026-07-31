@@ -229,9 +229,9 @@ Ningún componente salta capas hacia arriba.
 
 ```mermaid
 flowchart LR
-    R["routes/<br/>24 archivos<br/>declaración de rutas"]
+    R["routes/<br/>25 archivos<br/>declaración de rutas"]
     M["middlewares/<br/>3 archivos<br/>autenticación · autorización · tasa"]
-    C["controllers/<br/>24 archivos<br/>validación y orquestación"]
+    C["controllers/<br/>25 archivos<br/>validación y orquestación"]
     S["services/<br/>20 archivos<br/>reglas de negocio"]
     CFG["config/<br/>cliente único de BD<br/>mapa de permisos"]
 
@@ -366,7 +366,7 @@ camino sin caché sería evitable esperando un segundo intento.
 
 La autorización se resuelve consultando un mapa central que asocia cada
 combinación de método y camino con el permiso requerido. El mapa contiene 119
-entradas para 151 rutas montadas; la diferencia corresponde a rutas de
+entradas para 153 rutas montadas; la diferencia corresponde a rutas de
 autoservicio, cuyos datos se filtran por el usuario autenticado, y a rutas que
 autorizan dentro de su controlador.
 
@@ -832,7 +832,7 @@ Sommerville, I. (2016). *Software engineering* (10th ed.). Pearson Education.
 
 ## Apéndices
 
-**Apéndice A. Inventario de rutas y permisos efectivos.** Detalle de las 151 rutas
+**Apéndice A. Inventario de rutas y permisos efectivos.** Detalle de las 153 rutas
 montadas con su clave de autorización y el permiso exigido. Disponible en
 `docs/auditoria/anexos/01-routes-vs-permissions.md`.
 

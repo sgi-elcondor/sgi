@@ -30,6 +30,7 @@ const VIEWS = {
   requerimientos:      { fn: "requerimientosView",     title: "Requerimientos" },
   aprobaciones:        { fn: "aprobacionesView",       title: "Aprobaciones" },
   desembolsos:         { fn: "desembolsosView",        title: "Desembolsos" },
+  inventario:          { fn: "inventarioView",         title: "Inventario" },
   "empresas-aliadas":  { fn: "empresasAliadasView",    title: "Empresas Aliadas" },
 };
 
@@ -63,6 +64,7 @@ const TOPBAR_SUBTITLES = {
   requerimientos:      "Solicita materiales para tu área y consulta su estado",
   aprobaciones:        "Revisa y aprueba los requerimientos de materiales",
   desembolsos:         "Registra los pagos de requerimientos aprobados",
+  inventario:          "Stock de bodega por material y categoría",
   "empresas-aliadas":  "Proveedores y socios con su RUP e historial comercial",
 };
 

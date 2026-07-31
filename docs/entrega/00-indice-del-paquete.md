@@ -66,7 +66,7 @@ documento estático.
 | [Informe de auditoría](../auditoria/informe-hallazgos.md) | Hallazgos por área con ubicación y acción | `npm run audit` |
 | [Matriz de acceso](../auditoria/anexos/matriz-acceso.md) | 14 roles con sus permisos y vistas | `npm run audit` |
 | [Verificaciones de consistencia](../auditoria/fase2-verificaciones.md) | Seis comprobaciones manuales con su veredicto | Documento estático |
-| [Inventario de rutas](../auditoria/anexos/01-routes-vs-permissions.md) | 151 rutas con su permiso exigido | `npm run audit` |
+| [Inventario de rutas](../auditoria/anexos/01-routes-vs-permissions.md) | 153 rutas con su permiso exigido | `npm run audit` |
 | [Guiones de esquema](../../migrations/) | Cambios de base de datos con verificación y reversión | Documento estático |
 
 *Nota.* La regeneración de los anexos que dependen de la base de datos exige las

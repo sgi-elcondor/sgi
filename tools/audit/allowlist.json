@@ -30,6 +30,5 @@
 
   "permiso-muerto|Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar": "Verificado: la ruta PATCH /requerimientos/:id/entregar exige `recepciones:crear` (permissions.js:126) y el handler entregar() no valida nada por su cuenta. El permiso está otorgado a almacenista pero no concede nada; almacenista sí tiene recepciones:crear, así que INV-02 funciona. Concesión decorativa: se conserva para no tocar permisos en la ventana de entrega.",
 
-  "permiso-muerto|Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer": "El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva.",
-  "permiso-muerto|Permiso de visibilidad de una vista que ya no existe: vista:inventario": "Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva."
+  "log-de-depuracion|2 console.log/debugger en src/services/email.service.js": "Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116."
 }

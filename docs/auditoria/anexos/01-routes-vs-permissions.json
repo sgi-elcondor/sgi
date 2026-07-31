@@ -1,7 +1,7 @@
 {
   "script": "01-routes-vs-permissions",
   "title": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
-  "generated_at": "2026-07-30T05:45:20.800Z",
+  "generated_at": "2026-07-31T06:03:40.164Z",
   "counts": {
     "P0": 0,
     "P1": 0,
@@ -40,9 +40,9 @@
       "summary": "Autorización fuera del mapa central: GET /api/v1/requerimientos/stream",
       "where": [
         "src/routes/requerimientos.routes.js:5",
-        "src/controllers/requerimientos.controller.js:300"
+        "src/controllers/requerimientos.controller.js:297"
       ],
-      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:300` (helper _puede*() + respuesta 403).",
+      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:297` (helper _puede*() + respuesta 403).",
       "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS."
     },
     {
@@ -128,9 +128,9 @@
       "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores",
       "where": [
         "src/routes/requerimientos.routes.js:6",
-        "src/controllers/requerimientos.controller.js:326"
+        "src/controllers/requerimientos.controller.js:323"
       ],
-      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:326` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
+      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:323` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
       "action": "Registrar `'GET /api/v1/requerimientos/contadores': { recurso, accion }` en src/config/permissions.js.",
       "accepted": "Verificado en requerimientos.controller.js:326-360: cada contador se calcula sólo si el caller tiene el permiso del nivel correspondiente (helper `puede()`), devolviendo 0 si no. No expone datos de terceros; no requiere 403 porque un usuario sin permisos recibe contadores vacíos.",
       "original_severity": "P1"
@@ -293,14 +293,14 @@
     }
   ],
   "stats": {
-    "mounts": 24,
-    "routes_total": 151,
-    "routes_guarded": 136,
+    "mounts": 25,
+    "routes_total": 153,
+    "routes_guarded": 138,
     "routes_public_by_mount": 15,
     "inline_routes": 5,
     "prehooks": 1,
-    "permission_entries": 119,
-    "permission_entries_used": 119
+    "permission_entries": 121,
+    "permission_entries_used": 121
   },
   "inventory": [
     {
@@ -1422,6 +1422,22 @@
       "matchable": true,
       "permiso": null,
       "file": "src/routes/notificaciones.routes.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventario/stock",
+      "key": "GET /api/v1/inventario/stock",
+      "matchable": true,
+      "permiso": "inventario:leer",
+      "file": "src/routes/inventario.routes.js:4"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/inventario/movimientos",
+      "key": "GET /api/v1/inventario/movimientos",
+      "matchable": true,
+      "permiso": "inventario:leer",
+      "file": "src/routes/inventario.routes.js:5"
     },
     {
       "method": "GET",

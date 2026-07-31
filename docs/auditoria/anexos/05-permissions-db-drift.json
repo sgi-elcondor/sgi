@@ -1,12 +1,12 @@
 {
   "script": "05-permissions-db-drift",
   "title": "Anexo E · Modelo de autorización: código vs. base de datos",
-  "generated_at": "2026-07-30T05:45:23.266Z",
+  "generated_at": "2026-07-31T06:03:42.053Z",
   "counts": {
     "P0": 0,
     "P1": 0,
     "P2": 5,
-    "INFO": 5
+    "INFO": 3
   },
   "findings": [
     {
@@ -81,32 +81,6 @@
       "id": "AUD-PD007",
       "severity": "INFO",
       "category": "permiso-muerto",
-      "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "`inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.",
-      "action": "Eliminar el permiso y sus concesiones, o registrar la vista si debía existir.",
-      "accepted": "Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva.",
-      "original_severity": "P2"
-    },
-    {
-      "id": "AUD-PD008",
-      "severity": "INFO",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "accepted": "El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva.",
-      "original_severity": "P2"
-    },
-    {
-      "id": "AUD-PD009",
-      "severity": "INFO",
-      "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
       "where": [
         "condor.permisos"
@@ -117,12 +91,12 @@
       "original_severity": "P2"
     },
     {
-      "id": "AUD-PD010",
+      "id": "AUD-PD008",
       "severity": "INFO",
       "category": "rol-inexistente",
       "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
       "where": [
-        "src/controllers/requerimientos.controller.js:1740"
+        "src/controllers/requerimientos.controller.js:1737"
       ],
       "detail": "Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).",
       "action": "Corregir el literal o crear el rol.",
@@ -134,9 +108,9 @@
     "permisos_en_bd": 118,
     "concesiones": 390,
     "roles_en_bd": 14,
-    "permisos_exigidos_por_rutas": 73,
-    "permisos_en_vista_api_map": 77,
-    "vistas_en_vista_api_map": 30
+    "permisos_exigidos_por_rutas": 74,
+    "permisos_en_vista_api_map": 78,
+    "vistas_en_vista_api_map": 31
   },
   "matrix_files": [
     "docs/auditoria/anexos/matriz-acceso.md",

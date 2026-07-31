@@ -1,6 +1,6 @@
 # Anexo B · Endpoints consumidos por la SPA vs. rutas montadas
 
-_Generado por `tools/audit/02-frontend-vs-backend.js` el 2026-07-30T05:45:20.875Z._
+_Generado por `tools/audit/02-frontend-vs-backend.js` el 2026-07-31T06:03:40.246Z._
 
 **Resumen:** P0=0 · P1=0 · P2=18 · INFO=2
 

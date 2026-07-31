@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-30T05:45:25.925Z",
+  "generated_at": "2026-07-31T06:03:44.627Z",
   "totals": {
     "P0": 0,
     "P1": 0,
     "P2": 37,
-    "INFO": 39
+    "INFO": 38
   },
   "findings": [
     {
@@ -42,9 +42,9 @@
       "summary": "Autorización fuera del mapa central: GET /api/v1/requerimientos/stream",
       "where": [
         "src/routes/requerimientos.routes.js:5",
-        "src/controllers/requerimientos.controller.js:300"
+        "src/controllers/requerimientos.controller.js:297"
       ],
-      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:300` (helper _puede*() + respuesta 403).",
+      "detail": "Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:297` (helper _puede*() + respuesta 403).",
       "action": "Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS.",
       "anexo": "Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS",
       "script": "01-routes-vs-permissions"
@@ -144,9 +144,9 @@
       "summary": "Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores",
       "where": [
         "src/routes/requerimientos.routes.js:6",
-        "src/controllers/requerimientos.controller.js:326"
+        "src/controllers/requerimientos.controller.js:323"
       ],
-      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:326` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
+      "detail": "Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:323` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.",
       "action": "Registrar `'GET /api/v1/requerimientos/contadores': { recurso, accion }` en src/config/permissions.js.",
       "accepted": "Verificado en requerimientos.controller.js:326-360: cada contador se calcula sólo si el caller tiene el permiso del nivel correspondiente (helper `puede()`), devolviendo 0 si no. No expone datos de terceros; no requiere 403 porque un usuario sin permisos recibe contadores vacíos.",
       "original_severity": "P1",
@@ -847,36 +847,6 @@
       "id": "AUD-PD007",
       "severity": "INFO",
       "category": "permiso-muerto",
-      "summary": "Permiso de visibilidad de una vista que ya no existe: vista:inventario",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "`inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.",
-      "action": "Eliminar el permiso y sus concesiones, o registrar la vista si debía existir.",
-      "accepted": "Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva.",
-      "original_severity": "P2",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD008",
-      "severity": "INFO",
-      "category": "permiso-muerto",
-      "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer",
-      "where": [
-        "condor.permisos"
-      ],
-      "detail": "No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).",
-      "action": "Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.",
-      "accepted": "El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva.",
-      "original_severity": "P2",
-      "anexo": "Anexo E · Modelo de autorización: código vs. base de datos",
-      "script": "05-permissions-db-drift"
-    },
-    {
-      "id": "AUD-PD009",
-      "severity": "INFO",
-      "category": "permiso-muerto",
       "summary": "Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar",
       "where": [
         "condor.permisos"
@@ -889,12 +859,12 @@
       "script": "05-permissions-db-drift"
     },
     {
-      "id": "AUD-PD010",
+      "id": "AUD-PD008",
       "severity": "INFO",
       "category": "rol-inexistente",
       "summary": "Nombre de rol usado en código que no existe en condor.roles: auditoria",
       "where": [
-        "src/controllers/requerimientos.controller.js:1740"
+        "src/controllers/requerimientos.controller.js:1737"
       ],
       "detail": "Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).",
       "action": "Corregir el literal o crear el rol.",
@@ -909,7 +879,7 @@
       "category": "log-de-depuracion",
       "summary": "1 console.log/debugger en src/index.js",
       "where": [
-        "src/index.js:196"
+        "src/index.js:197"
       ],
       "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
       "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
@@ -937,6 +907,21 @@
       "id": "AUD-DC003",
       "severity": "INFO",
       "category": "log-de-depuracion",
+      "summary": "2 console.log/debugger en src/services/email.service.js",
+      "where": [
+        "src/services/email.service.js:36,42"
+      ],
+      "detail": "Salida de depuración que llega a producción (ruido en logs del servidor o en la consola del navegador del usuario).",
+      "action": "Eliminar, o degradar a console.error/warn si es diagnóstico real.",
+      "accepted": "Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116.",
+      "original_severity": "P2",
+      "anexo": "Anexo G · Código, archivos y dependencias sin uso",
+      "script": "06-dead-code"
+    },
+    {
+      "id": "AUD-DC004",
+      "severity": "INFO",
+      "category": "log-de-depuracion",
       "summary": "1 console.log/debugger en src/services/mora.service.js",
       "where": [
         "src/services/mora.service.js:7"
@@ -957,7 +942,7 @@
         "package.json",
         "node_modules/@google-cloud/firestore"
       ],
-      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -971,7 +956,7 @@
         "package.json",
         "node_modules/@google-cloud/storage"
       ],
-      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -985,7 +970,7 @@
         "package.json",
         "node_modules/firebase-admin"
       ],
-      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1013,7 +998,7 @@
         "package.json",
         "node_modules/google-gax"
       ],
-      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1027,7 +1012,7 @@
         "package.json",
         "node_modules/retry-request"
       ],
-      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1041,7 +1026,7 @@
         "package.json",
         "node_modules/teeny-request"
       ],
-      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"
@@ -1055,7 +1040,7 @@
         "package.json",
         "node_modules/uuid"
       ],
-      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado.",
       "anexo": "Anexo H · Vulnerabilidades en dependencias de producción",
       "script": "07-dependencies"

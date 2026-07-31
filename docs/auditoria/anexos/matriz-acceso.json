@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T05:45:23.265Z",
+  "generated_at": "2026-07-31T06:03:42.052Z",
   "roles": [
     {
       "rol": "admin",
@@ -126,6 +126,7 @@
         "requerimientos",
         "aprobaciones",
         "desembolsos",
+        "inventario",
         "bank-transactions",
         "payment-validation",
         "mis-cuotas",
@@ -334,6 +335,7 @@
         "requerimientos",
         "aprobaciones",
         "desembolsos",
+        "inventario",
         "el-proyecto",
         "mapa-editor"
       ]
@@ -603,7 +605,8 @@
         "recepciones",
         "requerimientos",
         "aprobaciones",
-        "desembolsos"
+        "desembolsos",
+        "inventario"
       ]
     },
     {
@@ -642,7 +645,8 @@
         "recepciones",
         "requerimientos",
         "aprobaciones",
-        "desembolsos"
+        "desembolsos",
+        "inventario"
       ]
     },
     {

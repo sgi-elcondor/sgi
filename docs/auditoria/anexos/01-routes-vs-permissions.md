@@ -1,6 +1,6 @@
 # Anexo A · Rutas montadas vs. ROUTE_PERMISSIONS
 
-_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T05:45:20.800Z._
+_Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-31T06:03:40.164Z._
 
 **Resumen:** P0=0 · P1=0 · P2=6 · INFO=17
 
@@ -8,14 +8,14 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T05:45:20.8
 |---|---|---|---|---|
 | AUD-RP003 | P2 | authz-descentralizada | Autorización fuera del mapa central: PATCH /api/v1/ventas/:id/cancelar | src/routes/ventas.routes.js:13<br>src/controllers/ventas.controller.js:714 |
 | AUD-RP004 | P2 | authz-descentralizada | Autorización fuera del mapa central: DELETE /api/v1/ventas/:id | src/routes/ventas.routes.js:14<br>src/controllers/ventas.controller.js:654 |
-| AUD-RP006 | P2 | authz-descentralizada | Autorización fuera del mapa central: GET /api/v1/requerimientos/stream | src/routes/requerimientos.routes.js:5<br>src/controllers/requerimientos.controller.js:300 |
+| AUD-RP006 | P2 | authz-descentralizada | Autorización fuera del mapa central: GET /api/v1/requerimientos/stream | src/routes/requerimientos.routes.js:5<br>src/controllers/requerimientos.controller.js:297 |
 | AUD-RP010 | P2 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave | src/routes/config.routes.js:5<br>src/controllers/config.controller.js:51 |
 | AUD-RP011 | P2 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: PATCH /api/v1/config/:clave | src/routes/config.routes.js:6<br>src/controllers/config.controller.js:65 |
 | AUD-RP018 | P2 | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/comisionistas/comisiones | src/routes/comisionistas.routes.js:4<br>src/routes/comisionistas.routes.js:5 |
 | AUD-RP001 | INFO | authn | Router público por diseño: /api/v1/auth | src/index.js:135 |
 | AUD-RP002 | INFO | authn | Router público por diseño: /api/v1/public | src/index.js:138 |
 | AUD-RP005 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: POST /api/v1/uploads/avatar | src/routes/uploads.routes.js:19<br>src/controllers/uploads.controller.js:4 |
-| AUD-RP007 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores | src/routes/requerimientos.routes.js:6<br>src/controllers/requerimientos.controller.js:326 |
+| AUD-RP007 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores | src/routes/requerimientos.routes.js:6<br>src/controllers/requerimientos.controller.js:323 |
 | AUD-RP008 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/notificaciones | src/routes/notificaciones.routes.js:4<br>src/controllers/notificaciones.controller.js:4 |
 | AUD-RP009 | INFO | authz | Sin entrada en ROUTE_PERMISSIONS: PATCH /api/v1/notificaciones/leidas | src/routes/notificaciones.routes.js:5<br>src/controllers/notificaciones.controller.js:17 |
 | AUD-RP012 | INFO | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/proyectos | src/routes/proyectos.routes.js:3<br>src/routes/proyectos.routes.js:4 |
@@ -46,8 +46,8 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T05:45:20.8
 
 ### AUD-RP006 · P2 · Autorización fuera del mapa central: GET /api/v1/requerimientos/stream
 
-- **Ubicación:** `src/routes/requerimientos.routes.js:5`, `src/controllers/requerimientos.controller.js:300`
-- **Detalle:** Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:300` (helper _puede*() + respuesta 403).
+- **Ubicación:** `src/routes/requerimientos.routes.js:5`, `src/controllers/requerimientos.controller.js:297`
+- **Detalle:** Clave calculada `GET /api/v1/requerimientos/stream` ausente del mapa ⇒ el middleware sólo exige autenticación. Mitigado en el controller `src/controllers/requerimientos.controller.js:297` (helper _puede*() + respuesta 403).
 - **Acción propuesta:** Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS.
 
 ### AUD-RP010 · P2 · Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave
@@ -91,8 +91,8 @@ _Generado por `tools/audit/01-routes-vs-permissions.js` el 2026-07-30T05:45:20.8
 
 ### AUD-RP007 · INFO · Sin entrada en ROUTE_PERMISSIONS: GET /api/v1/requerimientos/contadores
 
-- **Ubicación:** `src/routes/requerimientos.routes.js:6`, `src/controllers/requerimientos.controller.js:326`
-- **Detalle:** Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:326` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.
+- **Ubicación:** `src/routes/requerimientos.routes.js:6`, `src/controllers/requerimientos.controller.js:323`
+- **Detalle:** Clave calculada `GET /api/v1/requerimientos/contadores` ausente del mapa ⇒ el middleware sólo exige autenticación. El controller `src/controllers/requerimientos.controller.js:323` usa chequeo de req.usuario.rol, permisos.has() pero no se detecta un 403 explícito: verificar que realmente corte el acceso.
 - **Aceptado tras verificación** (severidad original P1): Verificado en requerimientos.controller.js:326-360: cada contador se calcula sólo si el caller tiene el permiso del nivel correspondiente (helper `puede()`), devolviendo 0 si no. No expone datos de terceros; no requiere 403 porque un usuario sin permisos recibe contadores vacíos.
 - **Acción propuesta:** Registrar `'GET /api/v1/requerimientos/contadores': { recurso, accion }` en src/config/permissions.js.
 

@@ -719,6 +719,60 @@
   .req-table td.req-td-actions .btn-req-detalle { flex: 1; }
 }
 
+/* ── Inventario / stock (INV-03) ────────────────────────────────────────── */
+.inv-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inv-check input {
+  accent-color: var(--accent);
+}
+
+.inv-stock-ok   { color: var(--success, #16a34a); }
+.inv-stock-cero { color: var(--danger, #dc2626); }
+
+.inv-row-agotado td {
+  opacity: 0.55;
+}
+
+.inv-cat-row td {
+  padding: 0.55rem 1rem !important;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb, 249, 115, 22), 0.06);
+  border-top: 1px solid var(--border, var(--border-color));
+}
+
+.inv-cat-row svg,
+.inv-cat-row .sgi-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  vertical-align: -0.15rem;
+  margin-right: 0.25rem;
+}
+
+.inv-unidad {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border, var(--border-color));
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
 /* ── Material traceability timeline (INV-04) ─────────────────────────────── */
 .req-trace {
   display: flex;

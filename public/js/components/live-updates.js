@@ -5,13 +5,15 @@
 
   const STREAM_URL   = "/api/v1/requerimientos/stream";
   // Views refreshed when a requerimiento moves. Besides the four flow views, a
-  // desembolso creates a gasto and links an empresa aliada, so those two would
-  // otherwise show stale data until a manual reload.
+  // recepción feeds the stock ledger, and a desembolso creates a gasto and links
+  // an empresa aliada: those three would otherwise show stale data until the user
+  // reloaded by hand.
   const LIVE_VIEWS   = {
     requerimientos:     "requerimientosView",
     aprobaciones:       "aprobacionesView",
     desembolsos:        "desembolsosView",
     recepciones:        "recepcionesView",
+    inventario:         "inventarioView",
     gastos:             "gastosView",
     "empresas-aliadas": "empresasAliadasView",
   };

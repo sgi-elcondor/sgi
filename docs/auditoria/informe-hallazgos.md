@@ -1,6 +1,6 @@
 # Informe consolidado de auditoría — SGI El Cóndor
 
-_Generado por `npm run audit` el 2026-07-30T05:45:25.925Z._
+_Generado por `npm run audit` el 2026-07-31T06:03:44.627Z._
 
 ## Resumen
 
@@ -9,7 +9,7 @@ _Generado por `npm run audit` el 2026-07-30T05:45:25.925Z._
 | P0 | 0 | Bloquea la entrega |
 | P1 | 0 | Degrada la entrega |
 | P2 | 37 | Deuda / limpieza |
-| INFO | 39 | Verificado, aceptado o límite de cobertura |
+| INFO | 38 | Verificado, aceptado o límite de cobertura |
 
 ## Anexos
 
@@ -19,8 +19,8 @@ _Generado por `npm run audit` el 2026-07-30T05:45:25.925Z._
 | [Anexo B · Endpoints consumidos por la SPA vs. rutas montadas](anexos/02-frontend-vs-backend.md) | 0 | 0 | 18 | 2 |
 | [Anexo C · Consistencia de vistas (registro, navegación, permisos, build)](anexos/03-views-consistency.md) | 0 | 0 | 0 | 6 |
 | [Anexo D · Consultas del backend vs. esquema real de la base de datos](anexos/04-db-vs-code.md) | 0 | 0 | 0 | 6 |
-| [Anexo E · Modelo de autorización: código vs. base de datos](anexos/05-permissions-db-drift.md) | 0 | 0 | 5 | 5 |
-| [Anexo G · Código, archivos y dependencias sin uso](anexos/06-dead-code.md) | 0 | 0 | 0 | 3 |
+| [Anexo E · Modelo de autorización: código vs. base de datos](anexos/05-permissions-db-drift.md) | 0 | 0 | 5 | 3 |
+| [Anexo G · Código, archivos y dependencias sin uso](anexos/06-dead-code.md) | 0 | 0 | 0 | 4 |
 | [Anexo H · Vulnerabilidades en dependencias de producción](anexos/07-dependencies.md) | 0 | 0 | 8 | 0 |
 
 ## Hallazgos P2
@@ -29,7 +29,7 @@ _Generado por `npm run audit` el 2026-07-30T05:45:25.925Z._
 |---|---|---|---|---|
 | AUD-RP003 | authz-descentralizada | Autorización fuera del mapa central: PATCH /api/v1/ventas/:id/cancelar | src/routes/ventas.routes.js:13<br>src/controllers/ventas.controller.js:714 | Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS. |
 | AUD-RP004 | authz-descentralizada | Autorización fuera del mapa central: DELETE /api/v1/ventas/:id | src/routes/ventas.routes.js:14<br>src/controllers/ventas.controller.js:654 | Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS. |
-| AUD-RP006 | authz-descentralizada | Autorización fuera del mapa central: GET /api/v1/requerimientos/stream | src/routes/requerimientos.routes.js:5<br>src/controllers/requerimientos.controller.js:300 | Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS. |
+| AUD-RP006 | authz-descentralizada | Autorización fuera del mapa central: GET /api/v1/requerimientos/stream | src/routes/requerimientos.routes.js:5<br>src/controllers/requerimientos.controller.js:297 | Deuda de consistencia: la lista de roles/permisos hardcodeada no es configurable desde la vista Permisos. Evaluar migrar a ROUTE_PERMISSIONS. |
 | AUD-RP010 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: GET /api/v1/config/:clave | src/routes/config.routes.js:5<br>src/controllers/config.controller.js:51 | Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS. |
 | AUD-RP011 | authz-descentralizada | Param no numérico ⇒ el permiso central nunca se evalúa: PATCH /api/v1/config/:clave | src/routes/config.routes.js:6<br>src/controllers/config.controller.js:65 | Aceptable, pero documentar la excepción: el permiso vive en el controller y NO es visible en ROUTE_PERMISSIONS. |
 | AUD-RP018 | granularidad-permisos | Rutas distintas colapsan en la misma clave de permiso: GET /api/v1/comisionistas/comisiones | src/routes/comisionistas.routes.js:4<br>src/routes/comisionistas.routes.js:5 | Verificar que ambas operaciones deban compartir sensibilidad; si no, diferenciar la ruta o validar en el controller. |
@@ -82,10 +82,9 @@ _Generado por `npm run audit` el 2026-07-30T05:45:25.925Z._
 | AUD-DB005 | Objeto de BD que el backend nunca consulta: vw_dir_recaudo_facturacion_hoy | P2 | Vista disponible y no consumida. El backend usa vw_dir_recaudo_facturacion_historico. Se conserva. |
 | AUD-DB006 | Objeto de BD que el backend nunca consulta: vw_disponibilidad_comercial | P2 | Vista disponible y no consumida (34 lotes). El catálogo público se arma desde lote/proyecto. Se conserva. |
 | AUD-PD003 | Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar | P2 | Falso positivo estructural: /config/:clave tiene un param no numérico, así que no puede tener entrada en ROUTE_PERMISSIONS (nunca coincidiría). El permiso SÍ se evalúa, dentro de config.controller.js:67 vía _puedeConfig(req, 'actualizar'). Es el coste de visibilidad de autorizar en el controller. |
-| AUD-PD007 | Permiso de visibilidad de una vista que ya no existe: vista:inventario | P2 | Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva. |
-| AUD-PD008 | Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer | P2 | El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva. |
-| AUD-PD009 | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | P2 | Verificado: la ruta PATCH /requerimientos/:id/entregar exige `recepciones:crear` (permissions.js:126) y el handler entregar() no valida nada por su cuenta. El permiso está otorgado a almacenista pero no concede nada; almacenista sí tiene recepciones:crear, así que INV-02 funciona. Concesión decorativa: se conserva para no tocar permisos en la ventana de entrega. |
-| AUD-PD010 | Nombre de rol usado en código que no existe en condor.roles: auditoria | P1 | DECISIÓN DE ENTREGA (2026-07-29): no se crea el rol. Impacto verificado = nulo: sólo aparece en role-promotion.service.js:15 (lista de roles protegidos, guarda defensiva inofensiva) y en la trazabilidad INV-04 de requerimientos.controller.js, que ya admite admin/gerencia/dueno. La supervisión está cubierta: auditoria_log:leer lo tienen admin, dueno, gerencia y auxiliar_contable. Se corrigió CLAUDE.md, que lo listaba como rol existente. |
+| AUD-PD007 | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | P2 | Verificado: la ruta PATCH /requerimientos/:id/entregar exige `recepciones:crear` (permissions.js:126) y el handler entregar() no valida nada por su cuenta. El permiso está otorgado a almacenista pero no concede nada; almacenista sí tiene recepciones:crear, así que INV-02 funciona. Concesión decorativa: se conserva para no tocar permisos en la ventana de entrega. |
+| AUD-PD008 | Nombre de rol usado en código que no existe en condor.roles: auditoria | P1 | DECISIÓN DE ENTREGA (2026-07-29): no se crea el rol. Impacto verificado = nulo: sólo aparece en role-promotion.service.js:15 (lista de roles protegidos, guarda defensiva inofensiva) y en la trazabilidad INV-04 de requerimientos.controller.js, que ya admite admin/gerencia/dueno. La supervisión está cubierta: auditoria_log:leer lo tienen admin, dueno, gerencia y auxiliar_contable. Se corrigió CLAUDE.md, que lo listaba como rol existente. |
 | AUD-DC001 | 1 console.log/debugger en src/index.js | P2 | Log de arranque del servidor (puerto de escucha). Observabilidad legítima, no depuración. |
 | AUD-DC002 | 1 console.log/debugger en src/services/comisiones.service.js | P2 | Registra el evento de negocio 'comisión causada' con venta y monto acumulado. Es rastro operativo deseado en producción. |
-| AUD-DC003 | 1 console.log/debugger en src/services/mora.service.js | P2 | Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job. |
+| AUD-DC003 | 2 console.log/debugger en src/services/email.service.js | P2 | Registran la entrega efectiva de cada correo con el puerto usado (primario o alterno). No son depuración: son la observabilidad que esta misma auditoría señalaba como ausente, ya que el envío de correo es de mejor esfuerzo y su fallo era silencioso. Introducidos por el PR #116. |
+| AUD-DC004 | 1 console.log/debugger en src/services/mora.service.js | P2 | Registra el resultado del cron actualizar_mora en cada corrida. Necesario para diagnosticar el job. |

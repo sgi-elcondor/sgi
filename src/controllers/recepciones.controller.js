@@ -277,37 +277,36 @@ exports.create = async (req, res) => {
     referencia: req0.numero,
   }).catch(() => {});
 
-  // 6. Notificar al peticionario que su material llegó (best-effort)
-  try {
-    if (req0.id_solicitante) {
-      const { data: solicitante } = await supabase.schema(SCHEMA)
-        .from("usuarios").select("email, activo")
-        .eq("id_usuario", req0.id_solicitante).single();
+  // 6. Notificar al peticionario que su material llegó. Fire-and-forget (RN-28):
+  // SMTP can hang, so the response never waits on it.
+  (async () => {
+    if (!req0.id_solicitante) return;
+    const { data: solicitante } = await supabase.schema(SCHEMA)
+      .from("usuarios").select("email, activo")
+      .eq("id_usuario", req0.id_solicitante).single();
+    if (!solicitante?.activo || !solicitante.email) return;
 
-      if (solicitante?.activo && solicitante.email) {
-        const recibidoTxt = itemsParaInsertar
-          .map(r => {
-            const ref = itemsMap.get(r.id_item);
-            return `${ref?.descripcion || "ítem"} × ${r.cantidad}${ref?.unidad ? " " + ref.unidad : ""}`;
-          })
-          .join(", ");
+    const recibidoTxt = itemsParaInsertar
+      .map(r => {
+        const ref = itemsMap.get(r.id_item);
+        return `${ref?.descripcion || "ítem"} × ${r.cantidad}${ref?.unidad ? " " + ref.unidad : ""}`;
+      })
+      .join(", ");
 
-        const completa = nuevoEstado === "en_inventario";
-        await emailService.sendRequerimientoEstadoEmail(solicitante.email, {
-          asunto:  completa
-            ? `Tu requerimiento ${req0.numero} está completo en inventario — El Cóndor`
-            : `Llegó una entrega de tu requerimiento ${req0.numero} — El Cóndor`,
-          titulo:  completa ? "¡Material completo en inventario!" : "Llegó parte de tu material",
-          mensaje: completa
-            ? `El almacenista recibió la última entrega de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Todo el material está en inventario: ${recibidoTxt}.`
-            : `El almacenista registró una entrega parcial de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Recibido en esta entrega: ${recibidoTxt}. El resto sigue pendiente.`,
-          numero:  req0.numero,
-        });
-      }
-    }
-  } catch (e) {
+    const completa = nuevoEstado === "en_inventario";
+    await emailService.sendRequerimientoEstadoEmail(solicitante.email, {
+      asunto:  completa
+        ? `Tu requerimiento ${req0.numero} está completo en inventario — El Cóndor`
+        : `Llegó una entrega de tu requerimiento ${req0.numero} — El Cóndor`,
+      titulo:  completa ? "¡Material completo en inventario!" : "Llegó parte de tu material",
+      mensaje: completa
+        ? `El almacenista recibió la última entrega de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Todo el material está en inventario: ${recibidoTxt}.`
+        : `El almacenista registró una entrega parcial de tu requerimiento <strong>${req0.numero}</strong> (${req0.descripcion}). Recibido en esta entrega: ${recibidoTxt}. El resto sigue pendiente.`,
+      numero:  req0.numero,
+    });
+  })().catch(e => {
     console.error("[recepciones] Notificación al peticionario falló:", e.message);
-  }
+  });
 
   res.status(201).json({
     id_recepcion:     nuevaRecep.id_recepcion,

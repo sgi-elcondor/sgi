@@ -1,8 +1,8 @@
 # Anexo E · Modelo de autorización: código vs. base de datos
 
-_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T05:45:23.266Z._
+_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-31T06:03:42.053Z._
 
-**Resumen:** P0=0 · P1=0 · P2=5 · INFO=5
+**Resumen:** P0=0 · P1=0 · P2=5 · INFO=3
 
 | ID | Sev | Categoría | Hallazgo | Ubicación |
 |---|---|---|---|---|
@@ -12,10 +12,8 @@ _Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T05:45:23.26
 | AUD-PD005 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:leer | condor.permisos |
 | AUD-PD006 | P2 | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: notificaciones_jur:reenviar | condor.permisos |
 | AUD-PD003 | INFO | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: config:actualizar | condor.permisos |
-| AUD-PD007 | INFO | permiso-muerto | Permiso de visibilidad de una vista que ya no existe: vista:inventario | condor.permisos |
-| AUD-PD008 | INFO | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer | condor.permisos |
-| AUD-PD009 | INFO | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | condor.permisos |
-| AUD-PD010 | INFO | rol-inexistente | Nombre de rol usado en código que no existe en condor.roles: auditoria | src/controllers/requerimientos.controller.js:1740 |
+| AUD-PD007 | INFO | permiso-muerto | Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar | condor.permisos |
+| AUD-PD008 | INFO | rol-inexistente | Nombre de rol usado en código que no existe en condor.roles: auditoria | src/controllers/requerimientos.controller.js:1737 |
 
 ## Detalle
 
@@ -56,30 +54,16 @@ _Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-30T05:45:23.26
 - **Aceptado tras verificación** (severidad original P2): Falso positivo estructural: /config/:clave tiene un param no numérico, así que no puede tener entrada en ROUTE_PERMISSIONS (nunca coincidiría). El permiso SÍ se evalúa, dentro de config.controller.js:67 vía _puedeConfig(req, 'actualizar'). Es el coste de visibilidad de autorizar en el controller.
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD007 · INFO · Permiso de visibilidad de una vista que ya no existe: vista:inventario
-
-- **Ubicación:** `condor.permisos`
-- **Detalle:** `inventario` no está registrada en VIEWS (public/js/app.js). Sigue otorgado a: admin, jefe_area, almacenista, gerencia.
-- **Aceptado tras verificación** (severidad original P2): Misma razón que inventario:leer: el inventario vive como pestaña de Recepciones, no como vista del router. Se conserva.
-- **Acción propuesta:** Eliminar el permiso y sus concesiones, o registrar la vista si debía existir.
-
-### AUD-PD008 · INFO · Permiso que ninguna ruta exige y ninguna vista otorga: inventario:leer
-
-- **Ubicación:** `condor.permisos`
-- **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: gerencia, admin, jefe_area, almacenista (concesiones sin efecto).
-- **Aceptado tras verificación** (severidad original P2): El inventario no es una vista registrada en VIEWS: es una pestaña dentro de Recepciones, cuyos datos llegan por endpoints de recepciones. El permiso no concede nada. Se conserva.
-- **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
-
-### AUD-PD009 · INFO · Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar
+### AUD-PD007 · INFO · Permiso que ninguna ruta exige y ninguna vista otorga: requerimientos:entregar
 
 - **Ubicación:** `condor.permisos`
 - **Detalle:** No aparece en ROUTE_PERMISSIONS ni en VISTA_API_MAP. Otorgado a: almacenista (concesiones sin efecto).
 - **Aceptado tras verificación** (severidad original P2): Verificado: la ruta PATCH /requerimientos/:id/entregar exige `recepciones:crear` (permissions.js:126) y el handler entregar() no valida nada por su cuenta. El permiso está otorgado a almacenista pero no concede nada; almacenista sí tiene recepciones:crear, así que INV-02 funciona. Concesión decorativa: se conserva para no tocar permisos en la ventana de entrega.
 - **Acción propuesta:** Confirmar si se valida dentro de algún controller; si no, eliminar el permiso y sus concesiones.
 
-### AUD-PD010 · INFO · Nombre de rol usado en código que no existe en condor.roles: auditoria
+### AUD-PD008 · INFO · Nombre de rol usado en código que no existe en condor.roles: auditoria
 
-- **Ubicación:** `src/controllers/requerimientos.controller.js:1740`
+- **Ubicación:** `src/controllers/requerimientos.controller.js:1737`
 - **Detalle:** Roles reales en BD: admin, almacenista, asesor_comercial, auxiliar_contable, comisionista, comprador, dueno, gerencia, jefe_area, juridico, peticionario, tesorero, topografo, usuario. Si se usa en un fan-out de notificaciones, el envío no alcanza a nadie y el fallo es silencioso (RN-28 es best-effort).
 - **Aceptado tras verificación** (severidad original P1): DECISIÓN DE ENTREGA (2026-07-29): no se crea el rol. Impacto verificado = nulo: sólo aparece en role-promotion.service.js:15 (lista de roles protegidos, guarda defensiva inofensiva) y en la trazabilidad INV-04 de requerimientos.controller.js, que ya admite admin/gerencia/dueno. La supervisión está cubierta: auditoria_log:leer lo tienen admin, dueno, gerencia y auxiliar_contable. Se corrigió CLAUDE.md, que lo listaba como rol existente.
 - **Acción propuesta:** Corregir el literal o crear el rol.

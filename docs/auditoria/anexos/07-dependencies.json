@@ -1,7 +1,7 @@
 {
   "script": "07-dependencies",
   "title": "Anexo H · Vulnerabilidades en dependencias de producción",
-  "generated_at": "2026-07-30T05:45:25.924Z",
+  "generated_at": "2026-07-31T06:03:44.626Z",
   "counts": {
     "P0": 0,
     "P1": 0,
@@ -18,7 +18,7 @@
         "package.json",
         "node_modules/@google-cloud/firestore"
       ],
-      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "google-gax. Rango vulnerable: 7.5.0-pre.0 || 7.6.0 - 7.11.6. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -30,7 +30,7 @@
         "package.json",
         "node_modules/@google-cloud/storage"
       ],
-      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · teeny-request. Rango vulnerable: 2.2.0 - 2.5.0 || >=5.19.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -42,7 +42,7 @@
         "package.json",
         "node_modules/firebase-admin"
       ],
-      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "@google-cloud/firestore · @google-cloud/storage. Rango vulnerable: 7.0.0 - 8.2.0 || >=11.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -66,7 +66,7 @@
         "package.json",
         "node_modules/google-gax"
       ],
-      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "retry-request · uuid. Rango vulnerable: 4.0.5-experimental - 4.6.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -78,7 +78,7 @@
         "package.json",
         "node_modules/retry-request"
       ],
-      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "teeny-request. Rango vulnerable: 7.0.0 - 7.0.2. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -90,7 +90,7 @@
         "package.json",
         "node_modules/teeny-request"
       ],
-      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid. Rango vulnerable: 3.9.1 - 9.0.0. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     },
     {
@@ -102,7 +102,7 @@
         "package.json",
         "node_modules/uuid"
       ],
-      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@14.2.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
+      "detail": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided. Rango vulnerable: <11.1.1. Requiere subir a firebase-admin@10.3.0 (**cambio de versión mayor**): validar el flujo que lo usa antes de subirlo.",
       "action": "Planificar la actualización con prueba del flujo afectado."
     }
   ],

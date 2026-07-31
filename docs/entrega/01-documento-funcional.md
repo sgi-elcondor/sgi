@@ -58,8 +58,8 @@ verificables, y la verificación se apoya en las definiciones de *listo* y
 *terminado* acordadas por el equipo. Las reglas de negocio se documentan de forma
 explícita y trazable hasta el código que las implementa, atendiendo al principio
 de que un requisito no verificable no es un requisito (ISO/IEC/IEEE 29148:2018).
-Al cierre de la entrega, el sistema expone 151 puntos de acceso a su interfaz de
-programación, 30 vistas de usuario y 14 roles con permisos diferenciados,
+Al cierre de la entrega, el sistema expone 153 puntos de acceso a su interfaz de
+programación, 31 vistas de usuario y 14 roles con permisos diferenciados,
 verificados mediante una auditoría automatizada cuyos resultados se resumen en la
 sección de verificación y validación.
 
@@ -146,7 +146,7 @@ registrado con su autor, su valor anterior y su motivo.
 
 | Objetivo | Cómo se verifica en el sistema entregado |
 |---|---|
-| Centralizar el catálogo comercial | 30 vistas operativas sobre proyectos, lotes y disponibilidad derivada |
+| Centralizar el catálogo comercial | 31 vistas operativas sobre proyectos, lotes y disponibilidad derivada |
 | Eliminar la ambigüedad del saldo | Fórmula única implementada en un solo servicio (RN-10) |
 | Trazar el dinero de extremo a extremo | Cadena cuota → factura → pago → recibo con numeración consecutiva |
 | Dar autonomía al comprador | Portal propio con sus ventas, cuotas, facturas, pagos y recibos |
@@ -856,11 +856,11 @@ según su efecto sobre la entrega.
 
 | Área verificada | Alcance | Hallazgos bloqueantes |
 |---|---|---|
-| Rutas contra mapa de permisos | 151 rutas, 119 entradas | 0 |
+| Rutas contra mapa de permisos | 153 rutas, 121 entradas | 0 |
 | Interfaz contra servidor | 193 llamadas | 0 |
-| Registro de vistas y compilación | 30 vistas | 0 |
-| Código contra esquema de datos | 372 consultas, 47 objetos | 0 |
-| Modelo de autorización contra base de datos | 73 permisos exigidos, 390 concesiones | 0 |
+| Registro de vistas y compilación | 31 vistas | 0 |
+| Código contra esquema de datos | 374 consultas, 47 objetos | 0 |
+| Modelo de autorización contra base de datos | 74 permisos exigidos, 390 concesiones | 0 |
 | Código, archivos y dependencias sin uso | Todo el repositorio | 0 |
 | Vulnerabilidades en dependencias de producción | 186 dependencias | 0 |
 

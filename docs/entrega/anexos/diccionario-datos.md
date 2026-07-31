@@ -1,6 +1,6 @@
 # Anexo · Diccionario de datos
 
-_Generado automáticamente por `tools/audit/gen-data-dictionary.js` a partir del esquema `condor` vigente el 2026-07-30._
+_Generado automáticamente por `tools/audit/gen-data-dictionary.js` a partir del esquema `condor` vigente el 2026-07-31._
 
 Este anexo se genera del esquema real y no se edita a mano: cualquier
 divergencia entre el documento y la base de datos se corrige regenerándolo.
