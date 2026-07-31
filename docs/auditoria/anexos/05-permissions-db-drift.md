@@ -1,6 +1,6 @@
 # Anexo E · Modelo de autorización: código vs. base de datos
 
-_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-31T06:03:42.053Z._
+_Generado por `tools/audit/05-permissions-db-drift.js` el 2026-07-31T06:41:25.034Z._
 
 **Resumen:** P0=0 · P1=0 · P2=5 · INFO=3
 

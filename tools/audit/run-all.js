@@ -66,9 +66,28 @@ async function main() {
     return acc;
   }, {});
 
+  // A partial run must never overwrite the authoritative report: `--offline` skips
+  // the two database cross-checks, so its totals are lower and its annex list
+  // shorter. Publishing that as the consolidated report would silently contradict
+  // whatever cites it.
+  const partial   = offline || only.length > 0;
+  const reportName = partial ? 'informe-hallazgos-parcial.md' : 'informe-hallazgos.md';
+  const jsonName   = partial ? 'consolidado-parcial.json' : 'consolidado.json';
+  const skipped    = SCRIPTS.filter(s => !reports.some(r => r.script === s));
+
   const md = [];
-  md.push('# Informe consolidado de auditoría — SGI El Cóndor', '');
-  md.push(`_Generado por \`npm run audit\` el ${new Date().toISOString()}._`, '');
+  md.push(`# Informe ${partial ? 'PARCIAL ' : ''}consolidado de auditoría — SGI El Cóndor`, '');
+  md.push(`_Generado por \`npm run audit${offline ? ':offline' : ''}\` el ${new Date().toISOString()}._`, '');
+  if (partial) {
+    md.push('');
+    md.push('> **Este informe está incompleto.** No cubre las siguientes áreas:');
+    md.push('>');
+    for (const s of skipped) md.push(`> - \`${s}\``);
+    md.push('>');
+    md.push('> Los cruces contra la base de datos exigen credenciales de Supabase. Para el');
+    md.push('> informe autoritativo, ejecutar `npm run audit` con el entorno configurado.');
+  }
+  md.push('');
   md.push('## Resumen', '');
   md.push('| Severidad | Cantidad | Significado |', '|---|---|---|');
   md.push(`| P0 | ${totals.P0} | Bloquea la entrega |`);
@@ -108,16 +127,17 @@ async function main() {
   }
 
   fs.mkdirSync(path.join(ROOT, 'docs', 'auditoria'), { recursive: true });
-  fs.writeFileSync(path.join(ROOT, 'docs', 'auditoria', 'informe-hallazgos.md'), md.join('\n'), 'utf8');
+  fs.writeFileSync(path.join(ROOT, 'docs', 'auditoria', reportName), md.join('\n'), 'utf8');
   fs.writeFileSync(
-    path.join(OUT_DIR, 'consolidado.json'),
-    JSON.stringify({ generated_at: new Date().toISOString(), totals, findings: all }, null, 2),
+    path.join(OUT_DIR, jsonName),
+    JSON.stringify({ generated_at: new Date().toISOString(), partial, skipped, totals, findings: all }, null, 2),
     'utf8'
   );
 
   console.log('');
   console.log(`TOTAL  P0=${totals.P0}  P1=${totals.P1}  P2=${totals.P2}  INFO=${totals.INFO}`);
-  console.log('Informe: docs/auditoria/informe-hallazgos.md');
+  if (partial) console.log(`AVISO: corrida parcial (sin ${skipped.join(', ')}). No sustituye al informe completo.`);
+  console.log(`Informe: docs/auditoria/${reportName}`);
 
   const blocking = totals.P0 + totals.P1;
   if (blocking > 0) {
